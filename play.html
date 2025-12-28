@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jugador - TalCual Party</title>
-    <link rel="icon" href="/images/icon.webp" type="image/webp">
-    <!-- CSS Reorganizado -->
-    <link rel="stylesheet" href="css/1-global.css">
-    <link rel="stylesheet" href="css/4-components.css">
-    <link rel="stylesheet" href="css/2-play.css">
-    <link rel="stylesheet" href="css/5-animations.css">
+    <link rel="icon" href="./images/icon.webp" type="image/webp">
+    <!-- CSS Reorganizado - Usando rutas relativas consistentes -->
+    <link rel="stylesheet" href="./css/1-global.css">
+    <link rel="stylesheet" href="./css/4-components.css">
+    <link rel="stylesheet" href="./css/2-play.css">
+    <link rel="stylesheet" href="./css/5-animations.css">
 </head>
 <body>
     <!-- MODAL UNIRSE AL JUEGO -->
@@ -32,8 +32,8 @@
             <div class="input-group">
                 <label class="input-label">Elige tu Aura</label>
                 <div class="aura-selector" id="color-selector">
-                    <!-- Fire -->
-                    <div class="aura-circle" data-color="#FF9966,#FF5E62" 
+                    <!-- Fire - Seleccionado por defecto -->
+                    <div class="aura-circle selected" data-color="#FF9966,#FF5E62" 
                          style="background: linear-gradient(135deg, #FF9966, #FF5E62);"></div>
                     <!-- Ice -->
                     <div class="aura-circle" data-color="#00F260,#0575E6" 
@@ -58,7 +58,7 @@
             <div id="status-message" style="text-align: center; margin-top: 20px; font-size: 1.1em;"></div>
             
             <div class="btn-back" style="margin-top: 20px; text-align: center;">
-                <a href="index.html" style="color: white; opacity: 0.8; text-decoration: none;">
+                <a href="./index.html" style="color: white; opacity: 0.8; text-decoration: none;">
                     ← Volver al inicio
                 </a>
             </div>
@@ -129,9 +129,9 @@
         </div>
     </div>
 
-    <!-- Scripts Modulares -->
-    <script src="/js/game-client.js"></script>
-    <script src="/js/shared-utils.js"></script>
-    <script src="/js/player-manager.js"></script>
+    <!-- Scripts Modulares - Usando rutas relativas consistentes -->
+    <script src="./js/shared-utils.js"></script>
+    <script src="./js/game-client.js"></script>
+    <script src="./js/player-manager.js"></script>
 </body>
 </html>
