@@ -2,7 +2,7 @@
 // Server-Sent Events para actualizaciones en tiempo real
 // MEJORAS: Manejo robusto de conexiones, heartbeat optimizado, detección de desconexiones
 
-require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/config.php';
 
 // Headers SSE
 header('Content-Type: text/event-stream');
