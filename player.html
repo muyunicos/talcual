@@ -6,7 +6,7 @@
     <title>Jugador - TalCual Party</title>
     <link rel="icon" href="icon.webp" type="image/webp">
     <!-- FUENTES GOOGLE FONTS -->
-    <parameter name="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -936,7 +936,8 @@
             btnJoin.textContent = 'Conectando...';
 
             try {
-                client = new GameClient(gameId, playerId);
+                // FIX #4: Usar constructor correcto (gameId, role)
+                client = new GameClient(gameId, 'player');
 
                 const result = await client.sendAction('join_game', { 
                     name: playerName,
@@ -954,8 +955,7 @@
                     playerNameDisplay.textContent = playerName;
 
                     client.onStateUpdate = handleStateUpdate;
-                    client.onConnectionFailed = handleConnectionFailed;
-                    client.onNetworkError = handleNetworkError;
+                    client.onConnectionLost = handleConnectionFailed;
                     client.connect();
 
                     console.log('✅ Conectado al juego:', gameId);
@@ -1332,10 +1332,6 @@
             exitGame();
         }
 
-        function handleNetworkError(error) {
-            console.error('Error de red:', error);
-        }
-
         // Salir del juego
         function exitGame() {
             if (client) {
@@ -1380,8 +1376,9 @@
                 
                 try {
                     // Crear cliente y verificar estado del juego
-                    client = new GameClient(gameId, playerId);
-                    const result = await client.getState();
+                    // FIX #4: Usar constructor correcto (gameId, role)
+                    client = new GameClient(gameId, 'player');
+                    const result = await client.sendAction('get_state', { game_id: gameId });
                     
                     if (result.success && result.state) {
                         const state = result.state;
@@ -1403,8 +1400,7 @@
                             
                             // Conectar eventos
                             client.onStateUpdate = handleStateUpdate;
-                            client.onConnectionFailed = handleConnectionFailed;
-                            client.onNetworkError = handleNetworkError;
+                            client.onConnectionLost = handleConnectionFailed;
                             client.connect();
                             
                             // Actualizar con el estado actual
