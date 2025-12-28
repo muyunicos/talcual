@@ -1,98 +1,91 @@
 // game-client.js - Cliente para manejar conexión SSE y acciones del juego
-// MEJORAS: #4, #10, #12 (mejor manejo de errores y reconexiones)
+// FIX #3: Eliminado polling simultáneo, usando SOLO SSE en tiempo real
 
 class GameClient {
-    constructor(gameId, playerId) {
+    constructor(gameId, role = 'player') {
         this.gameId = gameId;
-        this.playerId = playerId;
+        this.role = role;  // 'player' o 'host'
         this.eventSource = null;
         this.gameState = null;
-        this.onStateUpdate = null;
+        this.onStateUpdate = null;  // Callback para actualizaciones
+        this.onConnectionLost = null;
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectDelay = 2000;
-        this.reconnectTimeout = null;
+        this.maxReconnectAttempts = 10;
         this.isConnected = false;
-        this.lastStateUpdate = Date.now();
+        this.lastStateHash = null;  // Para evitar actualizaciones innecesarias
     }
 
     connect() {
-        const sseUrl = `sse-stream.php?game_id=${this.gameId}`;
-        console.log('[GameClient] Conectando a SSE:', sseUrl);
+        const sseUrl = `sse-stream.php?game_id=${encodeURIComponent(this.gameId)}`;
+        console.log(`🔌 [${this.role}] Conectando a SSE: ${sseUrl}`);
 
         try {
             this.eventSource = new EventSource(sseUrl);
 
+            // Cuando la conexión se abre
             this.eventSource.onopen = () => {
-                console.log('[GameClient] Conexión SSE establecida');
+                console.log(`✅ [${this.role}] SSE conectado exitosamente`);
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
-                
-                // Limpiar timeout de reconexion
-                if (this.reconnectTimeout) {
-                    clearTimeout(this.reconnectTimeout);
-                    this.reconnectTimeout = null;
+            };
+
+            // Mensaje por defecto (data simple)
+            this.eventSource.onmessage = (event) => {
+                try {
+                    const newState = JSON.parse(event.data);
+                    
+                    // FIX #3: Solo actualizar si hay cambios reales
+                    const newHash = JSON.stringify(newState);
+                    if (newHash !== this.lastStateHash) {
+                        this.gameState = newState;
+                        this.lastStateHash = newHash;
+                        
+                        console.log(`📨 [${this.role}] Estado actualizado vía SSE`);
+                        
+                        // Callback inmediato
+                        if (this.onStateUpdate && typeof this.onStateUpdate === 'function') {
+                            this.onStateUpdate(newState);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`❌ [${this.role}] Error parseando datos SSE:`, error);
                 }
             };
 
-            this.eventSource.addEventListener('update', (event) => {
-                try {
-                    const state = JSON.parse(event.data);
-                    this.gameState = state;
-                    this.lastStateUpdate = Date.now();
-
-                    console.log('[GameClient] Estado recibido vía SSE');
-
-                    if (this.onStateUpdate) {
-                        this.onStateUpdate(state);
-                    }
-                } catch (error) {
-                    console.error('[GameClient] Error parseando estado SSE:', error);
-                }
-            });
-            
-            this.eventSource.addEventListener('game_ended', (event) => {
-                console.log('[GameClient] Juego finalizado o expirado');
-                this.disconnect();
-                
-                if (this.onGameEnded) {
-                    this.onGameEnded();
-                }
-            });
-
+            // Cuando hay error
             this.eventSource.onerror = (error) => {
-                console.error('[GameClient] Error en SSE:', error);
+                console.error(`❌ [${this.role}] Error en SSE:`, error);
                 this.isConnected = false;
-
+                
+                // Cerrar la conexión actual
                 if (this.eventSource.readyState === EventSource.CLOSED) {
-                    console.log('[GameClient] SSE cerrado. Intentando reconectar...');
                     this.handleReconnect();
                 }
             };
 
         } catch (error) {
-            console.error('[GameClient] Error creando EventSource:', error);
+            console.error(`❌ [${this.role}] Error creando EventSource:`, error);
             this.handleReconnect();
         }
     }
 
     handleReconnect() {
-        // MEJORA #4: Evitar reconexiones infinitas con timeout absoluto
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('[GameClient] Máximo de intentos de reconexion alcanzado');
+            console.error(`❌ [${this.role}] Máximo de intentos de reconexión alcanzado`);
             
-            if (this.onConnectionFailed) {
-                this.onConnectionFailed();
+            if (this.onConnectionLost && typeof this.onConnectionLost === 'function') {
+                this.onConnectionLost();
             }
             return;
         }
 
         this.reconnectAttempts++;
-        const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1); // Exponential backoff
+        // Exponential backoff: 1s, 2s, 4s, 8s, etc. (máximo 30s)
+        const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
         
-        console.log(`[GameClient] Reconectando en ${delay}ms (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-
-        this.reconnectTimeout = setTimeout(() => {
+        console.log(`🔄 [${this.role}] Reconectando en ${delay}ms (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        
+        setTimeout(() => {
             this.disconnect();
             this.connect();
         }, delay);
@@ -103,31 +96,29 @@ class GameClient {
             this.eventSource.close();
             this.eventSource = null;
             this.isConnected = false;
-            console.log('[GameClient] Desconectado de SSE');
-        }
-        
-        if (this.reconnectTimeout) {
-            clearTimeout(this.reconnectTimeout);
-            this.reconnectTimeout = null;
+            console.log(`🔌 [${this.role}] SSE desconectado`);
         }
     }
 
+    // FIX #3: NO hacer polling - solo obtener estado actual del cache local
+    getState() {
+        return this.gameState;
+    }
+
+    // Enviar acción al servidor
     async sendAction(action, data = {}) {
-        const payload = {
-            action: action,
-            game_id: this.gameId,
-            player_id: this.playerId,
-            ...data
-        };
-
-        console.log('[GameClient] Enviando acción:', action);
-
+        console.log(`📤 [${this.role}] Enviando acción: ${action}`, data);
+        
         try {
+            const payload = {
+                action: action,
+                game_id: this.gameId,
+                ...data
+            };
+
             const response = await fetch('api-action.php', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
@@ -136,38 +127,51 @@ class GameClient {
             }
 
             const result = await response.json();
-
-            console.log('[GameClient] Respuesta de acción:', action, result.success ? '✅' : '❌');
-
-            if (result.success && result.state) {
-                this.gameState = result.state;
-
-                if (this.onStateUpdate) {
-                    this.onStateUpdate(result.state);
-                }
-            }
-
+            
+            console.log(`✅ [${this.role}] Respuesta recibida para ${action}:`, result.success ? '✓' : '✗');
+            
+            // La actualización del estado vendrá vía SSE, NO por aquí
+            // Esto asegura sincronización en tiempo real para todos
+            
             return result;
         } catch (error) {
-            console.error('[GameClient] Error enviando acción:', error);
-            
-            // MEJORA #12: Notificar error de red
-            if (this.onNetworkError) {
-                this.onNetworkError(error);
-            }
-            
+            console.error(`❌ [${this.role}] Error enviando acción ${action}:`, error);
             return { success: false, message: 'Error de red: ' + error.message };
         }
     }
 
-    // Obtener estado actual
-    async getState() {
-        return await this.sendAction('get_state');
+    // Método para forzar una actualización si es necesario (excepcional)
+    async forceRefresh() {
+        console.log(`🔄 [${this.role}] Forzando actualización...`);
+        
+        try {
+            const response = await fetch('api-action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'get_state',
+                    game_id: this.gameId
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success && result.state) {
+                this.gameState = result.state;
+                this.lastStateHash = JSON.stringify(result.state);
+                
+                if (this.onStateUpdate && typeof this.onStateUpdate === 'function') {
+                    this.onStateUpdate(result.state);
+                }
+            }
+        } catch (error) {
+            console.error(`❌ [${this.role}] Error forzando actualización:`, error);
+        }
     }
-    
-    // Verificar si la conexión está activa
+
+    // Verificar si está conectado
     isAlive() {
-        return this.isConnected && (Date.now() - this.lastStateUpdate) < 60000; // 1 minuto
+        return this.isConnected && this.eventSource && this.eventSource.readyState === EventSource.OPEN;
     }
 }
 
@@ -181,25 +185,6 @@ function getRemainingTime(startTimestamp, duration) {
 
 function showNotification(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
-    // Aquí podrías agregar notificaciones visuales
 }
 
-// Sistema de reporte de bugs (MEJORA #9: solo en modo desarrollo)
-function reportBug(description, data = {}) {
-    console.error('[BUG REPORT]', description, data);
-    
-    // En producción esto podría enviar a un endpoint
-    if (window.DEV_MODE) {
-        const report = {
-            timestamp: new Date().toISOString(),
-            description: description,
-            data: data,
-            userAgent: navigator.userAgent,
-            url: window.location.href
-        };
-        
-        console.log('[BUG REPORT] Datos completos:', report);
-    }
-}
-
-console.log('✅ GameClient cargado correctamente');
+console.log('✅ GameClient FIX #3 - Usando SOLO SSE (sin polling simultáneo)');
