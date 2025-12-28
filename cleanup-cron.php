@@ -1,11 +1,4 @@
 <?php
-// Script para ejecutar periódicamente (cron job)
-// Agregar a crontab: 0 */6 * * * php /ruta/a/cleanup-cron.php
-
-require_once 'config.php';
-
-echo "Iniciando limpieza de partidas antiguas...\n";
-$cleaned = cleanupOldGames();
-echo "Partidas eliminadas: $cleaned\n";
-echo "Limpieza completada: " . date('Y-m-d H:i:s') . "\n";
+// BACKWARD COMPATIBILITY: Redirigir a la nueva ubicación
+require_once __DIR__ . '/app/maintenance/cleanup-cron.php';
 ?>
