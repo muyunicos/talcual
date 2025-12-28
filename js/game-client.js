@@ -1,10 +1,12 @@
 // game-client.js - Cliente para manejar conexión SSE y acciones del juego
 // FIX #3: Eliminado polling simultáneo, usando SOLO SSE en tiempo real
 // FIX #5: Mejorada validación de datos SSE y manejo de heartbeats
+// FIX #9: Incluir player_id en acciones que lo requieren (join_game, submit_answers, etc)
 
 class GameClient {
-    constructor(gameId, role = 'player') {
+    constructor(gameId, playerId = null, role = 'player') {
         this.gameId = gameId;
+        this.playerId = playerId;  // ✅ FIX #9: Agregar playerId al constructor
         this.role = role;  // 'player' o 'host'
         this.eventSource = null;
         this.gameState = null;
@@ -146,6 +148,7 @@ class GameClient {
     }
 
     // Enviar acción al servidor
+    // FIX #9: Incluir player_id cuando sea necesario
     async sendAction(action, data = {}) {
         console.log(`📤 [${this.role}] Enviando acción: ${action}`, data);
         
@@ -155,6 +158,16 @@ class GameClient {
                 game_id: this.gameId,
                 ...data
             };
+
+            // ✅ FIX #9: Agregar player_id a acciones que lo requieren
+            if (this.playerId && [
+                'join_game',
+                'submit_answers',
+                'leave_game',
+                'update_player_name'
+            ].includes(action)) {
+                payload.player_id = this.playerId;
+            }
 
             const response = await fetch('/app/actions.php', {
                 method: 'POST',
@@ -185,13 +198,20 @@ class GameClient {
         console.log(`🔄 [${this.role}] Forzando actualización...`);
         
         try {
+            const payload = {
+                action: 'get_state',
+                game_id: this.gameId
+            };
+
+            // ✅ FIX #9: Agregar player_id si está disponible
+            if (this.playerId) {
+                payload.player_id = this.playerId;
+            }
+
             const response = await fetch('/app/actions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'get_state',
-                    game_id: this.gameId
-                })
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();
@@ -227,4 +247,4 @@ function showNotification(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
-console.log('✅ GameClient FIX #3,#5 - Usando SOLO SSE con mejor validación');
+console.log('✅ GameClient FIX #3,#5,#9 - SSE con player_id incluido');
