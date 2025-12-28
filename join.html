@@ -4,32 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unirse - TalCual</title>
-    <link rel="icon" href="icon.webp" type="image/webp">
+    <link rel="icon" href="/images/icon.webp" type="image/webp">
     <link rel="stylesheet" href="css/main.css">
-    <style>
-        body.join-page {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        }
-        body.join-page::before {
-            background-size: 300px;
-        }
-    </style>
 </head>
-<body class="join-page">
-    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;">
-        <div class="join-container">
-            <h1>📱 Unirse</h1>
-            <div class="subtitle">Redirigiendo a la pantalla de jugador...</div>
-            <div class="btn-back">
-                <a href="index.html">← Volver</a>
+<body>
+    <div class="landing-container">
+        <a href="index.html" class="back-btn">← Volver</a>
+        
+        <h1>📱 Unirse a Partida</h1>
+        
+        <div class="form-container">
+            <div class="input-group">
+                <label>Código de Sala</label>
+                <input type="text" id="game-code" placeholder="Ejemplo: CASA" maxlength="6" required>
             </div>
+            
+            <button class="btn btn-join" onclick="joinGame()">▶️ Unirse</button>
         </div>
+        
+        <div id="status-message"></div>
     </div>
-
+    
     <script>
-        setTimeout(() => {
-            window.location.href = 'player.html';
-        }, 1000);
+        function joinGame() {
+            const gameCode = document.getElementById('game-code').value.trim().toUpperCase();
+            const statusMsg = document.getElementById('status-message');
+            
+            if (!gameCode) {
+                statusMsg.innerHTML = '⚠️ Por favor ingresa un código';
+                return;
+            }
+            
+            if (gameCode.length < 3) {
+                statusMsg.innerHTML = '⚠️ El código debe tener al menos 3 caracteres';
+                return;
+            }
+            
+            window.location.href = `player.html?game=${gameCode}`;
+        }
+        
+        document.getElementById('game-code').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                joinGame();
+            }
+        });
     </script>
 </body>
 </html>

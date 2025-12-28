@@ -4,68 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crear Partida - TalCual</title>
-    <link rel="icon" href="icon.webp" type="image/webp">
+    <link rel="icon" href="/images/icon.webp" type="image/webp">
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;">
-        <div class="game-creation-container">
-            <h1>📺 Crear Partida</h1>
-            <div class="subtitle">Configura tu sala de juego</div>
-
-            <div id="creation-form">
-                <div class="input-group">
-                    <label class="input-label">Código de Sala</label>
-                    <input type="text" id="game-code-input" class="input-field" 
-                           placeholder="PLAYA" maxlength="6" autocomplete="off">
-                </div>
-
-                <button class="btn-create-game" id="btn-create">🎮 Crear Sala</button>
+    <div class="landing-container">
+        <a href="index.html" class="back-btn">← Volver</a>
+        
+        <h1>📺 Crear Nueva Partida</h1>
+        
+        <div class="form-container">
+            <div class="input-group">
+                <label>Código de Sala (opcional)</label>
+                <input type="text" id="custom-code" placeholder="Dejar vacío para generar automáticamente" maxlength="6">
+                <small>Si no ingresas nada, se generará un código automáticamente</small>
             </div>
-
-            <div id="game-code-display">
-                <div class="instruction">Comparte este código con los jugadores:</div>
-                <div class="code" id="game-code"></div>
-                <button class="btn-open-host" id="btn-open-host">🖥️ Abrir Pantalla del Host</button>
-            </div>
-
-            <div class="btn-back">
-                <a href="index.html">← Volver</a>
-            </div>
+            
+            <button class="btn btn-create" onclick="createGame()">🎮 Crear Partida</button>
         </div>
+        
+        <div id="status-message"></div>
     </div>
-
+    
     <script>
-        const gameCodeInput = document.getElementById('game-code-input');
-        const btnCreate = document.getElementById('btn-create');
-        const gameCodeDisplay = document.getElementById('game-code-display');
-        const gameCodeElement = document.getElementById('game-code');
-        const creationForm = document.getElementById('creation-form');
-        const btnOpenHost = document.getElementById('btn-open-host');
-
-        btnCreate.addEventListener('click', createGame);
-        gameCodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') createGame();
-        });
-
-        function createGame() {
-            const code = gameCodeInput.value.trim().toUpperCase();
-            if (!code) {
-                alert('Por favor ingresa un código de sala');
-                return;
+        async function createGame() {
+            const customCode = document.getElementById('custom-code').value.trim().toUpperCase();
+            const statusMsg = document.getElementById('status-message');
+            
+            statusMsg.innerHTML = '⏳ Creando partida...';
+            
+            try {
+                const response = await fetch('/app/api/actions.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'create_game',
+                        game_id: customCode || undefined
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    statusMsg.innerHTML = `✅ Partida creada: <strong>${result.game_id}</strong>`;
+                    setTimeout(() => {
+                        window.location.href = `host.html?game=${result.game_id}`;
+                    }, 1000);
+                } else {
+                    statusMsg.innerHTML = `❌ Error: ${result.message}`;
+                }
+            } catch (error) {
+                statusMsg.innerHTML = `❌ Error de conexión: ${error.message}`;
             }
-
-            creationForm.style.display = 'none';
-            gameCodeDisplay.style.display = 'block';
-            gameCodeElement.textContent = code;
-
-            localStorage.setItem('talcual_game_code', code);
-            localStorage.setItem('talcual_is_host', 'true');
         }
-
-        btnOpenHost.addEventListener('click', () => {
-            window.open('host.html', '_blank');
-        });
     </script>
 </body>
 </html>
