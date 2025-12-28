@@ -772,14 +772,14 @@
     <!-- SCRIPTS AL FINAL -->
     <script src="game-client.js"></script>
     <script>
-        console.log('🎮 TalCual Party Game Client v3.2');
+        console.log('🎮 TalCual Party Game Client v3.3');
         console.log('Sistema de juego cargado correctamente');
         console.log('Características:');
         console.log('  ✓ SSE para actualizaciones en tiempo real');
         console.log('  ✓ Reconexión automática');
-        console.log('  ✓ Sin popup de salida');
-        console.log('  ✓ Timer sincronizado con servidor');
-        console.log('  ✓ Soporte offline detection');
+        console.log('  ✓ Countdown 3-2-1 sincronizado');
+        console.log('  ✓ Timer continuo actualizado cada segundo');
+        console.log('  ✓ Recuperación de sesión');
         console.log('  ✓ Notificaciones visuales');
 
         // Variables globales
@@ -977,36 +977,123 @@
                 }
             }
 
-            // Actualizar ronda
+            // FIX: Usar state.total_rounds en lugar de state.rounds?.length
             currentRound = state.round || 0;
             const totalRounds = state.total_rounds || 3;
             headerRound.textContent = `Ronda ${currentRound}/${totalRounds}`;
-
-            // Calcular y actualizar timer
-            if (state.status === 'playing' && state.round_started_at && state.round_duration) {
-                const now = Math.floor(Date.now() / 1000);
-                const elapsed = now - state.round_started_at;
-                const remaining = Math.max(0, state.round_duration - elapsed);
-                updateTimer(remaining);
-            }
 
             // Manejar estados del juego
             switch (state.status) {
                 case 'waiting':
                     showWaitingState();
+                    stopTimer();
                     break;
                     
                 case 'playing':
-                    showPlayingState(state);
+                    // FIX: Verificar si hay round_start_at para mostrar countdown
+                    if (state.round_start_at) {
+                        const now = Math.floor(Date.now() / 1000);
+                        const remaining = state.round_start_at - now;
+                        
+                        if (remaining > 0 && remaining <= 4) {
+                            // Mostrar countdown sincronizado
+                            showCountdownSynced(state);
+                        } else if (remaining <= 0) {
+                            // Ya empezó la ronda
+                            showPlayingState(state);
+                            startContinuousTimer(state);
+                        }
+                    } else {
+                        // Compatibilidad: si no hay round_start_at, mostrar directamente
+                        showPlayingState(state);
+                        startContinuousTimer(state);
+                    }
                     break;
                     
                 case 'round_ended':
                     showResults(state);
+                    stopTimer();
                     break;
                     
                 case 'finished':
                     showFinalResults(state);
+                    stopTimer();
                     break;
+            }
+        }
+
+        // FIX: Mostrar countdown 3-2-1 sincronizado con servidor
+        function showCountdownSynced(state) {
+            countdownOverlay.style.display = 'flex';
+            
+            // Detener countdown anterior si existe
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            countdownInterval = setInterval(() => {
+                if (!client || !client.gameState || !client.gameState.round_start_at) {
+                    countdownOverlay.style.display = 'none';
+                    clearInterval(countdownInterval);
+                    return;
+                }
+
+                const now = Math.floor(Date.now() / 1000);
+                const remaining = client.gameState.round_start_at - now;
+
+                if (remaining > 0 && remaining <= 3) {
+                    countdownNumber.textContent = remaining;
+                    // Reiniciar animación
+                    countdownNumber.style.animation = 'none';
+                    setTimeout(() => {
+                        countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+                    }, 10);
+                } else if (remaining <= 0) {
+                    countdownOverlay.style.display = 'none';
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                    
+                    // Iniciar ronda
+                    if (client.gameState) {
+                        showPlayingState(client.gameState);
+                        startContinuousTimer(client.gameState);
+                    }
+                }
+            }, 100);
+        }
+
+        // FIX: Timer continuo que se actualiza cada segundo
+        function startContinuousTimer(state) {
+            stopTimer();
+            
+            if (!state.round_started_at || !state.round_duration) {
+                return;
+            }
+            
+            // Actualizar inmediatamente
+            updateTimerFromState(state);
+            
+            // Continuar actualizando cada segundo
+            timerInterval = setInterval(() => {
+                if (client && client.gameState && client.gameState.status === 'playing') {
+                    updateTimerFromState(client.gameState);
+                } else {
+                    stopTimer();
+                }
+            }, 1000);
+        }
+
+        function updateTimerFromState(state) {
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = now - state.round_started_at;
+            const remaining = Math.max(0, state.round_duration - elapsed);
+            updateTimer(remaining);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
             }
         }
 
@@ -1034,16 +1121,29 @@
                 maxWords = 6; // Por defecto
                 maxWordsDisplay.textContent = maxWords;
                 
-                // Resetear inputs
-                currentWordInput.disabled = false;
-                btnAddWord.disabled = false;
-                btnSubmit.disabled = false;
-                btnSubmit.textContent = '⏭️ PASO';
-                
-                // Limpiar palabras anteriores al iniciar nueva ronda
-                if (myWords.length > 0) {
-                    myWords = [];
-                    updateWordsList();
+                // Verificar si ya había enviado palabras (en caso de reconexión)
+                const me = state.players?.[playerId];
+                if (me && me.status === 'ready') {
+                    // Ya envió palabras
+                    currentWordInput.disabled = true;
+                    btnAddWord.disabled = true;
+                    btnSubmit.disabled = true;
+                    btnSubmit.textContent = '✅ Enviado';
+                    waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                    waitingMessage.style.display = 'block';
+                    wordsInputSection.style.display = 'none';
+                } else {
+                    // Resetear inputs para nueva ronda
+                    currentWordInput.disabled = false;
+                    btnAddWord.disabled = false;
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = '⏭️ PASO';
+                    
+                    // Limpiar palabras anteriores si es una nueva ronda
+                    if (myWords.length > 0 && (!me || !me.answers || me.answers.length === 0)) {
+                        myWords = [];
+                        updateWordsList();
+                    }
                 }
             }
         }
@@ -1150,7 +1250,7 @@
             }
         }
 
-        // Mostrar resultados
+        // FIX: Mostrar resultados usando state.players[playerId].round_results
         function showResults(state) {
             countdownOverlay.style.display = 'none';
             wordsInputSection.style.display = 'none';
