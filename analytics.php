@@ -1,5 +1,5 @@
 <?php
-// Analytics Dashboard - Unánimo Party
+// Analytics Dashboard - TalCual Party
 // MEJORA #10: Analytics básico accesible desde desarrollador
 
 require_once 'config.php';
@@ -71,7 +71,7 @@ switch ($action) {
     case 'export':
         if (file_exists(ANALYTICS_FILE)) {
             header('Content-Type: application/json');
-            header('Content-Disposition: attachment; filename="unanimo-analytics-' . date('Y-m-d') . '.json"');
+            header('Content-Disposition: attachment; filename="talcual-analytics-' . date('Y-m-d') . '.json"');
             readfile(ANALYTICS_FILE);
             exit;
         }
