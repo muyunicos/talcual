@@ -16,7 +16,7 @@ class GameClient {
     }
 
     connect() {
-        const sseUrl = `/app/services/sse-stream.php?game_id=${encodeURIComponent(this.gameId)}`;
+        const sseUrl = `/app/sse-stream.php?game_id=${encodeURIComponent(this.gameId)}`;
         console.log(`🔌 [${this.role}] Conectando a SSE: ${sseUrl}`);
 
         try {
@@ -116,7 +116,7 @@ class GameClient {
                 ...data
             };
 
-            const response = await fetch('/app/api/actions.php', {
+            const response = await fetch('/app/actions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -145,7 +145,7 @@ class GameClient {
         console.log(`🔄 [${this.role}] Forzando actualización...`);
         
         try {
-            const response = await fetch('/app/api/actions.php', {
+            const response = await fetch('/app/actions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
