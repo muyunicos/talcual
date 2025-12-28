@@ -1,4 +1,4 @@
-# 🎯 Unánimo Party - Digital
+# 🎯 TalCual Party
 
 Juego web multiplayer tipo "Unánimo" donde los jugadores deben pensar palabras que coincidan con las de los demás para ganar puntos.
 
