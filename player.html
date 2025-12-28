@@ -6,7 +6,7 @@
     <title>Jugador - TalCual Party</title>
     <link rel="icon" href="icon.webp" type="image/webp">
     <!-- FUENTES GOOGLE FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <parameter name="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -74,6 +74,16 @@
             text-align: center;
             margin-bottom: 10px;
             text-shadow: 4px 4px 0px #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .welcome-title img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
         }
 
         .welcome-subtitle {
@@ -662,7 +672,10 @@
     <!-- PANTALLA DE BIENVENIDA -->
     <div class="welcome-screen" id="welcome-screen">
         <div class="welcome-card">
-            <div class="welcome-title">🎮 TalCual</div>
+            <div class="welcome-title">
+                <img src="logo.webp" alt="Logo TalCual">
+                TalCual
+            </div>
             <div class="welcome-subtitle">¡Únete a la diversión!</div>
 
             <div class="input-group">
