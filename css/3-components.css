@@ -331,6 +331,7 @@ select:focus {
     box-shadow: 4px 4px 0px #000;
     display: inline-block;
     letter-spacing: 3px;
+    justify-self: end;
 }
 
 .header-code-sticker {
@@ -343,6 +344,7 @@ select:focus {
     transform: rotate(-3deg);
     box-shadow: 3px 3px 0px #000;
     letter-spacing: 2px;
+    justify-self: end;
 }
 
 /* ========== MODALES ========== */
