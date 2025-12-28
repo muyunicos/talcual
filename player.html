@@ -705,123 +705,8 @@
         </div>
     </div>
 
-    <!-- [TODO EL JAVASCRIPT EXISTENTE SE MANTIENE IGUAL - NO HAY CAMBIOS] -->
-    <!-- [Se omite por brevedad, pero está idéntico al anterior] -->
-
-    <script src="game-client.js"></script>
-    <script>
-        // [CÓDIGO COMPLETO COPIADO DEL ANTERIOR player.html]
-        // Variables globales
-        let gameId = null;
-        let playerId = null;
-        let playerName = null;
-        let playerColor = null;
-        let client = null;
-        let myWords = [];
-        let maxWords = 6;
-        let currentRound = 0;
-        let timerInterval = null;
-        let countdownInterval = null;
-
-        const welcomeScreen = document.getElementById('welcome-screen');
-        const gameScreen = document.getElementById('game-screen');
-        const inputGameCode = document.getElementById('input-game-code');
-        const inputPlayerName = document.getElementById('input-player-name');
-        const btnJoin = document.getElementById('btn-join');
-        const colorSelector = document.getElementById('color-selector');
-
-        const colorOptions = colorSelector.querySelectorAll('.aura-circle');
-        colorOptions.forEach(option => {
-            option.addEventListener('click', () => {
-                colorOptions.forEach(opt => opt.classList.remove('selected'));
-                option.classList.add('selected');
-                playerColor = option.dataset.color;
-            });
-        });
-
-        const randomIndex = Math.floor(Math.random() * colorOptions.length);
-        colorOptions[randomIndex].click();
-
-        btnJoin.addEventListener('click', joinGame);
-
-        inputGameCode.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') inputPlayerName.focus();
-        });
-
-        inputPlayerName.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') joinGame();
-        });
-
-        async function joinGame() {
-            const code = inputGameCode.value.trim().toUpperCase();
-            const name = inputPlayerName.value.trim();
-
-            if (!code || code.length < 3) {
-                alert('Ingresa un código de sala válido');
-                inputGameCode.focus();
-                return;
-            }
-
-            if (!name || name.length < 2) {
-                alert('Ingresa tu nombre');
-                inputPlayerName.focus();
-                return;
-            }
-
-            gameId = code;
-            playerName = name;
-            playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-            localStorage.setItem('gameId', gameId);
-            localStorage.setItem('playerId', playerId);
-            localStorage.setItem('playerName', playerName);
-            localStorage.setItem('playerColor', playerColor);
-
-            btnJoin.disabled = true;
-            btnJoin.textContent = 'Conectando...';
-
-            try {
-                client = new GameClient(gameId, playerId);
-
-                const result = await client.sendAction('join_game', { 
-                    name: playerName,
-                    color: playerColor 
-                });
-
-                if (result.success) {
-                    const colors = playerColor.split(',');
-                    document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
-
-                    welcomeScreen.style.display = 'none';
-                    gameScreen.style.display = 'block';
-
-                    document.getElementById('header-code').textContent = gameId;
-                    document.getElementById('player-name-display').textContent = playerName;
-
-                    client.onStateUpdate = handleStateUpdate;
-                    client.connect();
-
-                    console.log('✅ Conectado al juego:', gameId);
-
-                } else {
-                    alert('Error al unirse: ' + (result.message || 'desconocido'));
-                    btnJoin.disabled = false;
-                    btnJoin.textContent = '¡Jugar!';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error de conexión');
-                btnJoin.disabled = false;
-                btnJoin.textContent = '¡Jugar!';
-            }
-        }
-
-        // [Resto del código idéntico al anterior]
-    </script>
-
     <!-- PANTALLA DE JUEGO -->
     <div class="game-screen" id="game-screen">
-        <!-- [Todo el HTML de la pantalla de juego igual que antes] -->
         <div class="top-header">
             <div class="header-round" id="header-round">Ronda 0/3</div>
             <div class="header-timer" id="header-timer">⏳ 00:00</div>
@@ -883,5 +768,479 @@
             </div>
         </div>
     </div>
+
+    <!-- SCRIPTS AL FINAL -->
+    <script src="game-client.js"></script>
+    <script>
+        console.log('🎮 TalCual Party Game Client v3.1');
+        console.log('Sistema de juego cargado correctamente');
+        console.log('Características:');
+        console.log('  ✓ SSE para actualizaciones en tiempo real');
+        console.log('  ✓ Reconexión automática');
+        console.log('  ✓ Sin popup de salida');
+        console.log('  ✓ Timer sincronizado con servidor');
+        console.log('  ✓ Soporte offline detection');
+        console.log('  ✓ Notificaciones visuales');
+
+        // Variables globales
+        let gameId = null;
+        let playerId = null;
+        let playerName = null;
+        let playerColor = null;
+        let client = null;
+        let myWords = [];
+        let maxWords = 6;
+        let currentRound = 0;
+        let timerInterval = null;
+        let countdownInterval = null;
+        let playerScore = 0;
+
+        // Referencias a elementos del DOM
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const inputGameCode = document.getElementById('input-game-code');
+        const inputPlayerName = document.getElementById('input-player-name');
+        const btnJoin = document.getElementById('btn-join');
+        const colorSelector = document.getElementById('color-selector');
+
+        const headerRound = document.getElementById('header-round');
+        const headerTimer = document.getElementById('header-timer');
+        const headerCode = document.getElementById('header-code');
+        const playerScoreDisplay = document.getElementById('player-score');
+        const statusCard = document.getElementById('status-card');
+        const currentWordDisplay = document.getElementById('current-word');
+        const waitingMessage = document.getElementById('waiting-message');
+        const wordsInputSection = document.getElementById('words-input-section');
+        const currentWordInput = document.getElementById('current-word-input');
+        const btnAddWord = document.getElementById('btn-add-word');
+        const wordsListContainer = document.getElementById('words-list-container');
+        const wordsList = document.getElementById('words-list');
+        const wordCount = document.getElementById('word-count');
+        const maxWordsDisplay = document.getElementById('max-words');
+        const btnSubmit = document.getElementById('btn-submit');
+        const resultsSection = document.getElementById('results-section');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        const countdownNumber = document.getElementById('countdown-number');
+        const playerNameDisplay = document.getElementById('player-name-display');
+        const btnEditName = document.getElementById('btn-edit-name');
+        const btnExit = document.getElementById('btn-exit');
+        const modalEditName = document.getElementById('modal-edit-name');
+        const modalNameInput = document.getElementById('modal-name-input');
+        const modalBtnCancel = document.getElementById('modal-btn-cancel');
+        const modalBtnSave = document.getElementById('modal-btn-save');
+
+        // Selector de color
+        const colorOptions = colorSelector.querySelectorAll('.aura-circle');
+        colorOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                colorOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                playerColor = option.dataset.color;
+            });
+        });
+
+        // Seleccionar color aleatorio al inicio
+        const randomIndex = Math.floor(Math.random() * colorOptions.length);
+        colorOptions[randomIndex].click();
+
+        // Event listeners
+        btnJoin.addEventListener('click', joinGame);
+
+        inputGameCode.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') inputPlayerName.focus();
+        });
+
+        inputPlayerName.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinGame();
+        });
+
+        btnAddWord.addEventListener('click', addWord);
+        
+        currentWordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addWord();
+        });
+
+        btnSubmit.addEventListener('click', submitWords);
+
+        btnEditName.addEventListener('click', () => {
+            modalNameInput.value = playerName;
+            modalEditName.style.display = 'flex';
+            modalNameInput.focus();
+        });
+
+        modalBtnCancel.addEventListener('click', () => {
+            modalEditName.style.display = 'none';
+        });
+
+        modalBtnSave.addEventListener('click', async () => {
+            const newName = modalNameInput.value.trim();
+            if (newName && newName.length >= 2) {
+                playerName = newName;
+                playerNameDisplay.textContent = newName;
+                localStorage.setItem('playerName', newName);
+                
+                // Enviar actualización al servidor
+                if (client) {
+                    await client.sendAction('update_player_name', { name: newName });
+                }
+                
+                modalEditName.style.display = 'none';
+            } else {
+                alert('Ingresa un nombre válido (mínimo 2 caracteres)');
+            }
+        });
+
+        btnExit.addEventListener('click', () => {
+            if (confirm('¿Seguro que quieres salir del juego?')) {
+                exitGame();
+            }
+        });
+
+        // Función para unirse al juego
+        async function joinGame() {
+            const code = inputGameCode.value.trim().toUpperCase();
+            const name = inputPlayerName.value.trim();
+
+            if (!code || code.length < 3) {
+                alert('Ingresa un código de sala válido');
+                inputGameCode.focus();
+                return;
+            }
+
+            if (!name || name.length < 2) {
+                alert('Ingresa tu nombre');
+                inputPlayerName.focus();
+                return;
+            }
+
+            gameId = code;
+            playerName = name;
+            playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+            localStorage.setItem('gameId', gameId);
+            localStorage.setItem('playerId', playerId);
+            localStorage.setItem('playerName', playerName);
+            localStorage.setItem('playerColor', playerColor);
+
+            btnJoin.disabled = true;
+            btnJoin.textContent = 'Conectando...';
+
+            try {
+                client = new GameClient(gameId, playerId);
+
+                const result = await client.sendAction('join_game', { 
+                    name: playerName,
+                    color: playerColor 
+                });
+
+                if (result.success) {
+                    const colors = playerColor.split(',');
+                    document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+
+                    welcomeScreen.style.display = 'none';
+                    gameScreen.style.display = 'block';
+
+                    headerCode.textContent = gameId;
+                    playerNameDisplay.textContent = playerName;
+
+                    client.onStateUpdate = handleStateUpdate;
+                    client.onConnectionFailed = handleConnectionFailed;
+                    client.onNetworkError = handleNetworkError;
+                    client.connect();
+
+                    console.log('✅ Conectado al juego:', gameId);
+
+                } else {
+                    alert('Error al unirse: ' + (result.message || 'desconocido'));
+                    btnJoin.disabled = false;
+                    btnJoin.textContent = '¡Jugar!';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+                btnJoin.disabled = false;
+                btnJoin.textContent = '¡Jugar!';
+            }
+        }
+
+        // Manejador de actualizaciones de estado
+        function handleStateUpdate(state) {
+            console.log('📊 Estado actualizado:', state.status);
+
+            // Actualizar información del jugador
+            const me = state.players?.find(p => p.id === playerId);
+            if (me) {
+                playerScore = me.score || 0;
+                playerScoreDisplay.textContent = playerScore + ' pts';
+            }
+
+            // Actualizar ronda
+            currentRound = state.current_round || 0;
+            const totalRounds = state.rounds?.length || 3;
+            headerRound.textContent = `Ronda ${currentRound}/${totalRounds}`;
+
+            // Actualizar timer
+            if (state.timer) {
+                updateTimer(state.timer.remaining);
+            }
+
+            // Manejar estados del juego
+            switch (state.status) {
+                case 'waiting':
+                    showWaitingState();
+                    break;
+                    
+                case 'countdown':
+                    showCountdown(state.countdown?.current || 3);
+                    break;
+                    
+                case 'playing':
+                    showPlayingState(state);
+                    break;
+                    
+                case 'results':
+                    showResults(state);
+                    break;
+                    
+                case 'finished':
+                    showFinalResults(state);
+                    break;
+            }
+        }
+
+        // Mostrar estado de espera
+        function showWaitingState() {
+            currentWordDisplay.style.display = 'none';
+            waitingMessage.style.display = 'block';
+            waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
+            wordsInputSection.style.display = 'none';
+            resultsSection.style.display = 'none';
+            countdownOverlay.style.display = 'none';
+        }
+
+        // Mostrar countdown
+        function showCountdown(number) {
+            if (number > 0) {
+                countdownOverlay.style.display = 'flex';
+                countdownNumber.textContent = number;
+                
+                // Reproducir animación
+                countdownNumber.style.animation = 'none';
+                setTimeout(() => {
+                    countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+                }, 10);
+            } else {
+                countdownOverlay.style.display = 'none';
+            }
+        }
+
+        // Mostrar estado de juego
+        function showPlayingState(state) {
+            countdownOverlay.style.display = 'none';
+            resultsSection.style.display = 'none';
+            
+            const currentRoundData = state.rounds?.[currentRound - 1];
+            if (currentRoundData) {
+                currentWordDisplay.textContent = currentRoundData.word;
+                currentWordDisplay.style.display = 'block';
+                waitingMessage.style.display = 'none';
+                wordsInputSection.style.display = 'block';
+                
+                maxWords = currentRoundData.max_words || 6;
+                maxWordsDisplay.textContent = maxWords;
+                
+                // Cargar palabras guardadas
+                loadSavedWords();
+            }
+        }
+
+        // Cargar palabras guardadas
+        function loadSavedWords() {
+            // Aquí se cargarían las palabras del servidor si ya fueron enviadas
+            updateWordsList();
+        }
+
+        // Agregar palabra
+        function addWord() {
+            const word = currentWordInput.value.trim();
+            
+            if (!word) {
+                return;
+            }
+            
+            if (myWords.length >= maxWords) {
+                alert(`Máximo ${maxWords} palabras`);
+                return;
+            }
+            
+            if (myWords.includes(word)) {
+                alert('Ya agregaste esa palabra');
+                return;
+            }
+            
+            myWords.push(word);
+            currentWordInput.value = '';
+            updateWordsList();
+            currentWordInput.focus();
+        }
+
+        // Actualizar lista de palabras
+        function updateWordsList() {
+            wordCount.textContent = myWords.length;
+            
+            if (myWords.length > 0) {
+                wordsListContainer.style.display = 'block';
+                wordsList.innerHTML = myWords.map((word, index) => `
+                    <div class="word-item" onclick="removeWord(${index})">
+                        <span class="word-text">${word}</span>
+                        <span class="word-edit">🗑️</span>
+                    </div>
+                `).join('');
+            } else {
+                wordsListContainer.style.display = 'none';
+            }
+        }
+
+        // Eliminar palabra
+        function removeWord(index) {
+            myWords.splice(index, 1);
+            updateWordsList();
+        }
+
+        // Enviar palabras
+        async function submitWords() {
+            if (!client) return;
+            
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Enviando...';
+            
+            try {
+                const result = await client.sendAction('submit_words', {
+                    round: currentRound,
+                    words: myWords
+                });
+                
+                if (result.success) {
+                    currentWordInput.disabled = true;
+                    btnAddWord.disabled = true;
+                    btnSubmit.textContent = '✅ Enviado';
+                    
+                    waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                    waitingMessage.style.display = 'block';
+                    wordsInputSection.style.display = 'none';
+                } else {
+                    alert('Error al enviar: ' + (result.message || 'desconocido'));
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = '⏭️ PASO';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = '⏭️ PASO';
+            }
+        }
+
+        // Mostrar resultados
+        function showResults(state) {
+            countdownOverlay.style.display = 'none';
+            wordsInputSection.style.display = 'none';
+            currentWordDisplay.style.display = 'none';
+            waitingMessage.style.display = 'none';
+            
+            const currentRoundData = state.rounds?.[currentRound - 1];
+            if (!currentRoundData?.results) return;
+            
+            resultsSection.style.display = 'block';
+            
+            const myResults = currentRoundData.results[playerId];
+            if (!myResults) return;
+            
+            let html = '<div class="results-title">📊 Tus Resultados</div>';
+            
+            myResults.forEach(result => {
+                const matchClass = result.match ? 'match' : 'no-match';
+                const icon = result.match ? '✅' : '❌';
+                html += `
+                    <div class="result-item ${matchClass}">
+                        <div class="result-word">${icon} ${result.word}</div>
+                        <div class="result-points">+${result.points} puntos</div>
+                        ${result.match ? `<div class="result-players">Coincidió con: ${result.matched_with?.join(', ') || 'otros'}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            const roundScore = myResults.reduce((sum, r) => sum + r.points, 0);
+            html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
+            
+            resultsSection.innerHTML = html;
+        }
+
+        // Mostrar resultados finales
+        function showFinalResults(state) {
+            showResults(state);
+            
+            waitingMessage.textContent = '🎉 ¡Juego terminado!';
+            waitingMessage.style.display = 'block';
+        }
+
+        // Actualizar timer
+        function updateTimer(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            headerTimer.textContent = `⏳ ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            if (seconds <= 10) {
+                headerTimer.classList.add('warning');
+            } else {
+                headerTimer.classList.remove('warning');
+            }
+        }
+
+        // Manejo de errores de conexión
+        function handleConnectionFailed() {
+            alert('No se pudo conectar al servidor. Por favor, intenta de nuevo.');
+            exitGame();
+        }
+
+        function handleNetworkError(error) {
+            console.error('Error de red:', error);
+        }
+
+        // Salir del juego
+        function exitGame() {
+            if (client) {
+                client.disconnect();
+            }
+            
+            localStorage.removeItem('gameId');
+            localStorage.removeItem('playerId');
+            localStorage.removeItem('playerName');
+            localStorage.removeItem('playerColor');
+            
+            location.reload();
+        }
+
+        // Recuperar sesión si existe
+        window.addEventListener('load', () => {
+            const savedGameId = localStorage.getItem('gameId');
+            const savedPlayerId = localStorage.getItem('playerId');
+            const savedPlayerName = localStorage.getItem('playerName');
+            const savedPlayerColor = localStorage.getItem('playerColor');
+            
+            if (savedGameId && savedPlayerId && savedPlayerName && savedPlayerColor) {
+                inputGameCode.value = savedGameId;
+                inputPlayerName.value = savedPlayerName;
+                playerColor = savedPlayerColor;
+                
+                // Seleccionar el color guardado
+                colorOptions.forEach(option => {
+                    if (option.dataset.color === savedPlayerColor) {
+                        option.click();
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
