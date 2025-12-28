@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jugador - TalCual Party</title>
-    <link rel="icon" href="./images/icon.webp" type="image/webp">
+    <!-- Favicon removido: directorio /images no existe en el repositorio -->
+    <!-- Si necesitas favicon, coloca icon.webp en /images/ o usa CDN -->
+    
     <!-- CSS Reorganizado - Usando rutas relativas consistentes -->
     <link rel="stylesheet" href="./css/1-global.css">
     <link rel="stylesheet" href="./css/4-components.css">
@@ -129,9 +131,12 @@
         </div>
     </div>
 
-    <!-- Scripts Modulares - Usando rutas relativas consistentes -->
+    <!-- Scripts Modulares en orden correcto -->
+    <!-- 1. shared-utils.js: Utilidades base (sin dependencias) -->
     <script src="./js/shared-utils.js"></script>
+    <!-- 2. game-client.js: Cliente SSE (depende de shared-utils) -->
     <script src="./js/game-client.js"></script>
+    <!-- 3. player-manager.js: Gestor principal (depende de game-client y shared-utils) -->
     <script src="./js/player-manager.js"></script>
 </body>
 </html>
