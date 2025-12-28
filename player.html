@@ -328,9 +328,14 @@
             color: white;
             border: none;
             border-radius: 10px;
-            font-size: 1.1em;
+            font-size: 1.5em;
             font-weight: 700;
             cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add:hover {
+            transform: scale(1.05);
         }
 
         /* LISTA DE PALABRAS */
@@ -371,7 +376,7 @@
             opacity: 0.6;
         }
 
-        /* BOTÓN ENVIAR */
+        /* BOTÓN PASO */
         .submit-section {
             margin-top: 20px;
         }
@@ -379,7 +384,7 @@
         .btn-submit {
             width: 100%;
             padding: 20px;
-            background: #10b981;
+            background: #f59e0b;
             color: white;
             border: none;
             border-radius: 15px;
@@ -391,7 +396,7 @@
 
         .btn-submit:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 5px 20px rgba(245, 158, 11, 0.4);
         }
 
         .btn-submit:disabled {
@@ -631,7 +636,7 @@
             <div class="input-row">
                 <input type="text" id="current-word-input" class="word-input" 
                        placeholder="Escribe una palabra..." autocomplete="off">
-                <button class="btn-add" id="btn-add-word">➕</button>
+                <button class="btn-add" id="btn-add-word">✈️</button>
             </div>
 
             <div class="words-list" id="words-list-container" style="display:none;">
@@ -642,7 +647,7 @@
             </div>
 
             <div class="submit-section">
-                <button class="btn-submit" id="btn-submit">✅ ENVIAR RESPUESTAS</button>
+                <button class="btn-submit" id="btn-submit">⏭️ PASO</button>
             </div>
         </div>
 
@@ -688,6 +693,7 @@
         let maxWords = 6;
         let currentRound = 0;
         let timerInterval = null;
+        let countdownInterval = null;
 
         // Elementos DOM
         const welcomeScreen = document.getElementById('welcome-screen');
@@ -858,7 +864,7 @@
                 currentRound = state.round;
                 myWords = [];
                 updateWordsList();
-                showCountdown();
+                showCountdownSynced(state);
             }
 
             // Actualizar UI según estado
@@ -988,7 +994,8 @@
             }
         });
 
-        function addWord() {
+        // NUEVO: Agregar palabra con envío automático
+        async function addWord() {
             const word = wordInput.value.trim().toUpperCase();
 
             if (!word) return;
@@ -1007,6 +1014,9 @@
             wordInput.value = '';
             updateWordsList();
             wordInput.focus();
+
+            // NUEVO: Enviar automáticamente en segundo plano
+            await submitAnswersBackground();
         }
 
         function updateWordsList() {
@@ -1031,23 +1041,36 @@
 
             // Click para editar
             wordsList.querySelectorAll('.word-item').forEach(item => {
-                item.addEventListener('click', () => {
+                item.addEventListener('click', async () => {
                     const index = parseInt(item.dataset.index);
                     const word = myWords[index];
                     myWords.splice(index, 1);
                     wordInput.value = word;
                     updateWordsList();
                     wordInput.focus();
+
+                    // NUEVO: Actualizar respuestas en el servidor
+                    await submitAnswersBackground();
                 });
             });
         }
 
-        // Enviar respuestas
-        btnSubmit.addEventListener('click', submitAnswers);
+        // NUEVO: Envío automático en segundo plano
+        async function submitAnswersBackground() {
+            try {
+                await client.sendAction('submit_answers', { 
+                    answers: myWords,
+                    forced_pass: false
+                });
+                console.log('✅ Respuestas actualizadas automáticamente');
+            } catch (error) {
+                console.error('Error enviando respuestas:', error);
+            }
+        }
 
-        async function submitAnswers() {
-            if (myWords.length === 0) {
-                alert('Agrega al menos una palabra');
+        // NUEVO: Botón PASO con confirmación
+        btnSubmit.addEventListener('click', async () => {
+            if (!confirm('¿Seguro que querés pasar? Las palabras faltantes quedarán en blanco.')) {
                 return;
             }
 
@@ -1055,17 +1078,27 @@
             btnSubmit.textContent = '⏳ Enviando...';
 
             try {
-                await client.sendAction('submit_answers', { answers: myWords });
+                // Completar con strings vacíos hasta maxWords
+                while (myWords.length < maxWords) {
+                    myWords.push('');
+                }
+
+                await client.sendAction('submit_answers', { 
+                    answers: myWords,
+                    forced_pass: true
+                });
+
+                console.log('✅ PASO enviado');
             } catch (error) {
-                console.error('Error enviando:', error);
+                console.error('Error enviando PASO:', error);
                 btnSubmit.disabled = false;
-                btnSubmit.textContent = '✅ ENVIAR RESPUESTAS';
+                btnSubmit.textContent = '⏭️ PASO';
             }
-        }
+        });
 
         async function autoSubmit() {
             if (myWords.length > 0) {
-                await submitAnswers();
+                await submitAnswersBackground();
             }
         }
 
@@ -1085,6 +1118,8 @@
             let html = '<div class="results-title">📊 Resultados de la Ronda</div>';
 
             myWords.forEach(word => {
+                if (!word) return; // Saltar palabras vacías
+
                 const result = results[word] || { points: 0, matched_with: [] };
                 const isMatch = result.points > 0;
 
@@ -1104,23 +1139,45 @@
             resultsSection.innerHTML = html;
         }
 
-        // Countdown
-        async function showCountdown() {
+        // NUEVO: Countdown sincronizado por timestamp del servidor
+        function showCountdownSynced(state) {
             const overlay = document.getElementById('countdown-overlay');
             const number = document.getElementById('countdown-number');
 
             overlay.style.display = 'flex';
 
-            for (let i = 3; i > 0; i--) {
-                number.textContent = i;
-                number.style.animation = 'none';
-                setTimeout(() => {
-                    number.style.animation = 'countdownPulse 1s ease-in-out';
-                }, 10);
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            // Limpiar countdown previo si existe
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
             }
 
-            overlay.style.display = 'none';
+            countdownInterval = setInterval(() => {
+                if (!state.round_start_at) return;
+
+                const now = Math.floor(Date.now() / 1000);
+                const remaining = state.round_start_at - now;
+
+                if (remaining > 0 && remaining <= 3) {
+                    number.textContent = remaining;
+                    number.style.animation = 'none';
+                    setTimeout(() => {
+                        number.style.animation = 'countdownPulse 1s ease-in-out';
+                    }, 10);
+                } else if (remaining <= 0) {
+                    overlay.style.display = 'none';
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+            }, 100);
+
+            // Timeout de seguridad (5 segundos)
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+            }, 5000);
         }
 
         // Salir
