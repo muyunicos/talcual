@@ -484,14 +484,79 @@
         document.getElementById('game-code-tv').textContent = gameId;
         console.log('🎮 Host iniciando. GameID:', gameId);
 
-        const client = new GameClient(gameId, 'host');
-        client.onStateUpdate = (state) => {
-            console.log('🔄 Estado actualizado en host:', state);
-            updateHostUI(state);
-        };
+        // FIX: Crear el juego ANTES de conectar al SSE
+        async function initializeHost() {
+            try {
+                console.log('🔧 Verificando si el juego existe...');
+                
+                // Intentar obtener el estado del juego
+                const checkResponse = await fetch('api-action.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'get_state',
+                        game_id: gameId
+                    })
+                });
+                
+                const checkData = await checkResponse.json();
+                
+                if (!checkData.success) {
+                    // El juego no existe, crearlo
+                    console.log('⚠️ Juego no encontrado, creando nuevo juego...');
+                    
+                    const createResponse = await fetch('api-action.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: 'create_game'
+                        })
+                    });
+                    
+                    const createData = await createResponse.json();
+                    
+                    if (createData.success) {
+                        const newGameId = createData.game_id;
+                        console.log('✅ Juego creado con ID:', newGameId);
+                        
+                        // Actualizar el gameId en localStorage y la UI
+                        localStorage.setItem('gameId', newGameId);
+                        document.getElementById('game-code-tv').textContent = newGameId;
+                        
+                        // Reconectar con el nuevo gameId
+                        window.location.reload();
+                        return;
+                    } else {
+                        console.error('❌ Error creando el juego:', createData.message);
+                        alert('Error al crear el juego. Intenta nuevamente.');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                } else {
+                    console.log('✅ Juego encontrado, conectando...');
+                }
+                
+                // Conectar al SSE
+                const client = new GameClient(gameId, 'host');
+                window.client = client; // Hacer global para los event listeners
+                
+                client.onStateUpdate = (state) => {
+                    console.log('🔄 Estado actualizado en host:', state);
+                    updateHostUI(state);
+                };
 
-        console.log('🔌 Conectando SSE...');
-        client.connect();
+                console.log('🔌 Conectando SSE...');
+                client.connect();
+                
+            } catch (error) {
+                console.error('❌ Error inicializando host:', error);
+                alert('Error al conectar con el servidor.');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Inicializar
+        initializeHost();
 
         let timerInterval = null;
         let autoShortenTriggered = false;
@@ -513,34 +578,43 @@
         });
 
         document.getElementById('btn-end-round').addEventListener('click', async () => {
-            await client.sendAction('end_round');
-            stopTimer();
-            autoShortenTriggered = false;
+            if (window.client) {
+                await window.client.sendAction('end_round');
+                stopTimer();
+                autoShortenTriggered = false;
+            }
         });
 
         document.getElementById('btn-new-game').addEventListener('click', async () => {
-            await client.sendAction('reset_game');
-            autoShortenTriggered = false;
+            if (window.client) {
+                await window.client.sendAction('reset_game');
+                autoShortenTriggered = false;
+            }
         });
 
         async function startNewRound() {
+            if (!window.client) {
+                console.error('❌ Cliente no inicializado');
+                return;
+            }
+            
             console.log('🎬 Intentando iniciar ronda...');
             autoShortenTriggered = false;
 
             let attempts = 0;
-            while (!client.gameState && attempts < 30) {
+            while (!window.client.gameState && attempts < 30) {
                 console.log('⏳ Esperando estado del servidor... intento', attempts + 1);
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;
             }
 
-            if (!client.gameState) {
+            if (!window.client.gameState) {
                 alert('No se pudo conectar con el servidor. Intenta recargar la página (F5).');
                 console.error('❌ Estado no disponible después de 3 segundos');
                 return;
             }
 
-            const playerCount = Object.keys(client.gameState.players || {}).length;
+            const playerCount = Object.keys(window.client.gameState.players || {}).length;
             console.log('👥 Jugadores detectados:', playerCount);
 
             if (playerCount < 3) {
@@ -558,7 +632,7 @@
             showCountdownSynced();
 
             console.log('▶️ Iniciando ronda...');
-            await client.sendAction('start_round', { 
+            await window.client.sendAction('start_round', { 
                 word: randomWord,
                 duration: 120
             });
@@ -574,12 +648,12 @@
             countdownEl.style.display = 'block';
 
             const countdownInterval = setInterval(() => {
-                if (!client.gameState || !client.gameState.round_start_at) {
+                if (!window.client || !window.client.gameState || !window.client.gameState.round_start_at) {
                     return;
                 }
 
                 const now = Math.floor(Date.now() / 1000);
-                const remaining = client.gameState.round_start_at - now;
+                const remaining = window.client.gameState.round_start_at - now;
 
                 if (remaining > 0 && remaining <= 3) {
                     countdownEl.textContent = remaining;
@@ -652,7 +726,9 @@
         }
 
         async function autoEndRound() {
-            await client.sendAction('end_round');
+            if (window.client) {
+                await window.client.sendAction('end_round');
+            }
         }
 
         function updateHostUI(state) {
@@ -720,7 +796,9 @@
             if (notReadyCount === 0 && remaining > 5 && players.length > 0) {
                 console.log('✅ Todos los jugadores terminaron, acortando timer a 5 segundos');
                 autoShortenTriggered = true;
-                client.sendAction('shorten_round');
+                if (window.client) {
+                    window.client.sendAction('shorten_round');
+                }
             }
         }
 
