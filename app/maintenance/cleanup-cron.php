@@ -1,11 +1,13 @@
 <?php
-// Script de limpieza automática
-// Ejecutar vía cron o manualmente
+// Script de limpieza automática (para ejecutar via cron)
+// Uso: php cleanup-cron.php
 
 require_once __DIR__ . '/../core/config.php';
 
-echo "Limpiando juegos antiguos...\n";
+echo "Iniciando limpieza...\n";
+
 $deleted = cleanupOldGames();
-echo "Eliminados: {$deleted} juegos\n";
-echo "Códigos activos: " . count(getActiveCodes()) . "\n";
+
+echo "Limpieza completada. Juegos eliminados: {$deleted}\n";
+echo "Juegos activos: " . count(getActiveCodes()) . "\n";
 ?>
