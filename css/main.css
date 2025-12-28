@@ -1,0 +1,28 @@
+/* ============================================
+   MAIN.CSS - IMPORTADOR DE TODOS LOS ESTILOS
+   Orden crítico para cascada CSS
+   ============================================ */
+
+/* 1. Base y configuración */
+@import url('./1-base.css');
+
+/* 2. Layout y estructura */
+@import url('./2-layout.css');
+
+/* 3. Componentes reutilizables */
+@import url('./3-components.css');
+
+/* 4. Sistema de jugadores */
+@import url('./4-players.css');
+
+/* 5. Animaciones */
+@import url('./5-animations.css');
+
+/* 6. Pantalla TV (host) */
+@import url('./6-host.css');
+
+/* 7. Pantalla móvil (player) */
+@import url('./7-player.css');
+
+/* 8. Utilidades y responsive */
+@import url('./8-utilities.css');
