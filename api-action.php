@@ -39,7 +39,23 @@ switch ($action) {
 
     case 'create_game':
         // Crear nueva partida
-        $gameId = generateGameCode();
+        // FIX #1: Respetar game_id si es válido, sino generar uno
+        if (!$gameId || strlen($gameId) < 3) {
+            // Si no se proporciona código válido, generar uno aleatorio
+            $gameId = generateGameCode();
+            logMessage("No game_id proporcionado, generando: {$gameId}", 'DEBUG');
+        } else {
+            // Validar que sea único
+            $existingState = loadGameState($gameId);
+            if ($existingState) {
+                // El código ya existe, generar uno nuevo
+                $oldGameId = $gameId;
+                $gameId = generateGameCode();
+                logMessage("Game_id '{$oldGameId}' ya existe, generando nuevo: {$gameId}", 'DEBUG');
+            } else {
+                logMessage("Usando game_id proporcionado: {$gameId}", 'DEBUG');
+            }
+        }
 
         $state = [
             'game_id' => $gameId,
@@ -60,7 +76,7 @@ switch ($action) {
             trackGameAction($gameId, 'game_created', []);
             $response = [
                 'success' => true,
-                'game_id' => $gameId,
+                'game_id' => $gameId,  // ✅ DEVUELVE EL GAME_ID CORRECTO
                 'state' => $state
             ];
         } else {
