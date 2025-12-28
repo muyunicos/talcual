@@ -1,6 +1,7 @@
 <?php
 // sse-stream.php - Server-Sent Events con detección de cambios
 // MEJORAS: #3, #15 (mejorar heartbeat y detección de cambios)
+// FIX: JSON comprimido para evitar problemas con saltos de línea en SSE
 
 require_once 'config.php';
 
@@ -53,14 +54,16 @@ while ($count < $maxIterations) {
 
         if (file_exists($file)) {
             $currentModified = @filemtime($file);
-            $content = @file_get_contents($file);
-            $currentHash = md5($content);
+            
+            // Re-encodear sin pretty print para SSE (FIX)
+            $compactJson = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $currentHash = md5($compactJson);
 
             // Detectar cambio real (MEJORA #15: comparar contenido, no solo timestamp)
             if ($currentHash !== $lastContentHash) {
-                // Enviar actualización
+                // Enviar actualización con JSON compacto
                 echo "event: update\n";
-                echo "data: " . $content . "\n\n";
+                echo "data: " . $compactJson . "\n\n";
 
                 if (function_exists('ob_flush')) {
                     @ob_flush();
