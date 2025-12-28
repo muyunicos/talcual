@@ -1,397 +1,495 @@
-// ============================================================================
-// js/host-manager.js - Gestor del Host
-// ============================================================================
-// Reúne toda la lógica, UI y eventos del host en un solo archivo modular
-
-console.log('🎮 Host Manager v2.0 - Unified');
+/**
+ * @file host-manager.js
+ * @description Gestor de lógica del host (anfitrión)
+ * Maneja:
+ * - Creación de partidas
+ * - UI y actualizaciones en tiempo real
+ * - Gestión de rondas
+ * - Integración con GameClient (SSE)
+ * - Eventos del teclado
+ */
 
 class HostManager {
     constructor() {
-        // Variables de estado
         this.gameId = null;
         this.client = null;
+        this.gameState = null;
         this.timerInterval = null;
-        this.autoShortenTriggered = false;
-
-        // Referencias a elementos del DOM
+        this.countdownInterval = null;
+        this.controlsVisible = false;
+        this.debugMode = false;
+        
+        // Elementos del DOM
         this.elements = {
-            modalCreateGame: document.getElementById('modal-create-game'),
-            gameScreen: document.getElementById('game-screen'),
-            customCodeInput: document.getElementById('custom-code'),
-            btnCreateGame: document.getElementById('btn-create-game'),
-            statusMessage: document.getElementById('status-message'),
-            gameCodeTv: document.getElementById('game-code-tv'),
-            timerDisplay: document.getElementById('timer-display'),
-            wordDisplay: document.getElementById('word-display'),
-            statusMessageCenter: document.getElementById('status-message'),
-            countdownDisplay: document.getElementById('countdown-display'),
-            rankingList: document.getElementById('ranking-list'),
-            topWordsList: document.getElementById('top-words-list'),
-            playersGrid: document.getElementById('players-grid'),
-            btnStartRound: document.getElementById('btn-start-round'),
-            btnEndRound: document.getElementById('btn-end-round'),
-            btnNewGame: document.getElementById('btn-new-game'),
-            controlsPanel: document.getElementById('controls-panel'),
+            // Modales
+            modalCreateGame: null,
+            gameScreen: null,
+            
+            // Inputs del modal
+            customCodeInput: null,
+            btnCreateGame: null,
+            statusMessage: null,
+            
+            // Header
+            timerDisplay: null,
+            gameCodeTv: null,
+            
+            // Paneles
+            rankingList: null,
+            wordDisplay: null,
+            countdownDisplay: null,
+            statusMsg: null,
+            topWordsList: null,
+            playersGrid: null,
+            
+            // Controles
+            controlsPanel: null,
+            btnStartRound: null,
+            btnEndRound: null,
+            btnNewGame: null
         };
     }
-
+    
     /**
-     * Inicializa el manager y carga la interfaz
+     * Inicializa el gestor del host
      */
     initialize() {
-        console.log('🔧 Inicializando HostManager...');
-
-        const savedGameId = getLocalStorage('gameId');
-        const isHost = getLocalStorage('isHost') === 'true';
-
-        if (savedGameId && isHost) {
-            console.log('✅ Sesión de host encontrada:', savedGameId);
-            this.loadHostScreen(savedGameId);
-        } else {
-            console.log('📏 No hay sesión, mostrando formulario de creación');
-            this.showCreateGameModal();
-        }
-
-        this.setupEventListeners();
+        debug('🎬 Inicializando HostManager');
+        this.cacheElements();
+        this.attachEventListeners();
+        
+        // Mostrar modal de crear juego
+        this.elements.modalCreateGame.classList.add('active');
+        this.elements.gameScreen.classList.remove('active');
+        
+        // Atajos de teclado
+        document.addEventListener('keypress', (e) => this.handleKeyPress(e));
+        
+        debug('✅ HostManager inicializado');
     }
-
+    
     /**
-     * Configura todos los event listeners
+     * Cachea referencias a elementos del DOM
      */
-    setupEventListeners() {
+    cacheElements() {
+        this.elements = {
+            modalCreateGame: safeGetElement('modal-create-game'),
+            gameScreen: safeGetElement('game-screen'),
+            customCodeInput: safeGetElement('custom-code'),
+            btnCreateGame: safeGetElement('btn-create-game'),
+            statusMessage: safeGetElement('status-message'),
+            timerDisplay: safeGetElement('timer-display'),
+            gameCodeTv: safeGetElement('game-code-tv'),
+            rankingList: safeGetElement('ranking-list'),
+            wordDisplay: safeGetElement('word-display'),
+            countdownDisplay: safeGetElement('countdown-display'),
+            statusMsg: safeGetElement('status-message'),
+            topWordsList: safeGetElement('top-words-list'),
+            playersGrid: safeGetElement('players-grid'),
+            controlsPanel: safeGetElement('controls-panel'),
+            btnStartRound: safeGetElement('btn-start-round'),
+            btnEndRound: safeGetElement('btn-end-round'),
+            btnNewGame: safeGetElement('btn-new-game')
+        };
+    }
+    
+    /**
+     * Adjunta event listeners
+     */
+    attachEventListeners() {
         // Botón crear juego
         if (this.elements.btnCreateGame) {
             this.elements.btnCreateGame.addEventListener('click', () => this.createGame());
+        }
+        
+        // Enter en input de código personalizado
+        if (this.elements.customCodeInput) {
             this.elements.customCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.createGame();
             });
         }
-
-        // Botones de control
+        
+        // Botones de control de ronda
         if (this.elements.btnStartRound) {
-            this.elements.btnStartRound.addEventListener('click', () => this.startNewRound());
+            this.elements.btnStartRound.addEventListener('click', () => this.startRound());
         }
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.addEventListener('click', () => this.endRound());
         }
         if (this.elements.btnNewGame) {
-            this.elements.btnNewGame.addEventListener('click', () => this.resetGame());
+            this.elements.btnNewGame.addEventListener('click', () => this.createNewGame());
         }
-
-        // Teclado
-        document.addEventListener('keydown', (e) => this.handleKeyboard(e));
     }
-
+    
     /**
-     * Maneja eventos de teclado
+     * Maneja presiones de teclas
      */
-    handleKeyboard(e) {
-        // Tecla 'C' para mostrar/ocultar controles
-        if (e.key.toLowerCase() === 'c') {
-            if (this.elements.controlsPanel) {
-                this.elements.controlsPanel.classList.toggle('visible');
+    handleKeyPress(event) {
+        // 'C' para mostrar/ocultar controles
+        if (event.key === 'c' || event.key === 'C') {
+            this.toggleControls();
+        }
+    }
+    
+    /**
+     * Toggle de visibilidad de controles
+     */
+    toggleControls() {
+        this.controlsVisible = !this.controlsVisible;
+        if (this.elements.controlsPanel) {
+            if (this.controlsVisible) {
+                safeShowElement(this.elements.controlsPanel);
+                showNotification('🎦 Controles visibles (presiona C para ocultar)', 'info', 2000);
+            } else {
+                safeHideElement(this.elements.controlsPanel);
             }
         }
-        // Tecla 'Enter' para iniciar ronda
-        if (e.key === 'Enter') {
-            const startBtn = this.elements.btnStartRound;
-            if (startBtn && !startBtn.disabled) {
-                startBtn.click();
-            }
-        }
     }
-
+    
     /**
-     * Muestra modal de creación de juego
-     */
-    showCreateGameModal() {
-        if (this.elements.modalCreateGame) {
-            this.elements.modalCreateGame.classList.add('active');
-        }
-    }
-
-    /**
-     * Crea un nuevo juego
+     * Crea una nueva partida
      */
     async createGame() {
-        const customCode = this.elements.customCodeInput.value.trim().toUpperCase();
-        const statusMsg = this.elements.statusMessage;
-        const btnCreate = this.elements.btnCreateGame;
-
-        // Validación
+        let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
+        
+        // Validar código personalizado si existe
         if (customCode && !isValidGameCode(customCode)) {
-            showNotification('Código inválido (3-6 caracteres)', 'warning', statusMsg);
+            this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3-6 caracteres)';
             return;
         }
-
-        btnCreate.disabled = true;
-        btnCreate.textContent = '⏳ Creando...';
-        showNotification('⏳ Creando partida...', 'info', statusMsg);
-
+        
+        // Generar código si no hay personalizado
+        if (!customCode) {
+            customCode = generateGameCode(4);
+        }
+        
+        this.gameId = customCode;
+        
+        this.elements.btnCreateGame.disabled = true;
+        this.elements.btnCreateGame.textContent = 'Conectando...';
+        this.elements.statusMessage.innerHTML = '⏳ Conectando...';
+        
         try {
-            const response = await fetch('/app/actions.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'create_game',
-                    game_id: customCode || undefined
-                })
+            // Crear cliente
+            this.client = new GameClient(this.gameId, 'host');
+            
+            // Crear juego en el servidor
+            const result = await this.client.sendAction('create_game', {
+                game_id: this.gameId,
+                mode: 'word_matching'
             });
-
-            const result = await response.json();
-
+            
             if (result.success) {
-                const gameId = result.game_id;
-                showNotification(`✅ Partida creada: ${gameId}`, 'success', statusMsg);
-
-                setLocalStorage('gameId', gameId);
-                setLocalStorage('isHost', 'true');
-
-                setTimeout(() => {
-                    this.elements.modalCreateGame.classList.remove('active');
-                    this.loadHostScreen(gameId);
-                }, 1000);
+                debug(`✅ Juego creado: ${this.gameId}`);
+                
+                // Mostrar pantalla de juego
+                this.elements.modalCreateGame.classList.remove('active');
+                this.elements.gameScreen.classList.add('active');
+                
+                // Actualizar UI
+                this.elements.gameCodeTv.textContent = this.gameId;
+                
+                // Conectar a SSE
+                this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
+                this.client.onConnectionLost = () => this.handleConnectionLost();
+                this.client.connect();
+                
+                // Ocultar controles inicialmente
+                this.controlsVisible = false;
+                safeHideElement(this.elements.controlsPanel);
+                
+                showNotification(`🎮 Partida creada: ${this.gameId}`, 'success');
+                
             } else {
-                showNotification(`❌ Error: ${result.message}`, 'error', statusMsg);
-                btnCreate.disabled = false;
-                btnCreate.textContent = '🎮 Crear Partida';
+                this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'Desconocido');
+                this.elements.btnCreateGame.disabled = false;
+                this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
             }
         } catch (error) {
-            console.error('❌ Error creando juego:', error);
-            showNotification(`❌ Error de conexión: ${error.message}`, 'error', statusMsg);
-            btnCreate.disabled = false;
-            btnCreate.textContent = '🎮 Crear Partida';
+            debug('Error creando juego:', error, 'error');
+            this.elements.statusMessage.innerHTML = '❌ Error de conexión';
+            this.elements.btnCreateGame.disabled = false;
+            this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
         }
     }
-
+    
     /**
-     * Carga la pantalla del host
+     * Maneja actualizaciones de estado
      */
-    async loadHostScreen(gameId) {
-        console.log('🔌 Cargando pantalla de host con gameId:', gameId);
-
-        this.gameId = gameId;
-        this.elements.gameCodeTv.textContent = gameId;
-        this.elements.gameScreen.classList.add('active');
-
-        await this.initializeHost(gameId);
+    handleStateUpdate(state) {
+        this.gameState = state;
+        debug('📈 Estado actualizado:', state.status);
+        this.updateHostUI();
     }
-
+    
     /**
-     * Inicializa la conexión con el servidor
+     * Actualiza la UI del host
      */
-    async initializeHost(gameId) {
-        try {
-            console.log('🔧 Verificando si el juego existe...');
-
-            const checkResponse = await fetch('/app/actions.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'get_state',
-                    game_id: gameId
-                })
-            });
-
-            const checkData = await checkResponse.json();
-
-            if (!checkData.success) {
-                console.log('⚠️ Juego no encontrado, creando nuevo...');
-
-                const createResponse = await fetch('/app/actions.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'create_game'
-                    })
-                });
-
-                const createData = await createResponse.json();
-
-                if (createData.success) {
-                    const newGameId = createData.game_id;
-                    console.log('✅ Juego creado con ID:', newGameId);
-
-                    setLocalStorage('gameId', newGameId);
-                    this.elements.gameCodeTv.textContent = newGameId;
-
-                    window.location.reload();
-                    return;
+    updateHostUI() {
+        if (!this.gameState) return;
+        
+        // Actualizar ranking
+        this.updateRanking();
+        
+        // Actualizar palabras top
+        this.updateTopWords();
+        
+        // Actualizar grid de jugadores
+        this.updatePlayersGrid();
+        
+        // Actualizar mensajes de estado
+        this.updateStatusMessage();
+        
+        // Actualizar controles de botón
+        this.updateButtonStates();
+        
+        // Manejar timers según estado
+        switch (this.gameState.status) {
+            case 'waiting':
+                this.stopTimer();
+                break;
+                
+            case 'playing':
+                if (this.gameState.round_start_at) {
+                    const now = Math.floor(Date.now() / 1000);
+                    const remaining = this.gameState.round_start_at - now;
+                    
+                    if (remaining > 0 && remaining <= 4) {
+                        this.showCountdownSynced();
+                    } else if (remaining <= 0) {
+                        this.startContinuousTimer();
+                    }
                 } else {
-                    console.error('❌ Error creando juego:', createData.message);
-                    alert('Error al crear el juego. Intenta nuevamente.');
-                    clearGameSession();
-                    window.location.href = 'index.html';
-                    return;
+                    this.startContinuousTimer();
                 }
+                break;
+                
+            case 'round_ended':
+                this.stopTimer();
+                break;
+                
+            case 'finished':
+                this.stopTimer();
+                break;
+        }
+    }
+    
+    /**
+     * Actualiza ranking de jugadores
+     */
+    updateRanking() {
+        if (!this.gameState.players) return;
+        
+        const ranking = Object.values(this.gameState.players)
+            .sort((a, b) => (b.score || 0) - (a.score || 0))
+            .slice(0, 5);
+        
+        let html = '';
+        ranking.forEach((player, idx) => {
+            const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][idx];
+            html += `
+                <div class="ranking-item">
+                    <span class="ranking-position">${medal}</span>
+                    <span class="ranking-name">${sanitizeText(player.name)}</span>
+                    <span class="ranking-score">${player.score || 0}</span>
+                </div>
+            `;
+        });
+        
+        if (this.elements.rankingList) {
+            this.elements.rankingList.innerHTML = html || '<div style="opacity: 0.5;">Esperando jugadores...</div>';
+        }
+    }
+    
+    /**
+     * Actualiza palabras top
+     */
+    updateTopWords() {
+        if (!this.gameState.top_words) return;
+        
+        let html = '';
+        Object.entries(this.gameState.top_words)
+            .slice(0, 5)
+            .forEach(([word, count]) => {
+                html += `
+                    <div class="top-word-item">
+                        <span class="word-text">${sanitizeText(word)}</span>
+                        <span class="word-count">${count}x</span>
+                    </div>
+                `;
+            });
+        
+        if (this.elements.topWordsList) {
+            this.elements.topWordsList.innerHTML = html || '<div style="opacity: 0.5;">Sin palabras aún</div>';
+        }
+    }
+    
+    /**
+     * Actualiza grid de jugadores
+     */
+    updatePlayersGrid() {
+        if (!this.gameState.players) return;
+        
+        const players = Object.values(this.gameState.players);
+        let html = '';
+        
+        players.forEach(player => {
+            const statusEmoji = player.status === 'ready' ? '✅' : '⏳';
+            const colors = player.color?.split(',') || ['#808080', '#404040'];
+            const gradient = `linear-gradient(135deg, ${colors[0].trim()} 0%, ${colors[1].trim()} 100%)`;
+            
+            html += `
+                <div class="player-card" style="background: ${gradient};">
+                    <div class="player-status">${statusEmoji}</div>
+                    <div class="player-name">${sanitizeText(player.name)}</div>
+                    <div class="player-score">${player.score || 0} pts</div>
+                </div>
+            `;
+        });
+        
+        if (this.elements.playersGrid) {
+            this.elements.playersGrid.innerHTML = html || '<div>Sin jugadores</div>';
+        }
+    }
+    
+    /**
+     * Actualiza mensaje de estado
+     */
+    updateStatusMessage() {
+        let message = 'Cargando...';
+        
+        switch (this.gameState.status) {
+            case 'waiting':
+                message = `👥 ${Object.keys(this.gameState.players || {}).length} jugadores conectados`;
+                break;
+            case 'playing':
+                message = `📚 Ronda ${this.gameState.round}/${this.gameState.total_rounds}`;
+                if (this.gameState.current_word) {
+                    message += ` - Palabra: <strong>${sanitizeText(this.gameState.current_word)}</strong>`;
+                }
+                break;
+            case 'round_ended':
+                message = '✅ Ronda terminada';
+                break;
+            case 'finished':
+                message = '🎉 Partida finalizada';
+                break;
+        }
+        
+        if (this.elements.statusMsg) {
+            this.elements.statusMsg.innerHTML = message;
+        }
+    }
+    
+    /**
+     * Actualiza estado de botones
+     */
+    updateButtonStates() {
+        const isWaiting = this.gameState.status === 'waiting';
+        const isPlaying = this.gameState.status === 'playing';
+        const numPlayers = Object.keys(this.gameState.players || {}).length;
+        
+        if (this.elements.btnStartRound) {
+            this.elements.btnStartRound.disabled = !isWaiting || numPlayers === 0;
+        }
+        if (this.elements.btnEndRound) {
+            this.elements.btnEndRound.disabled = !isPlaying;
+        }
+    }
+    
+    /**
+     * Inicia una ronda
+     */
+    async startRound() {
+        try {
+            this.elements.btnStartRound.disabled = true;
+            this.elements.btnStartRound.textContent = 'Iniciando...';
+            
+            const result = await this.client.sendAction('start_round', {});
+            
+            if (!result.success) {
+                showNotification('Error iniciando ronda', 'error');
+                this.elements.btnStartRound.disabled = false;
+                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
             }
-
-            console.log('✅ Juego encontrado, conectando...');
-
-            // Crear cliente SSE
-            this.client = new GameClient(gameId, 'host');
-            window.client = this.client;
-
-            this.client.onStateUpdate = (state) => {
-                console.log('🔄 Estado actualizado en host');
-                this.updateHostUI(state);
-            };
-
-            this.client.onConnectionLost = () => {
-                console.error('❌ Conexión SSE perdida');
-            };
-
-            console.log('🔌 Conectando SSE...');
-            this.client.connect();
-            console.log('✅ Host configurado y listo (modo unificado)');
         } catch (error) {
-            console.error('❌ Error inicializando host:', error);
-            alert('Error al conectar con el servidor.');
-            clearGameSession();
-            window.location.href = 'index.html';
+            debug('Error iniciando ronda:', error, 'error');
+            showNotification('Error de conexión', 'error');
+            this.elements.btnStartRound.disabled = false;
+            this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
         }
     }
-
+    
     /**
-     * Inicia una nueva ronda
-     */
-    async startNewRound() {
-        if (!this.client) {
-            console.error('❌ Cliente no inicializado');
-            return;
-        }
-
-        console.log('🎬 Intentando iniciar ronda...');
-        this.autoShortenTriggered = false;
-
-        // Esperar a que el estado esté disponible
-        let attempts = 0;
-        while (!this.client.gameState && attempts < 30) {
-            console.log('⏳ Esperando estado del servidor... intento', attempts + 1);
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-        }
-
-        if (!this.client.gameState) {
-            alert('No se pudo conectar con el servidor. Intenta recargar (F5).');
-            return;
-        }
-
-        const playerCount = Object.keys(this.client.gameState.players || {}).length;
-        console.log('👥 Jugadores detectados:', playerCount);
-
-        if (playerCount < 3) {
-            alert(`Se necesitan al menos 3 jugadores (tienes ${playerCount})`);
-            return;
-        }
-
-        console.log('📚 Obteniendo lista de palabras...');
-        const words = await this.getWordsList();
-        console.log('📚 Palabras disponibles:', words.length);
-
-        const randomWord = words[Math.floor(Math.random() * words.length)];
-        console.log('🎯 Palabra seleccionada:', randomWord);
-
-        this.showCountdownSynced();
-
-        console.log('▶️ Iniciando ronda...');
-        await this.client.sendAction('start_round', {
-            word: randomWord,
-            duration: 120
-        });
-    }
-
-    /**
-     * Obtiene lista de palabras disponibles
-     */
-    async getWordsList() {
-        const response = await fetch('/app/actions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'get_words' })
-        });
-        const data = await response.json();
-        return data.words || [];
-    }
-
-    /**
-     * Finaliza la ronda actual
+     * Termina una ronda
      */
     async endRound() {
-        if (this.client) {
-            await this.client.sendAction('end_round');
-            this.stopTimer();
-            this.autoShortenTriggered = false;
+        try {
+            this.elements.btnEndRound.disabled = true;
+            this.elements.btnEndRound.textContent = 'Finalizando...';
+            
+            const result = await this.client.sendAction('end_round', {});
+            
+            if (!result.success) {
+                showNotification('Error finalizando ronda', 'error');
+                this.elements.btnEndRound.disabled = false;
+                this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+            }
+        } catch (error) {
+            debug('Error finalizando ronda:', error, 'error');
+            showNotification('Error de conexión', 'error');
+            this.elements.btnEndRound.disabled = false;
+            this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
         }
     }
-
+    
     /**
-     * Reinicia el juego
+     * Crea nueva partida
      */
-    async resetGame() {
-        if (this.client) {
-            await this.client.sendAction('reset_game');
-            this.autoShortenTriggered = false;
+    createNewGame() {
+        if (confirm('¿Iniciar una nueva partida?')) {
+            location.reload();
         }
     }
-
+    
     /**
-     * Muestra countdown sincronizado 3-2-1
+     * Inicia timer continuo sincronizado
      */
-    showCountdownSynced() {
-        const countdownEl = this.elements.countdownDisplay;
-        const statusEl = this.elements.statusMessageCenter;
-        const wordEl = this.elements.wordDisplay;
-
-        if (!countdownEl) return;
-
-        statusEl.style.display = 'none';
-        wordEl.style.display = 'none';
-        countdownEl.style.display = 'block';
-
-        const countdownInterval = setInterval(() => {
-            if (!this.client || !this.client.gameState || !this.client.gameState.round_start_at) {
-                return;
-            }
-
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = this.client.gameState.round_start_at - now;
-
-            if (remaining > 0 && remaining <= 3) {
-                countdownEl.textContent = remaining;
-                countdownEl.style.animation = 'none';
-                setTimeout(() => {
-                    countdownEl.style.animation = 'countdownPulse 1s ease-in-out';
-                }, 10);
-            } else if (remaining <= 0) {
-                countdownEl.style.display = 'none';
-                clearInterval(countdownInterval);
-            }
-        }, 100);
-
-        setTimeout(() => {
-            countdownEl.style.display = 'none';
-            clearInterval(countdownInterval);
-        }, 4000);
-    }
-
-    /**
-     * Inicia timer de ronda
-     */
-    startTimer(startTimestamp, duration) {
+    startContinuousTimer() {
         this.stopTimer();
-
+        
+        if (!this.gameState.round_started_at || !this.gameState.round_duration) {
+            return;
+        }
+        
+        this.updateTimerFromState();
+        
         this.timerInterval = setInterval(() => {
-            const remaining = getRemainingTime(startTimestamp, duration);
-            updateTimerDisplay(remaining, this.elements.timerDisplay, '');
-
-            if (remaining <= 0) {
+            if (this.client && this.gameState && this.gameState.status === 'playing') {
+                this.updateTimerFromState();
+            } else {
                 this.stopTimer();
-                this.endRound();
             }
         }, 1000);
     }
-
+    
+    /**
+     * Actualiza timer desde estado
+     */
+    updateTimerFromState() {
+        const now = Math.floor(Date.now() / 1000);
+        const elapsed = now - this.gameState.round_started_at;
+        const remaining = Math.max(0, this.gameState.round_duration - elapsed);
+        updateTimerDisplay(remaining, this.elements.timerDisplay, '⏳');
+    }
+    
+    /**
+     * Muestra countdown sincronizado
+     */
+    showCountdownSynced() {
+        // TODO: Implementar si es necesario
+    }
+    
     /**
      * Detiene el timer
      */
@@ -401,202 +499,28 @@ class HostManager {
             this.timerInterval = null;
         }
     }
-
+    
     /**
-     * Actualiza toda la interfaz del host
+     * Maneja pérdida de conexión
      */
-    updateHostUI(state) {
-        if (!state) {
-            console.warn('⚠️ Estado vacío recibido');
-            return;
-        }
-
-        const playerCount = Object.keys(state.players || {}).length;
-        const statusEl = this.elements.statusMessageCenter;
-        const wordEl = this.elements.wordDisplay;
-
-        if (state.status === 'waiting') {
-            statusEl.style.display = 'block';
-            wordEl.style.display = 'none';
-
-            if (playerCount < 3) {
-                statusEl.textContent = `Esperando más jugadores... (${playerCount}/3 mínimo)`;
-            } else {
-                statusEl.textContent = `Presiona ENTER para comenzar (${playerCount} jugadores listos)`;
-            }
-
-            this.stopTimer();
-        } else if (state.status === 'playing') {
-            statusEl.style.display = 'none';
-            wordEl.style.display = 'block';
-            wordEl.textContent = state.current_word || '';
-
-            if (state.round_started_at) {
-                this.startTimer(state.round_started_at, state.round_duration);
-            }
-
-            this.checkAllPlayersReady(state);
-        } else if (state.status === 'round_ended') {
-            statusEl.style.display = 'block';
-            wordEl.style.display = 'none';
-
-            if (playerCount < 3) {
-                statusEl.textContent = 'Se necesitan al menos 3 jugadores para continuar';
-            } else {
-                statusEl.textContent = 'Ronda Finalizada - Presiona ENTER para continuar';
-            }
-
-            this.stopTimer();
-        } else if (state.status === 'finished') {
-            statusEl.style.display = 'block';
-            wordEl.style.display = 'none';
-            statusEl.textContent = '🏆 ¡Partida Finalizada!';
-            this.stopTimer();
-        }
-
-        this.updateRanking(state);
-        this.updateTopWords(state);
-        this.updatePlayersGrid(state);
-        this.updateControls(state);
-    }
-
-    /**
-     * Verifica si todos los jugadores terminaron
-     */
-    checkAllPlayersReady(state) {
-        if (this.autoShortenTriggered) return;
-
-        const players = Object.values(state.players || {});
-        const notReadyCount = players.filter(p => p.status !== 'ready').length;
-        const remaining = getRemainingTime(state.round_started_at, state.round_duration);
-
-        if (notReadyCount === 0 && remaining > 5 && players.length > 0) {
-            console.log('✅ Todos los jugadores terminaron, acortando timer a 5 segundos');
-            this.autoShortenTriggered = true;
-            if (this.client) {
-                this.client.sendAction('shorten_round');
-            }
-        }
-    }
-
-    /**
-     * Actualiza estado de botones
-     */
-    updateControls(state) {
-        if (!state) return;
-
-        const playerCount = Object.keys(state.players || {}).length;
-        const startBtn = this.elements.btnStartRound;
-        const endBtn = this.elements.btnEndRound;
-
-        if (state.status === 'waiting') {
-            startBtn.disabled = playerCount < 3;
-            startBtn.textContent = playerCount < 3
-                ? `⏸️ Min. 3 jugadores (${playerCount}/3)`
-                : `▶️ Iniciar Ronda (${playerCount} jugadores)`;
-            endBtn.disabled = true;
-        } else if (state.status === 'playing') {
-            startBtn.disabled = true;
-            startBtn.textContent = '▶️ Ronda en curso...';
-            endBtn.disabled = false;
-            endBtn.textContent = '⏹️ Finalizar Ahora';
-        } else if (state.status === 'round_ended') {
-            startBtn.disabled = playerCount < 3;
-            startBtn.textContent = playerCount < 3
-                ? `⏸️ Min. 3 jugadores (${playerCount}/3)`
-                : '▶️ Siguiente Ronda';
-            endBtn.disabled = true;
-        } else if (state.status === 'finished') {
-            startBtn.disabled = true;
-            startBtn.textContent = '🏆 Partida Finalizada';
-            endBtn.disabled = true;
-        }
-    }
-
-    /**
-     * Actualiza tabla de ranking
-     */
-    updateRanking(state) {
-        const players = Object.values(state.players || {});
-        const sorted = players.sort((a, b) => b.score - a.score);
-
-        const rankingList = this.elements.rankingList;
-        rankingList.innerHTML = sorted.map((player, index) => {
-            const topClass = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
-            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}°`;
-
-            return `
-                <div class="ranking-item ${topClass}">
-                    <span>${medal} ${player.name}</span>
-                    <span>${player.score} pts</span>
-                </div>
-            `;
-        }).join('');
-    }
-
-    /**
-     * Actualiza palabras más frecuentes
-     */
-    updateTopWords(state) {
-        const topWordsList = this.elements.topWordsList;
-
-        if (state.round_top_words && state.round_top_words.length > 0) {
-            topWordsList.innerHTML = state.round_top_words.map((item, index) => `
-                <div class="top-word-item">
-                    <span class="word">${index + 1}. ${item.word}</span>
-                    <span class="count">${item.count}</span>
-                </div>
-            `).join('');
-        } else {
-            topWordsList.innerHTML = '<div style="text-align: center; opacity: 0.5; padding: 20px;">No hay datos aún</div>';
-        }
-    }
-
-    /**
-     * Actualiza grid de jugadores
-     */
-    updatePlayersGrid(state) {
-        const players = Object.values(state.players || {});
-        const grid = this.elements.playersGrid;
-
-        grid.innerHTML = players.map(player => {
-            const initial = player.name.charAt(0).toUpperCase();
-            const statusIcon = player.status === 'ready' ? '✅' :
-                player.status === 'playing' ? '✍️' : '🟢';
-            const readyClass = player.status === 'ready' ? 'ready' : '';
-
-            let squarcleStyle = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);';
-            if (player.color) {
-                const colors = player.color.split(',');
-                squarcleStyle = `background: linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%);`;
-            }
-
-            const answerCount = (player.answers || []).length;
-            const maxWords = 6;
-            const answersDisplay = state.status === 'playing' ?
-                `<div class="player-answers-count">${answerCount}/${maxWords}</div>` : '';
-
-            return `
-                <div class="player-squarcle ${readyClass}" style="${squarcleStyle}">
-                    <span class="player-status-icon">${statusIcon}</span>
-                    <div class="player-initial">${initial}</div>
-                    <div class="player-name-label">${player.name}</div>
-                    <div class="player-score-badge">${player.score}</div>
-                    ${answersDisplay}
-                </div>
-            `;
-        }).join('');
+    handleConnectionLost() {
+        alert('Desconectado del servidor');
+        location.reload();
     }
 }
 
-// ============================================================================
-// INICIALIZACIÓN
-// ============================================================================
+// Instancia global
+let hostManager = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM cargado, inicializando HostManager...');
-    window.hostManager = new HostManager();
-    window.hostManager.initialize();
-});
+// Inicializar cuando carga el DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        hostManager = new HostManager();
+        hostManager.initialize();
+    });
+} else {
+    hostManager = new HostManager();
+    hostManager.initialize();
+}
 
-console.log('✅ host-manager.js cargado');
+console.log('%c✅ host-manager.js cargado', 'color: #10B981; font-weight: bold');
