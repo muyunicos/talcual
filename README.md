@@ -1,89 +1,80 @@
 # 🎯 Unánimo Party - Digital
 
-> Juego multijugador en tiempo real donde debes pensar igual que los demás. Basado en el clásico juego de mesa Unánimo.
+Juego web multiplayer tipo "Unánimo" donde los jugadores deben pensar palabras que coincidan con las de los demás para ganar puntos.
+
+## 📋 Características
+
+- Juego multijugador en tiempo real (3+ jugadores)
+- Sistema de salas con códigos únicos
+- Actualizaciones en tiempo real usando Server-Sent Events (SSE)
+- Interfaz optimizada para Smart TV (host) y móviles (jugadores)
+- Sistema de puntuación basado en coincidencias
+- Personalización con colores para cada jugador
+
+## 🚀 Instalación
+
+### Requisitos
+
+- PHP 7.4 o superior
+- Servidor web (Apache/Nginx)
+- Permisos de escritura en el directorio
+
+### Pasos
+
+1. Clona o descarga el repositorio
+2. Sube los archivos a tu servidor web
+3. Asegúrate que el directorio tenga permisos de escritura
+4. El sistema creará automáticamente la carpeta `game_states/` para almacenar partidas
+5. (Opcional) Configura un cron job para limpieza:
+   ```bash
+   0 */6 * * * php /ruta/a/cleanup-cron.php
+   ```
 
 ## 🎮 Cómo Jugar
 
-1. **Crear Partida**: Un anfitrión crea una nueva partida desde `index.html`
-2. **Unirse**: Los jugadores se unen usando el código de sala de 4-5 letras
-3. **Jugar**: En cada ronda, todos ven la misma palabra y deben escribir hasta 6 palabras relacionadas
-4. **Puntuar**: Ganas puntos por cada palabra que coincida con otros jugadores
-   - 2 jugadores coinciden = 2 puntos cada uno
-   - 3 jugadores coinciden = 3 puntos cada uno
-   - Y así sucesivamente...
-5. **Ganar**: El jugador con más puntos después de todas las rondas gana
+### Para el Anfitrión
 
-## 🛠️ Instalación
+1. Abre `index.html` en un Smart TV o pantalla grande
+2. Haz clic en "Crear Partida"
+3. Se generará un código de sala único
+4. Los jugadores se unirán usando ese código
+5. Presiona `ENTER` o haz clic en "Iniciar Ronda" cuando todos estén listos
+6. Presiona `C` para mostrar/ocultar controles
 
-### Requisitos
-- PHP 7.4 o superior
-- Servidor web (Apache, Nginx, etc.)
-- Permisos de escritura en el directorio del proyecto
+### Para Jugadores
 
-### Pasos de Instalación
+1. Abre `index.html` en tu celular
+2. Ingresa el código de sala
+3. Elige tu nombre y color
+4. Espera a que el anfitrión inicie la ronda
+5. Escribe hasta 6 palabras relacionadas con la palabra mostrada
+6. Envía tus respuestas antes de que termine el tiempo
+7. Ganas puntos por cada palabra que coincida con otros jugadores
 
-1. **Clonar o descargar** el repositorio:
-```bash
-git clone https://github.com/muyunicos/talcual.git
-cd talcual
-```
+## 📡 API Endpoints
 
-2. **Configurar permisos**:
-```bash
-chmod 755 game_states/
-chmod 644 *.php
-chmod 644 *.json
-```
+### `api-action.php`
 
-3. **Configurar settings** (opcional):
-Edita `settings.php` para cambiar:
-- Modo desarrollo (DEV_MODE)
-- Duración de rondas
-- Número de jugadores
-- Otras configuraciones
+Todas las peticiones son POST con JSON body.
 
-4. **Probar**:
-- Abre `index.html` en tu navegador
-- Crea una partida
-- Abre otra pestaña y únete con otro jugador
-
-## 📁 Estructura de Archivos
-
-```
-talcual/
-├── index.html          # Página principal (crear/unirse)
-├── host.html           # Pantalla del anfitrión (TV/proyector)
-├── player.html         # Pantalla de jugadores (móviles)
-├── game-client.js      # Cliente JavaScript (SSE + API)
-├── styles.css          # Estilos (poco usado, estilos inline en HTML)
-├── api-action.php      # API REST para acciones del juego
-├── sse-stream.php      # Server-Sent Events (actualizaciones en tiempo real)
-├── config.php          # Funciones principales del sistema
-├── settings.php        # Configuración global
-├── diccionario.json    # Palabras del juego (15+ categorías)
-├── cleanup-cron.php    # Script para limpiar juegos antiguos
-├── analytics.php       # API de analytics (solo DEV_MODE)
-├── dev-panel.html      # Panel de desarrollo (solo DEV_MODE)
-├── test-suite.php      # Suite de tests (solo DEV_MODE)
-├── .htaccess           # Configuración Apache
-├── game_states/        # Estados de juegos activos (JSON)
-└── analytics.json      # Datos de analytics
-```
-
-## 🔌 API Endpoints
-
-### POST /api-action.php
-
-Todas las acciones del juego se envían a este endpoint:
-
-#### Crear Juego
+#### `create_game`
+Crea una nueva partida.
 ```json
 {
   "action": "create_game"
 }
 ```
+Respuesta:
+```json
+{
+  "success": true,
+  "game_id": "PLAYA",
+  "state": { ... }
+}
+```
 
-#### Unirse al Juego
+#### `join_game`
+Unirse a una partida existente.
 ```json
 {
   "action": "join_game",
@@ -94,27 +85,30 @@ Todas las acciones del juego se envían a este endpoint:
 }
 ```
 
-#### Iniciar Ronda
+#### `start_round`
+Iniciar nueva ronda (solo host).
 ```json
 {
   "action": "start_round",
   "game_id": "PLAYA",
-  "word": "PERRO",
+  "word": "CASA",
   "duration": 120
 }
 ```
 
-#### Enviar Respuestas
+#### `submit_answers`
+Enviar respuestas del jugador.
 ```json
 {
   "action": "submit_answers",
   "game_id": "PLAYA",
   "player_id": "player_123",
-  "answers": ["COLA", "LADRIDO", "MASCOTA", "HUESO", "PASEO"]
+  "answers": ["PUERTA", "VENTANA", "TECHO"]
 }
 ```
 
-#### Finalizar Ronda
+#### `end_round`
+Finalizar ronda y calcular puntos.
 ```json
 {
   "action": "end_round",
@@ -122,171 +116,151 @@ Todas las acciones del juego se envían a este endpoint:
 }
 ```
 
-#### Otras Acciones
-- `get_state` - Obtener estado actual
-- `get_words` - Obtener lista de palabras
-- `reset_game` - Reiniciar juego
-- `leave_game` - Salir del juego
-- `get_stats` - Estadísticas (solo DEV_MODE)
+#### `reset_game`
+Reiniciar partida manteniendo jugadores.
+```json
+{
+  "action": "reset_game",
+  "game_id": "PLAYA"
+}
+```
 
-### GET /sse-stream.php?game_id=PLAYA
+#### `leave_game`
+Salir de la partida.
+```json
+{
+  "action": "leave_game",
+  "game_id": "PLAYA",
+  "player_id": "player_123"
+}
+```
 
-Conexión Server-Sent Events para recibir actualizaciones en tiempo real.
+#### `get_state`
+Obtener estado actual.
+```json
+{
+  "action": "get_state",
+  "game_id": "PLAYA"
+}
+```
+
+#### `get_words`
+Obtener lista de todas las palabras del diccionario.
+```json
+{
+  "action": "get_words"
+}
+```
+
+### `sse-stream.php`
+
+Server-Sent Events para actualizaciones en tiempo real.
+
+**URL**: `sse-stream.php?game_id=PLAYA`
+
+Eventos:
+- `update`: Se envía cuando cambia el estado del juego
+- Heartbeat cada 15 segundos
 
 ## ⚙️ Configuración
 
-### settings.php
+Edita `constants.php` para configurar el sistema:
 
 ```php
-// Modo de desarrollo
-define('DEV_MODE', false); // true para activar herramientas de desarrollo
+// Modo desarrollo (muestra errores, logs detallados)
+define('DEV_MODE', true);
 
-// Configuración del juego
-define('MIN_PLAYERS', 3);              // Mínimo de jugadores
-define('MAX_PLAYERS', 20);             // Máximo de jugadores
-define('DEFAULT_ROUND_DURATION', 120); // Duración de ronda (segundos)
-define('DEFAULT_TOTAL_ROUNDS', 3);     // Número de rondas
-define('MAX_WORDS_PER_PLAYER', 6);     // Máximo de palabras por jugador
-define('MAX_WORD_LENGTH', 30);         // Longitud máxima de palabra
+// Duración de ronda por defecto (segundos)
+define('DEFAULT_ROUND_DURATION', 120);
+
+// Número de rondas por defecto
+define('DEFAULT_TOTAL_ROUNDS', 3);
+
+// Máximo de palabras por jugador
+define('MAX_WORDS_PER_PLAYER', 6);
+
+// Longitud máxima de cada palabra
+define('MAX_WORD_LENGTH', 30);
+
+// Tiempo de expiración de partidas (segundos)
+define('GAME_EXPIRATION_TIME', 86400);
 ```
 
-## 📊 Analytics y Desarrollo
+## 📊 Analytics
 
-### Activar Modo Desarrollo
+El sistema guarda estadísticas en `game_states/analytics.json` (solo en producción):
 
-En `settings.php`, cambiar:
+- Total de partidas creadas
+- Total de jugadores únicos
+- Duración promedio de partidas
+- Palabras más usadas
+- Última actualización
+
+## 🐛 Modo Desarrollo
+
+Activa el modo desarrollo en `constants.php`:
+
 ```php
 define('DEV_MODE', true);
 ```
 
-Esto habilita:
-- **Panel de Desarrollo** (`dev-panel.html`): Estadísticas, herramientas, reportes de bugs
-- **Suite de Tests** (`test-suite.php`): Tests automatizados
-- **Analytics API** (`analytics.php`): Tracking de eventos
-- **Logs detallados**: Todos los eventos se registran
+Características en modo desarrollo:
+- Logs detallados en consola
+- Sistema de reporte de bugs
+- No se guarda analytics
+- Tests activables
 
-### Ver Analytics
+## 📁 Estructura de Archivos
 
-1. Activar DEV_MODE
-2. Abrir `dev-panel.html`
-3. Ver estadísticas en tiempo real:
-   - Juegos creados/finalizados
-   - Total de jugadores
-   - Rondas jugadas
-   - Eventos recientes
-
-### Ejecutar Tests
-
-1. Activar DEV_MODE
-2. Abrir `test-suite.php` o hacer clic en "Ejecutar Tests" en dev-panel
-3. Ver resultados de:
-   - Sanitización de inputs
-   - Validación de palabras
-   - Generación de códigos
-   - Guardado/carga de estados
-   - Y más...
+```
+talcual/
+├── index.html           # Página principal (crear/unirse)
+├── host.html           # Interfaz del anfitrión (Smart TV)
+├── player.html         # Interfaz del jugador (móvil)
+├── styles.css          # Estilos compartidos
+├── game-client.js      # Cliente JavaScript (SSE + API)
+├── api-action.php      # API principal del juego
+├── sse-stream.php      # Server-Sent Events
+├── config.php          # Funciones del servidor
+├── constants.php       # Constantes configurables
+├── diccionario.json    # Palabras del juego
+├── cleanup-cron.php    # Script de limpieza
+├── game_states/        # Estados de partidas (creado automáticamente)
+│   ├── *.json         # Archivos de estado de cada partida
+│   └── analytics.json # Estadísticas del sistema
+└── README.md          # Este archivo
+```
 
 ## 🔒 Seguridad
 
-### Implementaciones de Seguridad
+- Validación y sanitización de entradas
+- Códigos de sala aleatorios y únicos
+- Expiración automática de partidas (24 horas)
+- Sin almacenamiento de datos personales
 
-1. **Sanitización de Inputs**
-   - Game IDs validados (solo alfanuméricos, 3-6 caracteres)
-   - Player IDs validados (alfanuméricos + guion bajo)
-   - Colores validados (formato hex RGB)
+## 🛠️ Solución de Problemas
 
-2. **Validación de Palabras**
-   - Longitud máxima (30 caracteres)
-   - Sin espacios
-   - No puede ser la palabra actual
+### Las actualizaciones no llegan en tiempo real
+- Verifica que tu servidor soporte SSE
+- Revisa que el firewall no bloquee conexiones largas
+- Intenta recargar la página (F5)
 
-3. **Protección de Archivos**
-   - `.htaccess` protege archivos sensibles (`.json`, `.log`, `.lock`)
-   - Analytics solo accesible en DEV_MODE
+### Error al crear partida
+- Verifica permisos de escritura en el directorio
+- Asegúrate que PHP tenga acceso para crear carpetas
 
-4. **Race Conditions**
-   - Sistema de locks para escritura de archivos
-   - Locks automáticos con cleanup
+### Los jugadores no pueden unirse
+- Verifica que el código de sala sea correcto (mayúsculas)
+- Confirma que la partida no haya expirado (24h)
 
-5. **Limpieza Automática**
-   - Juegos antiguos (>24h) se eliminan automáticamente
-   - Locks huérfanos (>5min) se limpian
+## 📝 Licencia
 
-## 🐞 Troubleshooting
+Proyecto personal de código abierto.
 
-### Los jugadores no ven actualizaciones
-- Verificar que SSE esté funcionando (abrir console del navegador)
-- Verificar permisos de escritura en `game_states/`
-- Revisar logs del servidor
+## 🤝 Contribuciones
 
-### Código de sala no funciona
-- Verificar que existan palabras cortas (≤5 letras) en `diccionario.json`
-- Ver stats en dev-panel: "Palabras para código"
+Este es un proyecto personal, pero las sugerencias son bienvenidas.
 
-### Errores de conexión
-- Verificar que `api-action.php` y `sse-stream.php` sean accesibles
-- Revisar configuración CORS si estás en dominios diferentes
+## 📧 Contacto
 
-### Juegos no se limpian
-
-1. **Automático**: Se limpia con 1% de probabilidad en cada request
-2. **Manual**: Configurar cron job:
-   ```bash
-   0 */6 * * * php /ruta/a/cleanup-cron.php
-   ```
-
-## 🛣️ Roadmap
-
-### Mejoras Futuras
-- [ ] Sistema de salas privadas con contraseña
-- [ ] Selección de categorías específicas
-- [ ] Modo de juego personalizado
-- [ ] Sonidos y notificaciones
-- [ ] Historial de partidas por jugador
-- [ ] Leaderboard global
-- [ ] Modo offline (PWA)
-- [ ] Chat entre jugadores
-- [ ] Sistema de reportes de palabras inapropiadas
-
-## 📝 Changelog
-
-### v2.0.0 (2024-12-27) - Mejoras Masivas
-- ✅ 31 correcciones y mejoras implementadas
-- ✅ Seguridad: Sanitización completa de inputs
-- ✅ Race conditions: Sistema de locks mejorado
-- ✅ Validación: Palabras, colores, límites
-- ✅ Retry logic: Reintentos automáticos en errores de red
-- ✅ Analytics: Sistema básico de tracking
-- ✅ Dev Mode: Panel de desarrollo y tests
-- ✅ Diccionario: Eliminado codigos_sala, auto-generación
-- ✅ SSE: Mejor detección de desconexiones
-- ✅ Docs: README completo
-
-### v1.0.0 (2024-12-XX) - Release Inicial
-- ✅ Sistema básico de juego
-- ✅ SSE para tiempo real
-- ✅ Pantalla de host y jugadores
-- ✅ 15+ categorías de palabras
-
-## 🤝 Contribuir
-
-¿Encontraste un bug? ¿Tienes una idea?
-
-1. **Modo Desarrollo**: Activa DEV_MODE y usa el panel de desarrollo
-2. **Tests**: Ejecuta test-suite.php antes de cambios importantes
-3. **Pull Requests**: Bienvenidos! Asegúrate de:
-   - Documentar cambios
-   - Pasar todos los tests
-   - Seguir el estilo de código existente
-
-## 📜 Licencia
-
-MIT License - Ver archivo LICENSE
-
-## 👤 Autor
-
-Creado por [Jonatan Pintos](https://github.com/muyunicos)
-
----
-
-🎯 **¡Diviértete jugando Unánimo Party!**
+Desarrollado por Jonatan Pintos - [GitHub](https://github.com/muyunicos)
