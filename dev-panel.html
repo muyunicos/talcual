@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Desarrollo - Unánimo Party</title>
+    <title>Panel de Desarrollo - TalCual Party</title>
     <style>
         * {
             margin: 0;
@@ -169,7 +169,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🛠️ Panel de Desarrollo - Unánimo Party</h1>
+        <h1>🛠️ Panel de Desarrollo - TalCual Party</h1>
         
         <div class="card">
             <h2>📊 Estadísticas del Sistema</h2>
@@ -185,7 +185,7 @@
         </div>
         
         <div class="card">
-            <h2>📝 Eventos Recientes</h2>
+            <h2>📋 Eventos Recientes</h2>
             <div id="events-container" class="loading">Cargando eventos...</div>
         </div>
         
@@ -305,14 +305,14 @@
             }
             
             // Guardar en localStorage para no perderlo
-            const bugs = JSON.parse(localStorage.getItem('unanimo_bugs') || '[]');
+            const bugs = JSON.parse(localStorage.getItem('talcual_bugs') || '[]');
             bugs.push({
                 timestamp: Date.now(),
                 description: description,
                 url: window.location.href,
                 userAgent: navigator.userAgent
             });
-            localStorage.setItem('unanimo_bugs', JSON.stringify(bugs));
+            localStorage.setItem('talcual_bugs', JSON.stringify(bugs));
             
             document.getElementById('bug-status').innerHTML = 
                 '<p style="color: green; margin-top: 10px;">✅ Bug reportado y guardado localmente. Total de bugs: ' + bugs.length + '</p>';
