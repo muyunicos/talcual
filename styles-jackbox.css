@@ -1,0 +1,298 @@
+/* ============================================
+   TALCUAL PARTY - ESTILO JACKBOX
+   Sistema de Auras y Diseño Vibrante
+   ============================================ */
+
+/* FUENTES GOOGLE */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap');
+
+/* VARIABLES GLOBALES */
+:root {
+    --fondo-tv: #2E004E;
+    --cian: #00F0FF;
+    --magenta: #FF0055;
+    --amarillo: #FFD700;
+    --sombra-dura: 4px 4px 0px #000;
+}
+
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* FUENTES BASE */
+body {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+}
+
+h1, h2, h3, .title, .logo-text {
+    font-family: 'Fredoka One', cursive;
+}
+
+/* ============================================
+   CLASES DE AURAS (GRADIENTES)
+   ============================================ */
+.aura-fire {
+    background: linear-gradient(135deg, #FF9966, #FF5E62) !important;
+}
+
+.aura-ice {
+    background: linear-gradient(135deg, #00F260, #0575E6) !important;
+}
+
+.aura-candy {
+    background: linear-gradient(135deg, #F37335, #FDC830) !important;
+}
+
+.aura-mystic {
+    background: linear-gradient(135deg, #8E2DE2, #4A00E0) !important;
+}
+
+.aura-electric {
+    background: linear-gradient(135deg, #12c2e9, #f64f59) !important;
+}
+
+.aura-toxic {
+    background: linear-gradient(135deg, #DCE35B, #45B649) !important;
+}
+
+/* ============================================
+   FONDO CON TEXTURA
+   ============================================ */
+.tv-background {
+    background-color: var(--fondo-tv);
+    background-image: url('bg.webp');
+    background-repeat: repeat;
+    background-blend-mode: overlay;
+    opacity: 1;
+}
+
+.tv-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('bg.webp');
+    background-repeat: repeat;
+    background-size: cover;
+    opacity: 0.1;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+}
+
+/* ============================================
+   CÓDIGO DE SALA (STICKER)
+   ============================================ */
+.game-code-sticker {
+    background: var(--amarillo);
+    color: #000;
+    font-family: 'Fredoka One', cursive;
+    font-size: 2em;
+    font-weight: 900;
+    padding: 15px 30px;
+    border-radius: 15px;
+    transform: rotate(-3deg);
+    box-shadow: var(--sombra-dura);
+    display: inline-block;
+    letter-spacing: 3px;
+}
+
+/* ============================================
+   BOTONES ESTILO JACKBOX
+   ============================================ */
+.btn-jackbox {
+    background: var(--magenta);
+    color: white;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 1.2em;
+    padding: 15px 40px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: var(--sombra-dura);
+    transition: all 0.1s;
+    text-transform: uppercase;
+}
+
+.btn-jackbox:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #000;
+}
+
+.btn-jackbox:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+}
+
+.btn-jackbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Variantes de botones */
+.btn-jackbox.cian {
+    background: var(--cian);
+    color: #000;
+}
+
+.btn-jackbox.amarillo {
+    background: var(--amarillo);
+    color: #000;
+}
+
+/* ============================================
+   TARJETAS JUGADOR (SQUARCLES)
+   ============================================ */
+.player-squarcle {
+    width: 120px;
+    height: 120px;
+    border-radius: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--sombra-dura);
+    position: relative;
+    animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0) rotate(-180deg);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+.player-initial {
+    font-family: 'Fredoka One', cursive;
+    font-size: 4em;
+    color: white;
+    text-shadow: 3px 3px 0px #000;
+    line-height: 1;
+}
+
+.player-name-label {
+    font-size: 0.8em;
+    color: white;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px #000;
+    margin-top: 5px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* ============================================
+   CONTENEDORES CON FONDO BLANCO SEMI-TRANSPARENTE
+   ============================================ */
+.container-white {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--sombra-dura);
+    color: #000;
+}
+
+/* ============================================
+   LOGO HEADER
+   ============================================ */
+.logo-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.logo-header img {
+    max-width: 300px;
+    height: auto;
+    filter: drop-shadow(var(--sombra-dura));
+}
+
+/* ============================================
+   INPUTS Y SELECTORES
+   ============================================ */
+.input-jackbox {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 1.2em;
+    padding: 15px 20px;
+    border: 4px solid #000;
+    border-radius: 15px;
+    background: white;
+    color: #000;
+    box-shadow: var(--sombra-dura);
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.input-jackbox:focus {
+    outline: none;
+    border-color: var(--cian);
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0px #000;
+}
+
+/* ============================================
+   SELECTOR DE AURAS (CÍRCULOS)
+   ============================================ */
+.aura-selector {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.aura-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 2px 2px 0px #000;
+}
+
+.aura-circle:hover {
+    transform: scale(1.1);
+    box-shadow: var(--sombra-dura);
+}
+
+.aura-circle.selected {
+    border-color: white;
+    transform: scale(1.2);
+    box-shadow: 0 0 20px rgba(255,255,255,0.8), var(--sombra-dura);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .player-squarcle {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .player-initial {
+        font-size: 3em;
+    }
+    
+    .game-code-sticker {
+        font-size: 1.5em;
+        padding: 10px 20px;
+    }
+}
