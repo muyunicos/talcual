@@ -1,0 +1,44 @@
+# .htaccess para Unánimo Party
+# MEJORA #30: URLs amigables y seguridad básica
+
+# Habilitar rewrite
+RewriteEngine On
+
+# Redirigir HTTP a HTTPS (descomentar si tienes SSL)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Proteger archivos sensibles
+<FilesMatch "\.(log|json|lock)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Permitir acceso a analytics.json solo si DEV_MODE
+<Files "analytics.json">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Proteger directorios
+Options -Indexes
+
+# Compresión GZIP
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Caché del navegador
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType image/x-icon "access plus 1 month"
+</IfModule>
+
+# Cabeceras de seguridad
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
