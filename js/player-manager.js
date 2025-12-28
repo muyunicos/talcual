@@ -237,7 +237,7 @@ class PlayerManager {
     
     /**
      * Intenta recuperar una sesión anterior
-     * FIX #8: Enviar player_id en get_state para evitar error de validación
+     * FIX #9: Pasar player_id al crear GameClient
      */
     async recoverSession(gameId, playerId, playerName, playerColor) {
         try {
@@ -246,12 +246,9 @@ class PlayerManager {
             this.playerName = playerName;
             this.playerColor = playerColor;
             
-            // Crear cliente y verificar estado
-            this.client = new GameClient(gameId, 'player');
-            const result = await this.client.sendAction('get_state', { 
-                game_id: gameId,
-                player_id: playerId  // ✅ FIX #8: Agregar player_id
-            });
+            // ✅ FIX #9: Pasar playerId al constructor
+            this.client = new GameClient(gameId, playerId, 'player');
+            const result = await this.client.sendAction('get_state');
             
             if (result.success && result.state) {
                 const state = result.state;
@@ -355,7 +352,8 @@ class PlayerManager {
         }
         
         try {
-            this.client = new GameClient(this.gameId, 'player');
+            // ✅ FIX #9: Pasar playerId al constructor
+            this.client = new GameClient(this.gameId, this.playerId, 'player');
             
             const result = await this.client.sendAction('join_game', {
                 name: this.playerName,
