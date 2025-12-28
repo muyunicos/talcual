@@ -63,7 +63,7 @@ define('MAX_CODE_LENGTH', max(3, min(10, (int)env('MAX_CODE_LENGTH', 5))));
 // CONFIGURACIÓN DE ARCHIVOS (actualizadas para nueva estructura)
 define('GAME_STATES_DIR', $rootDir . '/game_states');
 define('ANALYTICS_FILE', $rootDir . '/analytics.json');
-define('DICTIONARY_FILE', $rootDir . '/data/diccionario.json');
+define('DICTIONARY_FILE', $rootDir . '/app/diccionario.json');
 
 // CONFIGURACIÓN DE LIMPIEZA (MEJORA: aumentada a 5% para mejor limpieza)
 define('MAX_GAME_AGE', max(3600, (int)env('MAX_GAME_AGE', 86400))); // Mínimo 1 hora
