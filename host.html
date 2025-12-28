@@ -5,66 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anfitrión - TalCual Party</title>
     <link rel="icon" href="/images/icon.webp" type="image/webp">
-    <link rel="stylesheet" href="css/main.css">
-    <style>
-        /* Modal para crear juego */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-overlay.active {
-            display: flex;
-        }
-        
-        .modal-create-game {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            border-radius: 25px;
-            padding: 40px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-            position: relative;
-            animation: modalSlideIn 0.3s ease-out;
-        }
-        
-        @keyframes modalSlideIn {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-        
-        .modal-title {
-            font-family: 'Fredoka One', cursive;
-            font-size: 2em;
-            text-align: center;
-            margin-bottom: 30px;
-            text-shadow: 4px 4px 0px #000;
-        }
-        
-        .game-screen {
-            display: none;
-        }
-        
-        .game-screen.active {
-            display: block;
-        }
-    </style>
+    <!-- CSS Modular -->
+    <link rel="stylesheet" href="css/1-base.css">
+    <link rel="stylesheet" href="css/2-layout.css">
+    <link rel="stylesheet" href="css/3-components.css">
+    <link rel="stylesheet" href="css/4-players.css">
+    <link rel="stylesheet" href="css/5-animations.css">
+    <link rel="stylesheet" href="css/6-host.css">
+    <link rel="stylesheet" href="css/8-utilities.css">
+    <link rel="stylesheet" href="css/9-tables.css">
 </head>
 <body>
     <!-- MODAL CREAR JUEGO -->
@@ -76,7 +25,7 @@
                 <label class="input-label">Código de Sala (opcional)</label>
                 <input type="text" id="custom-code" class="input-field" 
                        placeholder="Dejar vacío para generar" maxlength="6">
-                <small style="display: block; text-align: center; margin-top: 10px; opacity: 0.8;">
+                <small class="custom-code-info">
                     Si no ingresas nada, se generará automáticamente
                 </small>
             </div>
@@ -101,7 +50,7 @@
             <!-- HEADER con LOGO -->
             <div class="tv-header">
                 <div class="logo-container">
-                    <img src="/images/logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-family: Fredoka One; font-size: 2.5em; text-shadow: 4px 4px 0px #000;\'>TalCual</span>'">
+                    <img src="/images/logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\"font-family: Fredoka One; font-size: 2.5em; text-shadow: 4px 4px 0px #000;\">TalCual</span>'">
                 </div>
                 <div class="timer-display" id="timer-display">02:00</div>
                 <div class="game-code-sticker" id="game-code-tv">------</div>
@@ -122,7 +71,7 @@
 
             <!-- TOP PALABRAS DERECHA -->
             <div class="top-words-panel">
-                <div class="top-words-title">📊 TOP PALABRAS</div>
+                <div class="top-words-title">📈 TOP PALABRAS</div>
                 <div id="top-words-list"></div>
             </div>
 
@@ -151,7 +100,7 @@
             // Ir directo a la pantalla de host
             loadHostScreen(savedGameId);
         } else {
-            console.log('📝 No hay sesión, mostrando formulario de creación');
+            console.log('📏 No hay sesión, mostrando formulario de creación');
             // Mostrar modal de creación
             document.getElementById('modal-create-game').classList.add('active');
         }

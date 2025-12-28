@@ -5,93 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jugador - TalCual Party</title>
     <link rel="icon" href="/images/icon.webp" type="image/webp">
-    <link rel="stylesheet" href="css/main.css">
-    <style>
-        /* Modal para unirse */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-overlay.active {
-            display: flex;
-        }
-        
-        .modal-join-game {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            border-radius: 25px;
-            padding: 40px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-            position: relative;
-            animation: modalSlideIn 0.3s ease-out;
-        }
-        
-        @keyframes modalSlideIn {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-        
-        .modal-title {
-            font-family: 'Fredoka One', cursive;
-            font-size: 2em;
-            text-align: center;
-            margin-bottom: 30px;
-            text-shadow: 4px 4px 0px #000;
-        }
-        
-        .aura-selector {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .aura-circle {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 4px solid transparent;
-            transition: all 0.2s;
-            box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
-        }
-        
-        .aura-circle:hover {
-            transform: scale(1.1);
-        }
-        
-        .aura-circle.selected {
-            border-color: white;
-            box-shadow: 0 0 20px rgba(255,255,255,0.8), 4px 4px 0px rgba(0,0,0,0.5);
-            transform: scale(1.15);
-        }
-        
-        .game-screen {
-            display: none;
-        }
-        
-        .game-screen.active {
-            display: block;
-        }
-    </style>
+    <!-- CSS Modular -->
+    <link rel="stylesheet" href="css/1-base.css">
+    <link rel="stylesheet" href="css/2-layout.css">
+    <link rel="stylesheet" href="css/3-components.css">
+    <link rel="stylesheet" href="css/4-players.css">
+    <link rel="stylesheet" href="css/5-animations.css">
+    <link rel="stylesheet" href="css/7-player.css">
+    <link rel="stylesheet" href="css/8-utilities.css">
+    <link rel="stylesheet" href="css/9-tables.css">
 </head>
 <body>
     <!-- MODAL UNIRSE AL JUEGO -->
@@ -170,7 +92,7 @@
             <div class="input-row">
                 <input type="text" id="current-word-input" class="word-input" 
                        placeholder="Escribe..." autocomplete="off">
-                <button class="btn-add" id="btn-add-word">✈️</button>
+                <button class="btn-add" id="btn-add-word">✏️</button>
             </div>
 
             <div class="words-list" id="words-list-container" style="display:none;">
@@ -181,7 +103,7 @@
             </div>
 
             <div class="submit-section">
-                <button class="btn-submit" id="btn-submit">⏭️ PASO</button>
+                <button class="btn-submit" id="btn-submit">⎭️ PASO</button>
             </div>
         </div>
 
@@ -190,7 +112,7 @@
         <div class="bottom-footer">
             <div class="player-name-section">
                 <div class="player-name-display" id="player-name-display">---</div>
-                <button class="btn-edit-name" id="btn-edit-name">✏️</button>
+                <button class="btn-edit-name" id="btn-edit-name">✍️</button>
             </div>
             <button class="btn-exit" id="btn-exit">Salir</button>
         </div>
@@ -290,7 +212,7 @@
             console.log('🔄 Recuperando sesión:', savedGameId);
             recoverSession(savedGameId, savedPlayerId, savedPlayerName, savedPlayerColor);
         } else {
-            console.log('📝 No hay sesión, mostrando modal de unión');
+            console.log('📏 No hay sesión, mostrando modal de unión');
             modalJoinGame.classList.add('active');
             
             // Seleccionar color aleatorio
@@ -483,7 +405,7 @@
 
         // Manejador de actualizaciones de estado
         function handleStateUpdate(state) {
-            console.log('📊 Estado actualizado:', state.status);
+            console.log('📈 Estado actualizado:', state.status);
 
             if (state.players && typeof state.players === 'object') {
                 const me = state.players[playerId];
@@ -635,7 +557,7 @@
                     currentWordInput.disabled = false;
                     btnAddWord.disabled = false;
                     btnSubmit.disabled = false;
-                    btnSubmit.textContent = '⏭️ PASO';
+                    btnSubmit.textContent = '⎭️ PASO';
                     
                     if (myWords.length > 0 && (!me || !me.answers || me.answers.length === 0)) {
                         myWords = [];
@@ -731,13 +653,13 @@
                 } else {
                     alert('Error al enviar: ' + (result.message || 'desconocido'));
                     btnSubmit.disabled = false;
-                    btnSubmit.textContent = '⏭️ PASO';
+                    btnSubmit.textContent = '⎭️ PASO';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error de conexión');
                 btnSubmit.disabled = false;
-                btnSubmit.textContent = '⏭️ PASO';
+                btnSubmit.textContent = '⎭️ PASO';
             }
         }
 
@@ -760,7 +682,7 @@
             
             resultsSection.style.display = 'block';
             
-            let html = '<div class="results-title">📊 Tus Resultados</div>';
+            let html = '<div class="results-title">📈 Tus Resultados</div>';
             let roundScore = 0;
             
             Object.entries(myResults).forEach(([word, result]) => {
