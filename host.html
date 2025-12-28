@@ -5,66 +5,219 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anfitrión - TalCual Party</title>
     <link rel="icon" href="/images/icon.webp" type="image/webp">
-    <!-- CSS MODULARIZADO -->
     <link rel="stylesheet" href="css/main.css">
+    <style>
+        /* Modal para crear juego */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-create-game {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 4px 4px 0px #000;
+        }
+        
+        .game-screen {
+            display: none;
+        }
+        
+        .game-screen.active {
+            display: block;
+        }
+    </style>
 </head>
 <body>
-    <div class="tv-layout">
-        <!-- HEADER con LOGO -->
-        <div class="tv-header">
-            <div class="logo-container">
-                <img src="/images/logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-family: Fredoka One; font-size: 2.5em; text-shadow: 4px 4px 0px #000;\'>TalCual</span>'">
+    <!-- MODAL CREAR JUEGO -->
+    <div class="modal-overlay" id="modal-create-game">
+        <div class="modal-create-game">
+            <div class="modal-title">📺 Crear Nueva Partida</div>
+            
+            <div class="input-group">
+                <label class="input-label">Código de Sala (opcional)</label>
+                <input type="text" id="custom-code" class="input-field" 
+                       placeholder="Dejar vacío para generar" maxlength="6">
+                <small style="display: block; text-align: center; margin-top: 10px; opacity: 0.8;">
+                    Si no ingresas nada, se generará automáticamente
+                </small>
             </div>
-            <div class="timer-display" id="timer-display">02:00</div>
-            <div class="game-code-sticker" id="game-code-tv">------</div>
+            
+            <button class="btn-create-game" id="btn-create-game" onclick="createGame()">
+                🎮 Crear Partida
+            </button>
+            
+            <div id="status-message" style="text-align: center; margin-top: 20px; font-size: 1.1em;"></div>
+            
+            <div class="btn-back" style="margin-top: 20px; text-align: center;">
+                <a href="index.html" style="color: white; opacity: 0.8; text-decoration: none;">
+                    ← Volver al inicio
+                </a>
+            </div>
         </div>
-
-        <!-- RANKING IZQUIERDA -->
-        <div class="ranking-panel">
-            <div class="ranking-title">🏆 RANKING</div>
-            <div id="ranking-list"></div>
-        </div>
-
-        <!-- CENTRO - Palabra/Estado -->
-        <div class="center-panel">
-            <div class="status-message" id="status-message">Esperando jugadores...</div>
-            <div class="word-display" id="word-display" style="display: none;"></div>
-            <div class="countdown-display" id="countdown-display" style="display: none;"></div>
-        </div>
-
-        <!-- TOP PALABRAS DERECHA -->
-        <div class="top-words-panel">
-            <div class="top-words-title">📊 TOP PALABRAS</div>
-            <div id="top-words-list"></div>
-        </div>
-
-        <!-- JUGADORES ABAJO -->
-        <div class="players-grid" id="players-grid"></div>
     </div>
 
-    <!-- CONTROLES (Presiona 'C' para mostrar) -->
-    <div class="controls-panel" id="controls-panel">
-        <button class="btn-control btn-start" id="btn-start-round">▶️ Iniciar Ronda</button>
-        <button class="btn-control btn-end" id="btn-end-round">⏹️ Finalizar Ronda</button>
-        <button class="btn-control btn-next" id="btn-new-game">🔄 Nueva Partida</button>
+    <!-- PANTALLA DE HOST -->
+    <div class="game-screen" id="game-screen">
+        <div class="tv-layout">
+            <!-- HEADER con LOGO -->
+            <div class="tv-header">
+                <div class="logo-container">
+                    <img src="/images/logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-family: Fredoka One; font-size: 2.5em; text-shadow: 4px 4px 0px #000;\'>TalCual</span>'">
+                </div>
+                <div class="timer-display" id="timer-display">02:00</div>
+                <div class="game-code-sticker" id="game-code-tv">------</div>
+            </div>
+
+            <!-- RANKING IZQUIERDA -->
+            <div class="ranking-panel">
+                <div class="ranking-title">🏆 RANKING</div>
+                <div id="ranking-list"></div>
+            </div>
+
+            <!-- CENTRO - Palabra/Estado -->
+            <div class="center-panel">
+                <div class="status-message" id="status-message">Esperando jugadores...</div>
+                <div class="word-display" id="word-display" style="display: none;"></div>
+                <div class="countdown-display" id="countdown-display" style="display: none;"></div>
+            </div>
+
+            <!-- TOP PALABRAS DERECHA -->
+            <div class="top-words-panel">
+                <div class="top-words-title">📊 TOP PALABRAS</div>
+                <div id="top-words-list"></div>
+            </div>
+
+            <!-- JUGADORES ABAJO -->
+            <div class="players-grid" id="players-grid"></div>
+        </div>
+
+        <!-- CONTROLES (Presiona 'C' para mostrar) -->
+        <div class="controls-panel" id="controls-panel">
+            <button class="btn-control btn-start" id="btn-start-round">▶️ Iniciar Ronda</button>
+            <button class="btn-control btn-end" id="btn-end-round">⏹️ Finalizar Ronda</button>
+            <button class="btn-control btn-next" id="btn-new-game">🔄 Nueva Partida</button>
+        </div>
     </div>
 
     <script src="/js/game-client.js"></script>
     <script>
-        const gameId = localStorage.getItem('gameId');
-        if (!gameId || localStorage.getItem('isHost') !== 'true') {
-            window.location.href = 'index.html';
+        console.log('🎮 Host Page v2.0 - Unified');
+        
+        // Verificar si hay sesión de host
+        const savedGameId = localStorage.getItem('gameId');
+        const isHost = localStorage.getItem('isHost') === 'true';
+        
+        if (savedGameId && isHost) {
+            console.log('✅ Sesión de host encontrada:', savedGameId);
+            // Ir directo a la pantalla de host
+            loadHostScreen(savedGameId);
+        } else {
+            console.log('📝 No hay sesión, mostrando formulario de creación');
+            // Mostrar modal de creación
+            document.getElementById('modal-create-game').classList.add('active');
         }
-
-        document.getElementById('game-code-tv').textContent = gameId;
-        console.log('🎮 Host iniciando. GameID:', gameId);
-
-        // FIX: Crear el juego ANTES de conectar al SSE
-        async function initializeHost() {
+        
+        // Función para crear juego
+        async function createGame() {
+            const customCode = document.getElementById('custom-code').value.trim().toUpperCase();
+            const statusMsg = document.getElementById('status-message');
+            const btnCreate = document.getElementById('btn-create-game');
+            
+            btnCreate.disabled = true;
+            btnCreate.textContent = '⏳ Creando...';
+            statusMsg.innerHTML = '⏳ Creando partida...';
+            
+            try {
+                const response = await fetch('/app/api/actions.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'create_game',
+                        game_id: customCode || undefined
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const gameId = result.game_id;
+                    statusMsg.innerHTML = `✅ Partida creada: <strong>${gameId}</strong>`;
+                    
+                    // Guardar en localStorage
+                    localStorage.setItem('gameId', gameId);
+                    localStorage.setItem('isHost', 'true');
+                    
+                    // Esperar un momento y cargar pantalla de host
+                    setTimeout(() => {
+                        document.getElementById('modal-create-game').classList.remove('active');
+                        loadHostScreen(gameId);
+                    }, 1000);
+                } else {
+                    statusMsg.innerHTML = `❌ Error: ${result.message}`;
+                    btnCreate.disabled = false;
+                    btnCreate.textContent = '🎮 Crear Partida';
+                }
+            } catch (error) {
+                statusMsg.innerHTML = `❌ Error de conexión: ${error.message}`;
+                btnCreate.disabled = false;
+                btnCreate.textContent = '🎮 Crear Partida';
+            }
+        }
+        
+        // Función para cargar pantalla de host
+        async function loadHostScreen(gameId) {
+            console.log('🔌 Cargando pantalla de host con gameId:', gameId);
+            
+            document.getElementById('game-code-tv').textContent = gameId;
+            document.getElementById('game-screen').classList.add('active');
+            
+            // Verificar/crear juego antes de conectar
+            await initializeHost(gameId);
+        }
+        
+        async function initializeHost(gameId) {
             try {
                 console.log('🔧 Verificando si el juego existe...');
                 
-                // Intentar obtener el estado del juego
                 const checkResponse = await fetch('/app/api/actions.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -77,7 +230,6 @@
                 const checkData = await checkResponse.json();
                 
                 if (!checkData.success) {
-                    // El juego no existe, crearlo
                     console.log('⚠️ Juego no encontrado, creando nuevo juego...');
                     
                     const createResponse = await fetch('/app/api/actions.php', {
@@ -94,16 +246,15 @@
                         const newGameId = createData.game_id;
                         console.log('✅ Juego creado con ID:', newGameId);
                         
-                        // Actualizar el gameId en localStorage y la UI
                         localStorage.setItem('gameId', newGameId);
                         document.getElementById('game-code-tv').textContent = newGameId;
                         
-                        // Reconectar con el nuevo gameId
                         window.location.reload();
                         return;
                     } else {
                         console.error('❌ Error creando el juego:', createData.message);
                         alert('Error al crear el juego. Intenta nuevamente.');
+                        localStorage.clear();
                         window.location.href = 'index.html';
                         return;
                     }
@@ -113,7 +264,7 @@
                 
                 // Conectar al SSE
                 const client = new GameClient(gameId, 'host');
-                window.client = client; // Hacer global para los event listeners
+                window.client = client;
                 
                 client.onStateUpdate = (state) => {
                     console.log('🔄 Estado actualizado en host:', state);
@@ -126,12 +277,10 @@
             } catch (error) {
                 console.error('❌ Error inicializando host:', error);
                 alert('Error al conectar con el servidor.');
+                localStorage.clear();
                 window.location.href = 'index.html';
             }
         }
-
-        // Inicializar
-        initializeHost();
 
         let timerInterval = null;
         let autoShortenTriggered = false;
@@ -474,7 +623,7 @@
             }).join('');
         }
 
-        console.log('✅ Host configurado y listo');
+        console.log('✅ Host configurado y listo (modo unificado)');
     </script>
 </body>
 </html>

@@ -15,10 +15,33 @@
         </div>
         <div class="subtitle">¡El juego de palabras más divertido!</div>
         <div class="btn-group">
-            <a href="create.html" class="btn btn-create">📺 Crear Partida</a>
-            <a href="join.html" class="btn btn-join">📱 Unirse</a>
+            <a href="host.html" class="btn btn-create">📺 Crear Partida</a>
+            <a href="play.html" class="btn btn-join">📱 Unirse</a>
         </div>
-        <div class="version">v0.01 - Muy Únicos</div>
+        <div class="version">v0.02 - Muy Únicos</div>
     </div>
+    
+    <script>
+        // Redirección automática si hay sesión activa
+        window.addEventListener('DOMContentLoaded', () => {
+            const gameId = localStorage.getItem('gameId');
+            const playerId = localStorage.getItem('playerId');
+            const isHost = localStorage.getItem('isHost') === 'true';
+            
+            if (gameId) {
+                console.log('🔄 Sesión detectada:', gameId);
+                
+                if (isHost) {
+                    console.log('➡️ Redirigiendo a host.html');
+                    window.location.href = 'host.html';
+                } else if (playerId) {
+                    console.log('➡️ Redirigiendo a play.html');
+                    window.location.href = 'play.html';
+                }
+            } else {
+                console.log('🏠 Sin sesión activa, mostrando landing');
+            }
+        });
+    </script>
 </body>
 </html>

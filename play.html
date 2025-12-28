@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jugador - TalCual Party</title>
+    <link rel="icon" href="/images/icon.webp" type="image/webp">
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        /* Modal para unirse */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-join-game {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 4px 4px 0px #000;
+        }
+        
+        .aura-selector {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .aura-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 4px solid transparent;
+            transition: all 0.2s;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+        }
+        
+        .aura-circle:hover {
+            transform: scale(1.1);
+        }
+        
+        .aura-circle.selected {
+            border-color: white;
+            box-shadow: 0 0 20px rgba(255,255,255,0.8), 4px 4px 0px rgba(0,0,0,0.5);
+            transform: scale(1.15);
+        }
+        
+        .game-screen {
+            display: none;
+        }
+        
+        .game-screen.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- MODAL UNIRSE AL JUEGO -->
+    <div class="modal-overlay" id="modal-join-game">
+        <div class="modal-join-game">
+            <div class="modal-title">📱 Unirse a Partida</div>
+            
+            <div class="input-group">
+                <label class="input-label">Código de Sala</label>
+                <input type="text" id="input-game-code" class="input-field" 
+                       placeholder="Ej: CASA" maxlength="6" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Tu Nombre</label>
+                <input type="text" id="input-player-name" class="input-field" 
+                       placeholder="" maxlength="20" autocomplete="on">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Elige tu Aura</label>
+                <div class="aura-selector" id="color-selector">
+                    <!-- Fire -->
+                    <div class="aura-circle" data-color="#FF9966,#FF5E62" 
+                         style="background: linear-gradient(135deg, #FF9966, #FF5E62);"></div>
+                    <!-- Ice -->
+                    <div class="aura-circle" data-color="#00F260,#0575E6" 
+                         style="background: linear-gradient(135deg, #00F260, #0575E6);"></div>
+                    <!-- Candy -->
+                    <div class="aura-circle" data-color="#F37335,#FDC830" 
+                         style="background: linear-gradient(135deg, #F37335, #FDC830);"></div>
+                    <!-- Mystic -->
+                    <div class="aura-circle" data-color="#8E2DE2,#4A00E0" 
+                         style="background: linear-gradient(135deg, #8E2DE2, #4A00E0);"></div>
+                    <!-- Electric -->
+                    <div class="aura-circle" data-color="#12c2e9,#f64f59" 
+                         style="background: linear-gradient(135deg, #12c2e9, #f64f59);"></div>
+                    <!-- Toxic -->
+                    <div class="aura-circle" data-color="#DCE35B,#45B649" 
+                         style="background: linear-gradient(135deg, #DCE35B, #45B649);"></div>
+                </div>
+            </div>
+
+            <button class="btn-join" id="btn-join">¡Jugar!</button>
+            
+            <div id="status-message" style="text-align: center; margin-top: 20px; font-size: 1.1em;"></div>
+            
+            <div class="btn-back" style="margin-top: 20px; text-align: center;">
+                <a href="index.html" style="color: white; opacity: 0.8; text-decoration: none;">
+                    ← Volver al inicio
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE JUEGO -->
+    <div class="game-screen" id="game-screen">
+        <div class="top-header">
+            <div class="header-round" id="header-round">Ronda 0/3</div>
+            <div class="header-timer" id="header-timer">⏳ 00:00</div>
+            <div class="header-code-sticker" id="header-code">----</div>
+        </div>
+
+        <div class="player-info">
+            <div class="player-score" id="player-score">0 pts</div>
+        </div>
+
+        <div class="status-card" id="status-card">
+            <div class="current-word" id="current-word" style="display:none;"></div>
+            <div class="waiting-message" id="waiting-message">
+                El anfitrión iniciará la ronda pronto
+            </div>
+        </div>
+
+        <div class="words-input-section" id="words-input-section" style="display:none;">
+            <div class="input-row">
+                <input type="text" id="current-word-input" class="word-input" 
+                       placeholder="Escribe..." autocomplete="off">
+                <button class="btn-add" id="btn-add-word">✈️</button>
+            </div>
+
+            <div class="words-list" id="words-list-container" style="display:none;">
+                <div class="words-list-title">
+                    Tus palabras (<span id="word-count">0</span>/<span id="max-words">6</span>)
+                </div>
+                <div id="words-list"></div>
+            </div>
+
+            <div class="submit-section">
+                <button class="btn-submit" id="btn-submit">⏭️ PASO</button>
+            </div>
+        </div>
+
+        <div class="results-section" id="results-section"></div>
+
+        <div class="bottom-footer">
+            <div class="player-name-section">
+                <div class="player-name-display" id="player-name-display">---</div>
+                <button class="btn-edit-name" id="btn-edit-name">✏️</button>
+            </div>
+            <button class="btn-exit" id="btn-exit">Salir</button>
+        </div>
+    </div>
+
+    <div class="countdown-overlay" id="countdown-overlay">
+        <div class="countdown-number" id="countdown-number"></div>
+    </div>
+
+    <div class="modal-overlay" id="modal-edit-name">
+        <div class="modal-content">
+            <div class="modal-title">Cambiar Nombre</div>
+            <input type="text" id="modal-name-input" class="modal-input" maxlength="20" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" id="modal-btn-cancel">Cancelar</button>
+                <button class="modal-btn modal-btn-save" id="modal-btn-save">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/game-client.js"></script>
+    <script>
+        console.log('🎮 Player Page v2.0 - Unified');
+        console.log('Características:');
+        console.log('  ✓ SSE para actualizaciones en tiempo real');
+        console.log('  ✓ Reconexión automática');
+        console.log('  ✓ Countdown 3-2-1 sincronizado');
+        console.log('  ✓ Timer continuo actualizado cada segundo');
+        console.log('  ✓ Recuperación de sesión automática');
+        console.log('  ✓ Notificaciones visuales');
+
+        // Variables globales
+        let gameId = null;
+        let playerId = null;
+        let playerName = null;
+        let playerColor = null;
+        let client = null;
+        let myWords = [];
+        let maxWords = 6;
+        let currentRound = 0;
+        let timerInterval = null;
+        let countdownInterval = null;
+        let playerScore = 0;
+
+        // Referencias a elementos del DOM
+        const modalJoinGame = document.getElementById('modal-join-game');
+        const gameScreen = document.getElementById('game-screen');
+        const inputGameCode = document.getElementById('input-game-code');
+        const inputPlayerName = document.getElementById('input-player-name');
+        const btnJoin = document.getElementById('btn-join');
+        const colorSelector = document.getElementById('color-selector');
+        const statusMessage = document.getElementById('status-message');
+
+        const headerRound = document.getElementById('header-round');
+        const headerTimer = document.getElementById('header-timer');
+        const headerCode = document.getElementById('header-code');
+        const playerScoreDisplay = document.getElementById('player-score');
+        const statusCard = document.getElementById('status-card');
+        const currentWordDisplay = document.getElementById('current-word');
+        const waitingMessage = document.getElementById('waiting-message');
+        const wordsInputSection = document.getElementById('words-input-section');
+        const currentWordInput = document.getElementById('current-word-input');
+        const btnAddWord = document.getElementById('btn-add-word');
+        const wordsListContainer = document.getElementById('words-list-container');
+        const wordsList = document.getElementById('words-list');
+        const wordCount = document.getElementById('word-count');
+        const maxWordsDisplay = document.getElementById('max-words');
+        const btnSubmit = document.getElementById('btn-submit');
+        const resultsSection = document.getElementById('results-section');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        const countdownNumber = document.getElementById('countdown-number');
+        const playerNameDisplay = document.getElementById('player-name-display');
+        const btnEditName = document.getElementById('btn-edit-name');
+        const btnExit = document.getElementById('btn-exit');
+        const modalEditName = document.getElementById('modal-edit-name');
+        const modalNameInput = document.getElementById('modal-name-input');
+        const modalBtnCancel = document.getElementById('modal-btn-cancel');
+        const modalBtnSave = document.getElementById('modal-btn-save');
+
+        // Selector de color
+        const colorOptions = colorSelector.querySelectorAll('.aura-circle');
+        colorOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                colorOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                playerColor = option.dataset.color;
+            });
+        });
+
+        // Verificar si hay sesión guardada
+        const savedGameId = localStorage.getItem('gameId');
+        const savedPlayerId = localStorage.getItem('playerId');
+        const savedPlayerName = localStorage.getItem('playerName');
+        const savedPlayerColor = localStorage.getItem('playerColor');
+        
+        if (savedGameId && savedPlayerId && savedPlayerName && savedPlayerColor) {
+            console.log('🔄 Recuperando sesión:', savedGameId);
+            recoverSession(savedGameId, savedPlayerId, savedPlayerName, savedPlayerColor);
+        } else {
+            console.log('📝 No hay sesión, mostrando modal de unión');
+            modalJoinGame.classList.add('active');
+            
+            // Seleccionar color aleatorio
+            const randomIndex = Math.floor(Math.random() * colorOptions.length);
+            colorOptions[randomIndex].click();
+        }
+
+        // Event listeners
+        btnJoin.addEventListener('click', joinGame);
+
+        inputGameCode.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') inputPlayerName.focus();
+        });
+
+        inputPlayerName.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinGame();
+        });
+
+        btnAddWord.addEventListener('click', addWord);
+        
+        currentWordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addWord();
+        });
+
+        btnSubmit.addEventListener('click', submitWords);
+
+        btnEditName.addEventListener('click', () => {
+            modalNameInput.value = playerName;
+            modalEditName.style.display = 'flex';
+            modalNameInput.focus();
+        });
+
+        modalBtnCancel.addEventListener('click', () => {
+            modalEditName.style.display = 'none';
+        });
+
+        modalBtnSave.addEventListener('click', async () => {
+            const newName = modalNameInput.value.trim();
+            if (newName && newName.length >= 2) {
+                playerName = newName;
+                playerNameDisplay.textContent = newName;
+                localStorage.setItem('playerName', newName);
+                
+                if (client) {
+                    await client.sendAction('update_player_name', { name: newName });
+                }
+                
+                modalEditName.style.display = 'none';
+            } else {
+                alert('Ingresa un nombre válido (mínimo 2 caracteres)');
+            }
+        });
+
+        btnExit.addEventListener('click', () => {
+            if (confirm('¿Seguro que quieres salir del juego?')) {
+                exitGame();
+            }
+        });
+
+        // Función para recuperar sesión
+        async function recoverSession(gId, pId, pName, pColor) {
+            try {
+                gameId = gId;
+                playerId = pId;
+                playerName = pName;
+                playerColor = pColor;
+                
+                // Pre-llenar formulario por si falla
+                inputGameCode.value = gId;
+                inputPlayerName.value = pName;
+                
+                // Seleccionar color guardado
+                colorOptions.forEach(option => {
+                    if (option.dataset.color === pColor) {
+                        option.click();
+                    }
+                });
+                
+                // Crear cliente y verificar estado
+                client = new GameClient(gameId, 'player');
+                const result = await client.sendAction('get_state', { game_id: gameId });
+                
+                if (result.success && result.state) {
+                    const state = result.state;
+                    
+                    // Verificar que el jugador siga en el juego
+                    if (state.players && state.players[playerId]) {
+                        console.log('✅ Sesión recuperada exitosamente');
+                        
+                        // Aplicar color de fondo
+                        const colors = playerColor.split(',');
+                        document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+                        
+                        // Mostrar pantalla de juego
+                        gameScreen.classList.add('active');
+                        
+                        headerCode.textContent = gameId;
+                        playerNameDisplay.textContent = playerName;
+                        
+                        // Conectar eventos
+                        client.onStateUpdate = handleStateUpdate;
+                        client.onConnectionLost = handleConnectionFailed;
+                        client.connect();
+                        
+                        // Actualizar con el estado actual
+                        handleStateUpdate(state);
+                    } else {
+                        console.log('⚠️ Jugador no encontrado en el juego, mostrando modal');
+                        localStorage.clear();
+                        modalJoinGame.classList.add('active');
+                    }
+                } else {
+                    console.log('⚠️ Juego no encontrado, mostrando modal');
+                    localStorage.clear();
+                    modalJoinGame.classList.add('active');
+                }
+            } catch (error) {
+                console.error('❌ Error al recuperar sesión:', error);
+                localStorage.clear();
+                modalJoinGame.classList.add('active');
+            }
+        }
+
+        // Función para unirse al juego
+        async function joinGame() {
+            const code = inputGameCode.value.trim().toUpperCase();
+            const name = inputPlayerName.value.trim();
+
+            if (!code || code.length < 3) {
+                statusMessage.innerHTML = '⚠️ Ingresa un código válido';
+                inputGameCode.focus();
+                return;
+            }
+
+            if (!name || name.length < 2) {
+                statusMessage.innerHTML = '⚠️ Ingresa tu nombre (mínimo 2 caracteres)';
+                inputPlayerName.focus();
+                return;
+            }
+
+            gameId = code;
+            playerName = name;
+            playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+            localStorage.setItem('gameId', gameId);
+            localStorage.setItem('playerId', playerId);
+            localStorage.setItem('playerName', playerName);
+            localStorage.setItem('playerColor', playerColor);
+
+            btnJoin.disabled = true;
+            btnJoin.textContent = 'Conectando...';
+            statusMessage.innerHTML = '⏳ Conectando...';
+
+            try {
+                client = new GameClient(gameId, 'player');
+
+                const result = await client.sendAction('join_game', { 
+                    name: playerName,
+                    color: playerColor 
+                });
+
+                if (result.success) {
+                    const colors = playerColor.split(',');
+                    document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+
+                    modalJoinGame.classList.remove('active');
+                    gameScreen.classList.add('active');
+
+                    headerCode.textContent = gameId;
+                    playerNameDisplay.textContent = playerName;
+
+                    client.onStateUpdate = handleStateUpdate;
+                    client.onConnectionLost = handleConnectionFailed;
+                    client.connect();
+
+                    console.log('✅ Conectado al juego:', gameId);
+
+                } else {
+                    statusMessage.innerHTML = '❌ Error: ' + (result.message || 'desconocido');
+                    btnJoin.disabled = false;
+                    btnJoin.textContent = '¡Jugar!';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusMessage.innerHTML = '❌ Error de conexión';
+                btnJoin.disabled = false;
+                btnJoin.textContent = '¡Jugar!';
+            }
+        }
+
+        // Manejador de actualizaciones de estado
+        function handleStateUpdate(state) {
+            console.log('📊 Estado actualizado:', state.status);
+
+            if (state.players && typeof state.players === 'object') {
+                const me = state.players[playerId];
+                if (me) {
+                    playerScore = me.score || 0;
+                    playerScoreDisplay.textContent = playerScore + ' pts';
+                }
+            }
+
+            currentRound = state.round || 0;
+            const totalRounds = state.total_rounds || 3;
+            headerRound.textContent = `Ronda ${currentRound}/${totalRounds}`;
+
+            switch (state.status) {
+                case 'waiting':
+                    showWaitingState();
+                    stopTimer();
+                    break;
+                    
+                case 'playing':
+                    if (state.round_start_at) {
+                        const now = Math.floor(Date.now() / 1000);
+                        const remaining = state.round_start_at - now;
+                        
+                        if (remaining > 0 && remaining <= 4) {
+                            showCountdownSynced(state);
+                        } else if (remaining <= 0) {
+                            showPlayingState(state);
+                            startContinuousTimer(state);
+                        }
+                    } else {
+                        showPlayingState(state);
+                        startContinuousTimer(state);
+                    }
+                    break;
+                    
+                case 'round_ended':
+                    showResults(state);
+                    stopTimer();
+                    break;
+                    
+                case 'finished':
+                    showFinalResults(state);
+                    stopTimer();
+                    break;
+            }
+        }
+
+        function showCountdownSynced(state) {
+            countdownOverlay.style.display = 'flex';
+            
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            countdownInterval = setInterval(() => {
+                if (!client || !client.gameState || !client.gameState.round_start_at) {
+                    countdownOverlay.style.display = 'none';
+                    clearInterval(countdownInterval);
+                    return;
+                }
+
+                const now = Math.floor(Date.now() / 1000);
+                const remaining = client.gameState.round_start_at - now;
+
+                if (remaining > 0 && remaining <= 3) {
+                    countdownNumber.textContent = remaining;
+                    countdownNumber.style.animation = 'none';
+                    setTimeout(() => {
+                        countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+                    }, 10);
+                } else if (remaining <= 0) {
+                    countdownOverlay.style.display = 'none';
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                    
+                    if (client.gameState) {
+                        showPlayingState(client.gameState);
+                        startContinuousTimer(client.gameState);
+                    }
+                }
+            }, 100);
+        }
+
+        function startContinuousTimer(state) {
+            stopTimer();
+            
+            if (!state.round_started_at || !state.round_duration) {
+                return;
+            }
+            
+            updateTimerFromState(state);
+            
+            timerInterval = setInterval(() => {
+                if (client && client.gameState && client.gameState.status === 'playing') {
+                    updateTimerFromState(client.gameState);
+                } else {
+                    stopTimer();
+                }
+            }, 1000);
+        }
+
+        function updateTimerFromState(state) {
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = now - state.round_started_at;
+            const remaining = Math.max(0, state.round_duration - elapsed);
+            updateTimer(remaining);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function showWaitingState() {
+            currentWordDisplay.style.display = 'none';
+            waitingMessage.style.display = 'block';
+            waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
+            wordsInputSection.style.display = 'none';
+            resultsSection.style.display = 'none';
+            countdownOverlay.style.display = 'none';
+        }
+
+        function showPlayingState(state) {
+            countdownOverlay.style.display = 'none';
+            resultsSection.style.display = 'none';
+            
+            if (state.current_word) {
+                currentWordDisplay.textContent = state.current_word;
+                currentWordDisplay.style.display = 'block';
+                waitingMessage.style.display = 'none';
+                wordsInputSection.style.display = 'block';
+                
+                maxWords = 6;
+                maxWordsDisplay.textContent = maxWords;
+                
+                const me = state.players?.[playerId];
+                if (me && me.status === 'ready') {
+                    currentWordInput.disabled = true;
+                    btnAddWord.disabled = true;
+                    btnSubmit.disabled = true;
+                    btnSubmit.textContent = '✅ Enviado';
+                    waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                    waitingMessage.style.display = 'block';
+                    wordsInputSection.style.display = 'none';
+                } else {
+                    currentWordInput.disabled = false;
+                    btnAddWord.disabled = false;
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = '⏭️ PASO';
+                    
+                    if (myWords.length > 0 && (!me || !me.answers || me.answers.length === 0)) {
+                        myWords = [];
+                        updateWordsList();
+                    }
+                }
+            }
+        }
+
+        function addWord() {
+            const word = currentWordInput.value.trim();
+            
+            if (!word) {
+                return;
+            }
+            
+            if (myWords.length >= maxWords) {
+                alert(`Máximo ${maxWords} palabras`);
+                return;
+            }
+            
+            const normalized = word.toUpperCase();
+            
+            if (myWords.includes(normalized)) {
+                alert('Ya agregaste esa palabra');
+                return;
+            }
+            
+            myWords.push(normalized);
+            currentWordInput.value = '';
+            updateWordsList();
+            
+            sendWordsUpdate();
+            
+            currentWordInput.focus();
+        }
+
+        function updateWordsList() {
+            wordCount.textContent = myWords.length;
+            
+            if (myWords.length > 0) {
+                wordsListContainer.style.display = 'block';
+                wordsList.innerHTML = myWords.map((word, index) => `
+                    <div class="word-item" onclick="removeWord(${index})">
+                        <span class="word-text">${word}</span>
+                        <span class="word-edit">🗑️</span>
+                    </div>
+                `).join('');
+            } else {
+                wordsListContainer.style.display = 'none';
+            }
+        }
+
+        function removeWord(index) {
+            myWords.splice(index, 1);
+            updateWordsList();
+            sendWordsUpdate();
+        }
+
+        async function sendWordsUpdate() {
+            if (!client) return;
+            
+            try {
+                await client.sendAction('submit_answers', {
+                    answers: myWords,
+                    forced_pass: false
+                });
+            } catch (error) {
+                console.error('Error enviando palabras:', error);
+            }
+        }
+
+        async function submitWords() {
+            if (!client) return;
+            
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Enviando...';
+            
+            try {
+                const result = await client.sendAction('submit_answers', {
+                    answers: myWords,
+                    forced_pass: true
+                });
+                
+                if (result.success) {
+                    currentWordInput.disabled = true;
+                    btnAddWord.disabled = true;
+                    btnSubmit.textContent = '✅ Enviado';
+                    
+                    waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                    waitingMessage.style.display = 'block';
+                    wordsInputSection.style.display = 'none';
+                } else {
+                    alert('Error al enviar: ' + (result.message || 'desconocido'));
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = '⏭️ PASO';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = '⏭️ PASO';
+            }
+        }
+
+        function showResults(state) {
+            countdownOverlay.style.display = 'none';
+            wordsInputSection.style.display = 'none';
+            currentWordDisplay.style.display = 'none';
+            waitingMessage.style.display = 'none';
+            
+            if (!state.players || !state.players[playerId]) return;
+            
+            const me = state.players[playerId];
+            const myResults = me.round_results;
+            
+            if (!myResults || Object.keys(myResults).length === 0) {
+                resultsSection.innerHTML = '<div class="waiting-message">No enviaste palabras esta ronda</div>';
+                resultsSection.style.display = 'block';
+                return;
+            }
+            
+            resultsSection.style.display = 'block';
+            
+            let html = '<div class="results-title">📊 Tus Resultados</div>';
+            let roundScore = 0;
+            
+            Object.entries(myResults).forEach(([word, result]) => {
+                const hasMatch = result.count > 1;
+                const matchClass = hasMatch ? 'match' : 'no-match';
+                const icon = hasMatch ? '✅' : '❌';
+                
+                html += `
+                    <div class="result-item ${matchClass}">
+                        <div class="result-word">${icon} ${word}</div>
+                        <div class="result-points">+${result.points} puntos</div>
+                        ${hasMatch ? `<div class="result-players">Coincidió con: ${result.matched_with?.join(', ') || 'otros'}</div>` : ''}
+                    </div>
+                `;
+                
+                roundScore += result.points;
+            });
+            
+            html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
+            
+            resultsSection.innerHTML = html;
+        }
+
+        function showFinalResults(state) {
+            showResults(state);
+            
+            waitingMessage.textContent = '🎉 ¡Juego terminado!';
+            waitingMessage.style.display = 'block';
+        }
+
+        function updateTimer(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            headerTimer.textContent = `⏳ ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            if (seconds <= 10) {
+                headerTimer.classList.add('warning');
+            } else {
+                headerTimer.classList.remove('warning');
+            }
+        }
+
+        function handleConnectionFailed() {
+            alert('No se pudo conectar al servidor. Por favor, intenta de nuevo.');
+            exitGame();
+        }
+
+        function exitGame() {
+            if (client) {
+                client.disconnect();
+            }
+            
+            localStorage.removeItem('gameId');
+            localStorage.removeItem('playerId');
+            localStorage.removeItem('playerName');
+            localStorage.removeItem('playerColor');
+            
+            location.reload();
+        }
+
+        console.log('✅ Player configurado y listo (modo unificado)');
+    </script>
+</body>
+</html>
