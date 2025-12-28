@@ -290,6 +290,12 @@
             color: #fbbf24;
         }
 
+        .player-answers-count {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: -5px;
+        }
+
         .player-status {
             position: absolute;
             top: 5px;
@@ -419,7 +425,6 @@
         // IMPORTANTE: Configurar callback ANTES de conectar
         client.onStateUpdate = (state) => {
             console.log('🔄 Estado actualizado en host:', state);
-            console.log('👥 Jugadores en estado:', Object.keys(state.players || {}).length);
             updateHostUI(state);
         };
 
@@ -429,8 +434,7 @@
 
         // Timer
         let timerInterval = null;
-        let remainingTime = 120;
-        const ROUND_DURATION = 120;
+        let autoShortenTriggered = false;
 
         // Mostrar controles con tecla 'C'
         document.addEventListener('keydown', (e) => {
@@ -453,14 +457,17 @@
         document.getElementById('btn-end-round').addEventListener('click', async () => {
             await client.sendAction('end_round');
             stopTimer();
+            autoShortenTriggered = false;
         });
 
         document.getElementById('btn-new-game').addEventListener('click', async () => {
             await client.sendAction('reset_game');
+            autoShortenTriggered = false;
         });
 
         async function startNewRound() {
             console.log('🎬 Intentando iniciar ronda...');
+            autoShortenTriggered = false;
 
             // Esperar hasta 3 segundos si no hay estado
             let attempts = 0;
@@ -492,20 +499,19 @@
             const randomWord = words[Math.floor(Math.random() * words.length)];
             console.log('🎯 Palabra seleccionada:', randomWord);
 
-            // Mostrar countdown 3, 2, 1
-            await showCountdown();
+            // NUEVO: Mostrar countdown sincronizado por timestamp
+            showCountdownSynced();
 
             // Iniciar ronda
             console.log('▶️ Iniciando ronda...');
             await client.sendAction('start_round', { 
                 word: randomWord,
-                duration: ROUND_DURATION 
+                duration: 120
             });
-
-            startTimer(ROUND_DURATION);
         }
 
-        async function showCountdown() {
+        // NUEVO: Countdown sincronizado por timestamp del servidor
+        function showCountdownSynced() {
             const countdownEl = document.getElementById('countdown-display');
             const statusEl = document.getElementById('status-message');
             const wordEl = document.getElementById('word-display');
@@ -514,16 +520,32 @@
             wordEl.style.display = 'none';
             countdownEl.style.display = 'block';
 
-            for (let i = 3; i > 0; i--) {
-                countdownEl.textContent = i;
-                countdownEl.style.animation = 'none';
-                setTimeout(() => {
-                    countdownEl.style.animation = 'countdownPulse 1s ease-in-out';
-                }, 10);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
+            // Esperar a que llegue round_start_at del servidor
+            const countdownInterval = setInterval(() => {
+                if (!client.gameState || !client.gameState.round_start_at) {
+                    return;
+                }
 
-            countdownEl.style.display = 'none';
+                const now = Math.floor(Date.now() / 1000);
+                const remaining = client.gameState.round_start_at - now;
+
+                if (remaining > 0 && remaining <= 3) {
+                    countdownEl.textContent = remaining;
+                    countdownEl.style.animation = 'none';
+                    setTimeout(() => {
+                        countdownEl.style.animation = 'countdownPulse 1s ease-in-out';
+                    }, 10);
+                } else if (remaining <= 0) {
+                    countdownEl.style.display = 'none';
+                    clearInterval(countdownInterval);
+                }
+            }, 100);
+
+            // Timeout de seguridad (4 segundos)
+            setTimeout(() => {
+                countdownEl.style.display = 'none';
+                clearInterval(countdownInterval);
+            }, 4000);
         }
 
         async function getWordsList() {
@@ -536,17 +558,14 @@
             return data.words || [];
         }
 
-        function startTimer(seconds) {
-            remainingTime = seconds;
-            updateTimerDisplay();
-
-            if (timerInterval) clearInterval(timerInterval);
+        function startTimer(startTimestamp, duration) {
+            stopTimer();
 
             timerInterval = setInterval(() => {
-                remainingTime--;
-                updateTimerDisplay();
+                const remaining = getRemainingTime(startTimestamp, duration);
+                updateTimerDisplay(remaining);
 
-                if (remainingTime <= 0) {
+                if (remaining <= 0) {
                     stopTimer();
                     autoEndRound();
                 }
@@ -560,19 +579,25 @@
             }
         }
 
-        function updateTimerDisplay() {
-            const minutes = Math.floor(remainingTime / 60);
-            const seconds = remainingTime % 60;
+        function updateTimerDisplay(remaining) {
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
             const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
             const timerEl = document.getElementById('timer-display');
             timerEl.textContent = display;
 
-            if (remainingTime <= 30) {
+            if (remaining <= 30) {
                 timerEl.classList.add('warning');
             } else {
                 timerEl.classList.remove('warning');
             }
+        }
+
+        function getRemainingTime(startTimestamp, duration) {
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = now - startTimestamp;
+            return Math.max(0, duration - elapsed);
         }
 
         async function autoEndRound() {
@@ -587,7 +612,6 @@
             }
 
             const playerCount = Object.keys(state.players || {}).length;
-            console.log('🎨 Actualizando UI. Jugadores:', playerCount);
 
             // Ronda
             document.getElementById('round-info').textContent = 
@@ -612,6 +636,14 @@
                 statusEl.style.display = 'none';
                 wordEl.style.display = 'block';
                 wordEl.textContent = state.current_word || '';
+
+                // Timer sincronizado
+                if (state.round_started_at) {
+                    startTimer(state.round_started_at, state.round_duration);
+                }
+
+                // NUEVO: Acortar timer si todos terminaron
+                checkAllPlayersReady(state);
             } else if (state.status === 'round_ended') {
                 statusEl.style.display = 'block';
                 wordEl.style.display = 'none';
@@ -623,7 +655,6 @@
                 }
 
                 stopTimer();
-                updateTimerDisplay();
             } else if (state.status === 'finished') {
                 statusEl.style.display = 'block';
                 wordEl.style.display = 'none';
@@ -636,6 +667,21 @@
             updateTopWords(state);
             updatePlayersGrid(state);
             updateControls(state);
+        }
+
+        // NUEVO: Verificar si todos están listos y acortar timer
+        function checkAllPlayersReady(state) {
+            if (autoShortenTriggered) return;
+
+            const players = Object.values(state.players || {});
+            const notReadyCount = players.filter(p => p.status !== 'ready').length;
+            const remaining = getRemainingTime(state.round_started_at, state.round_duration);
+
+            if (notReadyCount === 0 && remaining > 5 && players.length > 0) {
+                console.log('✅ Todos los jugadores terminaron, acortando timer a 5 segundos');
+                autoShortenTriggered = true;
+                client.sendAction('shorten_round');
+            }
         }
 
         function updateControls(state) {
@@ -706,8 +752,6 @@
             const players = Object.values(state.players || {});
             const grid = document.getElementById('players-grid');
 
-            console.log('👥 Actualizando grid con', players.length, 'jugadores:', players.map(p => p.name).join(', '));
-
             grid.innerHTML = players.map(player => {
                 const initial = player.name.charAt(0).toUpperCase();
                 const statusIcon = player.status === 'ready' ? '✅' : 
@@ -722,12 +766,19 @@
                     avatarStyle = `background: linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%);`;
                 }
 
+                // NUEVO: Mostrar contador de respuestas
+                const answerCount = (player.answers || []).length;
+                const maxWords = 6;
+                const answersDisplay = state.status === 'playing' ? 
+                    `<div class="player-answers-count">${answerCount}/${maxWords} palabras</div>` : '';
+
                 return `
                     <div class="player-card ${statusClass}">
                         <span class="player-status">${statusIcon}</span>
                         <div class="player-avatar" style="${avatarStyle}">${initial}</div>
                         <div class="player-name">${player.name}</div>
                         <div class="player-score">${player.score} pts</div>
+                        ${answersDisplay}
                     </div>
                 `;
             }).join('');
