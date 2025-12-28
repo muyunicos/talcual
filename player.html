@@ -772,7 +772,7 @@
     <!-- SCRIPTS AL FINAL -->
     <script src="game-client.js"></script>
     <script>
-        console.log('🎮 TalCual Party Game Client v3.1');
+        console.log('🎮 TalCual Party Game Client v3.2');
         console.log('Sistema de juego cargado correctamente');
         console.log('Características:');
         console.log('  ✓ SSE para actualizaciones en tiempo real');
@@ -967,21 +967,27 @@
         function handleStateUpdate(state) {
             console.log('📊 Estado actualizado:', state.status);
 
+            // FIX: state.players es un OBJETO, no un array
             // Actualizar información del jugador
-            const me = state.players?.find(p => p.id === playerId);
-            if (me) {
-                playerScore = me.score || 0;
-                playerScoreDisplay.textContent = playerScore + ' pts';
+            if (state.players && typeof state.players === 'object') {
+                const me = state.players[playerId];
+                if (me) {
+                    playerScore = me.score || 0;
+                    playerScoreDisplay.textContent = playerScore + ' pts';
+                }
             }
 
             // Actualizar ronda
-            currentRound = state.current_round || 0;
-            const totalRounds = state.rounds?.length || 3;
+            currentRound = state.round || 0;
+            const totalRounds = state.total_rounds || 3;
             headerRound.textContent = `Ronda ${currentRound}/${totalRounds}`;
 
-            // Actualizar timer
-            if (state.timer) {
-                updateTimer(state.timer.remaining);
+            // Calcular y actualizar timer
+            if (state.status === 'playing' && state.round_started_at && state.round_duration) {
+                const now = Math.floor(Date.now() / 1000);
+                const elapsed = now - state.round_started_at;
+                const remaining = Math.max(0, state.round_duration - elapsed);
+                updateTimer(remaining);
             }
 
             // Manejar estados del juego
@@ -990,15 +996,11 @@
                     showWaitingState();
                     break;
                     
-                case 'countdown':
-                    showCountdown(state.countdown?.current || 3);
-                    break;
-                    
                 case 'playing':
                     showPlayingState(state);
                     break;
                     
-                case 'results':
+                case 'round_ended':
                     showResults(state);
                     break;
                     
@@ -1018,46 +1020,32 @@
             countdownOverlay.style.display = 'none';
         }
 
-        // Mostrar countdown
-        function showCountdown(number) {
-            if (number > 0) {
-                countdownOverlay.style.display = 'flex';
-                countdownNumber.textContent = number;
-                
-                // Reproducir animación
-                countdownNumber.style.animation = 'none';
-                setTimeout(() => {
-                    countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
-                }, 10);
-            } else {
-                countdownOverlay.style.display = 'none';
-            }
-        }
-
         // Mostrar estado de juego
         function showPlayingState(state) {
             countdownOverlay.style.display = 'none';
             resultsSection.style.display = 'none';
             
-            const currentRoundData = state.rounds?.[currentRound - 1];
-            if (currentRoundData) {
-                currentWordDisplay.textContent = currentRoundData.word;
+            if (state.current_word) {
+                currentWordDisplay.textContent = state.current_word;
                 currentWordDisplay.style.display = 'block';
                 waitingMessage.style.display = 'none';
                 wordsInputSection.style.display = 'block';
                 
-                maxWords = currentRoundData.max_words || 6;
+                maxWords = 6; // Por defecto
                 maxWordsDisplay.textContent = maxWords;
                 
-                // Cargar palabras guardadas
-                loadSavedWords();
+                // Resetear inputs
+                currentWordInput.disabled = false;
+                btnAddWord.disabled = false;
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = '⏭️ PASO';
+                
+                // Limpiar palabras anteriores al iniciar nueva ronda
+                if (myWords.length > 0) {
+                    myWords = [];
+                    updateWordsList();
+                }
             }
-        }
-
-        // Cargar palabras guardadas
-        function loadSavedWords() {
-            // Aquí se cargarían las palabras del servidor si ya fueron enviadas
-            updateWordsList();
         }
 
         // Agregar palabra
@@ -1073,14 +1061,20 @@
                 return;
             }
             
-            if (myWords.includes(word)) {
+            const normalized = word.toUpperCase();
+            
+            if (myWords.includes(normalized)) {
                 alert('Ya agregaste esa palabra');
                 return;
             }
             
-            myWords.push(word);
+            myWords.push(normalized);
             currentWordInput.value = '';
             updateWordsList();
+            
+            // Enviar actualización al servidor automáticamente
+            sendWordsUpdate();
+            
             currentWordInput.focus();
         }
 
@@ -1105,9 +1099,24 @@
         function removeWord(index) {
             myWords.splice(index, 1);
             updateWordsList();
+            sendWordsUpdate();
         }
 
-        // Enviar palabras
+        // Enviar actualización de palabras al servidor
+        async function sendWordsUpdate() {
+            if (!client) return;
+            
+            try {
+                await client.sendAction('submit_answers', {
+                    answers: myWords,
+                    forced_pass: false
+                });
+            } catch (error) {
+                console.error('Error enviando palabras:', error);
+            }
+        }
+
+        // Enviar palabras (botón PASO)
         async function submitWords() {
             if (!client) return;
             
@@ -1115,9 +1124,9 @@
             btnSubmit.textContent = 'Enviando...';
             
             try {
-                const result = await client.sendAction('submit_words', {
-                    round: currentRound,
-                    words: myWords
+                const result = await client.sendAction('submit_answers', {
+                    answers: myWords,
+                    forced_pass: true
                 });
                 
                 if (result.success) {
@@ -1148,29 +1157,39 @@
             currentWordDisplay.style.display = 'none';
             waitingMessage.style.display = 'none';
             
-            const currentRoundData = state.rounds?.[currentRound - 1];
-            if (!currentRoundData?.results) return;
+            // FIX: players es objeto
+            if (!state.players || !state.players[playerId]) return;
+            
+            const me = state.players[playerId];
+            const myResults = me.round_results;
+            
+            if (!myResults || Object.keys(myResults).length === 0) {
+                resultsSection.innerHTML = '<div class="waiting-message">No enviaste palabras esta ronda</div>';
+                resultsSection.style.display = 'block';
+                return;
+            }
             
             resultsSection.style.display = 'block';
             
-            const myResults = currentRoundData.results[playerId];
-            if (!myResults) return;
-            
             let html = '<div class="results-title">📊 Tus Resultados</div>';
+            let roundScore = 0;
             
-            myResults.forEach(result => {
-                const matchClass = result.match ? 'match' : 'no-match';
-                const icon = result.match ? '✅' : '❌';
+            Object.entries(myResults).forEach(([word, result]) => {
+                const hasMatch = result.count > 1;
+                const matchClass = hasMatch ? 'match' : 'no-match';
+                const icon = hasMatch ? '✅' : '❌';
+                
                 html += `
                     <div class="result-item ${matchClass}">
-                        <div class="result-word">${icon} ${result.word}</div>
+                        <div class="result-word">${icon} ${word}</div>
                         <div class="result-points">+${result.points} puntos</div>
-                        ${result.match ? `<div class="result-players">Coincidió con: ${result.matched_with?.join(', ') || 'otros'}</div>` : ''}
+                        ${hasMatch ? `<div class="result-players">Coincidió con: ${result.matched_with?.join(', ') || 'otros'}</div>` : ''}
                     </div>
                 `;
+                
+                roundScore += result.points;
             });
             
-            const roundScore = myResults.reduce((sum, r) => sum + r.points, 0);
             html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
             
             resultsSection.innerHTML = html;
@@ -1221,17 +1240,26 @@
             location.reload();
         }
 
-        // Recuperar sesión si existe
-        window.addEventListener('load', () => {
+        // RECUPERACIÓN DE SESIÓN AL CARGAR PÁGINA
+        window.addEventListener('load', async () => {
             const savedGameId = localStorage.getItem('gameId');
             const savedPlayerId = localStorage.getItem('playerId');
             const savedPlayerName = localStorage.getItem('playerName');
             const savedPlayerColor = localStorage.getItem('playerColor');
             
+            // Si hay sesión guardada, intentar reconectar automáticamente
             if (savedGameId && savedPlayerId && savedPlayerName && savedPlayerColor) {
+                console.log('🔄 Intentando recuperar sesión:', savedGameId);
+                
+                // Asignar variables
+                gameId = savedGameId;
+                playerId = savedPlayerId;
+                playerName = savedPlayerName;
+                playerColor = savedPlayerColor;
+                
+                // Pre-llenar formulario por si falla la reconexión
                 inputGameCode.value = savedGameId;
                 inputPlayerName.value = savedPlayerName;
-                playerColor = savedPlayerColor;
                 
                 // Seleccionar el color guardado
                 colorOptions.forEach(option => {
@@ -1239,6 +1267,50 @@
                         option.click();
                     }
                 });
+                
+                try {
+                    // Crear cliente y verificar estado del juego
+                    client = new GameClient(gameId, playerId);
+                    const result = await client.getState();
+                    
+                    if (result.success && result.state) {
+                        const state = result.state;
+                        
+                        // Verificar que el jugador todavía esté en el juego
+                        if (state.players && state.players[playerId]) {
+                            console.log('✅ Sesión recuperada exitosamente');
+                            
+                            // Aplicar color de fondo
+                            const colors = playerColor.split(',');
+                            document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+                            
+                            // Mostrar pantalla de juego
+                            welcomeScreen.style.display = 'none';
+                            gameScreen.style.display = 'block';
+                            
+                            headerCode.textContent = gameId;
+                            playerNameDisplay.textContent = playerName;
+                            
+                            // Conectar eventos
+                            client.onStateUpdate = handleStateUpdate;
+                            client.onConnectionFailed = handleConnectionFailed;
+                            client.onNetworkError = handleNetworkError;
+                            client.connect();
+                            
+                            // Actualizar con el estado actual
+                            handleStateUpdate(state);
+                        } else {
+                            console.log('⚠️ Jugador no encontrado en el juego, limpiando sesión');
+                            localStorage.clear();
+                        }
+                    } else {
+                        console.log('⚠️ Juego no encontrado, limpiando sesión');
+                        localStorage.clear();
+                    }
+                } catch (error) {
+                    console.error('❌ Error al recuperar sesión:', error);
+                    localStorage.clear();
+                }
             }
         });
     </script>
