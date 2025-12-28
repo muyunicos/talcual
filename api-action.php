@@ -1,6 +1,7 @@
 <?php
 // Unánimo Party - API Actions
 // Maneja todas las acciones del juego
+// MEJORAS: #1 (seguridad), #6 (validaciones), #11 (eliminar redundancia), #14 (validar palabras), #21 (feedback)
 
 require_once 'config.php';
 
@@ -25,11 +26,11 @@ if (!$input) {
 }
 
 $action = $input['action'] ?? null;
-$gameId = $input['game_id'] ?? null;
-$playerId = $input['player_id'] ?? null;
+$gameId = sanitizeGameId($input['game_id'] ?? null);  // MEJORA #1: Sanitizar
+$playerId = sanitizePlayerId($input['player_id'] ?? null);  // MEJORA #1: Sanitizar
 
 // Log
-error_log("API Action: {$action} | Game: {$gameId} | Player: {$playerId}");
+logMessage("API Action: {$action} | Game: {$gameId} | Player: {$playerId}", 'DEBUG');
 
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
@@ -43,10 +44,10 @@ switch ($action) {
             'game_id' => $gameId,
             'players' => [],
             'round' => 0,
-            'total_rounds' => 3,
+            'total_rounds' => DEFAULT_TOTAL_ROUNDS,
             'status' => 'waiting',
             'current_word' => null,
-            'round_duration' => 120,
+            'round_duration' => DEFAULT_ROUND_DURATION,
             'round_started_at' => null,
             'round_details' => [],
             'round_top_words' => [],
@@ -54,6 +55,7 @@ switch ($action) {
         ];
 
         if (saveGameState($gameId, $state)) {
+            trackGameAction($gameId, 'game_created', []);
             $response = [
                 'success' => true,
                 'game_id' => $gameId,
@@ -78,12 +80,18 @@ switch ($action) {
             break;
         }
 
-        $playerName = $input['name'] ?? 'Jugador';
-        $playerColor = $input['color'] ?? null; // Nuevo: color del jugador
+        $playerName = trim($input['name'] ?? 'Jugador');
+        $playerColor = validatePlayerColor($input['color'] ?? null); // MEJORA #7: Validar color
 
         // Validar nombre
-        if (strlen($playerName) < 2) {
-            $response = ['success' => false, 'message' => 'Nombre muy corto'];
+        if (strlen($playerName) < 2 || strlen($playerName) > 20) {
+            $response = ['success' => false, 'message' => 'Nombre inválido (2-20 caracteres)'];
+            break;
+        }
+        
+        // Validar máximo de jugadores (MEJORA #6)
+        if (count($state['players']) >= MAX_PLAYERS) {
+            $response = ['success' => false, 'message' => 'Sala llena (máximo ' . MAX_PLAYERS . ' jugadores)'];
             break;
         }
 
@@ -101,7 +109,7 @@ switch ($action) {
         $state['players'][$playerId] = [
             'id' => $playerId,
             'name' => $playerName,
-            'color' => $playerColor, // Guardar color
+            'color' => $playerColor,
             'score' => 0,
             'status' => 'connected',
             'answers' => [],
@@ -109,6 +117,7 @@ switch ($action) {
         ];
 
         if (saveGameState($gameId, $state)) {
+            trackGameAction($gameId, 'player_joined', ['player_name' => $playerName]);
             $response = [
                 'success' => true,
                 'message' => 'Te uniste al juego',
@@ -134,13 +143,31 @@ switch ($action) {
         }
 
         // Validar que haya suficientes jugadores
-        if (count($state['players']) < 3) {
-            $response = ['success' => false, 'message' => 'Mínimo 3 jugadores'];
+        if (count($state['players']) < MIN_PLAYERS) {
+            $response = ['success' => false, 'message' => 'Mínimo ' . MIN_PLAYERS . ' jugadores'];
             break;
         }
 
-        $word = $input['word'] ?? getRandomWord();
-        $duration = $input['duration'] ?? 120;
+        $word = strtoupper(trim($input['word'] ?? ''));
+        
+        // Si no se proporciona palabra, seleccionar una aleatoria
+        if (empty($word)) {
+            $word = getRandomWord();
+        }
+        
+        // Validar palabra
+        $validation = validatePlayerWord($word);
+        if (!$validation['valid']) {
+            $response = ['success' => false, 'message' => 'Palabra inválida: ' . $validation['error']];
+            break;
+        }
+        
+        $duration = intval($input['duration'] ?? DEFAULT_ROUND_DURATION);
+        
+        // Validar duración
+        if ($duration < 30 || $duration > 300) {
+            $duration = DEFAULT_ROUND_DURATION;
+        }
 
         // Incrementar ronda
         $state['round']++;
@@ -157,6 +184,7 @@ switch ($action) {
         }
 
         if (saveGameState($gameId, $state)) {
+            trackGameAction($gameId, 'round_started', ['round' => $state['round'], 'word' => $word]);
             $response = [
                 'success' => true,
                 'message' => 'Ronda iniciada',
@@ -180,25 +208,40 @@ switch ($action) {
         }
 
         $answers = $input['answers'] ?? [];
+        $validAnswers = [];
+        $errors = [];
 
-        // Filtrar respuestas
-        $answers = array_filter($answers, function($word) use ($state) {
-            $normalized = strtoupper(trim($word));
-            return !empty($normalized) && $normalized !== strtoupper($state['current_word']);
-        });
-
-        // Remover duplicados
-        $answers = array_unique(array_map('strtoupper', $answers));
-        $answers = array_values($answers);
+        // Validar cada respuesta (MEJORA #14)
+        foreach ($answers as $word) {
+            $validation = validatePlayerWord($word, $state['current_word']);
+            
+            if ($validation['valid']) {
+                $normalized = strtoupper(trim($word));
+                
+                // Evitar duplicados
+                if (!in_array($normalized, $validAnswers)) {
+                    $validAnswers[] = $normalized;
+                }
+            } else {
+                $errors[] = $validation['error'];
+            }
+        }
+        
+        // Limitar cantidad de palabras (MEJORA #6)
+        if (count($validAnswers) > MAX_WORDS_PER_PLAYER) {
+            $validAnswers = array_slice($validAnswers, 0, MAX_WORDS_PER_PLAYER);
+        }
 
         // Guardar respuestas
-        $state['players'][$playerId]['answers'] = $answers;
+        $state['players'][$playerId]['answers'] = $validAnswers;
         $state['players'][$playerId]['status'] = 'ready';
 
         if (saveGameState($gameId, $state)) {
             $response = [
                 'success' => true,
                 'message' => 'Respuestas guardadas',
+                'valid_answers' => count($validAnswers),
+                'errors' => $errors,
                 'state' => $state
             ];
         }
@@ -288,11 +331,13 @@ switch ($action) {
         // Cambiar estado
         if ($state['round'] >= $state['total_rounds']) {
             $state['status'] = 'finished';
+            trackGameAction($gameId, 'game_finished', ['total_rounds' => $state['round']]);
         } else {
             $state['status'] = 'round_ended';
         }
 
         if (saveGameState($gameId, $state)) {
+            trackGameAction($gameId, 'round_ended', ['round' => $state['round']]);
             $response = [
                 'success' => true,
                 'message' => 'Ronda finalizada',
@@ -330,6 +375,7 @@ switch ($action) {
         $state['round_top_words'] = [];
 
         if (saveGameState($gameId, $state)) {
+            trackGameAction($gameId, 'game_reset', []);
             $response = [
                 'success' => true,
                 'message' => 'Juego reiniciado',
@@ -348,9 +394,11 @@ switch ($action) {
         $state = loadGameState($gameId);
 
         if ($state && isset($state['players'][$playerId])) {
+            $playerName = $state['players'][$playerId]['name'];
             unset($state['players'][$playerId]);
 
             if (saveGameState($gameId, $state)) {
+                trackGameAction($gameId, 'player_left', ['player_name' => $playerName]);
                 $response = [
                     'success' => true,
                     'message' => 'Saliste del juego'
@@ -386,7 +434,24 @@ switch ($action) {
 
         $response = [
             'success' => true,
-            'words' => $words
+            'words' => array_values($words) // Reindexar para JSON
+        ];
+        break;
+        
+    case 'get_stats':
+        // Obtener estadísticas (solo en modo desarrollo)
+        if (!DEV_MODE) {
+            $response = ['success' => false, 'message' => 'No disponible'];
+            break;
+        }
+        
+        $response = [
+            'success' => true,
+            'stats' => [
+                'dictionary' => getDictionaryStats(),
+                'active_games' => count(getActiveCodes()),
+                'dev_mode' => DEV_MODE
+            ]
         ];
         break;
 
