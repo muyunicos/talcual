@@ -7,6 +7,7 @@
  * - Gestión de rondas
  * - Integración con GameClient (SSE)
  * - Eventos del teclado
+ * - FIX #7: Recuperación de sesión anterior
  */
 
 class HostManager {
@@ -52,15 +53,28 @@ class HostManager {
     
     /**
      * Inicializa el gestor del host
+     * FIX #7: Intentar recuperar sesión anterior
      */
     initialize() {
         debug('🎬 Inicializando HostManager');
         this.cacheElements();
         this.attachEventListeners();
         
-        // Mostrar modal de crear juego
-        this.elements.modalCreateGame.classList.add('active');
-        this.elements.gameScreen.classList.remove('active');
+        // FIX #7: Intentar recuperar sesión anterior
+        const savedGameId = getLocalStorage('gameId');
+        
+        if (savedGameId) {
+            debug('🔄 Intentando recuperar sesión del host');
+            this.recoverSession(savedGameId).then(recovered => {
+                if (!recovered) {
+                    // Si no se puede recuperar, mostrar modal
+                    this.showCreateGameModal();
+                }
+            });
+        } else {
+            // Sin sesión previa, mostrar modal
+            this.showCreateGameModal();
+        }
         
         // Atajos de teclado
         document.addEventListener('keypress', (e) => this.handleKeyPress(e));
@@ -147,7 +161,66 @@ class HostManager {
     }
     
     /**
+     * Intenta recuperar una sesión anterior del host
+     * FIX #7: Nueva función para recuperar sesión
+     */
+    async recoverSession(gameId) {
+        try {
+            this.gameId = gameId;
+            this.client = new GameClient(gameId, 'host');
+            
+            // Verificar que el juego existe
+            const result = await this.client.sendAction('get_state', { game_id: gameId });
+            
+            if (result.success && result.state) {
+                debug('✅ Sesión del host recuperada');
+                this.loadGameScreen(result.state);
+                return true;
+            }
+        } catch (error) {
+            debug('Error recuperando sesión:', error, 'error');
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Muestra el modal de crear juego
+     * FIX #7: Extraído a función separada
+     */
+    showCreateGameModal() {
+        this.elements.modalCreateGame.classList.add('active');
+        this.elements.gameScreen.classList.remove('active');
+    }
+    
+    /**
+     * Carga la pantalla de juego
+     * FIX #7: Nueva función para cargar pantalla
+     */
+    loadGameScreen(state) {
+        // Mostrar pantalla de juego
+        this.elements.modalCreateGame.classList.remove('active');
+        this.elements.gameScreen.classList.add('active');
+        
+        // Actualizar UI
+        this.elements.gameCodeTv.textContent = this.gameId;
+        
+        // Conectar a SSE
+        this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
+        this.client.onConnectionLost = () => this.handleConnectionLost();
+        this.client.connect();
+        
+        // Ocultar controles inicialmente
+        this.controlsVisible = false;
+        safeHideElement(this.elements.controlsPanel);
+        
+        // Aplicar estado actual
+        this.handleStateUpdate(state);
+    }
+    
+    /**
      * Crea una nueva partida
+     * FIX #7: Guardar gameId en localStorage
      */
     async createGame() {
         let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
@@ -181,6 +254,9 @@ class HostManager {
             
             if (result.success) {
                 debug(`✅ Juego creado: ${this.gameId}`);
+                
+                // FIX #7: Guardar en localStorage
+                setLocalStorage('gameId', this.gameId);
                 
                 // Mostrar pantalla de juego
                 this.elements.modalCreateGame.classList.remove('active');
@@ -448,6 +524,7 @@ class HostManager {
      */
     createNewGame() {
         if (confirm('¿Iniciar una nueva partida?')) {
+            clearGameSession();
             location.reload();
         }
     }
