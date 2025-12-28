@@ -1,6 +1,7 @@
 <?php
 // Server-Sent Events para actualizaciones en tiempo real
 // MEJORAS: Manejo robusto de conexiones, heartbeat optimizado, detección de desconexiones
+// FIX #10: Reducir polling de 1s a 200ms para mejor responsividad
 
 require_once __DIR__ . '/config.php';
 
@@ -97,12 +98,15 @@ while (true) {
         $lastHeartbeat = time();
     }
     
-    // MEJORA: Sleep dinámico - más frecuente durante juego activo
+    // FIX #10: Sleep dinámico más frecuente en todos los estados
+    // ANTES: sleep(1) en estado waiting = latencia de 1000ms para detectar cambios
+    // DESPUÉS: usleep(200000) en todos = latencia de ~200ms
+    // BENEFICIO: Players aparecen 5x más rápido en pantalla del host
     $state = loadGameState($gameId);
     if ($state && $state['status'] === 'playing') {
-        usleep(500000); // 0.5 segundos durante juego activo
+        usleep(200000); // 0.2 segundos durante juego activo (antes: 0.5s)
     } else {
-        sleep(1); // 1 segundo en otros estados
+        usleep(200000); // 0.2 segundos esperando jugadores (antes: 1s)
     }
 }
 
