@@ -1,28 +1,28 @@
 # Environment variables
 .env
 
-# Game states
+# Game states (temporary data)
 game_states/
-*.json.lock
+*.lock
 
-# Analytics
-analytics.json
-
-# Debug logs
+# Logs
 debug.log
 error.log
+*.log
 
-# System files
+# Analytics data
+analytics.json
+
+# OS files
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE files
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+*.sublime-*
 
 # Temporary files
 *.tmp
 *.bak
+*~
