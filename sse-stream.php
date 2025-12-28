@@ -1,6 +1,6 @@
 <?php
 // sse-stream.php - Server-Sent Events con detección de cambios
-// MEJORAS: #3 (detección desconexiones), #15 (heartbeat optimizado)
+// MEJORAS: #3, #15 (mejorar heartbeat y detección de cambios)
 
 require_once 'config.php';
 
@@ -24,25 +24,24 @@ set_time_limit(0);
 $gameId = sanitizeGameId($_GET['game_id'] ?? null);
 
 if (!$gameId) {
-    echo "data: ERROR\n\n";
+    echo "event: error\n";
+    echo "data: {\"error\": \"game_id inválido\"}\n\n";
     flush();
     exit;
 }
 
 $lastModified = 0;
-$lastContent = null; // MEJORA #15: Comparar contenido real
+$lastContentHash = '';
 $count = 0;
-$maxIterations = SSE_TIMEOUT; // Usar constante de settings
-
-logMessage("SSE iniciado para game: {$gameId}", 'DEBUG');
+$maxIterations = SSE_TIMEOUT; // Usar constante de settings.php
 
 // Loop principal
 while ($count < $maxIterations) {
     $count++;
 
-    // MEJORA #3: Verificar conexión y si cliente abortó
-    if (connection_aborted() || connection_status() != CONNECTION_NORMAL) {
-        logMessage("Cliente desconectado: {$gameId}", 'DEBUG');
+    // Detectar si el cliente se desconectó (MEJORA #3)
+    if (connection_status() != CONNECTION_NORMAL || connection_aborted()) {
+        logMessage("SSE: Cliente desconectado (game: {$gameId})", 'DEBUG');
         break;
     }
 
@@ -54,13 +53,14 @@ while ($count < $maxIterations) {
 
         if (file_exists($file)) {
             $currentModified = @filemtime($file);
-            $currentContent = md5(json_encode($state)); // MEJORA #15: Hash del contenido
+            $content = @file_get_contents($file);
+            $currentHash = md5($content);
 
-            // Detectar cambio REAL (no solo timestamp)
-            if ($currentContent !== $lastContent) {
+            // Detectar cambio real (MEJORA #15: comparar contenido, no solo timestamp)
+            if ($currentHash !== $lastContentHash) {
                 // Enviar actualización
                 echo "event: update\n";
-                echo "data: " . json_encode($state, JSON_UNESCAPED_UNICODE) . "\n\n";
+                echo "data: " . $content . "\n\n";
 
                 if (function_exists('ob_flush')) {
                     @ob_flush();
@@ -68,20 +68,20 @@ while ($count < $maxIterations) {
                 flush();
 
                 $lastModified = $currentModified;
-                $lastContent = $currentContent;
+                $lastContentHash = $currentHash;
                 
-                logMessage("Estado enviado vía SSE: {$gameId}", 'DEBUG');
+                logMessage("SSE: Estado actualizado enviado (game: {$gameId})", 'DEBUG');
             }
         }
     } else {
         // Juego no existe o expiró
         echo "event: game_ended\n";
-        echo "data: {\"message\": \"Juego finalizado o no encontrado\"}\n\n";
+        echo "data: {\"message\": \"Juego finalizado o expirado\"}\n\n";
         flush();
         break;
     }
 
-    // Heartbeat cada N segundos (MEJORA #15)
+    // Heartbeat cada 15s (MEJORA #15: usar constante)
     if ($count % SSE_HEARTBEAT_INTERVAL === 0) {
         echo ": heartbeat\n\n";
         if (function_exists('ob_flush')) {
@@ -93,5 +93,5 @@ while ($count < $maxIterations) {
     sleep(1);
 }
 
-logMessage("SSE finalizado para game: {$gameId}", 'DEBUG');
+logMessage("SSE: Conexión cerrada (game: {$gameId}, iterations: {$count})", 'DEBUG');
 ?>

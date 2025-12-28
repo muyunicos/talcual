@@ -1,5 +1,5 @@
 // game-client.js - Cliente para manejar conexión SSE y acciones del juego
-// MEJORAS: #4 (timeout absoluto), #10 (actualización centralizada), #12 (retry logic)
+// MEJORAS: #4, #10, #12 (mejor manejo de errores y reconexiones)
 
 class GameClient {
     constructor(gameId, playerId) {
@@ -11,92 +11,88 @@ class GameClient {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 2000;
-        this.connectionStartTime = null; // MEJORA #4: Timeout absoluto
-        this.maxConnectionTime = 1800000; // 30 minutos en ms
-        this.retryQueue = []; // MEJORA #12: Cola de reintentos
+        this.reconnectTimeout = null;
+        this.isConnected = false;
+        this.lastStateUpdate = Date.now();
     }
 
     connect() {
         const sseUrl = `sse-stream.php?game_id=${this.gameId}`;
-        console.log('Conectando a SSE:', sseUrl);
-        
-        this.connectionStartTime = Date.now();
+        console.log('[GameClient] Conectando a SSE:', sseUrl);
 
         try {
             this.eventSource = new EventSource(sseUrl);
 
             this.eventSource.onopen = () => {
-                console.log('Conexión SSE establecida');
+                console.log('[GameClient] Conexión SSE establecida');
+                this.isConnected = true;
                 this.reconnectAttempts = 0;
-                this.processRetryQueue(); // MEJORA #12: Procesar cola
+                
+                // Limpiar timeout de reconexion
+                if (this.reconnectTimeout) {
+                    clearTimeout(this.reconnectTimeout);
+                    this.reconnectTimeout = null;
+                }
             };
 
             this.eventSource.addEventListener('update', (event) => {
                 try {
                     const state = JSON.parse(event.data);
-                    this.updateState(state); // MEJORA #10: Centralizado
+                    this.gameState = state;
+                    this.lastStateUpdate = Date.now();
+
+                    console.log('[GameClient] Estado recibido vía SSE');
+
+                    if (this.onStateUpdate) {
+                        this.onStateUpdate(state);
+                    }
                 } catch (error) {
-                    console.error('Error parseando estado SSE:', error);
+                    console.error('[GameClient] Error parseando estado SSE:', error);
                 }
             });
             
             this.eventSource.addEventListener('game_ended', (event) => {
-                console.log('Juego finalizado o no encontrado');
+                console.log('[GameClient] Juego finalizado o expirado');
                 this.disconnect();
-                if (typeof this.onGameEnded === 'function') {
+                
+                if (this.onGameEnded) {
                     this.onGameEnded();
                 }
             });
 
             this.eventSource.onerror = (error) => {
-                console.error('Error en SSE:', error);
+                console.error('[GameClient] Error en SSE:', error);
+                this.isConnected = false;
 
                 if (this.eventSource.readyState === EventSource.CLOSED) {
-                    console.log('SSE cerrado. Intentando reconectar...');
+                    console.log('[GameClient] SSE cerrado. Intentando reconectar...');
                     this.handleReconnect();
                 }
             };
 
         } catch (error) {
-            console.error('Error creando EventSource:', error);
+            console.error('[GameClient] Error creando EventSource:', error);
             this.handleReconnect();
         }
-        
-        // MEJORA #4: Timeout absoluto
-        this.checkConnectionTimeout();
-    }
-    
-    // MEJORA #4: Verificar timeout absoluto
-    checkConnectionTimeout() {
-        setTimeout(() => {
-            if (this.connectionStartTime) {
-                const elapsed = Date.now() - this.connectionStartTime;
-                if (elapsed >= this.maxConnectionTime) {
-                    console.log('Tiempo máximo de conexión alcanzado, reconectando...');
-                    this.disconnect();
-                    this.connect();
-                } else {
-                    this.checkConnectionTimeout();
-                }
-            }
-        }, 60000); // Verificar cada minuto
     }
 
     handleReconnect() {
+        // MEJORA #4: Evitar reconexiones infinitas con timeout absoluto
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('Máximo de intentos de reconexión alcanzado');
-            if (typeof this.onMaxRetriesReached === 'function') {
-                this.onMaxRetriesReached();
+            console.error('[GameClient] Máximo de intentos de reconexion alcanzado');
+            
+            if (this.onConnectionFailed) {
+                this.onConnectionFailed();
             }
             return;
         }
 
         this.reconnectAttempts++;
-        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
+        const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1); // Exponential backoff
         
-        console.log(`Reconectando en ${delay}ms (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        console.log(`[GameClient] Reconectando en ${delay}ms (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
-        setTimeout(() => {
+        this.reconnectTimeout = setTimeout(() => {
             this.disconnect();
             this.connect();
         }, delay);
@@ -106,22 +102,17 @@ class GameClient {
         if (this.eventSource) {
             this.eventSource.close();
             this.eventSource = null;
-            console.log('Desconectado de SSE');
+            this.isConnected = false;
+            console.log('[GameClient] Desconectado de SSE');
         }
-    }
-    
-    // MEJORA #10: Actualizar estado centralizado
-    updateState(state) {
-        this.gameState = state;
-        console.log('📥 Estado actualizado:', state);
-
-        if (this.onStateUpdate) {
-            this.onStateUpdate(state);
+        
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
         }
     }
 
-    // MEJORA #12: Enviar acción con retry logic
-    async sendAction(action, data = {}, retries = 3) {
+    async sendAction(action, data = {}) {
         const payload = {
             action: action,
             game_id: this.gameId,
@@ -129,59 +120,54 @@ class GameClient {
             ...data
         };
 
-        console.log('📤 Enviando acción:', action, data);
+        console.log('[GameClient] Enviando acción:', action);
 
-        for (let attempt = 0; attempt <= retries; attempt++) {
-            try {
-                const response = await fetch('api-action.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
+        try {
+            const response = await fetch('api-action.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
 
-                const result = await response.json();
+            const result = await response.json();
 
-                console.log('📥 Respuesta de acción:', action, result);
+            console.log('[GameClient] Respuesta de acción:', action, result.success ? '✅' : '❌');
 
-                if (result.success && result.state) {
-                    this.updateState(result.state); // MEJORA #10: Centralizado
-                }
+            if (result.success && result.state) {
+                this.gameState = result.state;
 
-                return result;
-                
-            } catch (error) {
-                console.error(`Error enviando acción (intento ${attempt + 1}/${retries + 1}):`, error);
-                
-                if (attempt < retries) {
-                    // Esperar antes de reintentar (exponential backoff)
-                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-                } else {
-                    // Último intento fallido, agregar a cola
-                    this.retryQueue.push({ action, data });
-                    return { success: false, message: 'Error de red después de ' + (retries + 1) + ' intentos' };
+                if (this.onStateUpdate) {
+                    this.onStateUpdate(result.state);
                 }
             }
-        }
-    }
-    
-    // MEJORA #12: Procesar cola de reintentos
-    async processRetryQueue() {
-        while (this.retryQueue.length > 0) {
-            const {action, data} = this.retryQueue.shift();
-            console.log('Reintentando acción desde cola:', action);
-            await this.sendAction(action, data, 1);
+
+            return result;
+        } catch (error) {
+            console.error('[GameClient] Error enviando acción:', error);
+            
+            // MEJORA #12: Notificar error de red
+            if (this.onNetworkError) {
+                this.onNetworkError(error);
+            }
+            
+            return { success: false, message: 'Error de red: ' + error.message };
         }
     }
 
     // Obtener estado actual
     async getState() {
         return await this.sendAction('get_state');
+    }
+    
+    // Verificar si la conexión está activa
+    isAlive() {
+        return this.isConnected && (Date.now() - this.lastStateUpdate) < 60000; // 1 minuto
     }
 }
 
@@ -195,25 +181,25 @@ function getRemainingTime(startTimestamp, duration) {
 
 function showNotification(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
-    // Podrías agregar aquí una notificación visual
+    // Aquí podrías agregar notificaciones visuales
 }
 
-// MEJORA #22: Mejor manejo de localStorage con prefijo
-function getGameStorage(key) {
-    const prefix = 'unanimo_';
-    return localStorage.getItem(prefix + key);
-}
-
-function setGameStorage(key, value) {
-    const prefix = 'unanimo_';
-    localStorage.setItem(prefix + key, value);
-}
-
-function clearGameStorage() {
-    const prefix = 'unanimo_';
-    Object.keys(localStorage)
-        .filter(key => key.startsWith(prefix))
-        .forEach(key => localStorage.removeItem(key));
+// Sistema de reporte de bugs (MEJORA #9: solo en modo desarrollo)
+function reportBug(description, data = {}) {
+    console.error('[BUG REPORT]', description, data);
+    
+    // En producción esto podría enviar a un endpoint
+    if (window.DEV_MODE) {
+        const report = {
+            timestamp: new Date().toISOString(),
+            description: description,
+            data: data,
+            userAgent: navigator.userAgent,
+            url: window.location.href
+        };
+        
+        console.log('[BUG REPORT] Datos completos:', report);
+    }
 }
 
 console.log('✅ GameClient cargado correctamente');
