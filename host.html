@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anfitrión - TalCual Party</title>
-    <link rel="icon" href="icon.webp" type="image/webp">
+    <link rel="icon" href="/images/icon.webp" type="image/webp">
     <!-- CSS MODULARIZADO -->
     <link rel="stylesheet" href="css/main.css">
 </head>
@@ -13,7 +13,7 @@
         <!-- HEADER con LOGO -->
         <div class="tv-header">
             <div class="logo-container">
-                <img src="logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-family: Fredoka One; font-size: 2.5em; text-shadow: 4px 4px 0px #000;\''>TalCual</span>'">
+                <img src="/images/logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-family: Fredoka One; font-size: 2.5em; text-shadow: 4px 4px 0px #000;\'>TalCual</span>'">
             </div>
             <div class="timer-display" id="timer-display">02:00</div>
             <div class="game-code-sticker" id="game-code-tv">------</div>
@@ -49,7 +49,7 @@
         <button class="btn-control btn-next" id="btn-new-game">🔄 Nueva Partida</button>
     </div>
 
-    <script src="game-client.js"></script>
+    <script src="/js/game-client.js"></script>
     <script>
         const gameId = localStorage.getItem('gameId');
         if (!gameId || localStorage.getItem('isHost') !== 'true') {
@@ -65,7 +65,7 @@
                 console.log('🔧 Verificando si el juego existe...');
                 
                 // Intentar obtener el estado del juego
-                const checkResponse = await fetch('api-action.php', {
+                const checkResponse = await fetch('/app/api/actions.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -80,7 +80,7 @@
                     // El juego no existe, crearlo
                     console.log('⚠️ Juego no encontrado, creando nuevo juego...');
                     
-                    const createResponse = await fetch('api-action.php', {
+                    const createResponse = await fetch('/app/api/actions.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -249,7 +249,7 @@
         }
 
         async function getWordsList() {
-            const response = await fetch('api-action.php', {
+            const response = await fetch('/app/api/actions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'get_words' })
