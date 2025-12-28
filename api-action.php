@@ -2,6 +2,7 @@
 // Unánimo Party - API Actions
 // Maneja todas las acciones del juego
 // MEJORAS: #1 (seguridad), #6 (validaciones), #11 (eliminar redundancia), #14 (validar palabras), #21 (feedback)
+// NUEVAS: Countdown sincronizado y acortar timer
 
 require_once 'config.php';
 
@@ -49,6 +50,7 @@ switch ($action) {
             'current_word' => null,
             'round_duration' => DEFAULT_ROUND_DURATION,
             'round_started_at' => null,
+            'round_start_at' => null,  // NUEVO: Timestamp futuro para countdown
             'round_details' => [],
             'round_top_words' => [],
             'game_history' => []
@@ -129,7 +131,7 @@ switch ($action) {
         break;
 
     case 'start_round':
-        // Iniciar nueva ronda
+        // Iniciar nueva ronda con countdown sincronizado
         if (!$gameId) {
             $response = ['success' => false, 'message' => 'game_id requerido'];
             break;
@@ -169,12 +171,18 @@ switch ($action) {
             $duration = DEFAULT_ROUND_DURATION;
         }
 
+        // NUEVO: Calcular timestamp futuro para countdown sincronizado
+        // 4 segundos de countdown (3, 2, 1, + 1 segundo de margen)
+        $countdownDuration = 4;
+        $round_start_at = time() + $countdownDuration;
+
         // Incrementar ronda
         $state['round']++;
         $state['status'] = 'playing';
         $state['current_word'] = $word;
         $state['round_duration'] = $duration;
-        $state['round_started_at'] = time();
+        $state['round_start_at'] = $round_start_at;  // NUEVO: Timestamp futuro
+        $state['round_started_at'] = $round_start_at; // Se usará cuando realmente inicie
 
         // Resetear jugadores para nueva ronda
         foreach ($state['players'] as $playerId => $player) {
@@ -194,7 +202,7 @@ switch ($action) {
         break;
 
     case 'submit_answers':
-        // Enviar respuestas del jugador
+        // Enviar respuestas del jugador (ahora se llama automáticamente)
         if (!$gameId || !$playerId) {
             $response = ['success' => false, 'message' => 'game_id y player_id requeridos'];
             break;
@@ -234,7 +242,14 @@ switch ($action) {
 
         // Guardar respuestas
         $state['players'][$playerId]['answers'] = $validAnswers;
-        $state['players'][$playerId]['status'] = 'ready';
+        
+        // NUEVO: Marcar como ready solo si tiene el máximo de palabras o presionó PASO
+        $hasMaxWords = count($validAnswers) >= MAX_WORDS_PER_PLAYER;
+        $forcedPass = $input['forced_pass'] ?? false;
+        
+        if ($hasMaxWords || $forcedPass) {
+            $state['players'][$playerId]['status'] = 'ready';
+        }
 
         if (saveGameState($gameId, $state)) {
             $response = [
@@ -242,6 +257,44 @@ switch ($action) {
                 'message' => 'Respuestas guardadas',
                 'valid_answers' => count($validAnswers),
                 'errors' => $errors,
+                'state' => $state
+            ];
+        }
+        break;
+
+    case 'shorten_round':
+        // NUEVO: Acortar timer a 5 segundos cuando todos terminaron
+        if (!$gameId) {
+            $response = ['success' => false, 'message' => 'game_id requerido'];
+            break;
+        }
+
+        $state = loadGameState($gameId);
+
+        if (!$state || $state['status'] !== 'playing') {
+            $response = ['success' => false, 'message' => 'No hay ronda activa'];
+            break;
+        }
+
+        // Calcular tiempo transcurrido
+        $elapsed = time() - $state['round_started_at'];
+        
+        // Solo acortar si quedan más de 5 segundos
+        if ($elapsed < $state['round_duration'] - 5) {
+            $state['round_duration'] = $elapsed + 5;
+            
+            if (saveGameState($gameId, $state)) {
+                logMessage("Timer acortado a 5 segundos en game {$gameId}", 'INFO');
+                $response = [
+                    'success' => true,
+                    'message' => 'Timer acortado a 5 segundos',
+                    'state' => $state
+                ];
+            }
+        } else {
+            $response = [
+                'success' => true,
+                'message' => 'Timer ya está en los últimos 5 segundos',
                 'state' => $state
             ];
         }
@@ -336,6 +389,9 @@ switch ($action) {
             $state['status'] = 'round_ended';
         }
 
+        // Resetear round_start_at
+        $state['round_start_at'] = null;
+
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'round_ended', ['round' => $state['round']]);
             $response = [
@@ -372,6 +428,7 @@ switch ($action) {
         $state['status'] = 'waiting';
         $state['current_word'] = null;
         $state['round_started_at'] = null;
+        $state['round_start_at'] = null;
         $state['round_top_words'] = [];
 
         if (saveGameState($gameId, $state)) {
