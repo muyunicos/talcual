@@ -5,6 +5,9 @@
 game_states/
 *.lock
 
+# Images
+images/
+
 # Logs
 debug.log
 error.log
