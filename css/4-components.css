@@ -1,0 +1,572 @@
+/* ============================================
+   4-COMPONENTS.CSS - COMPONENTES REUTILIZABLES
+   Botones, Inputs, Tarjetas, Modales
+   ============================================ */
+
+/* ========== BOTÓN GENERAL ========== */
+.btn, button:not(.no-style) {
+    background: var(--magenta);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 15px 35px;
+    font-size: 1.2em;
+    font-weight: 800;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: var(--sombra-dura);
+    transition: all 0.2s;
+    position: relative;
+}
+
+.btn:hover:not(:disabled),
+button:not(.no-style):hover:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #000;
+}
+
+.btn:active:not(:disabled),
+button:not(.no-style):active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+}
+
+.btn:disabled,
+button:not(.no-style):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ========== BOTÓN JACKBOX ========== */
+.btn-jackbox {
+    background: var(--magenta);
+    color: white;
+    font-family: var(--font-primary);
+    font-weight: 900;
+    font-size: 1.2em;
+    padding: 15px 40px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: var(--sombra-dura);
+    transition: all 0.1s;
+    text-transform: uppercase;
+}
+
+.btn-jackbox:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #000;
+}
+
+.btn-jackbox:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+}
+
+.btn-jackbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-jackbox.cian {
+    background: var(--cian);
+    color: #000;
+}
+
+.btn-jackbox.amarillo {
+    background: var(--amarillo);
+    color: #000;
+}
+
+/* ========== BOTÓN JOIN ========== */
+.btn-join {
+    width: 100%;
+    padding: 20px;
+    background: var(--magenta);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-family: var(--font-display);
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: all 0.1s;
+    box-shadow: 5px 5px 0px #000;
+    text-transform: uppercase;
+}
+
+.btn-join:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0px #000;
+}
+
+.btn-join:active {
+    transform: translate(5px, 5px);
+    box-shadow: none;
+}
+
+.btn-join:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ========== BOTÓN SUBMIT ========== */
+.btn-submit {
+    width: 100%;
+    padding: 22px;
+    background: var(--magenta);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-family: var(--font-display);
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: all 0.1s;
+    box-shadow: 5px 5px 0px #000;
+    text-transform: uppercase;
+}
+
+.btn-submit:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0px #000;
+}
+
+.btn-submit:active {
+    transform: translate(5px, 5px);
+    box-shadow: none;
+}
+
+.btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ========== BOTÓN AÑADIR ========== */
+.btn-add {
+    padding: 18px 25px;
+    background: var(--cian);
+    color: #000;
+    border: 4px solid #000;
+    border-radius: 15px;
+    font-size: 1.8em;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.1s;
+    box-shadow: 3px 3px 0px #000;
+}
+
+.btn-add:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0px #000;
+}
+
+.btn-add:active {
+    transform: translate(3px, 3px);
+    box-shadow: none;
+}
+
+/* ========== BOTÓN CONTROL ========== */
+.btn-control {
+    display: block;
+    width: 100%;
+    padding: 12px 25px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 50px;
+    font-family: var(--font-primary);
+    font-size: 1.1em;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.1s;
+    box-shadow: 3px 3px 0px #000;
+}
+
+.btn-control:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #000;
+}
+
+.btn-control:active {
+    transform: translate(3px, 3px);
+    box-shadow: none;
+}
+
+.btn-control:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-start {
+    background: var(--cian);
+    color: #000;
+}
+
+.btn-end {
+    background: var(--magenta);
+    color: white;
+}
+
+.btn-next {
+    background: var(--amarillo);
+    color: #000;
+}
+
+/* ========== INPUTS ========== */
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 15px 20px;
+    border: 4px solid #000;
+    border-radius: 20px;
+    font-size: 1.1em;
+    font-weight: 700;
+    font-family: var(--font-primary);
+    background: white;
+    box-shadow: var(--sombra-dura);
+    transition: all 0.2s;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--cian);
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #000;
+}
+
+.input-field {
+    width: 100%;
+    padding: 18px;
+    border: 4px solid #000;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.9);
+    color: #000;
+    font-family: var(--font-primary);
+    font-weight: 800;
+    font-size: 1.3em;
+    text-align: center;
+    text-transform: uppercase;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+}
+
+.input-field::placeholder {
+    color: rgba(0,0,0,0.4);
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--cian);
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
+}
+
+.input-label {
+    font-family: var(--font-display);
+    display: block;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 0px #000;
+}
+
+.input-group {
+    margin-bottom: 25px;
+}
+
+.input-jackbox {
+    font-family: var(--font-primary);
+    font-weight: 700;
+    font-size: 1.2em;
+    padding: 15px 20px;
+    border: 4px solid #000;
+    border-radius: 15px;
+    background: white;
+    color: #000;
+    box-shadow: var(--sombra-dura);
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.input-jackbox:focus {
+    outline: none;
+    border-color: var(--cian);
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0px #000;
+}
+
+.word-input {
+    flex: 1;
+    padding: 18px;
+    border: 4px solid #000;
+    border-radius: 15px;
+    background: white;
+    color: #000;
+    font-family: var(--font-primary);
+    font-weight: 800;
+    font-size: 1.2em;
+    text-align: center;
+    text-transform: uppercase;
+    box-shadow: 3px 3px 0px rgba(0,0,0,0.2);
+}
+
+.word-input:focus {
+    outline: none;
+    border-color: var(--cian);
+}
+
+/* ========== CÓDIGO DE SALA (STICKER) ========== */
+.game-code-sticker {
+    background: var(--amarillo);
+    color: #000;
+    font-family: var(--font-display);
+    font-size: 2em;
+    font-weight: 900;
+    padding: 10px 25px;
+    border-radius: 15px;
+    transform: rotate(-3deg);
+    box-shadow: 4px 4px 0px #000;
+    display: inline-block;
+    letter-spacing: 3px;
+    justify-self: end;
+}
+
+.header-code-sticker {
+    background: var(--amarillo);
+    color: #000;
+    font-family: var(--font-display);
+    font-size: 1.2em;
+    padding: 8px 15px;
+    border-radius: 12px;
+    transform: rotate(-3deg);
+    box-shadow: 3px 3px 0px #000;
+    letter-spacing: 2px;
+    justify-self: end;
+}
+
+/* ========== MODALES ========== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: rgba(255,255,255,0.95);
+    border-radius: 25px;
+    padding: 35px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 6px 6px 0px #000;
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-title {
+    font-family: var(--font-display);
+    font-size: 2em;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #2E004E;
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+}
+
+.modal-input {
+    width: 100%;
+    padding: 18px;
+    border: 4px solid #000;
+    border-radius: 15px;
+    background: white;
+    color: #000;
+    font-family: var(--font-primary);
+    font-weight: 800;
+    font-size: 1.3em;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 3px 3px 0px rgba(0,0,0,0.2);
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 18px;
+    border: none;
+    border-radius: 50px;
+    font-family: var(--font-display);
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 3px 3px 0px #000;
+    transition: all 0.1s;
+}
+
+.modal-btn:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0px #000;
+}
+
+.modal-btn-save {
+    background: var(--cian);
+    color: #000;
+}
+
+.modal-btn-cancel {
+    background: var(--magenta);
+    color: white;
+}
+
+/* ========== TARJETA BLANCA ========== */
+.card {
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: var(--sombra-dura);
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('bg.webp');
+    background-repeat: repeat;
+    background-size: 200px;
+    opacity: 0.05;
+    border-radius: 25px;
+    pointer-events: none;
+}
+
+.container-white {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--sombra-dura);
+    color: #000;
+}
+
+/* ========== BOTÓN EDITAR NOMBRE ========== */
+.btn-edit-name {
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: white;
+    font-size: 1.3em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-edit-name:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.1);
+}
+
+/* ========== BOTÓN SALIR ========== */
+.btn-exit {
+    padding: 10px 20px;
+    background: var(--magenta);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-family: var(--font-primary);
+    font-size: 1em;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 2px 2px 0px #000;
+}
+
+.btn-exit:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px #000;
+}
+
+/* ========== LOADING SPINNER ========== */
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 6px solid rgba(255, 255, 255, 0.3);
+    border-top: 6px solid var(--cian);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 30px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ========== RESPONSIVE COMPONENTS ========== */
+@media (max-width: 768px) {
+    .btn {
+        font-size: 1em;
+        padding: 10px 20px;
+    }
+
+    .modal-content {
+        padding: 25px;
+        max-width: 90%;
+    }
+
+    .modal-title {
+        font-size: 1.6em;
+        margin-bottom: 15px;
+    }
+
+    .modal-input {
+        padding: 15px;
+        font-size: 1.1em;
+        margin-bottom: 15px;
+    }
+
+    .modal-btn {
+        padding: 15px;
+        font-size: 1em;
+    }
+}
+
+@media (max-width: 480px) {
+    .btn {
+        font-size: 0.95em;
+        padding: 8px 16px;
+    }
+
+    .input-field {
+        font-size: 1em;
+        padding: 12px;
+    }
+}
