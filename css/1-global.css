@@ -35,6 +35,8 @@ body {
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
+    display: flex;
+    justify-content: center;
     color: white;
     min-height: 100vh;
     position: relative;
