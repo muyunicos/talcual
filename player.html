@@ -1068,7 +1068,7 @@
             }
         }
 
-        // NUEVO: Botón PASO con confirmación
+        // NUEVO: Botón PASO con confirmación (SIN completar con vacíos)
         btnSubmit.addEventListener('click', async () => {
             if (!confirm('¿Seguro que querés pasar? Las palabras faltantes quedarán en blanco.')) {
                 return;
@@ -1078,14 +1078,10 @@
             btnSubmit.textContent = '⏳ Enviando...';
 
             try {
-                // Completar con strings vacíos hasta maxWords
-                while (myWords.length < maxWords) {
-                    myWords.push('');
-                }
-
+                // CAMBIO: NO completar con vacíos, solo enviar las palabras actuales
                 await client.sendAction('submit_answers', { 
-                    answers: myWords,
-                    forced_pass: true
+                    answers: myWords, // Solo las palabras existentes
+                    forced_pass: true // Marca que presionó PASO
                 });
 
                 console.log('✅ PASO enviado');
@@ -1118,7 +1114,7 @@
             let html = '<div class="results-title">📊 Resultados de la Ronda</div>';
 
             myWords.forEach(word => {
-                if (!word) return; // Saltar palabras vacías
+                if (!word || word.trim() === '') return; // FIX: Saltar palabras vacías
 
                 const result = results[word] || { points: 0, matched_with: [] };
                 const isMatch = result.points > 0;
