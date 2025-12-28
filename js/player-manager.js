@@ -237,6 +237,7 @@ class PlayerManager {
     
     /**
      * Intenta recuperar una sesión anterior
+     * FIX #8: Enviar player_id en get_state para evitar error de validación
      */
     async recoverSession(gameId, playerId, playerName, playerColor) {
         try {
@@ -247,7 +248,10 @@ class PlayerManager {
             
             // Crear cliente y verificar estado
             this.client = new GameClient(gameId, 'player');
-            const result = await this.client.sendAction('get_state', { game_id: gameId });
+            const result = await this.client.sendAction('get_state', { 
+                game_id: gameId,
+                player_id: playerId  // ✅ FIX #8: Agregar player_id
+            });
             
             if (result.success && result.state) {
                 const state = result.state;
