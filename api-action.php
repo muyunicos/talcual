@@ -202,7 +202,7 @@ switch ($action) {
         break;
 
     case 'submit_answers':
-        // Enviar respuestas del jugador (ahora se llama automáticamente)
+        // Enviar respuestas del jugador (ahora se llama automáticamente con cada palabra)
         if (!$gameId || !$playerId) {
             $response = ['success' => false, 'message' => 'game_id y player_id requeridos'];
             break;
