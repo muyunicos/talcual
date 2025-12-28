@@ -221,10 +221,16 @@ switch ($action) {
 
         // Validar cada respuesta (MEJORA #14)
         foreach ($answers as $word) {
-            $validation = validatePlayerWord($word, $state['current_word']);
+            // FIX: Filtrar strings vacíos
+            $trimmed = trim($word);
+            if (empty($trimmed)) {
+                continue; // Saltar palabras vacías
+            }
+            
+            $validation = validatePlayerWord($trimmed, $state['current_word']);
             
             if ($validation['valid']) {
-                $normalized = strtoupper(trim($word));
+                $normalized = strtoupper($trimmed);
                 
                 // Evitar duplicados
                 if (!in_array($normalized, $validAnswers)) {
@@ -320,7 +326,13 @@ switch ($action) {
 
         foreach ($state['players'] as $playerId => $player) {
             foreach ($player['answers'] as $word) {
-                $normalized = strtoupper($word);
+                // FIX: Filtrar palabras vacías
+                $trimmed = trim($word);
+                if (empty($trimmed)) {
+                    continue;
+                }
+                
+                $normalized = strtoupper($trimmed);
 
                 if (!isset($wordCounts[$normalized])) {
                     $wordCounts[$normalized] = [];
