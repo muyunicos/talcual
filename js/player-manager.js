@@ -1,123 +1,172 @@
-// ============================================================================
-// js/player-manager.js - Gestor del Jugador
-// ============================================================================
-// Reúne toda la lógica, UI y eventos del jugador en un solo archivo modular
-
-console.log('🎮 Player Manager v2.0 - Unified');
+/**
+ * @file player-manager.js
+ * @description Gestor de lógica del jugador
+ * Maneja:
+ * - Unirse a partidas
+ * - Sesión del jugador (recuperación automática)
+ * - Gestión de palabras
+ * - UI del jugador
+ * - Integración con GameClient (SSE)
+ */
 
 class PlayerManager {
     constructor() {
-        // Variables de estado
         this.gameId = null;
         this.playerId = null;
         this.playerName = null;
         this.playerColor = null;
         this.client = null;
+        this.gameState = null;
         this.myWords = [];
         this.maxWords = 6;
-        this.currentRound = 0;
         this.timerInterval = null;
         this.countdownInterval = null;
-        this.playerScore = 0;
-
-        // Referencias a elementos del DOM
+        
+        // Elementos del DOM
         this.elements = {
-            modalJoinGame: document.getElementById('modal-join-game'),
-            gameScreen: document.getElementById('game-screen'),
-            inputGameCode: document.getElementById('input-game-code'),
-            inputPlayerName: document.getElementById('input-player-name'),
-            btnJoin: document.getElementById('btn-join'),
-            colorSelector: document.getElementById('color-selector'),
-            statusMessage: document.getElementById('status-message'),
-            headerRound: document.getElementById('header-round'),
-            headerTimer: document.getElementById('header-timer'),
-            headerCode: document.getElementById('header-code'),
-            playerScoreDisplay: document.getElementById('player-score'),
-            statusCard: document.getElementById('status-card'),
-            currentWordDisplay: document.getElementById('current-word'),
-            waitingMessage: document.getElementById('waiting-message'),
-            wordsInputSection: document.getElementById('words-input-section'),
-            currentWordInput: document.getElementById('current-word-input'),
-            btnAddWord: document.getElementById('btn-add-word'),
-            wordsListContainer: document.getElementById('words-list-container'),
-            wordsList: document.getElementById('words-list'),
-            wordCount: document.getElementById('word-count'),
-            maxWordsDisplay: document.getElementById('max-words'),
-            btnSubmit: document.getElementById('btn-submit'),
-            resultsSection: document.getElementById('results-section'),
-            countdownOverlay: document.getElementById('countdown-overlay'),
-            countdownNumber: document.getElementById('countdown-number'),
-            playerNameDisplay: document.getElementById('player-name-display'),
-            btnEditName: document.getElementById('btn-edit-name'),
-            btnExit: document.getElementById('btn-exit'),
-            modalEditName: document.getElementById('modal-edit-name'),
-            modalNameInput: document.getElementById('modal-name-input'),
-            modalBtnCancel: document.getElementById('modal-btn-cancel'),
-            modalBtnSave: document.getElementById('modal-btn-save'),
+            // Modales
+            modalJoinGame: null,
+            gameScreen: null,
+            modalEditName: null,
+            
+            // Inputs del modal de unión
+            inputGameCode: null,
+            inputPlayerName: null,
+            btnJoin: null,
+            colorSelector: null,
+            statusMessage: null,
+            
+            // Header
+            headerRound: null,
+            headerTimer: null,
+            headerCode: null,
+            
+            // UI del juego
+            playerScore: null,
+            statusCard: null,
+            currentWord: null,
+            waitingMessage: null,
+            wordsInputSection: null,
+            currentWordInput: null,
+            btnAddWord: null,
+            wordsListContainer: null,
+            wordsList: null,
+            wordCount: null,
+            maxWordsDisplay: null,
+            btnSubmit: null,
+            resultsSection: null,
+            countdownOverlay: null,
+            countdownNumber: null,
+            playerNameDisplay: null,
+            btnEditName: null,
+            btnExit: null,
+            
+            // Modal editar nombre
+            modalNameInput: null,
+            modalBtnCancel: null,
+            modalBtnSave: null
         };
     }
-
+    
     /**
-     * Inicializa el manager y carga la interfaz
+     * Inicializa el gestor del jugador
      */
     initialize() {
-        console.log('🔧 Inicializando PlayerManager...');
-
-        // Verificar si hay sesión guardada
+        debug('🎲 Inicializando PlayerManager');
+        this.cacheElements();
+        this.attachEventListeners();
+        
+        // Intentar recuperar sesión existente
         const savedGameId = getLocalStorage('gameId');
         const savedPlayerId = getLocalStorage('playerId');
         const savedPlayerName = getLocalStorage('playerName');
         const savedPlayerColor = getLocalStorage('playerColor');
-
+        
         if (savedGameId && savedPlayerId && savedPlayerName && savedPlayerColor) {
-            console.log('🔄 Recuperando sesión:', savedGameId);
+            debug('🔄 Recuperando sesión');
             this.recoverSession(savedGameId, savedPlayerId, savedPlayerName, savedPlayerColor);
         } else {
-            console.log('📏 No hay sesión, mostrando modal de unión');
-            this.showJoinGameModal();
+            debug('📱 Mostrando modal de unión');
+            this.showJoinModal();
         }
-
-        this.setupEventListeners();
+        
+        debug('✅ PlayerManager inicializado');
     }
-
+    
     /**
-     * Configura todos los event listeners
+     * Cachea referencias a elementos del DOM
      */
-    setupEventListeners() {
+    cacheElements() {
+        this.elements = {
+            modalJoinGame: safeGetElement('modal-join-game'),
+            gameScreen: safeGetElement('game-screen'),
+            modalEditName: safeGetElement('modal-edit-name'),
+            inputGameCode: safeGetElement('input-game-code'),
+            inputPlayerName: safeGetElement('input-player-name'),
+            btnJoin: safeGetElement('btn-join'),
+            colorSelector: safeGetElement('color-selector'),
+            statusMessage: document.querySelector('#modal-join-game #status-message'),
+            headerRound: safeGetElement('header-round'),
+            headerTimer: safeGetElement('header-timer'),
+            headerCode: safeGetElement('header-code'),
+            playerScore: safeGetElement('player-score'),
+            statusCard: safeGetElement('status-card'),
+            currentWord: safeGetElement('current-word'),
+            waitingMessage: safeGetElement('waiting-message'),
+            wordsInputSection: safeGetElement('words-input-section'),
+            currentWordInput: safeGetElement('current-word-input'),
+            btnAddWord: safeGetElement('btn-add-word'),
+            wordsListContainer: safeGetElement('words-list-container'),
+            wordsList: safeGetElement('words-list'),
+            wordCount: safeGetElement('word-count'),
+            maxWordsDisplay: safeGetElement('max-words'),
+            btnSubmit: safeGetElement('btn-submit'),
+            resultsSection: safeGetElement('results-section'),
+            countdownOverlay: safeGetElement('countdown-overlay'),
+            countdownNumber: safeGetElement('countdown-number'),
+            playerNameDisplay: safeGetElement('player-name-display'),
+            btnEditName: safeGetElement('btn-edit-name'),
+            btnExit: safeGetElement('btn-exit'),
+            modalNameInput: safeGetElement('modal-name-input'),
+            modalBtnCancel: safeGetElement('modal-btn-cancel'),
+            modalBtnSave: safeGetElement('modal-btn-save')
+        };
+    }
+    
+    /**
+     * Adjunta event listeners
+     */
+    attachEventListeners() {
         // Botón unirse
         if (this.elements.btnJoin) {
             this.elements.btnJoin.addEventListener('click', () => this.joinGame());
         }
-
-        // Input de código de juego
+        
+        // Enter en inputs
         if (this.elements.inputGameCode) {
             this.elements.inputGameCode.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.elements.inputPlayerName.focus();
             });
         }
-
-        // Input de nombre
         if (this.elements.inputPlayerName) {
             this.elements.inputPlayerName.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.joinGame();
             });
         }
-
+        
         // Selector de color
-        const colorOptions = this.elements.colorSelector.querySelectorAll('.aura-circle');
-        colorOptions.forEach(option => {
-            option.addEventListener('click', () => {
-                colorOptions.forEach(opt => opt.classList.remove('selected'));
-                option.classList.add('selected');
-                this.playerColor = option.dataset.color;
+        const colorOptions = this.elements.colorSelector?.querySelectorAll('.aura-circle');
+        if (colorOptions) {
+            colorOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    colorOptions.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    this.playerColor = option.dataset.color;
+                });
             });
-        });
-
-        // Seleccionar color aleatorio por defecto
-        const randomIndex = Math.floor(Math.random() * colorOptions.length);
-        colorOptions[randomIndex].click();
-
-        // Botones de palabras
+        }
+        
+        // Palabras
         if (this.elements.btnAddWord) {
             this.elements.btnAddWord.addEventListener('click', () => this.addWord());
         }
@@ -129,8 +178,8 @@ class PlayerManager {
         if (this.elements.btnSubmit) {
             this.elements.btnSubmit.addEventListener('click', () => this.submitWords());
         }
-
-        // Botón editar nombre
+        
+        // Editar nombre
         if (this.elements.btnEditName) {
             this.elements.btnEditName.addEventListener('click', () => this.showEditNameModal());
         }
@@ -140,341 +189,463 @@ class PlayerManager {
         if (this.elements.modalBtnSave) {
             this.elements.modalBtnSave.addEventListener('click', () => this.saveNewName());
         }
-
-        // Botón salir
+        
+        // Salir
         if (this.elements.btnExit) {
-            this.elements.btnExit.addEventListener('click', () => {
-                if (confirm('¿Seguro que quieres salir del juego?')) {
-                    this.exitGame();
-                }
-            });
+            this.elements.btnExit.addEventListener('click', () => this.exitGame());
         }
     }
-
+    
     /**
-     * Muestra modal de unión al juego
+     * Muestra modal de unión
      */
-    showJoinGameModal() {
-        if (this.elements.modalJoinGame) {
-            this.elements.modalJoinGame.classList.add('active');
+    showJoinModal() {
+        safeShowElement(this.elements.modalJoinGame);
+        safeHideElement(this.elements.gameScreen);
+        
+        // Seleccionar color aleatorio
+        const colorOptions = this.elements.colorSelector?.querySelectorAll('.aura-circle');
+        if (colorOptions && colorOptions.length > 0) {
+            const randomIndex = Math.floor(Math.random() * colorOptions.length);
+            colorOptions[randomIndex].click();
+        }
+        
+        // Focus en input de código
+        if (this.elements.inputGameCode) {
+            setTimeout(() => this.elements.inputGameCode.focus(), 100);
         }
     }
-
+    
     /**
-     * Recupera sesión anterior
+     * Intenta recuperar una sesión anterior
      */
-    async recoverSession(gId, pId, pName, pColor) {
+    async recoverSession(gameId, playerId, playerName, playerColor) {
         try {
-            this.gameId = gId;
-            this.playerId = pId;
-            this.playerName = pName;
-            this.playerColor = pColor;
-
-            // Pre-llenar formulario por si falla
-            this.elements.inputGameCode.value = gId;
-            this.elements.inputPlayerName.value = pName;
-
-            // Seleccionar color guardado
-            const colorOptions = this.elements.colorSelector.querySelectorAll('.aura-circle');
-            colorOptions.forEach(option => {
-                if (option.dataset.color === pColor) {
-                    option.click();
-                }
-            });
-
+            this.gameId = gameId;
+            this.playerId = playerId;
+            this.playerName = playerName;
+            this.playerColor = playerColor;
+            
             // Crear cliente y verificar estado
-            this.client = new GameClient(this.gameId, 'player');
-            const result = await this.client.sendAction('get_state', { game_id: this.gameId });
-
+            this.client = new GameClient(gameId, 'player');
+            const result = await this.client.sendAction('get_state', { game_id: gameId });
+            
             if (result.success && result.state) {
                 const state = result.state;
-
-                // Verificar que el jugador siga en el juego
-                if (state.players && state.players[this.playerId]) {
-                    console.log('✅ Sesión recuperada exitosamente');
-
-                    // Aplicar color de fondo
-                    applyColorGradient(this.playerColor);
-
-                    // Mostrar pantalla de juego
-                    this.elements.gameScreen.classList.add('active');
-                    this.elements.headerCode.textContent = this.gameId;
-                    this.elements.playerNameDisplay.textContent = this.playerName;
-
-                    // Conectar eventos
-                    this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
-                    this.client.onConnectionLost = () => this.handleConnectionFailed();
-                    this.client.connect();
-
-                    // Actualizar con el estado actual
-                    this.handleStateUpdate(state);
-                } else {
-                    console.log('⚠️ Jugador no encontrado en el juego');
-                    clearGameSession();
-                    this.showJoinGameModal();
+                
+                // Verificar que el jugador sigue en el juego
+                if (state.players && state.players[playerId]) {
+                    debug('✅ Sesión recuperada');
+                    this.loadGameScreen(state);
+                    return;
                 }
-            } else {
-                console.log('⚠️ Juego no encontrado');
-                clearGameSession();
-                this.showJoinGameModal();
             }
-        } catch (error) {
-            console.error('❌ Error recuperando sesión:', error);
+            
+            // Si falla, limpiar y mostrar modal
+            debug('⚠️ No se pudo recuperar sesión');
             clearGameSession();
-            this.showJoinGameModal();
+            this.showJoinModal();
+            
+        } catch (error) {
+            debug('Error recuperando sesión:', error, 'error');
+            clearGameSession();
+            this.showJoinModal();
         }
     }
-
+    
     /**
-     * Se une al juego
+     * Carga la pantalla de juego
+     */
+    loadGameScreen(state) {
+        // Aplicar gradiente de color
+        applyColorGradient(this.playerColor);
+        
+        // Mostrar pantalla de juego
+        safeHideElement(this.elements.modalJoinGame);
+        safeShowElement(this.elements.gameScreen);
+        
+        // Actualizar UI
+        if (this.elements.headerCode) this.elements.headerCode.textContent = this.gameId;
+        if (this.elements.playerNameDisplay) this.elements.playerNameDisplay.textContent = this.playerName;
+        
+        // Conectar cliente
+        this.client.onStateUpdate = (s) => this.handleStateUpdate(s);
+        this.client.onConnectionLost = () => this.handleConnectionLost();
+        this.client.connect();
+        
+        // Aplicar estado
+        this.handleStateUpdate(state);
+    }
+    
+    /**
+     * Unirse a un juego
      */
     async joinGame() {
-        const code = this.elements.inputGameCode.value.trim().toUpperCase();
-        const name = this.elements.inputPlayerName.value.trim();
-
-        // Validación
+        const code = this.elements.inputGameCode?.value?.trim().toUpperCase();
+        const name = this.elements.inputPlayerName?.value?.trim();
+        
+        // Validar
         if (!isValidGameCode(code)) {
-            this.elements.statusMessage.innerHTML = '⚠️ Ingresa un código válido';
-            this.elements.inputGameCode.focus();
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '⚠️ Código inválido';
+            }
             return;
         }
-
+        
         if (!isValidPlayerName(name)) {
-            this.elements.statusMessage.innerHTML = '⚠️ Ingresa tu nombre (mínimo 2 caracteres)';
-            this.elements.inputPlayerName.focus();
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '⚠️ Nombre inválido (2-20 caracteres)';
+            }
             return;
         }
-
+        
         this.gameId = code;
         this.playerName = name;
         this.playerId = generatePlayerId();
-
+        
+        // Guardar sesión
         setLocalStorage('gameId', this.gameId);
         setLocalStorage('playerId', this.playerId);
         setLocalStorage('playerName', this.playerName);
         setLocalStorage('playerColor', this.playerColor);
-
-        this.elements.btnJoin.disabled = true;
-        this.elements.btnJoin.textContent = 'Conectando...';
-        this.elements.statusMessage.innerHTML = '⏳ Conectando...';
-
+        
+        if (this.elements.btnJoin) {
+            this.elements.btnJoin.disabled = true;
+            this.elements.btnJoin.textContent = 'Conectando...';
+        }
+        if (this.elements.statusMessage) {
+            this.elements.statusMessage.innerHTML = '⏳ Conectando...';
+        }
+        
         try {
             this.client = new GameClient(this.gameId, 'player');
-
+            
             const result = await this.client.sendAction('join_game', {
                 name: this.playerName,
                 color: this.playerColor
             });
-
+            
             if (result.success) {
-                applyColorGradient(this.playerColor);
-
-                this.elements.modalJoinGame.classList.remove('active');
-                this.elements.gameScreen.classList.add('active');
-
-                this.elements.headerCode.textContent = this.gameId;
-                this.elements.playerNameDisplay.textContent = this.playerName;
-
-                this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
-                this.client.onConnectionLost = () => this.handleConnectionFailed();
-                this.client.connect();
-
-                console.log('✅ Conectado al juego:', this.gameId);
+                debug(`✅ Conectado a juego: ${this.gameId}`);
+                this.loadGameScreen(result.state || {});
             } else {
-                this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'desconocido');
+                if (this.elements.statusMessage) {
+                    this.elements.statusMessage.innerHTML = '❌ ' + (result.message || 'Error');
+                }
+                if (this.elements.btnJoin) {
+                    this.elements.btnJoin.disabled = false;
+                    this.elements.btnJoin.textContent = '🎮 ¡Jugar!';
+                }
+            }
+        } catch (error) {
+            debug('Error uniendose:', error, 'error');
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '❌ Error de conexión';
+            }
+            if (this.elements.btnJoin) {
                 this.elements.btnJoin.disabled = false;
                 this.elements.btnJoin.textContent = '🎮 ¡Jugar!';
             }
-        } catch (error) {
-            console.error('❌ Error:', error);
-            this.elements.statusMessage.innerHTML = '❌ Error de conexión';
-            this.elements.btnJoin.disabled = false;
-            this.elements.btnJoin.textContent = '🎮 ¡Jugar!';
         }
     }
-
+    
     /**
      * Maneja actualizaciones de estado
      */
     handleStateUpdate(state) {
-        console.log('📈 Estado actualizado:', state.status);
-
+        this.gameState = state;
+        debug('📈 Estado actualizado:', state.status);
+        
         // Actualizar puntuación
-        if (state.players && typeof state.players === 'object') {
-            const me = state.players[this.playerId];
-            if (me) {
-                this.playerScore = me.score || 0;
-                this.elements.playerScoreDisplay.textContent = this.playerScore + ' pts';
-            }
+        const me = state.players?.[this.playerId];
+        if (me && this.elements.playerScore) {
+            this.elements.playerScore.textContent = (me.score || 0) + ' pts';
         }
-
+        
         // Actualizar ronda
-        this.currentRound = state.round || 0;
-        const totalRounds = state.total_rounds || 3;
-        this.elements.headerRound.textContent = `Ronda ${this.currentRound}/${totalRounds}`;
-
-        // Manejo de estados
+        if (this.elements.headerRound) {
+            const total = state.total_rounds || 3;
+            this.elements.headerRound.textContent = `Ronda ${state.round || 0}/${total}`;
+        }
+        
+        // Manejo de estado
         switch (state.status) {
             case 'waiting':
                 this.showWaitingState();
-                this.stopTimer();
                 break;
-
             case 'playing':
-                if (state.round_start_at) {
-                    const now = Math.floor(Date.now() / 1000);
-                    const remaining = state.round_start_at - now;
-
-                    if (remaining > 0 && remaining <= 4) {
-                        this.showCountdownSynced(state);
-                    } else if (remaining <= 0) {
-                        this.showPlayingState(state);
-                        this.startContinuousTimer(state);
-                    }
-                } else {
-                    this.showPlayingState(state);
-                    this.startContinuousTimer(state);
-                }
+                this.showPlayingState(state);
                 break;
-
             case 'round_ended':
                 this.showResults(state);
-                this.stopTimer();
                 break;
-
             case 'finished':
                 this.showFinalResults(state);
-                this.stopTimer();
                 break;
         }
     }
-
+    
     /**
      * Muestra estado de espera
      */
     showWaitingState() {
-        this.elements.currentWordDisplay.style.display = 'none';
-        this.elements.waitingMessage.style.display = 'block';
-        this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
-        this.elements.wordsInputSection.style.display = 'none';
-        this.elements.resultsSection.style.display = 'none';
-        this.elements.countdownOverlay.style.display = 'none';
+        safeHideElement(this.elements.currentWord);
+        safeShowElement(this.elements.waitingMessage);
+        if (this.elements.waitingMessage) {
+            this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
+        }
+        safeHideElement(this.elements.wordsInputSection);
+        safeHideElement(this.elements.resultsSection);
+        safeHideElement(this.elements.countdownOverlay);
     }
-
+    
     /**
-     * Muestra estado de juego en progreso
+     * Muestra estado de juego
      */
     showPlayingState(state) {
-        this.elements.countdownOverlay.style.display = 'none';
-        this.elements.resultsSection.style.display = 'none';
-
+        safeHideElement(this.elements.countdownOverlay);
+        safeHideElement(this.elements.resultsSection);
+        
         if (state.current_word) {
-            this.elements.currentWordDisplay.textContent = state.current_word;
-            this.elements.currentWordDisplay.style.display = 'block';
-            this.elements.waitingMessage.style.display = 'none';
-            this.elements.wordsInputSection.style.display = 'block';
-
-            this.maxWords = 6;
-            this.elements.maxWordsDisplay.textContent = this.maxWords;
-
+            if (this.elements.currentWord) {
+                this.elements.currentWord.textContent = state.current_word;
+                safeShowElement(this.elements.currentWord);
+            }
+            safeHideElement(this.elements.waitingMessage);
+            
             const me = state.players?.[this.playerId];
-            if (me && me.status === 'ready') {
-                this.elements.currentWordInput.disabled = true;
-                this.elements.btnAddWord.disabled = true;
-                this.elements.btnSubmit.disabled = true;
-                this.elements.btnSubmit.textContent = '✅ Enviado';
-                this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
-                this.elements.waitingMessage.style.display = 'block';
-                this.elements.wordsInputSection.style.display = 'none';
+            const isReady = me?.status === 'ready';
+            
+            if (isReady) {
+                // Ya envió respuestas
+                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
+                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
+                if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
+                if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✅ Enviado';
+                
+                if (this.elements.waitingMessage) {
+                    this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                    safeShowElement(this.elements.waitingMessage);
+                }
+                safeHideElement(this.elements.wordsInputSection);
             } else {
-                this.elements.currentWordInput.disabled = false;
-                this.elements.btnAddWord.disabled = false;
-                this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = '⏭️ PASO';
-
-                if (this.myWords.length > 0 && (!me || !me.answers || me.answers.length === 0)) {
+                // Puede escribir
+                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
+                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
+                if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
+                if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '⏭️ PASO';
+                
+                safeHideElement(this.elements.waitingMessage);
+                safeShowElement(this.elements.wordsInputSection);
+                
+                // Limpiar palabras si es nueva ronda
+                if (!me?.answers || me.answers.length === 0) {
                     this.myWords = [];
                     this.updateWordsList();
                 }
             }
         }
-    }
-
-    /**
-     * Muestra countdown sincronizado
-     */
-    showCountdownSynced(state) {
-        const countdownOverlay = this.elements.countdownOverlay;
-        const countdownNumber = this.elements.countdownNumber;
-
-        countdownOverlay.style.display = 'flex';
-
-        if (this.countdownInterval) {
-            clearInterval(this.countdownInterval);
+        
+        // Timer
+        if (state.round_started_at && state.round_duration) {
+            this.startContinuousTimer(state);
         }
-
-        this.countdownInterval = setInterval(() => {
-            if (!this.client || !this.client.gameState || !this.client.gameState.round_start_at) {
-                countdownOverlay.style.display = 'none';
-                clearInterval(this.countdownInterval);
-                return;
-            }
-
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = this.client.gameState.round_start_at - now;
-
-            if (remaining > 0 && remaining <= 3) {
-                countdownNumber.textContent = remaining;
-                countdownNumber.style.animation = 'none';
-                setTimeout(() => {
-                    countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
-                }, 10);
-            } else if (remaining <= 0) {
-                countdownOverlay.style.display = 'none';
-                clearInterval(this.countdownInterval);
-                this.countdownInterval = null;
-
-                if (this.client.gameState) {
-                    this.showPlayingState(this.client.gameState);
-                    this.startContinuousTimer(this.client.gameState);
-                }
-            }
-        }, 100);
     }
-
+    
+    /**
+     * Añade una palabra a la lista
+     */
+    addWord() {
+        const input = this.elements.currentWordInput;
+        if (!input) return;
+        
+        const word = input.value.trim();
+        if (!word) return;
+        
+        if (this.myWords.length >= this.maxWords) {
+            showNotification(`Máximo ${this.maxWords} palabras`, 'warning');
+            return;
+        }
+        
+        const normalized = word.toUpperCase();
+        if (this.myWords.includes(normalized)) {
+            showNotification('Ya agregaste esa palabra', 'warning');
+            return;
+        }
+        
+        this.myWords.push(normalized);
+        input.value = '';
+        this.updateWordsList();
+        this.sendWordsUpdate();
+        input.focus();
+    }
+    
+    /**
+     * Actualiza lista de palabras en UI
+     */
+    updateWordsList() {
+        if (this.elements.wordCount) {
+            this.elements.wordCount.textContent = this.myWords.length;
+        }
+        
+        if (this.myWords.length > 0) {
+            safeShowElement(this.elements.wordsListContainer);
+            
+            if (this.elements.wordsList) {
+                this.elements.wordsList.innerHTML = this.myWords.map((word, idx) => `
+                    <div class="word-item" onclick="playerManager.removeWord(${idx})">
+                        <span class="word-text">${sanitizeText(word)}</span>
+                        <span class="word-delete">🗑️</span>
+                    </div>
+                `).join('');
+            }
+        } else {
+            safeHideElement(this.elements.wordsListContainer);
+        }
+    }
+    
+    /**
+     * Elimina palabra de la lista
+     */
+    removeWord(index) {
+        this.myWords.splice(index, 1);
+        this.updateWordsList();
+        this.sendWordsUpdate();
+    }
+    
+    /**
+     * Envía actualización de palabras
+     */
+    async sendWordsUpdate() {
+        if (!this.client) return;
+        
+        try {
+            await this.client.sendAction('submit_answers', {
+                answers: this.myWords,
+                forced_pass: false
+            });
+        } catch (error) {
+            debug('Error enviando palabras:', error, 'error');
+        }
+    }
+    
+    /**
+     * Envía palabras finales
+     */
+    async submitWords() {
+        if (!this.client || !this.elements.btnSubmit) return;
+        
+        this.elements.btnSubmit.disabled = true;
+        this.elements.btnSubmit.textContent = 'Enviando...';
+        
+        try {
+            const result = await this.client.sendAction('submit_answers', {
+                answers: this.myWords,
+                forced_pass: true
+            });
+            
+            if (result.success) {
+                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
+                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
+                this.elements.btnSubmit.textContent = '✅ Enviado';
+                
+                if (this.elements.waitingMessage) {
+                    this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                    safeShowElement(this.elements.waitingMessage);
+                }
+                safeHideElement(this.elements.wordsInputSection);
+            } else {
+                showNotification('Error al enviar', 'error');
+                this.elements.btnSubmit.disabled = false;
+                this.elements.btnSubmit.textContent = '⏭️ PASO';
+            }
+        } catch (error) {
+            debug('Error:', error, 'error');
+            showNotification('Error de conexión', 'error');
+            this.elements.btnSubmit.disabled = false;
+            this.elements.btnSubmit.textContent = '⏭️ PASO';
+        }
+    }
+    
+    /**
+     * Muestra resultados de ronda
+     */
+    showResults(state) {
+        safeHideElement(this.elements.wordsInputSection);
+        safeHideElement(this.elements.currentWord);
+        safeHideElement(this.elements.waitingMessage);
+        
+        const me = state.players?.[this.playerId];
+        const myResults = me?.round_results;
+        
+        if (!myResults || Object.keys(myResults).length === 0) {
+            if (this.elements.resultsSection) {
+                this.elements.resultsSection.innerHTML = '<div class="waiting-message">No enviaste palabras esta ronda</div>';
+            }
+        } else {
+            let html = '<div class="results-title">📈 Tus Resultados</div>';
+            let roundScore = 0;
+            
+            Object.entries(myResults).forEach(([word, result]) => {
+                const hasMatch = result.count > 1;
+                const icon = hasMatch ? '✅' : '❌';
+                html += `
+                    <div class="result-item ${hasMatch ? 'match' : 'no-match'}">
+                        <div class="result-word">${icon} ${sanitizeText(word)}</div>
+                        <div class="result-points">+${result.points} puntos</div>
+                        ${hasMatch ? `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>` : ''}
+                    </div>
+                `;
+                roundScore += result.points;
+            });
+            
+            html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
+            
+            if (this.elements.resultsSection) {
+                this.elements.resultsSection.innerHTML = html;
+            }
+        }
+        
+        safeShowElement(this.elements.resultsSection);
+    }
+    
+    /**
+     * Muestra resultados finales
+     */
+    showFinalResults(state) {
+        this.showResults(state);
+        if (this.elements.waitingMessage) {
+            this.elements.waitingMessage.textContent = '🎉 ¡Juego terminado!';
+            safeShowElement(this.elements.waitingMessage);
+        }
+    }
+    
     /**
      * Inicia timer continuo
      */
     startContinuousTimer(state) {
         this.stopTimer();
-
-        if (!state.round_started_at || !state.round_duration) {
-            return;
-        }
-
         this.updateTimerFromState(state);
-
+        
         this.timerInterval = setInterval(() => {
-            if (this.client && this.client.gameState && this.client.gameState.status === 'playing') {
-                this.updateTimerFromState(this.client.gameState);
+            if (this.gameState && this.gameState.status === 'playing') {
+                this.updateTimerFromState(this.gameState);
             } else {
                 this.stopTimer();
             }
         }, 1000);
     }
-
+    
     /**
-     * Actualiza timer desde estado
+     * Actualiza timer
      */
     updateTimerFromState(state) {
-        const now = Math.floor(Date.now() / 1000);
-        const elapsed = now - state.round_started_at;
-        const remaining = Math.max(0, state.round_duration - elapsed);
-        updateTimerDisplay(remaining, this.elements.headerTimer, '⏳ ');
+        const remaining = getRemainingTime(state.round_started_at, state.round_duration);
+        updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
     }
-
+    
     /**
-     * Detiene el timer
+     * Detiene timer
      */
     stopTimer() {
         if (this.timerInterval) {
@@ -482,244 +653,87 @@ class PlayerManager {
             this.timerInterval = null;
         }
     }
-
+    
     /**
-     * Agrega una palabra
-     */
-    addWord() {
-        const word = this.elements.currentWordInput.value.trim();
-
-        if (!word) {
-            return;
-        }
-
-        if (this.myWords.length >= this.maxWords) {
-            alert(`Máximo ${this.maxWords} palabras`);
-            return;
-        }
-
-        const normalized = word.toUpperCase();
-
-        if (this.myWords.includes(normalized)) {
-            alert('Ya agregaste esa palabra');
-            return;
-        }
-
-        this.myWords.push(normalized);
-        this.elements.currentWordInput.value = '';
-        this.updateWordsList();
-
-        this.sendWordsUpdate();
-
-        this.elements.currentWordInput.focus();
-    }
-
-    /**
-     * Actualiza lista de palabras
-     */
-    updateWordsList() {
-        this.elements.wordCount.textContent = this.myWords.length;
-
-        if (this.myWords.length > 0) {
-            this.elements.wordsListContainer.style.display = 'block';
-            this.elements.wordsList.innerHTML = this.myWords.map((word, index) => `
-                <div class="word-item" data-index="${index}">
-                    <span class="word-text">${word}</span>
-                    <span class="word-edit">🗑️</span>
-                </div>
-            `).join('');
-
-            // Añadir event listeners a items
-            this.elements.wordsList.querySelectorAll('.word-item').forEach((item, index) => {
-                item.addEventListener('click', () => this.removeWord(index));
-            });
-        } else {
-            this.elements.wordsListContainer.style.display = 'none';
-        }
-    }
-
-    /**
-     * Elimina una palabra
-     */
-    removeWord(index) {
-        this.myWords.splice(index, 1);
-        this.updateWordsList();
-        this.sendWordsUpdate();
-    }
-
-    /**
-     * Envía actualización de palabras
-     */
-    async sendWordsUpdate() {
-        if (!this.client) return;
-
-        try {
-            await this.client.sendAction('submit_answers', {
-                answers: this.myWords,
-                forced_pass: false
-            });
-        } catch (error) {
-            console.error('❌ Error enviando palabras:', error);
-        }
-    }
-
-    /**
-     * Envía palabras finales
-     */
-    async submitWords() {
-        if (!this.client) return;
-
-        this.elements.btnSubmit.disabled = true;
-        this.elements.btnSubmit.textContent = 'Enviando...';
-
-        try {
-            const result = await this.client.sendAction('submit_answers', {
-                answers: this.myWords,
-                forced_pass: true
-            });
-
-            if (result.success) {
-                this.elements.currentWordInput.disabled = true;
-                this.elements.btnAddWord.disabled = true;
-                this.elements.btnSubmit.textContent = '✅ Enviado';
-
-                this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
-                this.elements.waitingMessage.style.display = 'block';
-                this.elements.wordsInputSection.style.display = 'none';
-            } else {
-                alert('Error al enviar: ' + (result.message || 'desconocido'));
-                this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = '⏭️ PASO';
-            }
-        } catch (error) {
-            console.error('❌ Error:', error);
-            alert('Error de conexión');
-            this.elements.btnSubmit.disabled = false;
-            this.elements.btnSubmit.textContent = '⏭️ PASO';
-        }
-    }
-
-    /**
-     * Muestra resultados de ronda
-     */
-    showResults(state) {
-        this.elements.countdownOverlay.style.display = 'none';
-        this.elements.wordsInputSection.style.display = 'none';
-        this.elements.currentWordDisplay.style.display = 'none';
-        this.elements.waitingMessage.style.display = 'none';
-
-        if (!state.players || !state.players[this.playerId]) return;
-
-        const me = state.players[this.playerId];
-        const myResults = me.round_results;
-
-        if (!myResults || Object.keys(myResults).length === 0) {
-            this.elements.resultsSection.innerHTML = '<div class="waiting-message">No enviaste palabras esta ronda</div>';
-            this.elements.resultsSection.style.display = 'block';
-            return;
-        }
-
-        this.elements.resultsSection.style.display = 'block';
-
-        let html = '<div class="results-title">📈 Tus Resultados</div>';
-        let roundScore = 0;
-
-        Object.entries(myResults).forEach(([word, result]) => {
-            const hasMatch = result.count > 1;
-            const matchClass = hasMatch ? 'match' : 'no-match';
-            const icon = hasMatch ? '✅' : '❌';
-
-            html += `
-                <div class="result-item ${matchClass}">
-                    <div class="result-word">${icon} ${word}</div>
-                    <div class="result-points">+${result.points} puntos</div>
-                    ${hasMatch ? `<div class="result-players">Coincidió con: ${result.matched_with?.join(', ') || 'otros'}</div>` : ''}
-                </div>
-            `;
-
-            roundScore += result.points;
-        });
-
-        html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
-
-        this.elements.resultsSection.innerHTML = html;
-    }
-
-    /**
-     * Muestra resultados finales
-     */
-    showFinalResults(state) {
-        this.showResults(state);
-
-        this.elements.waitingMessage.textContent = '🎉 ¡Juego terminado!';
-        this.elements.waitingMessage.style.display = 'block';
-    }
-
-    /**
-     * Muestra modal de edición de nombre
+     * Muestra modal de editar nombre
      */
     showEditNameModal() {
-        this.elements.modalNameInput.value = this.playerName;
-        this.elements.modalEditName.style.display = 'flex';
-        this.elements.modalNameInput.focus();
+        if (this.elements.modalNameInput) {
+            this.elements.modalNameInput.value = this.playerName;
+        }
+        safeShowElement(this.elements.modalEditName, 'flex');
+        if (this.elements.modalNameInput) {
+            this.elements.modalNameInput.focus();
+        }
     }
-
+    
     /**
-     * Oculta modal de edición de nombre
+     * Oculta modal de editar nombre
      */
     hideEditNameModal() {
-        this.elements.modalEditName.style.display = 'none';
+        safeHideElement(this.elements.modalEditName);
     }
-
+    
     /**
      * Guarda nuevo nombre
      */
     async saveNewName() {
-        const newName = this.elements.modalNameInput.value.trim();
-        if (newName && newName.length >= 2) {
-            this.playerName = newName;
-            this.elements.playerNameDisplay.textContent = newName;
-            setLocalStorage('playerName', newName);
-
-            if (this.client) {
-                await this.client.sendAction('update_player_name', { name: newName });
-            }
-
-            this.hideEditNameModal();
-        } else {
-            alert('Ingresa un nombre válido (mínimo 2 caracteres)');
+        const newName = this.elements.modalNameInput?.value?.trim();
+        
+        if (!isValidPlayerName(newName)) {
+            showNotification('Nombre inválido (2-20 caracteres)', 'warning');
+            return;
         }
+        
+        this.playerName = newName;
+        if (this.elements.playerNameDisplay) {
+            this.elements.playerNameDisplay.textContent = newName;
+        }
+        setLocalStorage('playerName', newName);
+        
+        if (this.client) {
+            try {
+                await this.client.sendAction('update_player_name', { name: newName });
+            } catch (error) {
+                debug('Error actualizando nombre:', error, 'error');
+            }
+        }
+        
+        this.hideEditNameModal();
     }
-
+    
     /**
-     * Maneja fallo de conexión
+     * Maneja pérdida de conexión
      */
-    handleConnectionFailed() {
-        alert('No se pudo conectar al servidor. Por favor, intenta de nuevo.');
+    handleConnectionLost() {
+        alert('Desconectado del servidor');
         this.exitGame();
     }
-
+    
     /**
-     * Sale del juego
+     * Salir del juego
      */
     exitGame() {
         if (this.client) {
             this.client.disconnect();
         }
-
         clearGameSession();
         location.reload();
     }
 }
 
-// ============================================================================
-// INICIALIZACIÓN
-// ============================================================================
+// Instancia global
+let playerManager = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM cargado, inicializando PlayerManager...');
-    window.playerManager = new PlayerManager();
-    window.playerManager.initialize();
-});
+// Inicializar cuando carga el DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        playerManager = new PlayerManager();
+        playerManager.initialize();
+    });
+} else {
+    playerManager = new PlayerManager();
+    playerManager.initialize();
+}
 
-console.log('✅ player-manager.js cargado');
+console.log('%c✅ player-manager.js cargado', 'color: #10B981; font-weight: bold');

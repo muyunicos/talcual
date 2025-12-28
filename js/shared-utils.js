@@ -1,20 +1,24 @@
-// ============================================================================
-// js/shared-utils.js - Utilidades Compartidas
-// ============================================================================
-// Funciones comunes entre host.html y play.html
-// Sin dependencias de rol específico (host/player)
+/**
+ * @file shared-utils.js
+ * @description Utilidades compartidas entre host y player
+ * Contiene funciones para:
+ * - Gestión de tiempo y timers
+ * - Almacenamiento local
+ * - Validación de datos
+ * - Utilidades DOM
+ * - Gradientes y estilos
+ * - Debug mode
+ */
 
-console.log('📦 Cargando shared-utils.js...');
-
 // ============================================================================
-// UTILIDADES DE TIEMPO
+// GESTIÓN DE TIEMPO
 // ============================================================================
 
 /**
- * Calcula el tiempo restante basado en timestamp y duración
+ * Obtiene el tiempo restante entre un timestamp y una duración
  * @param {number} startTimestamp - Timestamp de inicio (segundos)
- * @param {number} duration - Duración total en segundos
- * @returns {number} Tiempo restante en segundos (mínimo 0)
+ * @param {number} duration - Duración en segundos
+ * @returns {number} Segundos restantes
  */
 function getRemainingTime(startTimestamp, duration) {
     const now = Math.floor(Date.now() / 1000);
@@ -23,342 +27,401 @@ function getRemainingTime(startTimestamp, duration) {
 }
 
 /**
- * Formatea segundos en formato MM:SS
- * @param {number} seconds - Tiempo en segundos
- * @returns {string} Formato "MM:SS"
+ * Formatea segundos a MM:SS
+ * @param {number} seconds - Número de segundos
+ * @returns {string} Formato MM:SS
  */
 function formatTime(seconds) {
-    const minutes = Math.floor(seconds / 60);
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 /**
- * Actualiza display de timer con estilos
- * @param {number} seconds - Tiempo en segundos
- * @param {HTMLElement} timerElement - Elemento DOM del timer
- * @param {string} prefix - Prefijo del timer (ej: "⏳ ")
+ * Actualiza display de timer en el DOM
+ * @param {number} seconds - Segundos restantes
+ * @param {HTMLElement} element - Elemento donde mostrar
+ * @param {string} prefix - Prefijo (ej: '⏳')
+ * @param {number} warningThreshold - Mostrar warning desde X segundos
  */
-function updateTimerDisplay(seconds, timerElement, prefix = '⏳ ') {
-    if (!timerElement) return;
+function updateTimerDisplay(seconds, element, prefix = '⏳', warningThreshold = 10) {
+    if (!element) return;
     
-    timerElement.textContent = prefix + formatTime(seconds);
+    const formatted = formatTime(seconds);
+    element.textContent = prefix ? `${prefix} ${formatted}` : formatted;
     
-    // Agregar clase warning si está bajo 10 segundos
-    if (seconds <= 10) {
-        timerElement.classList.add('warning');
+    if (seconds <= warningThreshold) {
+        element.classList.add('warning');
     } else {
-        timerElement.classList.remove('warning');
+        element.classList.remove('warning');
     }
 }
 
+/**
+ * Crea un timer que se ejecuta cada X ms
+ * @param {Function} callback - Función a ejecutar
+ * @param {number} interval - Intervalo en ms (default: 1000)
+ * @returns {number} ID del intervalo
+ */
+function createTimer(callback, interval = 1000) {
+    return setInterval(callback, interval);
+}
+
+/**
+ * Crea un countdown sincronizado
+ * @param {number} targetTimestamp - Timestamp destino
+ * @param {Function} callback - Callback cada segundo
+ * @param {Function} onComplete - Callback cuando termina
+ * @returns {number} ID del intervalo
+ */
+function createCountdown(targetTimestamp, callback, onComplete) {
+    return setInterval(() => {
+        const now = Math.floor(Date.now() / 1000);
+        const remaining = targetTimestamp - now;
+        
+        if (callback) callback(remaining);
+        
+        if (remaining <= 0) {
+            clearInterval(timerID);
+            if (onComplete) onComplete();
+        }
+    }, 100);
+}
+
 // ============================================================================
-// UTILIDADES DE ALMACENAMIENTO LOCAL
+// ALMACENAMIENTO LOCAL
 // ============================================================================
 
 /**
- * Guarda datos en localStorage con validación
+ * Guarda dato en localStorage de forma segura
  * @param {string} key - Clave
- * @param {*} value - Valor
+ * @param {*} value - Valor (se convierte a JSON si es objeto)
  */
 function setLocalStorage(key, value) {
     try {
-        localStorage.setItem(key, value);
+        const data = typeof value === 'string' ? value : JSON.stringify(value);
+        localStorage.setItem(key, data);
     } catch (error) {
-        console.error(`❌ Error guardando ${key} en localStorage:`, error);
+        debug('Error guardando localStorage:', error, 'warn');
     }
 }
 
 /**
- * Obtiene datos de localStorage
+ * Obtiene dato de localStorage de forma segura
  * @param {string} key - Clave
- * @returns {string|null} Valor guardado o null
+ * @param {*} defaultValue - Valor por defecto
+ * @returns {*} Valor guardado o default
  */
-function getLocalStorage(key) {
+function getLocalStorage(key, defaultValue = null) {
     try {
-        return localStorage.getItem(key);
+        const value = localStorage.getItem(key);
+        if (!value) return defaultValue;
+        
+        // Intentar parsear como JSON
+        try {
+            return JSON.parse(value);
+        } catch {
+            return value; // Si no es JSON, devolver string
+        }
     } catch (error) {
-        console.error(`❌ Error leyendo ${key} de localStorage:`, error);
-        return null;
+        debug('Error leyendo localStorage:', error, 'warn');
+        return defaultValue;
     }
 }
 
 /**
- * Elimina datos de localStorage
- * @param {string} key - Clave
- */
-function removeLocalStorage(key) {
-    try {
-        localStorage.removeItem(key);
-    } catch (error) {
-        console.error(`❌ Error eliminando ${key} de localStorage:`, error);
-    }
-}
-
-/**
- * Limpia toda la sesión del juego
+ * Limpia la sesión del juego del localStorage
  */
 function clearGameSession() {
-    const keysToRemove = ['gameId', 'playerId', 'playerName', 'playerColor', 'isHost'];
-    keysToRemove.forEach(key => removeLocalStorage(key));
-    console.log('🔄 Sesión de juego limpiada');
+    const keys = ['gameId', 'playerId', 'playerName', 'playerColor'];
+    keys.forEach(key => localStorage.removeItem(key));
 }
 
 // ============================================================================
-// UTILIDADES DE VALIDACIÓN
+// VALIDACIÓN
 // ============================================================================
 
 /**
  * Valida código de juego
- * @param {string} code - Código
+ * @param {string} code - Código a validar
  * @returns {boolean} Es válido
  */
 function isValidGameCode(code) {
-    return code && code.length >= 3 && code.length <= 6 && /^[A-Z0-9]+$/.test(code);
+    return code && code.length >= 3 && code.length <= 6;
 }
 
 /**
  * Valida nombre de jugador
- * @param {string} name - Nombre
+ * @param {string} name - Nombre a validar
  * @returns {boolean} Es válido
  */
 function isValidPlayerName(name) {
-    return name && name.length >= 2 && name.length <= 20;
+    return name && name.trim().length >= 2 && name.trim().length <= 20;
 }
 
 /**
- * Sanitiza entrada de texto
+ * Sanitiza texto para mostrar en HTML
  * @param {string} text - Texto a sanitizar
  * @returns {string} Texto sanitizado
  */
 function sanitizeText(text) {
-    return text
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9\s]/g, ''); // Solo letras, números y espacios
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Valida formato de color
+ * @param {string} color - Color en formato hex (#RRGGBB)
+ * @returns {boolean} Es válido
+ */
+function isValidColor(color) {
+    return /^#[0-9A-F]{6}$/i.test(color);
 }
 
 // ============================================================================
-// UTILIDADES DE NOTIFICACIÓN
+// UTILIDADES DOM
 // ============================================================================
 
 /**
- * Muestra notificación en consola y opcionalmente en UI
- * @param {string} message - Mensaje
- * @param {string} type - Tipo: 'info', 'success', 'warning', 'error'
- * @param {HTMLElement} targetElement - Elemento DOM opcional para mostrar mensaje
+ * Obtiene elemento de forma segura
+ * @param {string} id - ID del elemento
+ * @param {*} orDefault - Valor por defecto si no existe
+ * @returns {HTMLElement|*}
  */
-function showNotification(message, type = 'info', targetElement = null) {
-    // Mostrar en consola
-    const icons = {
-        'info': 'ℹ️',
-        'success': '✅',
-        'warning': '⚠️',
-        'error': '❌'
-    };
-    
-    const icon = icons[type] || '📢';
-    console.log(`${icon} [${type.toUpperCase()}] ${message}`);
-    
-    // Mostrar en UI si se proporciona elemento
-    if (targetElement) {
-        const colorClass = {
-            'info': 'info',
-            'success': 'success',
-            'warning': 'warning',
-            'error': 'error'
-        }[type] || 'info';
-        
-        targetElement.className = `notification notification-${colorClass}`;
-        targetElement.textContent = message;
-        targetElement.style.display = 'block';
-        
-        // Auto-ocultar después de 5 segundos
-        setTimeout(() => {
-            targetElement.style.display = 'none';
-        }, 5000);
+function safeGetElement(id, orDefault = null) {
+    const el = document.getElementById(id);
+    if (!el && orDefault === null) {
+        debug(`Elemento no encontrado: ${id}`, 'warn');
     }
+    return el || orDefault;
+}
+
+/**
+ * Muestra elemento con seguridad
+ * @param {HTMLElement|string} element - Elemento o ID
+ * @param {string} display - Valor de display (default: 'block')
+ */
+function safeShowElement(element, display = 'block') {
+    const el = typeof element === 'string' ? safeGetElement(element) : element;
+    if (el) el.style.display = display;
+}
+
+/**
+ * Oculta elemento con seguridad
+ * @param {HTMLElement|string} element - Elemento o ID
+ */
+function safeHideElement(element) {
+    const el = typeof element === 'string' ? safeGetElement(element) : element;
+    if (el) el.style.display = 'none';
+}
+
+/**
+ * Añade clase a elemento con seguridad
+ * @param {HTMLElement|string} element - Elemento o ID
+ * @param {string} className - Nombre de clase
+ */
+function safeAddClass(element, className) {
+    const el = typeof element === 'string' ? safeGetElement(element) : element;
+    if (el) el.classList.add(className);
+}
+
+/**
+ * Elimina clase de elemento con seguridad
+ * @param {HTMLElement|string} element - Elemento o ID
+ * @param {string} className - Nombre de clase
+ */
+function safeRemoveClass(element, className) {
+    const el = typeof element === 'string' ? safeGetElement(element) : element;
+    if (el) el.classList.remove(className);
+}
+
+/**
+ * Toggle clase con seguridad
+ * @param {HTMLElement|string} element - Elemento o ID
+ * @param {string} className - Nombre de clase
+ */
+function safeToggleClass(element, className) {
+    const el = typeof element === 'string' ? safeGetElement(element) : element;
+    if (el) el.classList.toggle(className);
+}
+
+/**
+ * Establece atributo con seguridad
+ * @param {HTMLElement|string} element - Elemento o ID
+ * @param {string} attr - Nombre del atributo
+ * @param {string} value - Valor
+ */
+function safeSetAttribute(element, attr, value) {
+    const el = typeof element === 'string' ? safeGetElement(element) : element;
+    if (el) el.setAttribute(attr, value);
+}
+
+/**
+ * Obtiene atributo con seguridad
+ * @param {HTMLElement|string} element - Elemento o ID
+ * @param {string} attr - Nombre del atributo
+ * @param {*} orDefault - Valor por defecto
+ * @returns {string|*}
+ */
+function safeGetAttribute(element, attr, orDefault = null) {
+    const el = typeof element === 'string' ? safeGetElement(element) : element;
+    if (!el) return orDefault;
+    return el.getAttribute(attr) || orDefault;
 }
 
 // ============================================================================
-// UTILIDADES DE COLOR
+// GRADIENTES Y ESTILOS
 // ============================================================================
 
 /**
- * Aplica gradiente de color a elemento
- * @param {string} colorString - String de color (ej: "#FF9966,#FF5E62")
- * @param {HTMLElement} element - Elemento para aplicar gradiente
+ * Aplica gradiente de color al fondo
+ * @param {string} colorGradient - Colores separados por coma ("#FF9966,#FF5E62")
  */
-function applyColorGradient(colorString, element = document.body) {
-    if (!colorString) return;
-    
-    const colors = colorString.split(',');
-    if (colors.length === 2) {
-        element.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+function applyColorGradient(colorGradient) {
+    const colors = colorGradient.split(',').map(c => c.trim());
+    if (colors.length >= 2) {
+        document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
     }
 }
+
+/**
+ * Limpia gradiente de fondo
+ */
+function clearColorGradient() {
+    document.body.style.background = '';
+}
+
+// ============================================================================
+// GENERACIÓN DE IDs
+// ============================================================================
 
 /**
  * Genera ID único para jugador
- * @returns {string} ID único
+ * @returns {string} ID del jugador
  */
 function generatePlayerId() {
     return 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// ============================================================================
-// UTILIDADES DE MANEJO DE DOM
-// ============================================================================
-
 /**
- * Obtiene referencia a elemento de forma segura
- * @param {string} id - ID del elemento
- * @returns {HTMLElement|null} Elemento o null
+ * Genera código aleatorio para sala
+ * @param {number} length - Longitud del código (default: 4)
+ * @returns {string} Código generado
  */
-function safeGetElement(id) {
-    const element = document.getElementById(id);
-    if (!element) {
-        console.warn(`⚠️ Elemento no encontrado: #${id}`);
+function generateGameCode(length = 4) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let code = '';
+    for (let i = 0; i < length; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    return element;
-}
-
-/**
- * Agrega clase a elemento de forma segura
- * @param {HTMLElement|string} elementOrId - Elemento o ID
- * @param {string} className - Clase a agregar
- */
-function safeAddClass(elementOrId, className) {
-    const element = typeof elementOrId === 'string' 
-        ? document.getElementById(elementOrId) 
-        : elementOrId;
-    
-    if (element) {
-        element.classList.add(className);
-    }
-}
-
-/**
- * Remueve clase de elemento de forma segura
- * @param {HTMLElement|string} elementOrId - Elemento o ID
- * @param {string} className - Clase a remover
- */
-function safeRemoveClass(elementOrId, className) {
-    const element = typeof elementOrId === 'string' 
-        ? document.getElementById(elementOrId) 
-        : elementOrId;
-    
-    if (element) {
-        element.classList.remove(className);
-    }
-}
-
-/**
- * Alterna clase de elemento de forma segura
- * @param {HTMLElement|string} elementOrId - Elemento o ID
- * @param {string} className - Clase a alternar
- */
-function safeToggleClass(elementOrId, className) {
-    const element = typeof elementOrId === 'string' 
-        ? document.getElementById(elementOrId) 
-        : elementOrId;
-    
-    if (element) {
-        element.classList.toggle(className);
-    }
-}
-
-/**
- * Muestra/oculta elemento de forma segura
- * @param {HTMLElement|string} elementOrId - Elemento o ID
- * @param {boolean} show - Mostrar (true) u ocultar (false)
- */
-function safeShowElement(elementOrId, show = true) {
-    const element = typeof elementOrId === 'string' 
-        ? document.getElementById(elementOrId) 
-        : elementOrId;
-    
-    if (element) {
-        element.style.display = show ? 'block' : 'none';
-    }
+    return code;
 }
 
 // ============================================================================
-// UTILIDADES DE TIMER
+// NOTIFICACIONES
 // ============================================================================
 
 /**
- * Maneja intervalo de timer de forma centralizada
- * @param {number} startTimestamp - Timestamp de inicio
- * @param {number} duration - Duración en segundos
- * @param {Function} onTick - Callback cada 100ms
- * @param {Function} onComplete - Callback al completar
- * @returns {number} ID del intervalo
+ * Muestra notificación en pantalla
+ * @param {string} message - Mensaje
+ * @param {string} type - Tipo: 'success', 'error', 'warning', 'info'
+ * @param {number} duration - Duración en ms (0 = indefinido)
  */
-function createTimer(startTimestamp, duration, onTick, onComplete) {
-    const intervalId = setInterval(() => {
-        const remaining = getRemainingTime(startTimestamp, duration);
-        
-        if (onTick) {
-            onTick(remaining);
-        }
-        
-        if (remaining <= 0) {
-            clearInterval(intervalId);
-            if (onComplete) {
-                onComplete();
-            }
-        }
-    }, 100);
+function showNotification(message, type = 'info', duration = 3000) {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: ${getNotificationColor(type)};
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+    `;
     
-    return intervalId;
+    document.body.appendChild(notification);
+    
+    if (duration > 0) {
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, duration);
+    }
+    
+    return notification;
 }
 
-/**
- * Crea countdown visual (3-2-1)
- * @param {Function} onCountdown - Callback cada segundo
- * @param {Function} onComplete - Callback al completar
- * @returns {number} ID del intervalo
- */
-function createCountdown(onCountdown, onComplete) {
-    let count = 3;
-    
-    const intervalId = setInterval(() => {
-        if (onCountdown) {
-            onCountdown(count);
-        }
-        
-        count--;
-        
-        if (count < 0) {
-            clearInterval(intervalId);
-            if (onComplete) {
-                onComplete();
-            }
-        }
-    }, 1000);
-    
-    return intervalId;
+function getNotificationColor(type) {
+    const colors = {
+        success: '#10B981',
+        error: '#EF4444',
+        warning: '#F59E0B',
+        info: '#3B82F6'
+    };
+    return colors[type] || colors.info;
 }
 
 // ============================================================================
-// UTILIDADES DE DEBUG
+// DEBUG MODE
 // ============================================================================
 
-/**
- * Habilita/deshabilita modo debug
- */
 let DEBUG_MODE = false;
 
+/**
+ * Activa/desactiva modo debug
+ * @param {boolean} enabled - Activar o no
+ */
 function setDebugMode(enabled) {
     DEBUG_MODE = enabled;
-    console.log(`🐛 Debug mode: ${enabled ? 'ON' : 'OFF'}`);
-}
-
-function debug(message, data = null) {
-    if (DEBUG_MODE) {
-        console.log(`[DEBUG] ${message}`, data || '');
+    if (enabled) {
+        console.log('%c🔍 DEBUG MODE ACTIVADO', 'color: #00FF00; font-size: 14px; font-weight: bold');
     }
 }
 
-console.log('✅ shared-utils.js cargado');
+/**
+ * Log de debug
+ * @param {string} message - Mensaje
+ * @param {*} data - Datos opcionales
+ * @param {string} level - Nivel: 'log', 'warn', 'error'
+ */
+function debug(message, data = null, level = 'log') {
+    if (!DEBUG_MODE) return;
+    
+    const styles = {
+        log: 'color: #3B82F6',
+        warn: 'color: #F59E0B',
+        error: 'color: #EF4444'
+    };
+    
+    const style = styles[level] || styles.log;
+    console.log(`%c[DEBUG] ${message}`, style, data || '');
+}
+
+/**
+ * Alias para console.log con DEBUG_MODE check
+ */
+function logDebug(message, data) {
+    debug(message, data, 'log');
+}
+
+/**
+ * Alias para console.warn con DEBUG_MODE check
+ */
+function warnDebug(message, data) {
+    debug(message, data, 'warn');
+}
+
+/**
+ * Alias para console.error con DEBUG_MODE check
+ */
+function errorDebug(message, data) {
+    debug(message, data, 'error');
+}
+
+console.log('%c✅ shared-utils.js cargado', 'color: #10B981; font-weight: bold');
