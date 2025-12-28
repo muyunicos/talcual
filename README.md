@@ -1,6 +1,6 @@
 # 🎯 TalCual Party
 
-Juego web multiplayer tipo "Unánimo" donde los jugadores deben pensar palabras que coincidan con las de los demás para ganar puntos.
+Juego web multiplayer tipo 100 Argentinos Dicen donde los jugadores deben pensar palabras que coincidan con las de los demás para ganar puntos.
 
 ## 📋 Características
 
