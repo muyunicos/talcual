@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anfitrión - Unánimo Party</title>
+    <style>
+        /* HOST SMART TV - Pantalla Completa */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .tv-layout {
+            display: grid;
+            grid-template-rows: 100px 1fr 200px;
+            grid-template-columns: 300px 1fr 300px;
+            height: 100vh;
+            gap: 15px;
+            padding: 20px;
+        }
+
+        /* HEADER - Ronda y Timer */
+        .tv-header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px 40px;
+        }
+
+        .round-info {
+            font-size: 2.5em;
+            font-weight: 700;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .game-code-display {
+            font-size: 1.8em;
+            background: rgba(255,255,255,0.2);
+            padding: 15px 30px;
+            border-radius: 15px;
+            letter-spacing: 8px;
+        }
+
+        .timer-display {
+            font-size: 4em;
+            font-weight: 900;
+            font-family: 'Courier New', monospace;
+            text-shadow: 3px 3px 10px rgba(0,0,0,0.7);
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .timer-display.warning {
+            color: #ff6b6b;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* RANKING IZQUIERDA */
+        .ranking-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .ranking-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 3px solid white;
+            padding-bottom: 10px;
+        }
+
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            font-size: 1.3em;
+        }
+
+        .ranking-item.top-1 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #000;
+            font-weight: 700;
+        }
+
+        .ranking-item.top-2 {
+            background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+            color: #000;
+        }
+
+        .ranking-item.top-3 {
+            background: linear-gradient(135deg, #cd7f32 0%, #e8a87c 100%);
+            color: #000;
+        }
+
+        /* CENTRO - Palabra y Jugadores */
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .word-display {
+            font-size: 8em;
+            font-weight: 900;
+            text-shadow: 5px 5px 20px rgba(0,0,0,0.8);
+            text-align: center;
+            letter-spacing: 10px;
+            background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(255,255,255,0.5)); }
+            to { filter: drop-shadow(0 0 40px rgba(255,255,255,0.9)); }
+        }
+
+        .status-message {
+            font-size: 2.5em;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.5);
+        }
+
+        .countdown-display {
+            font-size: 15em;
+            font-weight: 900;
+            text-shadow: 5px 5px 30px rgba(0,0,0,0.8);
+            animation: countdownPulse 1s ease-in-out;
+        }
+
+        @keyframes countdownPulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* TOP PALABRAS DERECHA */
+        .top-words-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .top-words-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 3px solid white;
+            padding-bottom: 10px;
+        }
+
+        .top-word-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            font-size: 1.3em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-word-item .word {
+            font-weight: 700;
+        }
+
+        .top-word-item .count {
+            background: rgba(255,255,255,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        /* JUGADORES ABAJO */
+        .players-grid {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            overflow-y: auto;
+        }
+
+        .player-card {
+            width: 160px;
+            height: 140px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            position: relative;
+        }
+
+        .player-card.ready {
+            background: rgba(16, 185, 129, 0.3);
+            border-color: #10b981;
+        }
+
+        .player-card.playing {
+            border-color: #fbbf24;
+            animation: playingPulse 2s infinite;
+        }
+
+        @keyframes playingPulse {
+            0%, 100% { border-color: #fbbf24; }
+            50% { border-color: #f59e0b; }
+        }
+
+        .player-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: 700;
+            border: 3px solid white;
+        }
+
+        .player-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            text-align: center;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .player-score {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #fbbf24;
+        }
+
+        .player-status {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 1.5em;
+        }
+
+        /* CONTROLES (ocultos pero funcionales) */
+        .controls-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 15px;
+            display: none;
+            z-index: 100;
+        }
+
+        .controls-panel.visible {
+            display: block;
+        }
+
+        .btn-control {
+            display: block;
+            width: 100%;
+            padding: 12px 25px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-control:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-start {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-end {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-next {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .word-display { font-size: 6em; }
+            .player-card { width: 140px; height: 120px; }
+        }
+
+        @media (max-width: 1024px) {
+            .tv-layout {
+                grid-template-columns: 250px 1fr 250px;
+            }
+            .word-display { font-size: 5em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="tv-layout">
+        <!-- HEADER -->
+        <div class="tv-header">
+            <div class="round-info" id="round-info">Preparando...</div>
+            <div class="game-code-display" id="game-code-tv">------</div>
+            <div class="timer-display" id="timer-display">02:00</div>
+        </div>
+
+        <!-- RANKING IZQUIERDA -->
+        <div class="ranking-panel">
+            <div class="ranking-title">🏆 RANKING</div>
+            <div id="ranking-list"></div>
+        </div>
+
+        <!-- CENTRO - Palabra/Estado -->
+        <div class="center-panel">
+            <div class="status-message" id="status-message">Esperando jugadores...</div>
+            <div class="word-display" id="word-display" style="display: none;"></div>
+            <div class="countdown-display" id="countdown-display" style="display: none;"></div>
+        </div>
+
+        <!-- TOP PALABRAS DERECHA -->
+        <div class="top-words-panel">
+            <div class="top-words-title">📊 TOP PALABRAS</div>
+            <div id="top-words-list"></div>
+        </div>
+
+        <!-- JUGADORES ABAJO -->
+        <div class="players-grid" id="players-grid"></div>
+    </div>
+
+    <!-- CONTROLES (Presiona 'C' para mostrar) -->
+    <div class="controls-panel" id="controls-panel">
+        <button class="btn-control btn-start" id="btn-start-round">▶️ Iniciar Ronda</button>
+        <button class="btn-control btn-end" id="btn-end-round">⏹️ Finalizar Ronda</button>
+        <button class="btn-control btn-next" id="btn-new-game">🔄 Nueva Partida</button>
+    </div>
+
+    <script src="game-client.js"></script>
+    <script>
+        const gameId = localStorage.getItem('gameId');
+        if (!gameId || localStorage.getItem('isHost') !== 'true') {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('game-code-tv').textContent = gameId;
+
+        console.log('🎮 Host iniciando. GameID:', gameId);
+
+        // Crear cliente
+        const client = new GameClient(gameId, 'host');
+
+        // IMPORTANTE: Configurar callback ANTES de conectar
+        client.onStateUpdate = (state) => {
+            console.log('🔄 Estado actualizado en host:', state);
+            console.log('👥 Jugadores en estado:', Object.keys(state.players || {}).length);
+            updateHostUI(state);
+        };
+
+        // Conectar DESPUÉS de configurar callback
+        console.log('🔌 Conectando SSE...');
+        client.connect();
+
+        // Timer
+        let timerInterval = null;
+        let remainingTime = 120;
+        const ROUND_DURATION = 120;
+
+        // Mostrar controles con tecla 'C'
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'c') {
+                document.getElementById('controls-panel').classList.toggle('visible');
+            }
+            if (e.key === 'Enter') {
+                const startBtn = document.getElementById('btn-start-round');
+                if (!startBtn.disabled) {
+                    startBtn.click();
+                }
+            }
+        });
+
+        // Iniciar ronda
+        document.getElementById('btn-start-round').addEventListener('click', async () => {
+            await startNewRound();
+        });
+
+        document.getElementById('btn-end-round').addEventListener('click', async () => {
+            await client.sendAction('end_round');
+            stopTimer();
+        });
+
+        document.getElementById('btn-new-game').addEventListener('click', async () => {
+            await client.sendAction('reset_game');
+        });
+
+        async function startNewRound() {
+            console.log('🎬 Intentando iniciar ronda...');
+
+            // Esperar hasta 3 segundos si no hay estado
+            let attempts = 0;
+            while (!client.gameState && attempts < 30) {
+                console.log('⏳ Esperando estado del servidor... intento', attempts + 1);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
+            if (!client.gameState) {
+                alert('No se pudo conectar con el servidor. Intenta recargar la página (F5).');
+                console.error('❌ Estado no disponible después de 3 segundos');
+                return;
+            }
+
+            const playerCount = Object.keys(client.gameState.players || {}).length;
+            console.log('👥 Jugadores detectados:', playerCount);
+
+            if (playerCount < 3) {
+                alert(`Se necesitan al menos 3 jugadores para comenzar (tienes ${playerCount})`);
+                return;
+            }
+
+            // Seleccionar palabra aleatoria
+            console.log('📚 Obteniendo lista de palabras...');
+            const words = await getWordsList();
+            console.log('📚 Palabras disponibles:', words.length);
+
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            console.log('🎯 Palabra seleccionada:', randomWord);
+
+            // Mostrar countdown 3, 2, 1
+            await showCountdown();
+
+            // Iniciar ronda
+            console.log('▶️ Iniciando ronda...');
+            await client.sendAction('start_round', { 
+                word: randomWord,
+                duration: ROUND_DURATION 
+            });
+
+            startTimer(ROUND_DURATION);
+        }
+
+        async function showCountdown() {
+            const countdownEl = document.getElementById('countdown-display');
+            const statusEl = document.getElementById('status-message');
+            const wordEl = document.getElementById('word-display');
+
+            statusEl.style.display = 'none';
+            wordEl.style.display = 'none';
+            countdownEl.style.display = 'block';
+
+            for (let i = 3; i > 0; i--) {
+                countdownEl.textContent = i;
+                countdownEl.style.animation = 'none';
+                setTimeout(() => {
+                    countdownEl.style.animation = 'countdownPulse 1s ease-in-out';
+                }, 10);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            countdownEl.style.display = 'none';
+        }
+
+        async function getWordsList() {
+            const response = await fetch('api-action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_words' })
+            });
+            const data = await response.json();
+            return data.words || [];
+        }
+
+        function startTimer(seconds) {
+            remainingTime = seconds;
+            updateTimerDisplay();
+
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                remainingTime--;
+                updateTimerDisplay();
+
+                if (remainingTime <= 0) {
+                    stopTimer();
+                    autoEndRound();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(remainingTime / 60);
+            const seconds = remainingTime % 60;
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            const timerEl = document.getElementById('timer-display');
+            timerEl.textContent = display;
+
+            if (remainingTime <= 30) {
+                timerEl.classList.add('warning');
+            } else {
+                timerEl.classList.remove('warning');
+            }
+        }
+
+        async function autoEndRound() {
+            await client.sendAction('end_round');
+        }
+
+        // Actualizar UI del host
+        function updateHostUI(state) {
+            if (!state) {
+                console.warn('⚠️ Estado vacío recibido');
+                return;
+            }
+
+            const playerCount = Object.keys(state.players || {}).length;
+            console.log('🎨 Actualizando UI. Jugadores:', playerCount);
+
+            // Ronda
+            document.getElementById('round-info').textContent = 
+                `Ronda ${state.round || 0} / ${state.total_rounds || 3}`;
+
+            // Estado y Palabra
+            const statusEl = document.getElementById('status-message');
+            const wordEl = document.getElementById('word-display');
+
+            if (state.status === 'waiting') {
+                statusEl.style.display = 'block';
+                wordEl.style.display = 'none';
+
+                if (playerCount < 3) {
+                    statusEl.textContent = `Esperando más jugadores... (${playerCount}/3 mínimo)`;
+                } else {
+                    statusEl.textContent = `Presiona ENTER para comenzar (${playerCount} jugadores listos)`;
+                }
+
+                stopTimer();
+            } else if (state.status === 'playing') {
+                statusEl.style.display = 'none';
+                wordEl.style.display = 'block';
+                wordEl.textContent = state.current_word || '';
+            } else if (state.status === 'round_ended') {
+                statusEl.style.display = 'block';
+                wordEl.style.display = 'none';
+
+                if (playerCount < 3) {
+                    statusEl.textContent = 'Se necesitan al menos 3 jugadores para continuar';
+                } else {
+                    statusEl.textContent = 'Ronda Finalizada - Presiona ENTER para continuar';
+                }
+
+                stopTimer();
+                updateTimerDisplay();
+            } else if (state.status === 'finished') {
+                statusEl.style.display = 'block';
+                wordEl.style.display = 'none';
+                statusEl.textContent = '🏆 ¡Partida Finalizada!';
+                stopTimer();
+            }
+
+            // Actualizar secciones
+            updateRanking(state);
+            updateTopWords(state);
+            updatePlayersGrid(state);
+            updateControls(state);
+        }
+
+        function updateControls(state) {
+            if (!state) return;
+
+            const playerCount = Object.keys(state.players || {}).length;
+            const startBtn = document.getElementById('btn-start-round');
+            const endBtn = document.getElementById('btn-end-round');
+
+            if (state.status === 'waiting') {
+                startBtn.disabled = playerCount < 3;
+                startBtn.textContent = playerCount < 3 
+                    ? `⏸️ Min. 3 jugadores (${playerCount}/3)` 
+                    : `▶️ Iniciar Ronda (${playerCount} jugadores)`;
+                endBtn.disabled = true;
+            } else if (state.status === 'playing') {
+                startBtn.disabled = true;
+                startBtn.textContent = '▶️ Ronda en curso...';
+                endBtn.disabled = false;
+                endBtn.textContent = '⏹️ Finalizar Ahora';
+            } else if (state.status === 'round_ended') {
+                startBtn.disabled = playerCount < 3;
+                startBtn.textContent = playerCount < 3 
+                    ? `⏸️ Min. 3 jugadores (${playerCount}/3)` 
+                    : '▶️ Siguiente Ronda';
+                endBtn.disabled = true;
+            } else if (state.status === 'finished') {
+                startBtn.disabled = true;
+                startBtn.textContent = '🏆 Partida Finalizada';
+                endBtn.disabled = true;
+            }
+        }
+
+        function updateRanking(state) {
+            const players = Object.values(state.players || {});
+            const sorted = players.sort((a, b) => b.score - a.score);
+
+            const rankingList = document.getElementById('ranking-list');
+            rankingList.innerHTML = sorted.map((player, index) => {
+                const topClass = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}°`;
+
+                return `
+                    <div class="ranking-item ${topClass}">
+                        <span>${medal} ${player.name}</span>
+                        <span>${player.score} pts</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateTopWords(state) {
+            const topWordsList = document.getElementById('top-words-list');
+
+            if (state.round_top_words && state.round_top_words.length > 0) {
+                topWordsList.innerHTML = state.round_top_words.map((item, index) => `
+                    <div class="top-word-item">
+                        <span class="word">${index + 1}. ${item.word}</span>
+                        <span class="count">${item.count} jugadores</span>
+                    </div>
+                `).join('');
+            } else {
+                topWordsList.innerHTML = '<div style="text-align: center; opacity: 0.5; padding: 20px;">No hay datos aún</div>';
+            }
+        }
+
+        function updatePlayersGrid(state) {
+            const players = Object.values(state.players || {});
+            const grid = document.getElementById('players-grid');
+
+            console.log('👥 Actualizando grid con', players.length, 'jugadores:', players.map(p => p.name).join(', '));
+
+            grid.innerHTML = players.map(player => {
+                const initial = player.name.charAt(0).toUpperCase();
+                const statusIcon = player.status === 'ready' ? '✅' : 
+                                  player.status === 'playing' ? '✍️' : '🟢';
+                const statusClass = player.status === 'ready' ? 'ready' : 
+                                   player.status === 'playing' ? 'playing' : '';
+
+                // Aplicar color del jugador si existe
+                let avatarStyle = '';
+                if (player.color) {
+                    const colors = player.color.split(',');
+                    avatarStyle = `background: linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%);`;
+                }
+
+                return `
+                    <div class="player-card ${statusClass}">
+                        <span class="player-status">${statusIcon}</span>
+                        <div class="player-avatar" style="${avatarStyle}">${initial}</div>
+                        <div class="player-name">${player.name}</div>
+                        <div class="player-score">${player.score} pts</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        console.log('✅ Host configurado y listo');
+    </script>
+</body>
+</html>

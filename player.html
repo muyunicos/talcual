@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jugador - Unánimo Party</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* PANTALLA DE BIENVENIDA */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .welcome-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .welcome-title {
+            font-size: 2.5em;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .welcome-subtitle {
+            text-align: center;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1.1em;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .input-field::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* SELECTOR DE COLOR */
+        .color-selector {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .color-option {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: white;
+            transform: scale(1.15);
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        .btn-join {
+            width: 100%;
+            padding: 18px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-join:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255,255,255,0.3);
+        }
+
+        .btn-join:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* PANTALLA DE JUEGO */
+        .game-screen {
+            display: none;
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 60px;
+        }
+
+        /* INFO SUPERIOR */
+        .top-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            z-index: 100;
+        }
+
+        .game-code-small {
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        /* PLAYER INFO */
+        .player-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .player-name-display {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .player-score {
+            font-size: 2.5em;
+            font-weight: 900;
+            color: #fbbf24;
+        }
+
+        /* ESTADO */
+        .status-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .round-info {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .current-word {
+            font-size: 2.5em;
+            font-weight: 900;
+            margin: 15px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .timer {
+            font-size: 3em;
+            font-weight: 900;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .timer.warning {
+            color: #ff6b6b;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* INPUT DE PALABRAS */
+        .words-input-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .word-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-size: 1.1em;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .word-input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.25);
+        }
+
+        .btn-add {
+            padding: 15px 25px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* LISTA DE PALABRAS */
+        .words-list {
+            margin-top: 20px;
+        }
+
+        .words-list-title {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .word-item {
+            background: rgba(255,255,255,0.15);
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .word-item:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateX(5px);
+        }
+
+        .word-item .word-text {
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .word-item .word-edit {
+            font-size: 1.2em;
+            opacity: 0.6;
+        }
+
+        /* BOTÓN ENVIAR */
+        .submit-section {
+            margin-top: 20px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.3em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* RESULTADOS */
+        .results-section {
+            display: none;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .results-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .result-item.match {
+            background: rgba(16, 185, 129, 0.3);
+            border-left: 4px solid #10b981;
+        }
+
+        .result-item.no-match {
+            background: rgba(239, 68, 68, 0.3);
+            border-left: 4px solid #ef4444;
+        }
+
+        .result-word {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .result-points {
+            font-size: 1.1em;
+            color: #fbbf24;
+        }
+
+        .result-players {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .total-score {
+            text-align: center;
+            font-size: 1.8em;
+            font-weight: 900;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(251, 191, 36, 0.3);
+            border-radius: 10px;
+        }
+
+        /* BOTÓN SALIR */
+        .btn-exit {
+            width: 100%;
+            padding: 15px;
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        /* MENSAJES */
+        .waiting-message {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        /* COUNTDOWN */
+        .countdown-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .countdown-number {
+            font-size: 15em;
+            font-weight: 900;
+            animation: countdownPulse 1s ease-in-out;
+        }
+
+        @keyframes countdownPulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- PANTALLA DE BIENVENIDA -->
+    <div class="welcome-screen" id="welcome-screen">
+        <div class="welcome-card">
+            <div class="welcome-title">🎮 Unánimo</div>
+            <div class="welcome-subtitle">¡Únete a la diversión!</div>
+
+            <div class="input-group">
+                <label class="input-label">Código de Sala</label>
+                <input type="text" id="input-game-code" class="input-field" 
+                       placeholder="PLAYA" maxlength="6" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Tu Nombre</label>
+                <input type="text" id="input-player-name" class="input-field" 
+                       placeholder="Juan" maxlength="20" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Elige tu color (opcional)</label>
+                <div class="color-selector" id="color-selector">
+                    <div class="color-option" data-color="#667eea,#764ba2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                    <div class="color-option" data-color="#f093fb,#f5576c" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+                    <div class="color-option" data-color="#4facfe,#00f2fe" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+                    <div class="color-option" data-color="#43e97b,#38f9d7" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
+                    <div class="color-option" data-color="#fa709a,#fee140" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
+                    <div class="color-option" data-color="#30cfd0,#330867" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);"></div>
+                    <div class="color-option" data-color="#a8edea,#fed6e3" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);"></div>
+                    <div class="color-option" data-color="#ff9a9e,#fecfef" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);"></div>
+                    <div class="color-option" data-color="#ffecd2,#fcb69f" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);"></div>
+                    <div class="color-option" data-color="#ff6e7f,#bfe9ff" style="background: linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%);"></div>
+                </div>
+            </div>
+
+            <button class="btn-join" id="btn-join">Unirse al Juego</button>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE JUEGO -->
+    <div class="game-screen" id="game-screen">
+        <!-- Info superior -->
+        <div class="top-info">
+            <span class="game-code-small" id="game-code-display">----</span>
+        </div>
+
+        <!-- Info del jugador -->
+        <div class="player-info">
+            <div class="player-name-display" id="player-name">---</div>
+            <div class="player-score" id="player-score">0 pts</div>
+        </div>
+
+        <!-- Estado del juego -->
+        <div class="status-card" id="status-card">
+            <div class="round-info" id="round-info">Esperando inicio...</div>
+            <div class="current-word" id="current-word" style="display:none;"></div>
+            <div class="timer" id="timer">⏳ Esperando...</div>
+            <div class="waiting-message" id="waiting-message">
+                El anfitrión iniciará la ronda pronto
+            </div>
+        </div>
+
+        <!-- Input de palabras -->
+        <div class="words-input-section" id="words-input-section" style="display:none;">
+            <div class="input-row">
+                <input type="text" id="current-word-input" class="word-input" 
+                       placeholder="Escribe una palabra..." autocomplete="off">
+                <button class="btn-add" id="btn-add-word">➕</button>
+            </div>
+
+            <div class="words-list" id="words-list-container" style="display:none;">
+                <div class="words-list-title">
+                    Tus palabras (<span id="word-count">0</span>/<span id="max-words">6</span>)
+                </div>
+                <div id="words-list"></div>
+            </div>
+
+            <div class="submit-section">
+                <button class="btn-submit" id="btn-submit">✅ ENVIAR RESPUESTAS</button>
+            </div>
+        </div>
+
+        <!-- Resultados -->
+        <div class="results-section" id="results-section"></div>
+
+        <!-- Botón salir -->
+        <button class="btn-exit" id="btn-exit">🚪 Salir</button>
+    </div>
+
+    <!-- Countdown overlay -->
+    <div class="countdown-overlay" id="countdown-overlay">
+        <div class="countdown-number" id="countdown-number"></div>
+    </div>
+
+    <script src="game-client.js"></script>
+    <script>
+        // Variables globales
+        let gameId = null;
+        let playerId = null;
+        let playerName = null;
+        let playerColor = null;
+        let client = null;
+        let myWords = [];
+        let maxWords = 6;
+        let currentRound = 0;
+        let timerInterval = null;
+
+        // Elementos DOM
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const inputGameCode = document.getElementById('input-game-code');
+        const inputPlayerName = document.getElementById('input-player-name');
+        const btnJoin = document.getElementById('btn-join');
+        const colorSelector = document.getElementById('color-selector');
+
+        // Selector de color
+        const colorOptions = colorSelector.querySelectorAll('.color-option');
+        colorOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                colorOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                playerColor = option.dataset.color;
+            });
+        });
+
+        // Seleccionar color aleatorio por defecto
+        const randomIndex = Math.floor(Math.random() * colorOptions.length);
+        colorOptions[randomIndex].click();
+
+        // Botón unirse
+        btnJoin.addEventListener('click', joinGame);
+
+        // Enter en inputs
+        inputGameCode.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') inputPlayerName.focus();
+        });
+
+        inputPlayerName.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinGame();
+        });
+
+        // Función unirse
+        async function joinGame() {
+            const code = inputGameCode.value.trim().toUpperCase();
+            const name = inputPlayerName.value.trim();
+
+            if (!code || code.length < 3) {
+                alert('Ingresa un código de sala válido');
+                inputGameCode.focus();
+                return;
+            }
+
+            if (!name || name.length < 2) {
+                alert('Ingresa tu nombre');
+                inputPlayerName.focus();
+                return;
+            }
+
+            gameId = code;
+            playerName = name;
+            // Generar ID único para el jugador
+            playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+            // Guardar en localStorage
+            localStorage.setItem('gameId', gameId);
+            localStorage.setItem('playerId', playerId);
+            localStorage.setItem('playerName', playerName);
+            localStorage.setItem('playerColor', playerColor);
+
+            // Unirse al juego
+            btnJoin.disabled = true;
+            btnJoin.textContent = 'Conectando...';
+
+            try {
+                client = new GameClient(gameId, playerId);
+
+                const result = await client.sendAction('join_game', { 
+                    name: playerName,
+                    color: playerColor 
+                });
+
+                if (result.success) {
+                    // Aplicar color
+                    const colors = playerColor.split(',');
+                    document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+
+                    // Cambiar a pantalla de juego
+                    welcomeScreen.style.display = 'none';
+                    gameScreen.style.display = 'block';
+
+                    // Actualizar UI
+                    document.getElementById('game-code-display').textContent = gameId;
+                    document.getElementById('player-name').textContent = playerName;
+
+                    // Conectar SSE
+                    client.onStateUpdate = handleStateUpdate;
+                    client.connect();
+
+                    console.log('✅ Conectado al juego:', gameId);
+
+                } else {
+                    alert('Error al unirse: ' + (result.message || 'desconocido'));
+                    btnJoin.disabled = false;
+                    btnJoin.textContent = 'Unirse al Juego';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+                btnJoin.disabled = false;
+                btnJoin.textContent = 'Unirse al Juego';
+            }
+        }
+
+        // Manejar actualizaciones de estado
+        function handleStateUpdate(state) {
+            console.log('📥 Estado actualizado (player):', state);
+
+            const player = state.players[playerId];
+            if (!player) {
+                console.warn('Jugador no encontrado en estado');
+                return;
+            }
+
+            // Actualizar score
+            document.getElementById('player-score').textContent = player.score + ' pts';
+
+            // Detectar nueva ronda
+            if (state.round !== currentRound && state.round > 0) {
+                currentRound = state.round;
+                myWords = [];
+                updateWordsList();
+                showCountdown();
+            }
+
+            // Actualizar UI según estado
+            if (state.status === 'waiting') {
+                showWaitingState(state);
+            } else if (state.status === 'playing') {
+                if (player.status === 'playing') {
+                    showPlayingState(state);
+                } else if (player.status === 'ready') {
+                    showReadyState(state);
+                }
+            } else if (state.status === 'round_ended') {
+                showResultsState(state);
+            } else if (state.status === 'finished') {
+                showFinishedState(state);
+            }
+        }
+
+        function showWaitingState(state) {
+            document.getElementById('round-info').textContent = 
+                `Ronda ${state.round} / ${state.total_rounds}`;
+            document.getElementById('current-word').style.display = 'none';
+            document.getElementById('timer').textContent = '⏳ Esperando...';
+            document.getElementById('waiting-message').style.display = 'block';
+            document.getElementById('waiting-message').textContent = 
+                'El anfitrión iniciará la ronda pronto';
+            document.getElementById('words-input-section').style.display = 'none';
+            document.getElementById('results-section').style.display = 'none';
+            stopTimer();
+        }
+
+        function showPlayingState(state) {
+            document.getElementById('round-info').textContent = 
+                `Ronda ${state.round} / ${state.total_rounds}`;
+            document.getElementById('current-word').textContent = state.current_word;
+            document.getElementById('current-word').style.display = 'block';
+            document.getElementById('waiting-message').style.display = 'none';
+            document.getElementById('words-input-section').style.display = 'block';
+            document.getElementById('results-section').style.display = 'none';
+
+            // Timer sincronizado
+            startTimer(state.round_started_at, state.round_duration);
+
+            // Focus en input
+            document.getElementById('current-word-input').focus();
+        }
+
+        function showReadyState(state) {
+            document.getElementById('waiting-message').style.display = 'block';
+            document.getElementById('waiting-message').textContent = 
+                '✅ Respuestas enviadas. Esperando a los demás...';
+            document.getElementById('words-input-section').style.display = 'none';
+        }
+
+        function showResultsState(state) {
+            stopTimer();
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('current-word').style.display = 'none';
+            document.getElementById('waiting-message').style.display = 'none';
+            document.getElementById('words-input-section').style.display = 'none';
+
+            // Mostrar resultados
+            showResults(state);
+        }
+
+        function showFinishedState(state) {
+            document.getElementById('round-info').textContent = '🏆 ¡Partida Finalizada!';
+            document.getElementById('waiting-message').style.display = 'block';
+            document.getElementById('waiting-message').textContent = 
+                'Gracias por jugar';
+            showResults(state);
+        }
+
+        // Timer sincronizado
+        function startTimer(startTimestamp, duration) {
+            stopTimer();
+
+            timerInterval = setInterval(() => {
+                const remaining = getRemainingTime(startTimestamp, duration);
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                const timerEl = document.getElementById('timer');
+                timerEl.textContent = display;
+
+                if (remaining <= 30) {
+                    timerEl.classList.add('warning');
+                } else {
+                    timerEl.classList.remove('warning');
+                }
+
+                if (remaining <= 0) {
+                    stopTimer();
+                    autoSubmit();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        // Input de palabras
+        const wordInput = document.getElementById('current-word-input');
+        const btnAdd = document.getElementById('btn-add-word');
+        const btnSubmit = document.getElementById('btn-submit');
+
+        btnAdd.addEventListener('click', addWord);
+        wordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addWord();
+        });
+
+        // Auto-focus
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('input') && !e.target.closest('button')) {
+                if (wordInput.offsetParent !== null) {
+                    wordInput.focus();
+                }
+            }
+        });
+
+        function addWord() {
+            const word = wordInput.value.trim().toUpperCase();
+
+            if (!word) return;
+
+            if (myWords.length >= maxWords) {
+                alert(`Máximo ${maxWords} palabras`);
+                return;
+            }
+
+            if (myWords.includes(word)) {
+                alert('Ya agregaste esa palabra');
+                return;
+            }
+
+            myWords.push(word);
+            wordInput.value = '';
+            updateWordsList();
+            wordInput.focus();
+        }
+
+        function updateWordsList() {
+            const wordsList = document.getElementById('words-list');
+            const wordsContainer = document.getElementById('words-list-container');
+
+            document.getElementById('word-count').textContent = myWords.length;
+
+            if (myWords.length === 0) {
+                wordsContainer.style.display = 'none';
+                return;
+            }
+
+            wordsContainer.style.display = 'block';
+
+            wordsList.innerHTML = myWords.map((word, index) => `
+                <div class="word-item" data-index="${index}">
+                    <span class="word-text">${index + 1}. ${word}</span>
+                    <span class="word-edit">✏️</span>
+                </div>
+            `).join('');
+
+            // Click para editar
+            wordsList.querySelectorAll('.word-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const index = parseInt(item.dataset.index);
+                    const word = myWords[index];
+                    myWords.splice(index, 1);
+                    wordInput.value = word;
+                    updateWordsList();
+                    wordInput.focus();
+                });
+            });
+        }
+
+        // Enviar respuestas
+        btnSubmit.addEventListener('click', submitAnswers);
+
+        async function submitAnswers() {
+            if (myWords.length === 0) {
+                alert('Agrega al menos una palabra');
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = '⏳ Enviando...';
+
+            try {
+                await client.sendAction('submit_answers', { answers: myWords });
+                showNotification('Respuestas enviadas', 'success');
+            } catch (error) {
+                console.error('Error enviando:', error);
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = '✅ ENVIAR RESPUESTAS';
+            }
+        }
+
+        async function autoSubmit() {
+            if (myWords.length > 0) {
+                await submitAnswers();
+            }
+        }
+
+        // Mostrar resultados
+        function showResults(state) {
+            const resultsSection = document.getElementById('results-section');
+            const player = state.players[playerId];
+
+            if (!player || !player.round_results) {
+                resultsSection.style.display = 'none';
+                return;
+            }
+
+            resultsSection.style.display = 'block';
+
+            const results = player.round_results;
+            let html = '<div class="results-title">📊 Resultados de la Ronda</div>';
+
+            myWords.forEach(word => {
+                const result = results[word] || { points: 0, matched_with: [] };
+                const isMatch = result.points > 0;
+
+                html += `
+                    <div class="result-item ${isMatch ? 'match' : 'no-match'}">
+                        <div class="result-word">${isMatch ? '✅' : '❌'} ${word}</div>
+                        <div class="result-points">+${result.points} puntos</div>
+                        ${result.matched_with.length > 0 ? 
+                            `<div class="result-players">Con: ${result.matched_with.join(', ')}</div>` : 
+                            '<div class="result-players">Nadie más eligió esta palabra</div>'}
+                    </div>
+                `;
+            });
+
+            html += `<div class="total-score">Total: ${player.score} pts</div>`;
+
+            resultsSection.innerHTML = html;
+        }
+
+        // Countdown
+        async function showCountdown() {
+            const overlay = document.getElementById('countdown-overlay');
+            const number = document.getElementById('countdown-number');
+
+            overlay.style.display = 'flex';
+
+            for (let i = 3; i > 0; i--) {
+                number.textContent = i;
+                number.style.animation = 'none';
+                setTimeout(() => {
+                    number.style.animation = 'countdownPulse 1s ease-in-out';
+                }, 10);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            overlay.style.display = 'none';
+        }
+
+        // Salir
+        document.getElementById('btn-exit').addEventListener('click', () => {
+            if (confirm('¿Seguro que quieres salir?')) {
+                if (client) client.disconnect();
+                localStorage.clear();
+                window.location.reload();
+            }
+        });
+
+        // Verificar si ya hay sesión
+        const savedGameId = localStorage.getItem('gameId');
+        const savedPlayerId = localStorage.getItem('playerId');
+        const savedPlayerName = localStorage.getItem('playerName');
+        const savedPlayerColor = localStorage.getItem('playerColor');
+
+        if (savedGameId && savedPlayerId && savedPlayerName) {
+            // Reconectar
+            gameId = savedGameId;
+            playerId = savedPlayerId;
+            playerName = savedPlayerName;
+            playerColor = savedPlayerColor || colorOptions[0].dataset.color;
+
+            welcomeScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+
+            const colors = playerColor.split(',');
+            document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+            document.getElementById('game-code-display').textContent = gameId;
+            document.getElementById('player-name').textContent = playerName;
+
+            client = new GameClient(gameId, playerId);
+            client.onStateUpdate = handleStateUpdate;
+            client.connect();
+
+            console.log('🔄 Reconectando a:', gameId);
+        }
+    </script>
+</body>
+</html>
