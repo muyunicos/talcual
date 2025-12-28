@@ -1,44 +1,67 @@
 # .htaccess para Unánimo Party
-# MEJORA #30: URLs amigables y seguridad básica
+# Configuración básica para Apache
 
-# Habilitar rewrite
+# Activar RewriteEngine
 RewriteEngine On
 
-# Redirigir HTTP a HTTPS (descomentar si tienes SSL)
+# Forzar HTTPS (opcional, descomentar si tienes SSL)
 # RewriteCond %{HTTPS} off
 # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# Proteger archivos sensibles
-<FilesMatch "\.(log|json|lock)$">
-    Order allow,deny
+# Prevenir acceso directo a archivos sensibles
+<FilesMatch "^(settings\.php|config\.php|cleanup-cron\.php|debug\.log)$">
+    Order Allow,Deny
     Deny from all
 </FilesMatch>
 
-# Permitir acceso a analytics.json solo si DEV_MODE
-<Files "analytics.json">
-    Order allow,deny
-    Deny from all
-</Files>
+# Permitir acceso a archivos necesarios
+<FilesMatch "\.(html|css|js|json|ico|php)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
 
-# Proteger directorios
+# Solo permitir api-action.php y sse-stream.php como endpoints públicos
+<FilesMatch "^(api-action|sse-stream)\.php$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Prevenir listado de directorios
 Options -Indexes
+
+# Protección contra inyección de scripts
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
 
 # Compresión GZIP
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
 </IfModule>
 
-# Caché del navegador
+# Caché para archivos estáticos
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css "access plus 1 week"
+    ExpiresByType text/javascript "access plus 1 week"
     ExpiresByType application/javascript "access plus 1 week"
     ExpiresByType image/x-icon "access plus 1 month"
+    ExpiresByType application/json "access plus 0 seconds"
 </IfModule>
 
-# Cabeceras de seguridad
-<IfModule mod_headers.c>
-    Header set X-Content-Type-Options "nosniff"
-    Header set X-Frame-Options "SAMEORIGIN"
-    Header set X-XSS-Protection "1; mode=block"
+# Timeout para SSE (ajustar según servidor)
+<IfModule mod_fcgid.c>
+    FcgidIOTimeout 1800
+    FcgidIdleTimeout 1800
 </IfModule>
+
+# Proteger game_states
+<Directory "game_states">
+    Options -Indexes
+    <FilesMatch "\.json$">
+        Order Allow,Deny
+        Deny from all
+    </FilesMatch>
+</Directory>
