@@ -1,0 +1,348 @@
+/* ============================================
+   4-PLAYERS.CSS - SISTEMA DE JUGADORES
+   Tarjetas Jugadores, Auras, Rankings
+   ============================================ */
+
+/* ========== TARJETA SQUARCLE JUGADOR ========== */
+.player-squarcle {
+    width: 140px;
+    height: 140px;
+    border-radius: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 4px 4px 0px #000;
+    position: relative;
+    animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.player-squarcle:hover {
+    transform: scale(1.05) rotate(2deg);
+}
+
+.player-squarcle.ready {
+    animation: readyBounce 1s infinite;
+}
+
+.player-squarcle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('bg.webp');
+    background-repeat: repeat;
+    background-size: 100px;
+    opacity: 0.15;
+    pointer-events: none;
+    border-radius: 25px;
+}
+
+/* ========== INICIAL DEL JUGADOR ========== */
+.player-initial {
+    font-family: var(--font-display);
+    font-size: 5em;
+    color: white;
+    text-shadow: 4px 4px 0px #000;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+}
+
+/* ========== ETIQUETA NOMBRE JUGADOR ========== */
+.player-name-label {
+    font-size: 0.9em;
+    color: white;
+    font-weight: 800;
+    text-shadow: 2px 2px 0px #000;
+    margin-top: 5px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+.player-name-display {
+    font-family: var(--font-display);
+    font-size: 1.5em;
+    text-shadow: 2px 2px 0px #000;
+}
+
+/* ========== BADGE PUNTOS ========== */
+.player-score-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: var(--amarillo);
+    color: #000;
+    font-family: var(--font-display);
+    font-size: 1.2em;
+    padding: 5px 12px;
+    border-radius: 20px;
+    box-shadow: 3px 3px 0px #000;
+    z-index: 2;
+}
+
+.player-score {
+    font-family: var(--font-display);
+    font-size: 3em;
+    color: var(--amarillo);
+    text-shadow: 4px 4px 0px #000;
+}
+
+/* ========== ICONO ESTADO JUGADOR ========== */
+.player-status-icon {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    font-size: 2em;
+    filter: drop-shadow(2px 2px 0px #000);
+    z-index: 2;
+}
+
+/* ========== CONTADOR RESPUESTAS ========== */
+.player-answers-count {
+    position: absolute;
+    bottom: -10px;
+    background: var(--magenta);
+    color: white;
+    font-size: 0.8em;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 15px;
+    box-shadow: 2px 2px 0px #000;
+    z-index: 2;
+}
+
+/* ========== AURAS (GRADIENTES) ========== */
+.aura-fire {
+    background: linear-gradient(135deg, #FF9966, #FF5E62) !important;
+}
+
+.aura-ice {
+    background: linear-gradient(135deg, #00F260, #0575E6) !important;
+}
+
+.aura-candy {
+    background: linear-gradient(135deg, #F37335, #FDC830) !important;
+}
+
+.aura-mystic {
+    background: linear-gradient(135deg, #8E2DE2, #4A00E0) !important;
+}
+
+.aura-electric {
+    background: linear-gradient(135deg, #12c2e9, #f64f59) !important;
+}
+
+.aura-toxic {
+    background: linear-gradient(135deg, #DCE35B, #45B649) !important;
+}
+
+/* ========== SELECTOR DE AURAS ========== */
+.aura-selector {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 25px;
+}
+
+.aura-circle {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 3px 3px 0px #000;
+    border: 4px solid transparent;
+}
+
+.aura-circle:hover {
+    transform: scale(1.1) rotate(10deg);
+    box-shadow: 4px 4px 0px #000;
+}
+
+.aura-circle.selected {
+    transform: scale(1.2);
+    border: 4px solid #FFD700;
+    box-shadow: 0 0 20px rgba(255,215,0,0.8), 5px 5px 0px #000;
+    animation: selectedPulse 1s infinite;
+}
+
+/* ========== ITEM RANKING ========== */
+.ranking-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    margin: 8px 0;
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    font-size: 1.2em;
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+    transition: all 0.2s;
+}
+
+.ranking-item.top-1 {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #000;
+    font-weight: 900;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.4);
+}
+
+.ranking-item.top-2 {
+    background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+    color: #000;
+    font-weight: 800;
+}
+
+.ranking-item.top-3 {
+    background: linear-gradient(135deg, #cd7f32 0%, #e8a87c 100%);
+    color: #000;
+    font-weight: 800;
+}
+
+/* ========== ITEM PALABRA TOP ========== */
+.top-word-item {
+    padding: 12px 15px;
+    margin: 8px 0;
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    font-size: 1.2em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+}
+
+.top-word-item .word {
+    font-weight: 900;
+}
+
+.top-word-item .count {
+    background: var(--cian);
+    color: #000;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 800;
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+}
+
+/* ========== ITEM PALABRA EN LISTA ========== */
+.word-item {
+    background: rgba(46, 0, 78, 0.1);
+    border: 3px solid #2E004E;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 2px 2px 0px #2E004E;
+}
+
+.word-item:hover {
+    background: rgba(46, 0, 78, 0.2);
+    transform: translateX(5px);
+}
+
+.word-item .word-text {
+    font-family: var(--font-primary);
+    font-size: 1.3em;
+    font-weight: 800;
+    color: #2E004E;
+}
+
+.word-item .word-edit {
+    font-size: 1.3em;
+}
+
+/* ========== ITEMS DE RESULTADO ========== */
+.result-item {
+    background: rgba(46, 0, 78, 0.1);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    border-left: 6px solid #2E004E;
+}
+
+.result-item.match {
+    background: rgba(0, 242, 96, 0.2);
+    border-left-color: #00F260;
+}
+
+.result-item.no-match {
+    background: rgba(255, 0, 85, 0.2);
+    border-left-color: var(--magenta);
+}
+
+.result-word {
+    font-family: var(--font-display);
+    font-size: 1.5em;
+    margin-bottom: 5px;
+    color: #2E004E;
+}
+
+.result-points {
+    font-size: 1.2em;
+    color: var(--amarillo);
+    font-weight: 900;
+    text-shadow: 1px 1px 0px #000;
+}
+
+.result-players {
+    font-size: 0.9em;
+    color: #2E004E;
+    margin-top: 5px;
+}
+
+.total-score {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 2.2em;
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--amarillo);
+    color: #000;
+    border-radius: 15px;
+    box-shadow: 4px 4px 0px #000;
+}
+
+/* ========== RESPONSIVE PLAYERS ========== */
+@media (max-width: 1400px) {
+    .player-squarcle {
+        width: 120px;
+        height: 120px;
+    }
+
+    .player-initial {
+        font-size: 4em;
+    }
+}
+
+@media (max-width: 768px) {
+    .player-squarcle {
+        width: 100px;
+        height: 100px;
+    }
+
+    .player-initial {
+        font-size: 3em;
+    }
+
+    .ranking-item,
+    .top-word-item {
+        font-size: 1em;
+    }
+}
