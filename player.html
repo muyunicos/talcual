@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jugador - Unánimo Party</title>
+    <title>Jugador - TalCual Party</title>
     <style>
         * {
             margin: 0;
@@ -141,37 +141,129 @@
             display: none;
             min-height: 100vh;
             padding: 20px;
-            padding-top: 60px;
+            padding-top: 80px;
+            padding-bottom: 80px;
         }
 
-        /* INFO SUPERIOR */
-        .top-info {
+        /* HEADER SUPERIOR - Coherente con host */
+        .top-header {
             position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.4);
+            top: 0;
+            left: 0;
+            right: 0;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(10px);
-            padding: 8px 15px;
-            border-radius: 10px;
-            font-size: 0.9em;
+            padding: 12px 20px;
             z-index: 100;
         }
 
-        .game-code-small {
+        .header-round {
+            font-size: 1.2em;
             font-weight: 700;
-            letter-spacing: 2px;
+            justify-self: start;
+        }
+
+        .header-timer {
+            font-size: 2em;
+            font-weight: 900;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            justify-self: center;
+        }
+
+        .header-timer.warning {
+            color: #ff6b6b;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .header-code {
+            text-align: right;
+            justify-self: end;
+        }
+
+        .header-code-label {
+            font-size: 0.7em;
+            opacity: 0.8;
+            margin-bottom: 2px;
+        }
+
+        .header-code-value {
+            font-size: 1.3em;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+
+        /* FOOTER INFERIOR - Nombre editable y botón salir */
+        .bottom-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            z-index: 100;
+        }
+
+        .player-name-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-name-display {
+            font-size: 1.3em;
+            font-weight: 700;
+        }
+
+        .btn-edit-name {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-edit-name:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .btn-exit {
+            padding: 8px 16px;
+            background: rgba(239, 68, 68, 0.3);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: all 0.3s;
+        }
+
+        .btn-exit:hover {
+            opacity: 1;
+            background: rgba(239, 68, 68, 0.5);
         }
 
         /* PLAYER INFO */
         .player-info {
             text-align: center;
             margin-bottom: 20px;
-        }
-
-        .player-name-display {
-            font-size: 1.8em;
-            font-weight: 700;
-            margin-bottom: 5px;
         }
 
         .player-score {
@@ -190,34 +282,11 @@
             text-align: center;
         }
 
-        .round-info {
-            font-size: 1.3em;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
         .current-word {
             font-size: 2.5em;
             font-weight: 900;
             margin: 15px 0;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .timer {
-            font-size: 3em;
-            font-weight: 900;
-            font-family: 'Courier New', monospace;
-            margin: 10px 0;
-        }
-
-        .timer.warning {
-            color: #ff6b6b;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
         }
 
         /* INPUT DE PALABRAS */
@@ -391,20 +460,6 @@
             border-radius: 10px;
         }
 
-        /* BOTÓN SALIR */
-        .btn-exit {
-            width: 100%;
-            padding: 15px;
-            background: rgba(239, 68, 68, 0.8);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-
         /* MENSAJES */
         .waiting-message {
             text-align: center;
@@ -438,13 +493,80 @@
             50% { transform: scale(1.2); }
             100% { transform: scale(1); opacity: 1; }
         }
+
+        /* MODAL EDITAR NOMBRE */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1.2em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .modal-btn-save {
+            background: #10b981;
+            color: white;
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
     </style>
 </head>
 <body>
     <!-- PANTALLA DE BIENVENIDA -->
     <div class="welcome-screen" id="welcome-screen">
         <div class="welcome-card">
-            <div class="welcome-title">🎮 Unánimo</div>
+            <div class="welcome-title">🎮 TalCual</div>
             <div class="welcome-subtitle">¡Únete a la diversión!</div>
 
             <div class="input-group">
@@ -481,22 +603,24 @@
 
     <!-- PANTALLA DE JUEGO -->
     <div class="game-screen" id="game-screen">
-        <!-- Info superior -->
-        <div class="top-info">
-            <span class="game-code-small" id="game-code-display">----</span>
+        <!-- HEADER SUPERIOR -->
+        <div class="top-header">
+            <div class="header-round" id="header-round">Ronda 0/3</div>
+            <div class="header-timer" id="header-timer">⏳ 00:00</div>
+            <div class="header-code">
+                <div class="header-code-label">CÓDIGO SALA</div>
+                <div class="header-code-value" id="header-code">----</div>
+            </div>
         </div>
 
         <!-- Info del jugador -->
         <div class="player-info">
-            <div class="player-name-display" id="player-name">---</div>
             <div class="player-score" id="player-score">0 pts</div>
         </div>
 
         <!-- Estado del juego -->
         <div class="status-card" id="status-card">
-            <div class="round-info" id="round-info">Esperando inicio...</div>
             <div class="current-word" id="current-word" style="display:none;"></div>
-            <div class="timer" id="timer">⏳ Esperando...</div>
             <div class="waiting-message" id="waiting-message">
                 El anfitrión iniciará la ronda pronto
             </div>
@@ -525,13 +649,31 @@
         <!-- Resultados -->
         <div class="results-section" id="results-section"></div>
 
-        <!-- Botón salir -->
-        <button class="btn-exit" id="btn-exit">🚪 Salir</button>
+        <!-- FOOTER INFERIOR -->
+        <div class="bottom-footer">
+            <div class="player-name-section">
+                <div class="player-name-display" id="player-name-display">---</div>
+                <button class="btn-edit-name" id="btn-edit-name">✏️</button>
+            </div>
+            <button class="btn-exit" id="btn-exit">Retirarse</button>
+        </div>
     </div>
 
     <!-- Countdown overlay -->
     <div class="countdown-overlay" id="countdown-overlay">
         <div class="countdown-number" id="countdown-number"></div>
+    </div>
+
+    <!-- Modal editar nombre -->
+    <div class="modal-overlay" id="modal-edit-name">
+        <div class="modal-content">
+            <div class="modal-title">Cambiar Nombre</div>
+            <input type="text" id="modal-name-input" class="modal-input" maxlength="20" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" id="modal-btn-cancel">Cancelar</button>
+                <button class="modal-btn modal-btn-save" id="modal-btn-save">Guardar</button>
+            </div>
+        </div>
     </div>
 
     <script src="game-client.js"></script>
@@ -631,8 +773,8 @@
                     gameScreen.style.display = 'block';
 
                     // Actualizar UI
-                    document.getElementById('game-code-display').textContent = gameId;
-                    document.getElementById('player-name').textContent = playerName;
+                    document.getElementById('header-code').textContent = gameId;
+                    document.getElementById('player-name-display').textContent = playerName;
 
                     // Conectar SSE
                     client.onStateUpdate = handleStateUpdate;
@@ -653,6 +795,47 @@
             }
         }
 
+        // Modal editar nombre
+        document.getElementById('btn-edit-name').addEventListener('click', () => {
+            document.getElementById('modal-name-input').value = playerName;
+            document.getElementById('modal-edit-name').style.display = 'flex';
+            document.getElementById('modal-name-input').focus();
+        });
+
+        document.getElementById('modal-btn-cancel').addEventListener('click', () => {
+            document.getElementById('modal-edit-name').style.display = 'none';
+        });
+
+        document.getElementById('modal-btn-save').addEventListener('click', async () => {
+            const newName = document.getElementById('modal-name-input').value.trim();
+            
+            if (!newName || newName.length < 2) {
+                alert('Ingresa un nombre válido');
+                return;
+            }
+
+            // Verificar que no exista otro jugador con ese nombre
+            if (client.gameState) {
+                const existingNames = Object.values(client.gameState.players)
+                    .filter(p => p.id !== playerId)
+                    .map(p => p.name.toLowerCase());
+                
+                if (existingNames.includes(newName.toLowerCase())) {
+                    alert('Ese nombre ya está en uso. Elige otro.');
+                    return;
+                }
+            }
+
+            // Actualizar nombre
+            playerName = newName;
+            localStorage.setItem('playerName', playerName);
+            document.getElementById('player-name-display').textContent = playerName;
+            document.getElementById('modal-edit-name').style.display = 'none';
+
+            // Notificar al servidor
+            await client.sendAction('update_name', { name: playerName });
+        });
+
         // Manejar actualizaciones de estado
         function handleStateUpdate(state) {
             console.log('📥 Estado actualizado (player):', state);
@@ -665,6 +848,10 @@
 
             // Actualizar score
             document.getElementById('player-score').textContent = player.score + ' pts';
+
+            // Actualizar header
+            document.getElementById('header-round').textContent = 
+                `Ronda ${state.round || 0} / ${state.total_rounds || 3}`;
 
             // Detectar nueva ronda
             if (state.round !== currentRound && state.round > 0) {
@@ -691,10 +878,9 @@
         }
 
         function showWaitingState(state) {
-            document.getElementById('round-info').textContent = 
-                `Ronda ${state.round} / ${state.total_rounds}`;
             document.getElementById('current-word').style.display = 'none';
-            document.getElementById('timer').textContent = '⏳ Esperando...';
+            document.getElementById('header-timer').textContent = '⏳ Esperando...';
+            document.getElementById('header-timer').classList.remove('warning');
             document.getElementById('waiting-message').style.display = 'block';
             document.getElementById('waiting-message').textContent = 
                 'El anfitrión iniciará la ronda pronto';
@@ -704,8 +890,6 @@
         }
 
         function showPlayingState(state) {
-            document.getElementById('round-info').textContent = 
-                `Ronda ${state.round} / ${state.total_rounds}`;
             document.getElementById('current-word').textContent = state.current_word;
             document.getElementById('current-word').style.display = 'block';
             document.getElementById('waiting-message').style.display = 'none';
@@ -728,7 +912,7 @@
 
         function showResultsState(state) {
             stopTimer();
-            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('header-timer').textContent = '00:00';
             document.getElementById('current-word').style.display = 'none';
             document.getElementById('waiting-message').style.display = 'none';
             document.getElementById('words-input-section').style.display = 'none';
@@ -738,7 +922,7 @@
         }
 
         function showFinishedState(state) {
-            document.getElementById('round-info').textContent = '🏆 ¡Partida Finalizada!';
+            document.getElementById('header-round').textContent = '🏆 Finalizada';
             document.getElementById('waiting-message').style.display = 'block';
             document.getElementById('waiting-message').textContent = 
                 'Gracias por jugar';
@@ -755,7 +939,7 @@
                 const seconds = remaining % 60;
                 const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-                const timerEl = document.getElementById('timer');
+                const timerEl = document.getElementById('header-timer');
                 timerEl.textContent = display;
 
                 if (remaining <= 30) {
@@ -776,6 +960,13 @@
                 clearInterval(timerInterval);
                 timerInterval = null;
             }
+        }
+
+        function getRemainingTime(startTimestamp, duration) {
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = now - startTimestamp;
+            const remaining = duration - elapsed;
+            return Math.max(0, remaining);
         }
 
         // Input de palabras
@@ -865,7 +1056,6 @@
 
             try {
                 await client.sendAction('submit_answers', { answers: myWords });
-                showNotification('Respuestas enviadas', 'success');
             } catch (error) {
                 console.error('Error enviando:', error);
                 btnSubmit.disabled = false;
@@ -935,7 +1125,7 @@
 
         // Salir
         document.getElementById('btn-exit').addEventListener('click', () => {
-            if (confirm('¿Seguro que quieres salir?')) {
+            if (confirm('¿Seguro que quieres retirarte?')) {
                 if (client) client.disconnect();
                 localStorage.clear();
                 window.location.reload();
@@ -960,8 +1150,8 @@
 
             const colors = playerColor.split(',');
             document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
-            document.getElementById('game-code-display').textContent = gameId;
-            document.getElementById('player-name').textContent = playerName;
+            document.getElementById('header-code').textContent = gameId;
+            document.getElementById('player-name-display').textContent = playerName;
 
             client = new GameClient(gameId, playerId);
             client.onStateUpdate = handleStateUpdate;
