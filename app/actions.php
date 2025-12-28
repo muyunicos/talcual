@@ -4,7 +4,7 @@
 // MEJORAS: #1 (seguridad), #6 (validaciones), #11 (eliminar redundancia), #14 (validar palabras), #21 (feedback)
 // NUEVAS: Countdown sincronizado y acortar timer
 
-require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/config.php';
 
 // Headers para JSON
 header('Content-Type: application/json');
