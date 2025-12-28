@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Partida - TalCual</title>
+    <link rel="icon" href="icon.webp" type="image/webp">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            background-color: #2E004E;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('bg.webp');
+            background-repeat: repeat;
+            background-size: 400px;
+            opacity: 0.1;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 15px;
+            text-shadow: 4px 4px 0px #000;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 35px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-label {
+            font-family: 'Fredoka One', cursive;
+            display: block;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 18px;
+            border: 4px solid #000;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.9);
+            color: #000;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 1.3em;
+            text-align: center;
+            text-transform: uppercase;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #00F0FF;
+        }
+
+        .btn-create {
+            width: 100%;
+            padding: 22px;
+            background: #00F0FF;
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.8em;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 6px 6px 0px #000;
+            text-transform: uppercase;
+        }
+
+        .btn-create:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0px #000;
+        }
+
+        .btn-create:active {
+            transform: translate(6px, 6px);
+            box-shadow: none;
+        }
+
+        .btn-create:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-back {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn-back a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.1em;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .btn-back a:hover {
+            opacity: 1;
+        }
+
+        #game-code-display {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        #game-code-display .code {
+            font-family: 'Fredoka One', cursive;
+            font-size: 4em;
+            background: #FFD700;
+            color: #000;
+            padding: 20px 40px;
+            border-radius: 20px;
+            display: inline-block;
+            transform: rotate(-3deg);
+            box-shadow: 6px 6px 0px #000;
+            letter-spacing: 5px;
+            margin: 20px 0;
+        }
+
+        #game-code-display .instruction {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+
+        .btn-open-host {
+            width: 100%;
+            padding: 22px;
+            background: #FF0055;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.8em;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 6px 6px 0px #000;
+            text-transform: uppercase;
+        }
+
+        .btn-open-host:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0px #000;
+        }
+
+        .btn-open-host:active {
+            transform: translate(6px, 6px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📺 Crear Partida</h1>
+        <div class="subtitle">Configura tu sala de juego</div>
+
+        <div id="creation-form">
+            <div class="input-group">
+                <label class="input-label">Código de Sala</label>
+                <input type="text" id="game-code-input" class="input-field" 
+                       placeholder="PLAYA" maxlength="6" autocomplete="off">
+            </div>
+
+            <button class="btn-create" id="btn-create">🎮 Crear Sala</button>
+        </div>
+
+        <div id="game-code-display">
+            <div class="instruction">¡Sala creada! Comparte el código:</div>
+            <div class="code" id="game-code">------</div>
+            <button class="btn-open-host" id="btn-open-host">▶️ Abrir Pantalla TV</button>
+        </div>
+
+        <div class="btn-back">
+            <a href="index.html">← Volver</a>
+        </div>
+    </div>
+
+    <script>
+        const gameCodeInput = document.getElementById('game-code-input');
+        const btnCreate = document.getElementById('btn-create');
+        const creationForm = document.getElementById('creation-form');
+        const gameCodeDisplay = document.getElementById('game-code-display');
+        const gameCodeText = document.getElementById('game-code');
+        const btnOpenHost = document.getElementById('btn-open-host');
+
+        function generateRandomCode() {
+            const words = ['PLAYA', 'FIESTA', 'PIZZA', 'ARENA', 'FUEGO', 'NUBE', 'RISA', 'BAILE'];
+            return words[Math.floor(Math.random() * words.length)];
+        }
+
+        gameCodeInput.value = generateRandomCode();
+        gameCodeInput.focus();
+        gameCodeInput.select();
+
+        gameCodeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+
+        gameCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                btnCreate.click();
+            }
+        });
+
+        btnCreate.addEventListener('click', async () => {
+            const code = gameCodeInput.value.trim().toUpperCase();
+
+            if (!code || code.length < 3) {
+                alert('Ingresa un código válido (mínimo 3 caracteres)');
+                gameCodeInput.focus();
+                return;
+            }
+
+            btnCreate.disabled = true;
+            btnCreate.textContent = '⏳ Creando...';
+
+            try {
+                const response = await fetch('api-action.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'create_game',
+                        game_id: code
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('gameId', code);
+                    localStorage.setItem('isHost', 'true');
+
+                    gameCodeText.textContent = code;
+                    creationForm.style.display = 'none';
+                    gameCodeDisplay.style.display = 'block';
+                } else {
+                    alert('Error: ' + (data.message || 'No se pudo crear la sala'));
+                    btnCreate.disabled = false;
+                    btnCreate.textContent = '🎮 Crear Sala';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+                btnCreate.disabled = false;
+                btnCreate.textContent = '🎮 Crear Sala';
+            }
+        });
+
+        btnOpenHost.addEventListener('click', () => {
+            window.location.href = 'host.html';
+        });
+    </script>
+</body>
+</html>

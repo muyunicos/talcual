@@ -3,107 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unánimo Party - Digital</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>TalCual Party - Inicio</title>
+    <link rel="icon" href="icon.webp" type="image/webp">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            background-color: #2E004E;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('bg.webp');
+            background-repeat: repeat;
+            background-size: 400px;
+            opacity: 0.1;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-header {
+            margin-bottom: 40px;
+        }
+
+        .logo-header img {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5));
+        }
+
+        .logo-header h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 4em;
+            margin-bottom: 10px;
+            text-shadow: 5px 5px 0px #000;
+            display: none;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            opacity: 0.9;
+            margin-bottom: 50px;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 25px 40px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.8em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-decoration: none;
+            display: block;
+            box-shadow: 6px 6px 0px #000;
+        }
+
+        .btn:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0px #000;
+        }
+
+        .btn:active {
+            transform: translate(6px, 6px);
+            box-shadow: none;
+        }
+
+        .btn-create {
+            background: #00F0FF;
+            color: #000;
+        }
+
+        .btn-join {
+            background: #FF0055;
+            color: white;
+        }
+
+        .version {
+            margin-top: 40px;
+            font-size: 0.9em;
+            opacity: 0.6;
+        }
+    </style>
 </head>
 <body>
-    <div class="container home-container">
-        <div class="game-header">
-            <h1>🎯 UNÁNIMO PARTY</h1>
-            <p class="subtitle">¡Piensa igual que los demás!</p>
+    <div class="container">
+        <div class="logo-header">
+            <img src="logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <h1>🎮 TalCual</h1>
+        </div>
+        <div class="subtitle">¡El juego de palabras más divertido!</div>
+        
+        <div class="btn-group">
+            <a href="create.html" class="btn btn-create">📺 Crear Partida</a>
+            <a href="join.html" class="btn btn-join">📱 Unirse</a>
         </div>
 
-        <div class="card">
-            <h2>Crear Nueva Partida</h2>
-            <button id="create-game-btn" class="btn btn-primary">
-                🎮 Crear Partida
-            </button>
-        </div>
-
-        <div class="card">
-            <h2>Unirse a Partida</h2>
-            <input type="text" id="game-code-input" placeholder="Código de partida (ej: ABC123)" maxlength="6">
-            <input type="text" id="player-name-input" placeholder="Tu nombre" maxlength="20">
-            <button id="join-game-btn" class="btn btn-secondary">
-                👥 Unirse
-            </button>
-        </div>
-
-        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div class="version">v1.0 - Party Mode</div>
     </div>
-
-    <script src="game-client.js"></script>
-    <script>
-        // Crear nueva partida
-        document.getElementById('create-game-btn').addEventListener('click', async () => {
-            try {
-                const response = await fetch('api-action.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'create_game' })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    // Guardar rol de anfitrión
-                    localStorage.setItem('gameId', data.game_id);
-                    localStorage.setItem('isHost', 'true');
-                    window.location.href = 'host.html';
-                }
-            } catch (error) {
-                showError('Error al crear partida: ' + error.message);
-            }
-        });
-
-        // Unirse a partida
-        document.getElementById('join-game-btn').addEventListener('click', async () => {
-            const gameCode = document.getElementById('game-code-input').value.trim().toUpperCase();
-            const playerName = document.getElementById('player-name-input').value.trim();
-
-            if (!gameCode || !playerName) {
-                showError('Por favor completa todos los campos');
-                return;
-            }
-
-            try {
-                const playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-                const response = await fetch('api-action.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'join_game',
-                        game_id: gameCode,
-                        player_id: playerId,
-                        name: playerName
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    localStorage.setItem('gameId', gameCode);
-                    localStorage.setItem('playerId', playerId);
-                    localStorage.setItem('playerName', playerName);
-                    localStorage.setItem('isHost', 'false');
-                    window.location.href = 'player.html';
-                } else {
-                    showError(data.message || 'No se pudo unir a la partida');
-                }
-            } catch (error) {
-                showError('Error al unirse: ' + error.message);
-            }
-        });
-
-        function showError(message) {
-            const errorDiv = document.getElementById('error-message');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
-    </script>
 </body>
 </html>
