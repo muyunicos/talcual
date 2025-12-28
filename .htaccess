@@ -21,7 +21,7 @@ RewriteEngine On
 </FilesMatch>
 
 # Solo permitir api-action.php y sse-stream.php como endpoints públicos
-<FilesMatch "^(api-action|sse-stream)\.php$">
+<FilesMatch "^(actions|sse-stream|settings|config\.php$">
     Order Allow,Deny
     Allow from all
 </FilesMatch>

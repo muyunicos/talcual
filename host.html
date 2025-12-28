@@ -112,7 +112,7 @@
             statusMsg.innerHTML = '⏳ Creando partida...';
             
             try {
-                const response = await fetch('/app/api/actions.php', {
+                const response = await fetch('/app/actions.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -163,7 +163,7 @@
             try {
                 console.log('🔧 Verificando si el juego existe...');
                 
-                const checkResponse = await fetch('/app/api/actions.php', {
+                const checkResponse = await fetch('/app/actions.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -177,7 +177,7 @@
                 if (!checkData.success) {
                     console.log('⚠️ Juego no encontrado, creando nuevo juego...');
                     
-                    const createResponse = await fetch('/app/api/actions.php', {
+                    const createResponse = await fetch('/app/actions.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -343,7 +343,7 @@
         }
 
         async function getWordsList() {
-            const response = await fetch('/app/api/actions.php', {
+            const response = await fetch('/app/actions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'get_words' })
