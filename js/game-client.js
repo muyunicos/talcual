@@ -1,5 +1,6 @@
 // game-client.js - Cliente para manejar conexión SSE y acciones del juego
 // FIX #3: Eliminado polling simultáneo, usando SOLO SSE en tiempo real
+// FIX #5: Mejorada validación de datos SSE y manejo de heartbeats
 
 class GameClient {
     constructor(gameId, role = 'player') {
@@ -30,25 +31,64 @@ class GameClient {
             };
 
             // Mensaje por defecto (data simple)
+            // FIX #5: Mejorada validación de datos SSE
             this.eventSource.onmessage = (event) => {
                 try {
-                    const newState = JSON.parse(event.data);
-                    
+                    // Ignorar heartbeats y datos vacíos
+                    if (!event.data || typeof event.data !== 'string') {
+                        console.debug(`[${this.role}] Heartbeat recibido`);
+                        return;
+                    }
+
+                    const dataTrimmed = event.data.trim();
+                    if (dataTrimmed === '') {
+                        console.debug(`[${this.role}] Datos vacíos recibidos`);
+                        return;
+                    }
+
+                    // Intentar parsear JSON
+                    let newState;
+                    try {
+                        newState = JSON.parse(dataTrimmed);
+                    } catch (parseError) {
+                        console.warn(`❌ [${this.role}] Error parseando JSON SSE:`, parseError);
+                        console.warn(`   Datos recibidos:`, dataTrimmed.substring(0, 100));
+                        return;
+                    }
+
+                    // FIX #5: Validar estructura básica del estado
+                    if (!newState || typeof newState !== 'object') {
+                        console.warn(`⚠️ [${this.role}] Estado inválido (no es objeto):`, newState);
+                        return;
+                    }
+
+                    // Validar que tenga al menos un game_id
+                    if (!newState.game_id && newState.message !== 'error') {
+                        console.warn(`⚠️ [${this.role}] Estado sin game_id:`, newState);
+                        return;
+                    }
+
                     // FIX #3: Solo actualizar si hay cambios reales
                     const newHash = JSON.stringify(newState);
                     if (newHash !== this.lastStateHash) {
                         this.gameState = newState;
                         this.lastStateHash = newHash;
                         
-                        console.log(`📨 [${this.role}] Estado actualizado vía SSE`);
+                        console.log(`📨 [${this.role}] Estado actualizado vía SSE (ronda ${newState.round || 0})`);
                         
                         // Callback inmediato
                         if (this.onStateUpdate && typeof this.onStateUpdate === 'function') {
-                            this.onStateUpdate(newState);
+                            try {
+                                this.onStateUpdate(newState);
+                            } catch (callbackError) {
+                                console.error(`❌ [${this.role}] Error en callback onStateUpdate:`, callbackError);
+                            }
                         }
+                    } else {
+                        console.debug(`[${this.role}] Estado sin cambios, ignorando`);
                     }
                 } catch (error) {
-                    console.error(`❌ [${this.role}] Error parseando datos SSE:`, error);
+                    console.error(`❌ [${this.role}] Error inesperado en onmessage:`, error);
                 }
             };
 
@@ -187,4 +227,4 @@ function showNotification(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
-console.log('✅ GameClient FIX #3 - Usando SOLO SSE (sin polling simultáneo)');
+console.log('✅ GameClient FIX #3,#5 - Usando SOLO SSE con mejor validación');

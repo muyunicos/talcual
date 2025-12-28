@@ -135,6 +135,7 @@ class PlayerManager {
     
     /**
      * Adjunta event listeners
+     * FIX #4: Inicializar color por defecto correctamente
      */
     attachEventListeners() {
         // Botón unirse
@@ -154,16 +155,38 @@ class PlayerManager {
             });
         }
         
-        // Selector de color
+        // Selector de color - FIX #4: Mejor validación y inicialización
         const colorOptions = this.elements.colorSelector?.querySelectorAll('.aura-circle');
-        if (colorOptions) {
+        if (colorOptions && colorOptions.length > 0) {
+            // Encontrar el ya seleccionado o seleccionar el primero
+            let selectedOption = this.elements.colorSelector.querySelector('.aura-circle.selected');
+            if (!selectedOption) {
+                selectedOption = colorOptions[0];
+                selectedOption.classList.add('selected');
+            }
+            
+            // Inicializar playerColor con el color por defecto
+            this.playerColor = selectedOption.dataset.color;
+            if (!this.playerColor) {
+                console.warn('⚠️ Color sin data-color attribute, usando fallback');
+                this.playerColor = '#FF9966,#FF5E62'; // Fallback
+            }
+            
+            // Event listeners para cambiar color
             colorOptions.forEach(option => {
                 option.addEventListener('click', () => {
                     colorOptions.forEach(opt => opt.classList.remove('selected'));
                     option.classList.add('selected');
                     this.playerColor = option.dataset.color;
+                    if (!this.playerColor) {
+                        console.warn('⚠️ Opción sin data-color');
+                        this.playerColor = '#FF9966,#FF5E62';
+                    }
                 });
             });
+        } else {
+            console.warn('⚠️ No color options found in DOM');
+            this.playerColor = '#FF9966,#FF5E62'; // Fallback
         }
         
         // Palabras
@@ -203,12 +226,8 @@ class PlayerManager {
         safeShowElement(this.elements.modalJoinGame);
         safeHideElement(this.elements.gameScreen);
         
-        // Seleccionar color aleatorio
-        const colorOptions = this.elements.colorSelector?.querySelectorAll('.aura-circle');
-        if (colorOptions && colorOptions.length > 0) {
-            const randomIndex = Math.floor(Math.random() * colorOptions.length);
-            colorOptions[randomIndex].click();
-        }
+        // FIX #4: Ya se inicializa playerColor en attachEventListeners
+        // No necesita otra selección aquí
         
         // Focus en input de código
         if (this.elements.inputGameCode) {
@@ -257,6 +276,12 @@ class PlayerManager {
      * Carga la pantalla de juego
      */
     loadGameScreen(state) {
+        // FIX #4: Validar que playerColor no sea null
+        if (!this.playerColor) {
+            console.warn('⚠️ playerColor es null, usando fallback');
+            this.playerColor = '#FF9966,#FF5E62';
+        }
+        
         // Aplicar gradiente de color
         applyColorGradient(this.playerColor);
         
@@ -283,6 +308,14 @@ class PlayerManager {
     async joinGame() {
         const code = this.elements.inputGameCode?.value?.trim().toUpperCase();
         const name = this.elements.inputPlayerName?.value?.trim();
+        
+        // Validar color
+        if (!this.playerColor) {
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '⚠️ Selecciona un aura';
+            }
+            return;
+        }
         
         // Validar
         if (!isValidGameCode(code)) {
@@ -725,15 +758,12 @@ class PlayerManager {
 // Instancia global
 let playerManager = null;
 
-// Inicializar cuando carga el DOM
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+// FIX #3: Inicialización correcta - solo una vez
+document.addEventListener('DOMContentLoaded', () => {
+    if (!playerManager) {
         playerManager = new PlayerManager();
         playerManager.initialize();
-    });
-} else {
-    playerManager = new PlayerManager();
-    playerManager.initialize();
-}
+    }
+}, { once: true });
 
 console.log('%c✅ player-manager.js cargado', 'color: #10B981; font-weight: bold');
