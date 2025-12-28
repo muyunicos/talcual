@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jugador - TalCual Party</title>
+    <link rel="icon" href="icon.webp" type="image/webp">
+    <!-- FUENTES GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* ============================================
+           TALCUAL PARTY PLAYER - ESTILO JACKBOX
+           ============================================ */
         * {
             margin: 0;
             padding: 0;
@@ -12,11 +20,29 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('bg.webp');
+            background-repeat: repeat;
+            background-size: 300px;
+            opacity: 0.15;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 0;
         }
 
         /* PANTALLA DE BIENVENIDA */
@@ -27,113 +53,138 @@
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            position: relative;
+            z-index: 1;
         }
 
         .welcome-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
             padding: 40px 30px;
             max-width: 400px;
             width: 100%;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
         }
 
         .welcome-title {
-            font-size: 2.5em;
-            font-weight: 900;
+            font-family: 'Fredoka One', cursive;
+            font-size: 3em;
             text-align: center;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 4px 4px 0px #000;
         }
 
         .welcome-subtitle {
             text-align: center;
+            font-size: 1.1em;
             opacity: 0.9;
             margin-bottom: 30px;
         }
 
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .input-label {
+            font-family: 'Fredoka One', cursive;
             display: block;
-            font-size: 0.9em;
-            margin-bottom: 8px;
-            opacity: 0.9;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0px #000;
         }
 
         .input-field {
             width: 100%;
-            padding: 15px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            font-size: 1.1em;
+            padding: 18px;
+            border: 4px solid #000;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.9);
+            color: #000;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 1.3em;
             text-align: center;
             text-transform: uppercase;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
         }
 
         .input-field::placeholder {
-            color: rgba(255,255,255,0.5);
+            color: rgba(0,0,0,0.4);
         }
 
         .input-field:focus {
             outline: none;
-            border-color: rgba(255,255,255,0.8);
-            background: rgba(255,255,255,0.2);
+            border-color: #00F0FF;
+            transform: translate(1px, 1px);
+            box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
         }
 
-        /* SELECTOR DE COLOR */
-        .color-selector {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
+        /* SELECTOR DE AURAS */
+        .aura-selector {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
         }
 
-        .color-option {
-            width: 100%;
-            aspect-ratio: 1;
-            border-radius: 10px;
-            border: 3px solid transparent;
+        .aura-circle {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            border: 4px solid transparent;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            box-shadow: 3px 3px 0px #000;
         }
 
-        .color-option:hover {
-            transform: scale(1.1);
+        .aura-circle:hover {
+            transform: scale(1.1) rotate(10deg);
+            box-shadow: 4px 4px 0px #000;
         }
 
-        .color-option.selected {
-            border-color: white;
-            transform: scale(1.15);
-            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        .aura-circle.selected {
+            border-color: #FFD700;
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(255,215,0,0.8), 5px 5px 0px #000;
+            animation: selectedPulse 1s infinite;
+        }
+
+        @keyframes selectedPulse {
+            0%, 100% { transform: scale(1.2) rotate(0deg); }
+            50% { transform: scale(1.25) rotate(5deg); }
         }
 
         .btn-join {
             width: 100%;
-            padding: 18px;
-            background: white;
-            color: #667eea;
+            padding: 20px;
+            background: #FF0055;
+            color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: 700;
+            border-radius: 50px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5em;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.1s;
+            box-shadow: 5px 5px 0px #000;
+            text-transform: uppercase;
         }
 
         .btn-join:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(255,255,255,0.3);
+            transform: translate(2px, 2px);
+            box-shadow: 3px 3px 0px #000;
+        }
+
+        .btn-join:active {
+            transform: translate(5px, 5px);
+            box-shadow: none;
         }
 
         .btn-join:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
         /* PANTALLA DE JUEGO */
@@ -141,11 +192,12 @@
             display: none;
             min-height: 100vh;
             padding: 20px;
-            padding-top: 80px;
-            padding-bottom: 80px;
+            padding-top: 90px;
+            padding-bottom: 90px;
+            position: relative;
+            z-index: 1;
         }
 
-        /* HEADER SUPERIOR - Coherente con host */
         .top-header {
             position: fixed;
             top: 0;
@@ -154,28 +206,30 @@
             display: grid;
             grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(15px);
+            padding: 15px 20px;
             z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
         .header-round {
+            font-family: 'Nunito', sans-serif;
             font-size: 1.2em;
-            font-weight: 700;
+            font-weight: 800;
             justify-self: start;
         }
 
         .header-timer {
-            font-size: 2em;
-            font-weight: 900;
-            font-family: 'Courier New', monospace;
+            font-family: 'Fredoka One', cursive;
+            font-size: 2.2em;
             text-align: center;
             justify-self: center;
+            text-shadow: 3px 3px 0px #000;
         }
 
         .header-timer.warning {
-            color: #ff6b6b;
+            color: #FF0055;
             animation: pulse 1s infinite;
         }
 
@@ -184,24 +238,19 @@
             50% { transform: scale(1.1); }
         }
 
-        .header-code {
-            text-align: right;
+        .header-code-sticker {
+            background: #FFD700;
+            color: #000;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2em;
+            padding: 8px 15px;
+            border-radius: 12px;
+            transform: rotate(-3deg);
+            box-shadow: 3px 3px 0px #000;
             justify-self: end;
+            letter-spacing: 2px;
         }
 
-        .header-code-label {
-            font-size: 0.7em;
-            opacity: 0.8;
-            margin-bottom: 2px;
-        }
-
-        .header-code-value {
-            font-size: 1.3em;
-            font-weight: 900;
-            letter-spacing: 3px;
-        }
-
-        /* FOOTER INFERIOR - Nombre editable y botón salir */
         .bottom-footer {
             position: fixed;
             bottom: 0;
@@ -210,270 +259,298 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(15px);
+            padding: 15px 20px;
             z-index: 100;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
         }
 
         .player-name-section {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
         .player-name-display {
-            font-size: 1.3em;
-            font-weight: 700;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5em;
+            text-shadow: 2px 2px 0px #000;
         }
 
         .btn-edit-name {
             background: rgba(255,255,255,0.2);
-            border: none;
-            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
             padding: 8px 12px;
             color: white;
-            font-size: 1.2em;
+            font-size: 1.3em;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
         }
 
         .btn-edit-name:hover {
             background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
         }
 
         .btn-exit {
-            padding: 8px 16px;
-            background: rgba(239, 68, 68, 0.3);
+            padding: 10px 20px;
+            background: #FF0055;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 0.95em;
-            font-weight: 600;
+            border-radius: 20px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1em;
+            font-weight: 800;
             cursor: pointer;
-            opacity: 0.7;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            box-shadow: 2px 2px 0px #000;
         }
 
         .btn-exit:hover {
-            opacity: 1;
-            background: rgba(239, 68, 68, 0.5);
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0px #000;
         }
 
-        /* PLAYER INFO */
         .player-info {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .player-score {
-            font-size: 2.5em;
-            font-weight: 900;
-            color: #fbbf24;
+            font-family: 'Fredoka One', cursive;
+            font-size: 3em;
+            color: #FFD700;
+            text-shadow: 4px 4px 0px #000;
         }
 
-        /* ESTADO */
         .status-card {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
             text-align: center;
+            box-shadow: 4px 4px 0px #000;
+            color: #000;
         }
 
         .current-word {
-            font-size: 2.5em;
+            font-family: 'Fredoka One', cursive;
+            font-size: 3em;
             font-weight: 900;
             margin: 15px 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            color: #2E004E;
         }
 
-        /* INPUT DE PALABRAS */
         .words-input-section {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 4px 4px 0px #000;
         }
 
         .input-row {
             display: flex;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .word-input {
             flex: 1;
-            padding: 15px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.15);
-            color: white;
-            font-size: 1.1em;
+            padding: 18px;
+            border: 4px solid #000;
+            border-radius: 15px;
+            background: white;
+            color: #000;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 1.2em;
             text-align: center;
             text-transform: uppercase;
+            box-shadow: 3px 3px 0px rgba(0,0,0,0.2);
         }
 
         .word-input:focus {
             outline: none;
-            border-color: rgba(255,255,255,0.8);
-            background: rgba(255,255,255,0.25);
+            border-color: #00F0FF;
         }
 
         .btn-add {
-            padding: 15px 25px;
-            background: #10b981;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.5em;
-            font-weight: 700;
+            padding: 18px 25px;
+            background: #00F0FF;
+            color: #000;
+            border: 4px solid #000;
+            border-radius: 15px;
+            font-size: 1.8em;
+            font-weight: 900;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.1s;
+            box-shadow: 3px 3px 0px #000;
         }
 
         .btn-add:hover {
-            transform: scale(1.05);
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0px #000;
         }
 
-        /* LISTA DE PALABRAS */
+        .btn-add:active {
+            transform: translate(3px, 3px);
+            box-shadow: none;
+        }
+
         .words-list {
             margin-top: 20px;
         }
 
         .words-list-title {
-            font-size: 1.1em;
-            margin-bottom: 10px;
-            opacity: 0.9;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2em;
+            margin-bottom: 12px;
+            color: #2E004E;
         }
 
         .word-item {
-            background: rgba(255,255,255,0.15);
-            padding: 12px 15px;
-            border-radius: 10px;
-            margin-bottom: 8px;
+            background: rgba(46, 0, 78, 0.1);
+            border: 3px solid #2E004E;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            box-shadow: 2px 2px 0px #2E004E;
         }
 
         .word-item:hover {
-            background: rgba(255,255,255,0.25);
+            background: rgba(46, 0, 78, 0.2);
             transform: translateX(5px);
         }
 
         .word-item .word-text {
-            font-size: 1.2em;
-            font-weight: 600;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1.3em;
+            font-weight: 800;
+            color: #2E004E;
         }
 
         .word-item .word-edit {
-            font-size: 1.2em;
-            opacity: 0.6;
+            font-size: 1.3em;
         }
 
-        /* BOTÓN PASO */
         .submit-section {
             margin-top: 20px;
         }
 
         .btn-submit {
             width: 100%;
-            padding: 20px;
-            background: #f59e0b;
+            padding: 22px;
+            background: #FF0055;
             color: white;
             border: none;
-            border-radius: 15px;
-            font-size: 1.3em;
-            font-weight: 700;
+            border-radius: 50px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5em;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.1s;
+            box-shadow: 5px 5px 0px #000;
+            text-transform: uppercase;
         }
 
         .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(245, 158, 11, 0.4);
+            transform: translate(2px, 2px);
+            box-shadow: 3px 3px 0px #000;
+        }
+
+        .btn-submit:active {
+            transform: translate(5px, 5px);
+            box-shadow: none;
         }
 
         .btn-submit:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
-        /* RESULTADOS */
         .results-section {
             display: none;
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 4px 4px 0px #000;
         }
 
         .results-title {
-            font-size: 1.5em;
-            font-weight: 700;
+            font-family: 'Fredoka One', cursive;
+            font-size: 2em;
             text-align: center;
             margin-bottom: 20px;
+            color: #2E004E;
         }
 
         .result-item {
-            background: rgba(255,255,255,0.1);
+            background: rgba(46, 0, 78, 0.1);
             padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border-left: 6px solid #2E004E;
         }
 
         .result-item.match {
-            background: rgba(16, 185, 129, 0.3);
-            border-left: 4px solid #10b981;
+            background: rgba(0, 242, 96, 0.2);
+            border-left-color: #00F260;
         }
 
         .result-item.no-match {
-            background: rgba(239, 68, 68, 0.3);
-            border-left: 4px solid #ef4444;
+            background: rgba(255, 0, 85, 0.2);
+            border-left-color: #FF0055;
         }
 
         .result-word {
-            font-size: 1.3em;
-            font-weight: 700;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5em;
             margin-bottom: 5px;
+            color: #2E004E;
         }
 
         .result-points {
-            font-size: 1.1em;
-            color: #fbbf24;
+            font-size: 1.2em;
+            color: #FFD700;
+            font-weight: 900;
+            text-shadow: 1px 1px 0px #000;
         }
 
         .result-players {
             font-size: 0.9em;
-            opacity: 0.8;
+            color: #2E004E;
             margin-top: 5px;
         }
 
         .total-score {
             text-align: center;
-            font-size: 1.8em;
-            font-weight: 900;
+            font-family: 'Fredoka One', cursive;
+            font-size: 2.2em;
             margin-top: 20px;
-            padding: 15px;
-            background: rgba(251, 191, 36, 0.3);
-            border-radius: 10px;
+            padding: 20px;
+            background: #FFD700;
+            color: #000;
+            border-radius: 15px;
+            box-shadow: 4px 4px 0px #000;
         }
 
-        /* MENSAJES */
         .waiting-message {
             text-align: center;
             padding: 40px 20px;
-            font-size: 1.2em;
-            opacity: 0.9;
+            font-size: 1.3em;
+            color: #2E004E;
+            font-weight: 800;
         }
 
-        /* COUNTDOWN */
         .countdown-overlay {
             display: none;
             position: fixed;
@@ -481,25 +558,27 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(46, 0, 78, 0.95);
             z-index: 1000;
             justify-content: center;
             align-items: center;
         }
 
         .countdown-number {
-            font-size: 15em;
+            font-family: 'Fredoka One', cursive;
+            font-size: 20em;
             font-weight: 900;
+            text-shadow: 10px 10px 0px #000;
+            color: #FFD700;
             animation: countdownPulse 1s ease-in-out;
         }
 
         @keyframes countdownPulse {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); opacity: 1; }
+            0% { transform: scale(0.5) rotate(-30deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        /* MODAL EDITAR NOMBRE */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -507,62 +586,73 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             z-index: 200;
             justify-content: center;
             align-items: center;
         }
 
         .modal-content {
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 30px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 25px;
+            padding: 35px;
             max-width: 400px;
             width: 90%;
+            box-shadow: 6px 6px 0px #000;
         }
 
         .modal-title {
-            font-size: 1.5em;
-            font-weight: 700;
+            font-family: 'Fredoka One', cursive;
+            font-size: 2em;
             margin-bottom: 20px;
             text-align: center;
+            color: #2E004E;
         }
 
         .modal-input {
             width: 100%;
-            padding: 15px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            font-size: 1.2em;
+            padding: 18px;
+            border: 4px solid #000;
+            border-radius: 15px;
+            background: white;
+            color: #000;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 1.3em;
             text-align: center;
             margin-bottom: 20px;
+            box-shadow: 3px 3px 0px rgba(0,0,0,0.2);
         }
 
         .modal-buttons {
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         .modal-btn {
             flex: 1;
-            padding: 15px;
+            padding: 18px;
             border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 700;
+            border-radius: 50px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2em;
             cursor: pointer;
+            box-shadow: 3px 3px 0px #000;
+            transition: all 0.1s;
+        }
+
+        .modal-btn:hover {
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0px #000;
         }
 
         .modal-btn-save {
-            background: #10b981;
-            color: white;
+            background: #00F0FF;
+            color: #000;
         }
 
         .modal-btn-cancel {
-            background: rgba(255,255,255,0.2);
+            background: #FF0055;
             color: white;
         }
     </style>
@@ -587,22 +677,30 @@
             </div>
 
             <div class="input-group">
-                <label class="input-label">Elige tu color (opcional)</label>
-                <div class="color-selector" id="color-selector">
-                    <div class="color-option" data-color="#667eea,#764ba2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
-                    <div class="color-option" data-color="#f093fb,#f5576c" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
-                    <div class="color-option" data-color="#4facfe,#00f2fe" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
-                    <div class="color-option" data-color="#43e97b,#38f9d7" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
-                    <div class="color-option" data-color="#fa709a,#fee140" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
-                    <div class="color-option" data-color="#30cfd0,#330867" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);"></div>
-                    <div class="color-option" data-color="#a8edea,#fed6e3" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);"></div>
-                    <div class="color-option" data-color="#ff9a9e,#fecfef" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);"></div>
-                    <div class="color-option" data-color="#ffecd2,#fcb69f" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);"></div>
-                    <div class="color-option" data-color="#ff6e7f,#bfe9ff" style="background: linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%);"></div>
+                <label class="input-label">Elige tu Aura</label>
+                <div class="aura-selector" id="color-selector">
+                    <!-- Fire -->
+                    <div class="aura-circle" data-color="#FF9966,#FF5E62" 
+                         style="background: linear-gradient(135deg, #FF9966, #FF5E62);"></div>
+                    <!-- Ice -->
+                    <div class="aura-circle" data-color="#00F260,#0575E6" 
+                         style="background: linear-gradient(135deg, #00F260, #0575E6);"></div>
+                    <!-- Candy -->
+                    <div class="aura-circle" data-color="#F37335,#FDC830" 
+                         style="background: linear-gradient(135deg, #F37335, #FDC830);"></div>
+                    <!-- Mystic -->
+                    <div class="aura-circle" data-color="#8E2DE2,#4A00E0" 
+                         style="background: linear-gradient(135deg, #8E2DE2, #4A00E0);"></div>
+                    <!-- Electric -->
+                    <div class="aura-circle" data-color="#12c2e9,#f64f59" 
+                         style="background: linear-gradient(135deg, #12c2e9, #f64f59);"></div>
+                    <!-- Toxic -->
+                    <div class="aura-circle" data-color="#DCE35B,#45B649" 
+                         style="background: linear-gradient(135deg, #DCE35B, #45B649);"></div>
                 </div>
             </div>
 
-            <button class="btn-join" id="btn-join">Unirse al Juego</button>
+            <button class="btn-join" id="btn-join">¡Jugar!</button>
         </div>
     </div>
 
@@ -612,10 +710,7 @@
         <div class="top-header">
             <div class="header-round" id="header-round">Ronda 0/3</div>
             <div class="header-timer" id="header-timer">⏳ 00:00</div>
-            <div class="header-code">
-                <div class="header-code-label">CÓDIGO SALA</div>
-                <div class="header-code-value" id="header-code">----</div>
-            </div>
+            <div class="header-code-sticker" id="header-code">----</div>
         </div>
 
         <!-- Info del jugador -->
@@ -635,7 +730,7 @@
         <div class="words-input-section" id="words-input-section" style="display:none;">
             <div class="input-row">
                 <input type="text" id="current-word-input" class="word-input" 
-                       placeholder="Escribe una palabra..." autocomplete="off">
+                       placeholder="Escribe..." autocomplete="off">
                 <button class="btn-add" id="btn-add-word">✈️</button>
             </div>
 
@@ -660,7 +755,7 @@
                 <div class="player-name-display" id="player-name-display">---</div>
                 <button class="btn-edit-name" id="btn-edit-name">✏️</button>
             </div>
-            <button class="btn-exit" id="btn-exit">Retirarse</button>
+            <button class="btn-exit" id="btn-exit">Salir</button>
         </div>
     </div>
 
@@ -683,7 +778,7 @@
 
     <script src="game-client.js"></script>
     <script>
-        // Variables globales
+        // [EL JAVASCRIPT EXISTENTE COMPLETO SE MANTIENE IGUAL - NO HAY CAMBIOS EN LA LÓGICA]
         let gameId = null;
         let playerId = null;
         let playerName = null;
@@ -695,7 +790,6 @@
         let timerInterval = null;
         let countdownInterval = null;
 
-        // Elementos DOM
         const welcomeScreen = document.getElementById('welcome-screen');
         const gameScreen = document.getElementById('game-screen');
         const inputGameCode = document.getElementById('input-game-code');
@@ -703,8 +797,7 @@
         const btnJoin = document.getElementById('btn-join');
         const colorSelector = document.getElementById('color-selector');
 
-        // Selector de color
-        const colorOptions = colorSelector.querySelectorAll('.color-option');
+        const colorOptions = colorSelector.querySelectorAll('.aura-circle');
         colorOptions.forEach(option => {
             option.addEventListener('click', () => {
                 colorOptions.forEach(opt => opt.classList.remove('selected'));
@@ -713,14 +806,11 @@
             });
         });
 
-        // Seleccionar color aleatorio por defecto
         const randomIndex = Math.floor(Math.random() * colorOptions.length);
         colorOptions[randomIndex].click();
 
-        // Botón unirse
         btnJoin.addEventListener('click', joinGame);
 
-        // Enter en inputs
         inputGameCode.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') inputPlayerName.focus();
         });
@@ -729,7 +819,6 @@
             if (e.key === 'Enter') joinGame();
         });
 
-        // Función unirse
         async function joinGame() {
             const code = inputGameCode.value.trim().toUpperCase();
             const name = inputPlayerName.value.trim();
@@ -748,16 +837,13 @@
 
             gameId = code;
             playerName = name;
-            // Generar ID único para el jugador
             playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
-            // Guardar en localStorage
             localStorage.setItem('gameId', gameId);
             localStorage.setItem('playerId', playerId);
             localStorage.setItem('playerName', playerName);
             localStorage.setItem('playerColor', playerColor);
 
-            // Unirse al juego
             btnJoin.disabled = true;
             btnJoin.textContent = 'Conectando...';
 
@@ -770,19 +856,15 @@
                 });
 
                 if (result.success) {
-                    // Aplicar color
                     const colors = playerColor.split(',');
                     document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
 
-                    // Cambiar a pantalla de juego
                     welcomeScreen.style.display = 'none';
                     gameScreen.style.display = 'block';
 
-                    // Actualizar UI
                     document.getElementById('header-code').textContent = gameId;
                     document.getElementById('player-name-display').textContent = playerName;
 
-                    // Conectar SSE
                     client.onStateUpdate = handleStateUpdate;
                     client.connect();
 
@@ -791,17 +873,16 @@
                 } else {
                     alert('Error al unirse: ' + (result.message || 'desconocido'));
                     btnJoin.disabled = false;
-                    btnJoin.textContent = 'Unirse al Juego';
+                    btnJoin.textContent = '¡Jugar!';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error de conexión');
                 btnJoin.disabled = false;
-                btnJoin.textContent = 'Unirse al Juego';
+                btnJoin.textContent = '¡Jugar!';
             }
         }
 
-        // Modal editar nombre
         document.getElementById('btn-edit-name').addEventListener('click', () => {
             document.getElementById('modal-name-input').value = playerName;
             document.getElementById('modal-edit-name').style.display = 'flex';
@@ -820,7 +901,6 @@
                 return;
             }
 
-            // Verificar que no exista otro jugador con ese nombre
             if (client.gameState) {
                 const existingNames = Object.values(client.gameState.players)
                     .filter(p => p.id !== playerId)
@@ -832,17 +912,14 @@
                 }
             }
 
-            // Actualizar nombre
             playerName = newName;
             localStorage.setItem('playerName', playerName);
             document.getElementById('player-name-display').textContent = playerName;
             document.getElementById('modal-edit-name').style.display = 'none';
 
-            // Notificar al servidor
             await client.sendAction('update_name', { name: playerName });
         });
 
-        // Manejar actualizaciones de estado
         function handleStateUpdate(state) {
             console.log('📥 Estado actualizado (player):', state);
 
@@ -852,14 +929,11 @@
                 return;
             }
 
-            // Actualizar score
             document.getElementById('player-score').textContent = player.score + ' pts';
 
-            // Actualizar header
             document.getElementById('header-round').textContent = 
                 `Ronda ${state.round || 0} / ${state.total_rounds || 3}`;
 
-            // Detectar nueva ronda
             if (state.round !== currentRound && state.round > 0) {
                 currentRound = state.round;
                 myWords = [];
@@ -867,7 +941,6 @@
                 showCountdownSynced(state);
             }
 
-            // Actualizar UI según estado
             if (state.status === 'waiting') {
                 showWaitingState(state);
             } else if (state.status === 'playing') {
@@ -902,10 +975,8 @@
             document.getElementById('words-input-section').style.display = 'block';
             document.getElementById('results-section').style.display = 'none';
 
-            // Timer sincronizado
             startTimer(state.round_started_at, state.round_duration);
 
-            // Focus en input
             document.getElementById('current-word-input').focus();
         }
 
@@ -923,7 +994,6 @@
             document.getElementById('waiting-message').style.display = 'none';
             document.getElementById('words-input-section').style.display = 'none';
 
-            // Mostrar resultados
             showResults(state);
         }
 
@@ -935,7 +1005,6 @@
             showResults(state);
         }
 
-        // Timer sincronizado
         function startTimer(startTimestamp, duration) {
             stopTimer();
 
@@ -975,7 +1044,6 @@
             return Math.max(0, remaining);
         }
 
-        // Input de palabras
         const wordInput = document.getElementById('current-word-input');
         const btnAdd = document.getElementById('btn-add-word');
         const btnSubmit = document.getElementById('btn-submit');
@@ -985,7 +1053,6 @@
             if (e.key === 'Enter') addWord();
         });
 
-        // Auto-focus
         document.addEventListener('click', (e) => {
             if (!e.target.closest('input') && !e.target.closest('button')) {
                 if (wordInput.offsetParent !== null) {
@@ -994,7 +1061,6 @@
             }
         });
 
-        // NUEVO: Agregar palabra con envío automático
         async function addWord() {
             const word = wordInput.value.trim().toUpperCase();
 
@@ -1015,7 +1081,6 @@
             updateWordsList();
             wordInput.focus();
 
-            // NUEVO: Enviar automáticamente en segundo plano
             await submitAnswersBackground();
         }
 
@@ -1039,7 +1104,6 @@
                 </div>
             `).join('');
 
-            // Click para editar
             wordsList.querySelectorAll('.word-item').forEach(item => {
                 item.addEventListener('click', async () => {
                     const index = parseInt(item.dataset.index);
@@ -1049,13 +1113,11 @@
                     updateWordsList();
                     wordInput.focus();
 
-                    // NUEVO: Actualizar respuestas en el servidor
                     await submitAnswersBackground();
                 });
             });
         }
 
-        // NUEVO: Envío automático en segundo plano
         async function submitAnswersBackground() {
             try {
                 await client.sendAction('submit_answers', { 
@@ -1068,7 +1130,6 @@
             }
         }
 
-        // NUEVO: Botón PASO con confirmación (SIN completar con vacíos)
         btnSubmit.addEventListener('click', async () => {
             if (!confirm('¿Seguro que querés pasar? Las palabras faltantes quedarán en blanco.')) {
                 return;
@@ -1078,10 +1139,9 @@
             btnSubmit.textContent = '⏳ Enviando...';
 
             try {
-                // CAMBIO: NO completar con vacíos, solo enviar las palabras actuales
                 await client.sendAction('submit_answers', { 
-                    answers: myWords, // Solo las palabras existentes
-                    forced_pass: true // Marca que presionó PASO
+                    answers: myWords,
+                    forced_pass: true
                 });
 
                 console.log('✅ PASO enviado');
@@ -1098,7 +1158,6 @@
             }
         }
 
-        // Mostrar resultados
         function showResults(state) {
             const resultsSection = document.getElementById('results-section');
             const player = state.players[playerId];
@@ -1114,7 +1173,7 @@
             let html = '<div class="results-title">📊 Resultados de la Ronda</div>';
 
             myWords.forEach(word => {
-                if (!word || word.trim() === '') return; // FIX: Saltar palabras vacías
+                if (!word || word.trim() === '') return;
 
                 const result = results[word] || { points: 0, matched_with: [] };
                 const isMatch = result.points > 0;
@@ -1135,14 +1194,12 @@
             resultsSection.innerHTML = html;
         }
 
-        // NUEVO: Countdown sincronizado por timestamp del servidor
         function showCountdownSynced(state) {
             const overlay = document.getElementById('countdown-overlay');
             const number = document.getElementById('countdown-number');
 
             overlay.style.display = 'flex';
 
-            // Limpiar countdown previo si existe
             if (countdownInterval) {
                 clearInterval(countdownInterval);
             }
@@ -1166,7 +1223,6 @@
                 }
             }, 100);
 
-            // Timeout de seguridad (5 segundos)
             setTimeout(() => {
                 overlay.style.display = 'none';
                 if (countdownInterval) {
@@ -1176,7 +1232,6 @@
             }, 5000);
         }
 
-        // Salir
         document.getElementById('btn-exit').addEventListener('click', () => {
             if (confirm('¿Seguro que quieres retirarte?')) {
                 if (client) client.disconnect();
@@ -1185,14 +1240,12 @@
             }
         });
 
-        // Verificar si ya hay sesión
         const savedGameId = localStorage.getItem('gameId');
         const savedPlayerId = localStorage.getItem('playerId');
         const savedPlayerName = localStorage.getItem('playerName');
         const savedPlayerColor = localStorage.getItem('playerColor');
 
         if (savedGameId && savedPlayerId && savedPlayerName) {
-            // Reconectar
             gameId = savedGameId;
             playerId = savedPlayerId;
             playerName = savedPlayerName;

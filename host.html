@@ -4,8 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anfitrión - TalCual Party</title>
+    <link rel="icon" href="icon.webp" type="image/webp">
+    <!-- FUENTES GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* HOST SMART TV - Pantalla Completa */
+        /* ============================================
+           TALCUAL PARTY HOST - ESTILO JACKBOX
+           ============================================ */
         * {
             margin: 0;
             padding: 0;
@@ -13,52 +20,82 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            background-color: #2E004E;
+            background-image: url('bg.webp');
+            background-repeat: repeat;
+            background-size: 400px;
             color: white;
             overflow: hidden;
             height: 100vh;
             width: 100vw;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('bg.webp');
+            background-repeat: repeat;
+            background-size: 400px;
+            opacity: 0.1;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .tv-layout {
             display: grid;
-            grid-template-rows: 100px 1fr 200px;
+            grid-template-rows: 120px 1fr 200px;
             grid-template-columns: 300px 1fr 300px;
             height: 100vh;
             gap: 15px;
             padding: 20px;
+            position: relative;
+            z-index: 1;
         }
 
-        /* HEADER - Ronda, Timer, Código */
+        /* HEADER con LOGO */
         .tv-header {
             grid-column: 1 / -1;
             display: grid;
             grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
-            padding: 20px 40px;
+            padding: 15px 40px;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
         }
 
-        .round-info {
-            font-size: 2.5em;
-            font-weight: 700;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+        .logo-container {
             justify-self: start;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-container img {
+            max-height: 80px;
+            width: auto;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
         }
 
         .timer-display {
             font-size: 4em;
             font-weight: 900;
-            font-family: 'Courier New', monospace;
-            text-shadow: 3px 3px 10px rgba(0,0,0,0.7);
+            font-family: 'Fredoka One', cursive;
+            text-shadow: 4px 4px 0px #000;
             text-align: center;
             justify-self: center;
         }
 
         .timer-display.warning {
-            color: #ff6b6b;
+            color: #FF0055;
             animation: pulse 1s infinite;
         }
 
@@ -67,71 +104,71 @@
             50% { transform: scale(1.1); }
         }
 
-        .game-code-display {
-            text-align: right;
-            justify-self: end;
-        }
-
-        .game-code-label {
-            font-size: 0.9em;
-            opacity: 0.8;
-            margin-bottom: 5px;
-        }
-
-        .game-code-value {
-            font-size: 2.2em;
+        .game-code-sticker {
+            background: #FFD700;
+            color: #000;
+            font-family: 'Fredoka One', cursive;
+            font-size: 2em;
             font-weight: 900;
-            letter-spacing: 4px;
-            background: rgba(255,255,255,0.2);
-            padding: 8px 20px;
-            border-radius: 10px;
+            padding: 10px 25px;
+            border-radius: 15px;
+            transform: rotate(-3deg);
+            box-shadow: 4px 4px 0px #000;
+            display: inline-block;
+            letter-spacing: 3px;
+            justify-self: end;
         }
 
         /* RANKING IZQUIERDA */
         .ranking-panel {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 20px;
             overflow-y: auto;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
         }
 
         .ranking-title {
+            font-family: 'Fredoka One', cursive;
             font-size: 1.8em;
-            font-weight: 700;
             margin-bottom: 20px;
             text-align: center;
-            border-bottom: 3px solid white;
-            padding-bottom: 10px;
+            text-shadow: 3px 3px 0px #000;
         }
 
         .ranking-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
+            padding: 12px 15px;
             margin: 8px 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            font-size: 1.3em;
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+            font-size: 1.2em;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
         }
 
         .ranking-item.top-1 {
             background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
             color: #000;
-            font-weight: 700;
+            font-weight: 900;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.4);
         }
 
         .ranking-item.top-2 {
             background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
             color: #000;
+            font-weight: 800;
         }
 
         .ranking-item.top-3 {
             background: linear-gradient(135deg, #cd7f32 0%, #e8a87c 100%);
             color: #000;
+            font-weight: 800;
         }
 
-        /* CENTRO - Palabra y Jugadores */
+        /* CENTRO - Palabra */
         .center-panel {
             display: flex;
             flex-direction: column;
@@ -141,178 +178,209 @@
         }
 
         .word-display {
+            font-family: 'Fredoka One', cursive;
             font-size: 8em;
             font-weight: 900;
-            text-shadow: 5px 5px 20px rgba(0,0,0,0.8);
+            text-shadow: 6px 6px 0px #000;
             text-align: center;
             letter-spacing: 10px;
-            background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #00F0FF;
             animation: glow 2s ease-in-out infinite alternate;
         }
 
         @keyframes glow {
-            from { filter: drop-shadow(0 0 20px rgba(255,255,255,0.5)); }
-            to { filter: drop-shadow(0 0 40px rgba(255,255,255,0.9)); }
+            from { filter: drop-shadow(0 0 20px #00F0FF); }
+            to { filter: drop-shadow(0 0 40px #FF0055); }
         }
 
         .status-message {
+            font-family: 'Nunito', sans-serif;
             font-size: 2.5em;
-            font-weight: 600;
+            font-weight: 800;
             text-align: center;
-            text-shadow: 2px 2px 6px rgba(0,0,0,0.5);
+            text-shadow: 3px 3px 0px #000;
         }
 
         .countdown-display {
-            font-size: 15em;
+            font-family: 'Fredoka One', cursive;
+            font-size: 18em;
             font-weight: 900;
-            text-shadow: 5px 5px 30px rgba(0,0,0,0.8);
+            text-shadow: 8px 8px 0px #000;
+            color: #FFD700;
             animation: countdownPulse 1s ease-in-out;
         }
 
         @keyframes countdownPulse {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); opacity: 1; }
+            0% { transform: scale(0.5) rotate(-20deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
         /* TOP PALABRAS DERECHA */
         .top-words-panel {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 20px;
             overflow-y: auto;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
         }
 
         .top-words-title {
+            font-family: 'Fredoka One', cursive;
             font-size: 1.8em;
-            font-weight: 700;
             margin-bottom: 20px;
             text-align: center;
-            border-bottom: 3px solid white;
-            padding-bottom: 10px;
+            text-shadow: 3px 3px 0px #000;
         }
 
         .top-word-item {
-            padding: 12px;
+            padding: 12px 15px;
             margin: 8px 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            font-size: 1.3em;
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+            font-size: 1.2em;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
         }
 
         .top-word-item .word {
-            font-weight: 700;
+            font-weight: 900;
         }
 
         .top-word-item .count {
-            background: rgba(255,255,255,0.3);
+            background: #00F0FF;
+            color: #000;
             padding: 5px 15px;
             border-radius: 20px;
             font-size: 0.9em;
+            font-weight: 800;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
         }
 
-        /* JUGADORES ABAJO */
+        /* JUGADORES ABAJO - TARJETAS SQUARCLE */
         .players-grid {
             grid-column: 1 / -1;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
             padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
             overflow-y: auto;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
         }
 
-        .player-card {
-            width: 160px;
+        .player-squarcle {
+            width: 140px;
             height: 140px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 15px;
+            border-radius: 25px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            gap: 10px;
-            transition: all 0.3s;
-            border: 3px solid transparent;
+            justify-content: center;
+            box-shadow: 4px 4px 0px #000;
             position: relative;
+            animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            cursor: pointer;
+            transition: transform 0.2s;
         }
 
-        .player-card.ready {
-            background: rgba(16, 185, 129, 0.3);
-            border-color: #10b981;
+        .player-squarcle:hover {
+            transform: scale(1.05) rotate(2deg);
         }
 
-        .player-card.playing {
-            border-color: #fbbf24;
-            animation: playingPulse 2s infinite;
+        @keyframes popIn {
+            0% {
+                transform: scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
         }
 
-        @keyframes playingPulse {
-            0%, 100% { border-color: #fbbf24; }
-            50% { border-color: #f59e0b; }
+        .player-squarcle.ready {
+            animation: readyBounce 1s infinite;
         }
 
-        .player-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2em;
-            font-weight: 700;
-            border: 3px solid white;
+        @keyframes readyBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
-        .player-name {
-            font-size: 1.1em;
-            font-weight: 600;
-            text-align: center;
-            max-width: 140px;
+        .player-initial {
+            font-family: 'Fredoka One', cursive;
+            font-size: 5em;
+            color: white;
+            text-shadow: 4px 4px 0px #000;
+            line-height: 1;
+        }
+
+        .player-name-label {
+            font-size: 0.9em;
+            color: white;
+            font-weight: 800;
+            text-shadow: 2px 2px 0px #000;
+            margin-top: 5px;
+            max-width: 120px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            text-align: center;
         }
 
-        .player-score {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: #fbbf24;
+        .player-score-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #FFD700;
+            color: #000;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2em;
+            padding: 5px 12px;
+            border-radius: 20px;
+            box-shadow: 3px 3px 0px #000;
+        }
+
+        .player-status-icon {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            font-size: 2em;
+            filter: drop-shadow(2px 2px 0px #000);
         }
 
         .player-answers-count {
-            font-size: 0.9em;
-            opacity: 0.8;
-            margin-top: -5px;
-        }
-
-        .player-status {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            font-size: 1.5em;
+            bottom: -10px;
+            background: #FF0055;
+            color: white;
+            font-size: 0.8em;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 15px;
+            box-shadow: 2px 2px 0px #000;
         }
 
-        /* CONTROLES (ocultos pero funcionales) */
+        /* CONTROLES */
         .controls-panel {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(20px);
             padding: 20px;
-            border-radius: 15px;
+            border-radius: 20px;
             display: none;
             z-index: 100;
+            box-shadow: 4px 4px 0px #000;
         }
 
         .controls-panel.visible {
@@ -323,39 +391,53 @@
             display: block;
             width: 100%;
             padding: 12px 25px;
-            margin: 5px 0;
+            margin: 8px 0;
             border: none;
-            border-radius: 10px;
+            border-radius: 50px;
+            font-family: 'Nunito', sans-serif;
             font-size: 1.1em;
-            font-weight: 600;
+            font-weight: 900;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.1s;
+            box-shadow: 3px 3px 0px #000;
+        }
+
+        .btn-control:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px #000;
+        }
+
+        .btn-control:active {
+            transform: translate(3px, 3px);
+            box-shadow: none;
         }
 
         .btn-control:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
         .btn-start {
-            background: #10b981;
-            color: white;
+            background: #00F0FF;
+            color: #000;
         }
 
         .btn-end {
-            background: #ef4444;
+            background: #FF0055;
             color: white;
         }
 
         .btn-next {
-            background: #3b82f6;
-            color: white;
+            background: #FFD700;
+            color: #000;
         }
 
         /* Responsive */
         @media (max-width: 1400px) {
             .word-display { font-size: 6em; }
-            .player-card { width: 140px; height: 120px; }
+            .player-squarcle { width: 120px; height: 120px; }
+            .player-initial { font-size: 4em; }
         }
 
         @media (max-width: 1024px) {
@@ -368,14 +450,13 @@
 </head>
 <body>
     <div class="tv-layout">
-        <!-- HEADER -->
+        <!-- HEADER con LOGO -->
         <div class="tv-header">
-            <div class="round-info" id="round-info">Preparando...</div>
-            <div class="timer-display" id="timer-display">02:00</div>
-            <div class="game-code-display">
-                <div class="game-code-label">CÓDIGO SALA</div>
-                <div class="game-code-value" id="game-code-tv">------</div>
+            <div class="logo-container">
+                <img src="logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-family: Fredoka One; font-size: 2.5em; text-shadow: 4px 4px 0px #000;\'>TalCual</span>'">
             </div>
+            <div class="timer-display" id="timer-display">02:00</div>
+            <div class="game-code-sticker" id="game-code-tv">------</div>
         </div>
 
         <!-- RANKING IZQUIERDA -->
@@ -416,27 +497,20 @@
         }
 
         document.getElementById('game-code-tv').textContent = gameId;
-
         console.log('🎮 Host iniciando. GameID:', gameId);
 
-        // Crear cliente
         const client = new GameClient(gameId, 'host');
-
-        // IMPORTANTE: Configurar callback ANTES de conectar
         client.onStateUpdate = (state) => {
             console.log('🔄 Estado actualizado en host:', state);
             updateHostUI(state);
         };
 
-        // Conectar DESPUÉS de configurar callback
         console.log('🔌 Conectando SSE...');
         client.connect();
 
-        // Timer
         let timerInterval = null;
         let autoShortenTriggered = false;
 
-        // Mostrar controles con tecla 'C'
         document.addEventListener('keydown', (e) => {
             if (e.key.toLowerCase() === 'c') {
                 document.getElementById('controls-panel').classList.toggle('visible');
@@ -449,7 +523,6 @@
             }
         });
 
-        // Iniciar ronda
         document.getElementById('btn-start-round').addEventListener('click', async () => {
             await startNewRound();
         });
@@ -469,7 +542,6 @@
             console.log('🎬 Intentando iniciar ronda...');
             autoShortenTriggered = false;
 
-            // Esperar hasta 3 segundos si no hay estado
             let attempts = 0;
             while (!client.gameState && attempts < 30) {
                 console.log('⏳ Esperando estado del servidor... intento', attempts + 1);
@@ -491,7 +563,6 @@
                 return;
             }
 
-            // Seleccionar palabra aleatoria
             console.log('📚 Obteniendo lista de palabras...');
             const words = await getWordsList();
             console.log('📚 Palabras disponibles:', words.length);
@@ -499,10 +570,8 @@
             const randomWord = words[Math.floor(Math.random() * words.length)];
             console.log('🎯 Palabra seleccionada:', randomWord);
 
-            // NUEVO: Mostrar countdown sincronizado por timestamp
             showCountdownSynced();
 
-            // Iniciar ronda
             console.log('▶️ Iniciando ronda...');
             await client.sendAction('start_round', { 
                 word: randomWord,
@@ -510,7 +579,6 @@
             });
         }
 
-        // NUEVO: Countdown sincronizado por timestamp del servidor
         function showCountdownSynced() {
             const countdownEl = document.getElementById('countdown-display');
             const statusEl = document.getElementById('status-message');
@@ -520,7 +588,6 @@
             wordEl.style.display = 'none';
             countdownEl.style.display = 'block';
 
-            // Esperar a que llegue round_start_at del servidor
             const countdownInterval = setInterval(() => {
                 if (!client.gameState || !client.gameState.round_start_at) {
                     return;
@@ -541,7 +608,6 @@
                 }
             }, 100);
 
-            // Timeout de seguridad (4 segundos)
             setTimeout(() => {
                 countdownEl.style.display = 'none';
                 clearInterval(countdownInterval);
@@ -604,7 +670,6 @@
             await client.sendAction('end_round');
         }
 
-        // Actualizar UI del host
         function updateHostUI(state) {
             if (!state) {
                 console.warn('⚠️ Estado vacío recibido');
@@ -612,12 +677,6 @@
             }
 
             const playerCount = Object.keys(state.players || {}).length;
-
-            // Ronda
-            document.getElementById('round-info').textContent = 
-                `Ronda ${state.round || 0} / ${state.total_rounds || 3}`;
-
-            // Estado y Palabra
             const statusEl = document.getElementById('status-message');
             const wordEl = document.getElementById('word-display');
 
@@ -637,12 +696,10 @@
                 wordEl.style.display = 'block';
                 wordEl.textContent = state.current_word || '';
 
-                // Timer sincronizado
                 if (state.round_started_at) {
                     startTimer(state.round_started_at, state.round_duration);
                 }
 
-                // NUEVO: Acortar timer si todos terminaron
                 checkAllPlayersReady(state);
             } else if (state.status === 'round_ended') {
                 statusEl.style.display = 'block';
@@ -662,14 +719,12 @@
                 stopTimer();
             }
 
-            // Actualizar secciones
             updateRanking(state);
             updateTopWords(state);
             updatePlayersGrid(state);
             updateControls(state);
         }
 
-        // NUEVO: Verificar si todos están listos y acortar timer
         function checkAllPlayersReady(state) {
             if (autoShortenTriggered) return;
 
@@ -740,7 +795,7 @@
                 topWordsList.innerHTML = state.round_top_words.map((item, index) => `
                     <div class="top-word-item">
                         <span class="word">${index + 1}. ${item.word}</span>
-                        <span class="count">${item.count} jugadores</span>
+                        <span class="count">${item.count}</span>
                     </div>
                 `).join('');
             } else {
@@ -756,28 +811,25 @@
                 const initial = player.name.charAt(0).toUpperCase();
                 const statusIcon = player.status === 'ready' ? '✅' : 
                                   player.status === 'playing' ? '✍️' : '🟢';
-                const statusClass = player.status === 'ready' ? 'ready' : 
-                                   player.status === 'playing' ? 'playing' : '';
+                const readyClass = player.status === 'ready' ? 'ready' : '';
 
-                // Aplicar color del jugador si existe
-                let avatarStyle = '';
+                let squarcleStyle = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);';
                 if (player.color) {
                     const colors = player.color.split(',');
-                    avatarStyle = `background: linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%);`;
+                    squarcleStyle = `background: linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%);`;
                 }
 
-                // NUEVO: Mostrar contador de respuestas
                 const answerCount = (player.answers || []).length;
                 const maxWords = 6;
                 const answersDisplay = state.status === 'playing' ? 
-                    `<div class="player-answers-count">${answerCount}/${maxWords} palabras</div>` : '';
+                    `<div class="player-answers-count">${answerCount}/${maxWords}</div>` : '';
 
                 return `
-                    <div class="player-card ${statusClass}">
-                        <span class="player-status">${statusIcon}</span>
-                        <div class="player-avatar" style="${avatarStyle}">${initial}</div>
-                        <div class="player-name">${player.name}</div>
-                        <div class="player-score">${player.score} pts</div>
+                    <div class="player-squarcle ${readyClass}" style="${squarcleStyle}">
+                        <span class="player-status-icon">${statusIcon}</span>
+                        <div class="player-initial">${initial}</div>
+                        <div class="player-name-label">${player.name}</div>
+                        <div class="player-score-badge">${player.score}</div>
                         ${answersDisplay}
                     </div>
                 `;
