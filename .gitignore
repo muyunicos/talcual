@@ -1,0 +1,28 @@
+# Environment variables
+.env
+
+# Game states
+game_states/
+*.json.lock
+
+# Analytics
+analytics.json
+
+# Debug logs
+debug.log
+error.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
