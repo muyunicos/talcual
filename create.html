@@ -281,12 +281,17 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    localStorage.setItem('gameId', code);
+                    // FIX #2: Usar el game_id que devuelve el servidor
+                    const actualGameId = data.game_id;
+                    
+                    localStorage.setItem('gameId', actualGameId);
                     localStorage.setItem('isHost', 'true');
 
-                    gameCodeText.textContent = code;
+                    gameCodeText.textContent = actualGameId;
                     creationForm.style.display = 'none';
                     gameCodeDisplay.style.display = 'block';
+                    
+                    console.log('✅ Sala creada exitosamente:', actualGameId);
                 } else {
                     alert('Error: ' + (data.message || 'No se pudo crear la sala'));
                     btnCreate.disabled = false;
