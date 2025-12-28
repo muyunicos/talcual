@@ -16,10 +16,12 @@ function env($key, $default = null) {
     return $value;
 }
 
+// Obtener directorio raíz del proyecto (2 niveles arriba desde app/core/)
+$rootDir = dirname(__DIR__, 2);
+
 // Cargar variables de entorno si existe .env
-$envPath = dirname(__DIR__, 2) . '/.env';
-if (file_exists($envPath)) {
-    $envFile = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+if (file_exists($rootDir . '/.env')) {
+    $envFile = @file($rootDir . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     if ($envFile) {
         foreach ($envFile as $line) {
             $line = trim($line);
@@ -58,8 +60,7 @@ define('MAX_WORDS_PER_PLAYER', max(1, min(20, (int)env('MAX_WORDS_PER_PLAYER', 6
 define('MAX_WORD_LENGTH', max(10, min(100, (int)env('MAX_WORD_LENGTH', 30))));
 define('MAX_CODE_LENGTH', max(3, min(10, (int)env('MAX_CODE_LENGTH', 5))));
 
-// CONFIGURACIÓN DE ARCHIVOS
-$rootDir = dirname(__DIR__, 2);
+// CONFIGURACIÓN DE ARCHIVOS (actualizadas para nueva estructura)
 define('GAME_STATES_DIR', $rootDir . '/game_states');
 define('ANALYTICS_FILE', $rootDir . '/analytics.json');
 define('DICTIONARY_FILE', $rootDir . '/data/diccionario.json');
