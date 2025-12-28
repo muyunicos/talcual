@@ -1,0 +1,110 @@
+/* ============================================
+   1-BASE.CSS - CONFIGURACIÓN BASE
+   Reset, Variables Globales, Fuentes
+   ============================================ */
+
+/* ========== IMPORTAR GOOGLE FONTS ========== */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap');
+
+/* ========== RESET CSS ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ========== VARIABLES GLOBALES ========== */
+:root {
+    --violeta-profundo: #2E004E;
+    --cian: #00F0FF;
+    --magenta: #FF0055;
+    --amarillo: #FFD700;
+    --sombra-dura: 4px 4px 0px #000;
+    --fondo-tv: #2E004E;
+    --font-primary: 'Nunito', sans-serif;
+    --font-display: 'Fredoka One', cursive;
+}
+
+/* ========== ESTILOS BASE BODY ========== */
+body {
+    font-family: var(--font-primary);
+    font-weight: 700;
+    background-color: var(--violeta-profundo);
+    background-image: url('bg.webp');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    color: white;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* Textura de fondo sutil */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('bg.webp');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    opacity: 0.15;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ========== TIPOGRAFÍAS BASE ========== */
+html {
+    font-size: 16px;
+}
+
+h1, h2, h3, h4, h5, h6,
+.title, .logo-text, 
+.ranking-title, .top-words-title {
+    font-family: var(--font-display);
+    letter-spacing: 2px;
+    text-shadow: var(--sombra-dura);
+}
+
+h1 {
+    font-size: 3em;
+}
+
+h2 {
+    font-size: 2.5em;
+}
+
+h3 {
+    font-size: 2em;
+}
+
+p, .text {
+    font-family: var(--font-primary);
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+small {
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+strong {
+    font-weight: 900;
+}
+
+/* ========== LINKS ========== */
+a {
+    color: var(--cian);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    text-decoration: underline;
+}
