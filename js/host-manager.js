@@ -11,22 +11,13 @@ class HostManager {
         this.timerInterval = null;
         this.controlsVisible = false;
         this.debugMode = false;
-        
-        // MEJORA #22: Debounce para DOM updates
         this.updatePending = false;
         this.updateTimeout = null;
-        
-        // MEJORA #27: Sincronización periódica (fallback SSE)
         this.periodicSyncInterval = null;
         this.lastSyncTime = 0;
-        
-        // Elementos del DOM
         this.elements = {};
     }
     
-    /**
-     * Inicializa el gestor del host
-     */
     initialize() {
         debug('🌟 Inicializando HostManager');
         this.cacheElements();
@@ -45,15 +36,10 @@ class HostManager {
             this.showCreateGameModal();
         }
         
-        // Atajos de teclado
         document.addEventListener('keypress', (e) => this.handleKeyPress(e));
-        
         debug('✅ HostManager inicializado');
     }
     
-    /**
-     * Cachea referencias a elementos del DOM
-     */
     cacheElements() {
         this.elements = {
             modalCreateGame: safeGetElement('modal-create-game'),
@@ -76,9 +62,6 @@ class HostManager {
         };
     }
     
-    /**
-     * Adjunta event listeners
-     */
     attachEventListeners() {
         if (this.elements.btnCreateGame) {
             this.elements.btnCreateGame.addEventListener('click', () => this.createGame());
@@ -103,18 +86,12 @@ class HostManager {
         }
     }
     
-    /**
-     * Maneja presiones de teclas
-     */
     handleKeyPress(event) {
         if (event.key === 'c' || event.key === 'C') {
             this.toggleControls();
         }
     }
     
-    /**
-     * Toggle de visibilidad de controles
-     */
     toggleControls() {
         this.controlsVisible = !this.controlsVisible;
         if (this.elements.controlsPanel) {
@@ -127,9 +104,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Intenta recuperar una sesión anterior del host
-     */
     async recoverSession(gameId) {
         try {
             this.gameId = gameId;
@@ -149,17 +123,11 @@ class HostManager {
         return false;
     }
     
-    /**
-     * Muestra el modal de crear juego
-     */
     showCreateGameModal() {
         this.elements.modalCreateGame.classList.add('active');
         this.elements.gameScreen.classList.remove('active');
     }
     
-    /**
-     * Carga la pantalla de juego
-     */
     loadGameScreen(state) {
         this.elements.modalCreateGame.classList.remove('active');
         this.elements.gameScreen.classList.add('active');
@@ -173,16 +141,11 @@ class HostManager {
         this.controlsVisible = false;
         safeHideElement(this.elements.controlsPanel);
         
-        // ✅ MEJORA #27: Iniciar sincronización periódica (fallback SSE)
         this.setupPeriodicSync();
         
         this.handleStateUpdate(state);
     }
     
-    /**
-     * ✅ HOTFIX #1: Sincronización periódica cada 100ms (antes: 500ms)
-     * Fallback automático si SSE falla o se retrasa
-     */
     setupPeriodicSync() {
         if (this.periodicSyncInterval) {
             clearInterval(this.periodicSyncInterval);
@@ -192,18 +155,15 @@ class HostManager {
         
         this.periodicSyncInterval = setInterval(async () => {
             try {
-                // HOTFIX #1: Reducir throttling de 1s a 100ms para detección más rápida
                 const now = Date.now();
                 if (now - this.lastSyncTime < 100) {
                     return;
                 }
                 this.lastSyncTime = now;
                 
-                // Forzar refresco del estado
                 const result = await this.client.sendAction('get_state', { game_id: this.gameId });
                 
                 if (result.success && result.state) {
-                    // Comparar timestamps: solo actualizar si hay cambio
                     const oldTimestamp = this.gameState?.last_update || 0;
                     const newTimestamp = result.state?.last_update || 0;
                     
@@ -213,15 +173,11 @@ class HostManager {
                     }
                 }
             } catch (error) {
-                // Fallback silencioso - SSE probablemente funciona
                 debug('ℹ️ Sincronización periódica falló (SSE probablemente activo)', 'debug');
             }
-        }, 100); // HOTFIX #1: 100ms en lugar de 500ms
+        }, 100);
     }
     
-    /**
-     * Crea una nueva partida
-     */
     async createGame() {
         let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
         
@@ -269,26 +225,19 @@ class HostManager {
         }
     }
     
-    /**
-     * Maneja actualizaciones de estado
-     */
     handleStateUpdate(state) {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
-        // MEJORA #22: Usar debounce para evitar múltiples updates
         this.debouncedUpdateHostUI();
     }
     
-    /**
-     * Actualización de UI con debounce (máximo 1 cada 500ms)
-     */
     debouncedUpdateHostUI() {
         if (this.updateTimeout) {
             clearTimeout(this.updateTimeout);
         }
         
         if (this.updatePending) {
-            return; // Ya hay una actualización en proceso
+            return;
         }
         
         this.updatePending = true;
@@ -298,9 +247,6 @@ class HostManager {
         }, 500);
     }
     
-    /**
-     * Actualiza la UI del host
-     */
     updateHostUI() {
         if (!this.gameState) return;
         
@@ -312,9 +258,6 @@ class HostManager {
         this.updateTimer();
     }
     
-    /**
-     * Actualiza ranking de jugadores
-     */
     updateRanking() {
         if (!this.gameState.players) return;
         
@@ -339,11 +282,8 @@ class HostManager {
         }
     }
     
-    /**
-     * Actualiza palabras top - FIX: Usar round_top_words
-     */
     updateTopWords() {
-        if (!this.gameState.round_top_words) return; // FIX: Nombre consistente
+        if (!this.gameState.round_top_words) return;
         
         let html = '';
         this.gameState.round_top_words.forEach((item) => {
@@ -360,9 +300,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Actualiza grid de jugadores
-     */
     updatePlayersGrid() {
         if (!this.gameState.players) return;
         
@@ -388,9 +325,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Actualiza mensaje de estado
-     */
     updateStatusMessage() {
         let message = 'Cargando...';
         
@@ -417,9 +351,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Actualiza estado de botones
-     */
     updateButtonStates() {
         const isWaiting = this.gameState.status === 'waiting';
         const isPlaying = this.gameState.status === 'playing';
@@ -433,9 +364,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Actualiza timer
-     */
     updateTimer() {
         if (this.gameState.status !== 'playing') {
             this.stopTimer();
@@ -454,11 +382,8 @@ class HostManager {
         }
     }
     
-    /**
-     * Inicia timer continuo
-     */
     startContinuousTimer() {
-        if (this.timerInterval) return; // Ya en ejecución
+        if (this.timerInterval) return;
         
         this.updateTimerFromState();
         
@@ -471,9 +396,6 @@ class HostManager {
         }, 1000);
     }
     
-    /**
-     * Actualiza timer desde estado
-     */
     updateTimerFromState() {
         const now = Math.floor(Date.now() / 1000);
         const elapsed = now - this.gameState.round_started_at;
@@ -481,9 +403,6 @@ class HostManager {
         updateTimerDisplay(remaining, this.elements.timerDisplay, '⏳');
     }
     
-    /**
-     * Detiene el timer
-     */
     stopTimer() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
@@ -491,9 +410,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Inicia una ronda
-     */
     async startRound() {
         try {
             this.elements.btnStartRound.disabled = true;
@@ -514,9 +430,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Termina una ronda
-     */
     async endRound() {
         try {
             this.elements.btnEndRound.disabled = true;
@@ -537,9 +450,6 @@ class HostManager {
         }
     }
     
-    /**
-     * Crea nueva partida
-     */
     createNewGame() {
         if (confirm('¿Iniciar una nueva partida?')) {
             clearGameSession();
@@ -547,19 +457,14 @@ class HostManager {
         }
     }
     
-    /**
-     * Maneja pérdida de conexión
-     */
     handleConnectionLost() {
         alert('Desconectado del servidor');
         location.reload();
     }
 }
 
-// Instancia global
 let hostManager = null;
 
-// Inicializar cuando carga el DOM
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         hostManager = new HostManager();
@@ -570,4 +475,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - HOTFIX #1: sincronización cada 100ms', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado', 'color: #10B981; font-weight: bold');
