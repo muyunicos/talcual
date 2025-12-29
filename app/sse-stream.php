@@ -1,5 +1,6 @@
 <?php
-// 🔧 FIX #33: SSE usando patrón de notificación (GAME_all.json, GAME_host.json)
+// 🔧 FIX #33: SSE usando patrón de notificación por game_id
+// Archivos: {GAME_ID}_all.json, {GAME_ID}_host.json
 // En lugar de filemtime() agresivo que causa buffering en Hostinger
 
 require_once __DIR__ . '/config.php';
@@ -41,9 +42,9 @@ function sendSSE($event, $data) {
     flush();
 }
 
-// 🔧 FIX #33: Usar archivos de notificación en lugar de filemtime()
-$notifyAllFile = GAME_STATES_DIR . '/GAME_all.json';
-$notifyHostFile = GAME_STATES_DIR . '/GAME_host.json';
+// 🔧 FIX #33: Usar archivos de notificación per-game
+$notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
+$notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
 
 // Único archivo que nos importa según el rol
 $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
@@ -59,10 +60,10 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with notify files'
+    'method' => 'SSE with per-game notify files'
 ]);
 
-logMessage("SSE conectado para {$gameId}", 'DEBUG');
+logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}", 'DEBUG');
 
 while ((time() - $startTime) < $maxDuration) {
     if (connection_aborted()) {
@@ -77,7 +78,7 @@ while ((time() - $startTime) < $maxDuration) {
         break;
     }
     
-    // 🔧 FIX #33: Chequear archivo de notificación (no filemtime del JSON)
+    // 🔧 FIX #33: Chequear archivo de notificación per-game
     clearstatcache(false, $notifyFile);
     
     if (file_exists($notifyFile)) {
