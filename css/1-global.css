@@ -13,6 +13,16 @@
     box-sizing: border-box;
 }
 
+/* GAME SCREEN */
+
+.game-screen {
+    display: block;
+    position: fixed;
+    width: 100%;
+    align-self: center;
+    color: var(--color-text-light);
+}
+
 /* ========== VARIABLES GLOBALES ========== */
 :root {
     /* ========== COLORES LEGACY (Para compatibilidad) ========== */
