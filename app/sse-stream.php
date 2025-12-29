@@ -3,13 +3,11 @@
 
 require_once __DIR__ . '/config.php';
 
-// Headers SSE
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
 header('X-Accel-Buffering: no');
 
-// Deshabilitar output buffering de PHP
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', '1');
 }
@@ -19,7 +17,6 @@ if (function_exists('apache_setenv')) {
 ob_implicit_flush(1);
 while (ob_get_level()) ob_end_flush();
 
-// Validar game_id
 $gameId = sanitizeGameId($_GET['game_id'] ?? null);
 
 if (!$gameId) {
@@ -31,42 +28,35 @@ if (!$gameId) {
 
 logMessage("SSE iniciado para game: {$gameId}", 'DEBUG');
 
-// Enviar función helper
 function sendSSE($event, $data) {
     echo "event: {$event}\n";
     echo "data: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
     flush();
 }
 
-// Verificar que el juego existe
 if (!gameExists($gameId)) {
     sendSSE('error', ['message' => 'Juego no encontrado']);
     exit;
 }
 
-// Variables de control
 $lastModified = 0;
 $startTime = time();
 $lastHeartbeat = time();
 $connectionBroken = false;
 
-// Loop principal
 while (true) {
-    // Verificar timeout
     if (time() - $startTime > SSE_TIMEOUT) {
         logMessage("SSE timeout alcanzado para {$gameId}", 'INFO');
         sendSSE('timeout', ['message' => 'Timeout alcanzado']);
         break;
     }
     
-    // Detectar si el cliente cerró la conexión
     if (connection_aborted()) {
         $connectionBroken = true;
         logMessage("SSE conexión cerrada por cliente: {$gameId}", 'DEBUG');
         break;
     }
     
-    // Verificar que el juego aún existe
     $stateFile = GAME_STATES_DIR . '/' . $gameId . '.json';
     
     if (!file_exists($stateFile)) {
@@ -75,7 +65,6 @@ while (true) {
         break;
     }
     
-    // Verificar si hay actualizaciones
     $currentModified = filemtime($stateFile);
     
     if ($currentModified > $lastModified) {
@@ -84,38 +73,27 @@ while (true) {
         if ($state) {
             sendSSE('update', $state);
             $lastModified = $currentModified;
-            $lastHeartbeat = time(); // Resetear heartbeat al enviar actualización
+            $lastHeartbeat = time();
             logMessage("SSE update enviado para {$gameId}", 'DEBUG');
         }
     }
     
-    // Heartbeat
     if (time() - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
         echo ": heartbeat\n\n";
         flush();
         $lastHeartbeat = time();
     }
 
-    // ✅ MEJORA #26 + HOTFIX #2: Polling inteligente basado en estado del juego
-    // HOTFIX #2: Redución a 30ms cuando hay jugadores esperando
     $state = loadGameState($gameId);
     if ($state) {
         $playerCount = count($state['players'] ?? []);
         
-        // CRÍTICO: Mientras esperamos jugadores, máxima atención (30ms en lugar de 50ms)
         if ($playerCount > 0 && $state['status'] === 'waiting') {
-            usleep(30000);  // 30ms - máxima sensibilidad (HOTFIX #2)
-            logMessage("SSE sleep 30ms (waiting with {$playerCount} players)", 'DEBUG');
-        }
-        // Durante juego activo: moderadamente rápido (100ms)
-        elseif ($state['status'] === 'playing') {
-            usleep(100000); // 100ms - juego activo
-            logMessage("SSE sleep 100ms (playing)", 'DEBUG');
-        }
-        // Sin jugadores: relajado (500ms)
-        else {
-            usleep(500000); // 500ms - sin actividad
-            logMessage("SSE sleep 500ms (idle)", 'DEBUG');
+            usleep(30000);
+        } elseif ($state['status'] === 'playing') {
+            usleep(100000);
+        } else {
+            usleep(500000);
         }
     } else {
         usleep(500000);
