@@ -15,11 +15,22 @@
 
 /* ========== VARIABLES GLOBALES ========== */
 :root {
-    /* ========== COLORES ========== */
+    /* ========== COLORES LEGACY (Para compatibilidad) ========== */
     --violeta-profundo: #2E004E;
     --cian: #00F0FF;
     --magenta: #FF0055;
     --amarillo: #FFD700;
+    
+    /* ========== COLORES MODERNOS (Nueva paleta) ========== */
+    --color-bg-dark: #1a1a2e;
+    --color-bg-darker: #16213e;
+    --color-text-light: #e0e7ff;
+    --color-text-muted: #c7d2fe;
+    --color-accent-amber: #fbbf24;
+    --color-accent-green: #22c55e;
+    --color-accent-purple: #8b5cf6;
+    --color-accent-cyan: #06b6d4;
+    --color-accent-red: #ef4444;
     
     /* ========== SOMBRAS (SHADOWS) ========== */
     --sombra-xs: 1px 1px 0px #000;
@@ -53,6 +64,10 @@
     --radius-lg: 20px;
     --radius-xl: 25px;
     --radius-full: 50px;
+    --radius-modal: 16px;
+    --radius-btn: 8px;
+    --radius-input: 8px;
+    --radius-card: 12px;
     
     /* ========== PADDING ESTÁNDAR ========== */
     --padding-sm: 8px 12px;
@@ -62,6 +77,9 @@
     --padding-button: 15px 35px;
     --padding-input: 18px;
     --padding-modal: 35px;
+    --padding-modal-content: 30px;
+    --padding-input-field: 12px 16px;
+    --padding-btn-control: 12px 24px;
     
     /* ========== FUENTES (FONTS) ========== */
     --font-primary: 'Nunito', sans-serif;
@@ -71,6 +89,11 @@
     --transition-fast: 0.1s ease;
     --transition-normal: 0.2s ease;
     --transition-slow: 0.5s ease;
+    
+    /* ========== RESPONSIVE BREAKPOINTS ========== */
+    /* Mobile: < 480px */
+    /* Tablet: 480px - 1024px */
+    /* Desktop: > 1024px */
     
     /* ========== OTROS FONDOS ========== */
     --fondo-tv: #2E004E;
@@ -212,6 +235,23 @@ table tr:last-child td {
     transition: background var(--transition-slow);
 }
 
+/* ========== STATUS INDICATORS ========== */
+.status-connected { 
+    color: var(--color-accent-green);
+}
+.status-ready { 
+    color: #3b82f6;
+}
+.status-answered { 
+    color: var(--color-accent-amber);
+}
+.status-waiting { 
+    color: var(--color-accent-purple);
+}
+.status-disconnected { 
+    opacity: 0.4;
+}
+
 /* ========== LANDING PAGE ========== */
 .landing-container {
     text-align: center;
@@ -313,16 +353,16 @@ table tr:last-child td {
     text-shadow: var(--sombra-xs);
 }
 
-/* ========== BOTÓN HOME (Reemplazo de btn-back) ========== */
+/* ========== BOTÓN HOME (Unificado) ========== */
 .btn-home {
     position: fixed;
     bottom: var(--space-lg);
-    left: var(--space-lg);
+    right: var(--space-lg);
     width: 60px;
     height: 60px;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(139, 92, 246, 0.2);
     backdrop-filter: blur(10px);
-    border: 3px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(139, 92, 246, 0.4);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -336,7 +376,8 @@ table tr:last-child td {
 }
 
 .btn-home:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(139, 92, 246, 0.4);
+    border-color: rgba(139, 92, 246, 0.8);
     transform: scale(1.1);
     box-shadow: var(--sombra-dura);
     text-decoration: none;
@@ -355,6 +396,14 @@ table tr:last-child td {
 .flex-center { display: flex; justify-content: center; align-items: center; }
 
 /* ========== RESPONSIVE ========== */
+@media (max-width: 1024px) {
+    .btn-home {
+        width: 55px;
+        height: 55px;
+        font-size: 1.6em;
+    }
+}
+
 @media (max-width: 768px) {
     .logo-header h1 {
         font-size: 2em;
@@ -369,6 +418,12 @@ table tr:last-child td {
         font-size: 1.2em;
         padding: var(--space-md) var(--space-xl);
     }
+    
+    .btn-home {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5em;
+    }
 }
 
 @media (max-width: 480px) {
@@ -377,7 +432,7 @@ table tr:last-child td {
         height: 50px;
         font-size: 1.5em;
         bottom: var(--space-md);
-        left: var(--space-md);
+        right: var(--space-md);
     }
     
     .logo-header h1 {
@@ -385,6 +440,11 @@ table tr:last-child td {
     }
     
     .subtitle {
+        font-size: 1em;
+    }
+    
+    .btn-create,
+    .btn-join {
         font-size: 1em;
     }
 }
