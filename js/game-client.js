@@ -154,6 +154,16 @@ class GameClient {
       this.eventSource.onmessage = (event) => this.onSSEMessage(event);
       this.eventSource.onerror = () => this.onSSEError();
       
+      // 🔧 FIX #34: Agregar listener explícito para evento 'update'
+      // El servidor envía: event: update\ndata: {...}
+      // EventSource necesita addEventListener('update') para recibirlo
+      if (this.eventSource && typeof this.eventSource.addEventListener === 'function') {
+        this.eventSource.addEventListener('update', (event) => {
+          console.log(`📨 [${this.role}] Evento SSE 'update' recibido`);
+          this.onSSEMessage(event);
+        });
+      }
+      
     } catch (error) {
       console.error(`❌ [${this.role}] Error creando EventSource:`, error);
       this.handleReconnect();
