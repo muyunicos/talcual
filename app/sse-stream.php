@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+error_log("PRUEBA DE LOG: Esto es un mensaje de prueba personalizado.");
 // Server-Sent Events para actualizaciones en tiempo real
 
 require_once __DIR__ . '/config.php';
