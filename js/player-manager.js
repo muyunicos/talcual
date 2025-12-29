@@ -430,6 +430,10 @@ class PlayerManager {
         
         safeHideElement(this.elements.resultsSection);
         safeHideElement(this.elements.waitingMessage);
+
+        // FIX: Si .hidden tiene display:none (o !important), safeShowElement no alcanza.
+        if (this.elements.currentWord) this.elements.currentWord.classList.remove('hidden');
+        if (this.elements.wordsInputSection) this.elements.wordsInputSection.classList.remove('hidden');
         
         if (!state.current_word) {
             debug('❌ PROBLEMA: No hay current_word en el estado!', 'error');
@@ -530,6 +534,7 @@ class PlayerManager {
         }
         
         if (this.myWords.length > 0) {
+            if (this.elements.wordsListContainer) this.elements.wordsListContainer.classList.remove('hidden');
             safeShowElement(this.elements.wordsListContainer);
             
             if (this.elements.wordsList) {

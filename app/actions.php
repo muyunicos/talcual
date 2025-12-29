@@ -79,6 +79,74 @@ function checkRateLimit() {
     }
 }
 
+/**
+ * Devuelve una consigna aleatoria desde app/diccionario.json.
+ * Soporta 2 formatos:
+ * 1) Legacy: { "categorias": { "GENERAL": ["CASA", ...] } }
+ * 2) Nuevo: { "CATEGORIA": [ { "CONSIGNA": ["Tip", ...] }, ... ] }
+ * @param string|null $preferredCategory
+ * @returns array{category:?string,prompt:string}
+ */
+function pickRandomPromptFromDictionary($preferredCategory = null) {
+    $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
+
+    if (!file_exists($file)) {
+        return ['category' => null, 'prompt' => 'JUEGO'];
+    }
+
+    $raw = @file_get_contents($file);
+    $data = json_decode($raw ?: '', true);
+
+    if (!is_array($data)) {
+        return ['category' => null, 'prompt' => 'JUEGO'];
+    }
+
+    // ===== Legacy format =====
+    if (isset($data['categorias']) && is_array($data['categorias'])) {
+        $cats = array_keys($data['categorias']);
+        $cat = null;
+
+        if ($preferredCategory && isset($data['categorias'][$preferredCategory])) {
+            $cat = $preferredCategory;
+        } elseif (!empty($cats)) {
+            $cat = $cats[array_rand($cats)];
+        }
+
+        $pool = ($cat && isset($data['categorias'][$cat]) && is_array($data['categorias'][$cat])) ? $data['categorias'][$cat] : [];
+        $prompt = !empty($pool) ? (string)$pool[array_rand($pool)] : 'JUEGO';
+
+        return ['category' => $cat, 'prompt' => $prompt];
+    }
+
+    // ===== New format =====
+    $cats = array_values(array_filter(array_keys($data), function ($k) use ($data) {
+        return is_array($data[$k]);
+    }));
+
+    if (empty($cats)) {
+        return ['category' => null, 'prompt' => 'JUEGO'];
+    }
+
+    $cat = ($preferredCategory && isset($data[$preferredCategory])) ? $preferredCategory : $cats[array_rand($cats)];
+    $node = $data[$cat];
+
+    $prompts = [];
+    if (is_array($node)) {
+        foreach ($node as $item) {
+            if (!is_array($item)) continue;
+            foreach ($item as $prompt => $tips) {
+                if (is_string($prompt)) {
+                    $p = trim($prompt);
+                    if ($p !== '') $prompts[] = $p;
+                }
+            }
+        }
+    }
+
+    $prompt = !empty($prompts) ? (string)$prompts[array_rand($prompts)] : 'JUEGO';
+    return ['category' => $cat, 'prompt' => $prompt];
+}
+
 try {
     checkRateLimit();
 
@@ -113,10 +181,13 @@ try {
             $totalRounds = intval($input['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS);
             $roundDuration = intval($input['round_duration'] ?? DEFAULT_ROUND_DURATION);
             $minPlayers = intval($input['min_players'] ?? MIN_PLAYERS);
-            
+
             if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = DEFAULT_TOTAL_ROUNDS;
             if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = DEFAULT_ROUND_DURATION;
             if ($minPlayers < 1 || $minPlayers > 6) $minPlayers = MIN_PLAYERS;
+
+            $selectedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
+            if ($selectedCategory === '') $selectedCategory = null;
 
             $state = [
                 'game_id' => $gameId,
@@ -126,6 +197,7 @@ try {
                 'status' => 'waiting',
                 'current_word' => null,
                 'current_category' => null,
+                'selected_category' => $selectedCategory,
                 'round_duration' => $roundDuration,
                 'round_started_at' => null,
                 'round_start_at' => null,
@@ -169,7 +241,7 @@ try {
                 $response = ['success' => false, 'message' => 'Nombre invalido'];
                 break;
             }
-            
+
             if (count($state['players']) >= MAX_PLAYERS) {
                 $response = ['success' => false, 'message' => 'Sala llena'];
                 break;
@@ -230,31 +302,34 @@ try {
                 });
 
                 $minPlayers = $state['min_players'] ?? MIN_PLAYERS;
-                
+
                 if (count($activePlayers) < $minPlayers) {
                     $response = ['success' => false, 'message' => 'Minimo ' . $minPlayers . ' jugadores'];
                     break;
                 }
 
-                $word = strtoupper(trim($input['word'] ?? ''));
-                
-                if (empty($word)) {
-                    $word = getRandomWord();
+                // "word" ahora representa la CONSIGNA (opcional). Si viene vacía, se elige una al azar desde diccionario.
+                $prompt = trim((string)($input['word'] ?? ''));
+
+                $categoryFromRequest = isset($input['category']) ? trim((string)$input['category']) : null;
+                if ($categoryFromRequest === '') $categoryFromRequest = null;
+
+                $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
+                if ($preferredCategory === '') $preferredCategory = null;
+
+                if ($prompt === '') {
+                    $picked = pickRandomPromptFromDictionary($preferredCategory);
+                    $prompt = (string)($picked['prompt'] ?? 'JUEGO');
+                    $preferredCategory = $picked['category'] ?? $preferredCategory;
                 }
-                
-                $validation = validatePlayerWord($word);
-                if (!$validation['valid']) {
-                    $response = ['success' => false, 'message' => 'Palabra invalida'];
-                    break;
-                }
-                
+
                 $duration = intval($input['duration'] ?? $state['round_duration'] ?? DEFAULT_ROUND_DURATION);
                 $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS);
-                
+
                 if ($duration < 30 || $duration > 300) {
                     $duration = $state['round_duration'] ?? DEFAULT_ROUND_DURATION;
                 }
-                
+
                 if ($totalRounds < 1 || $totalRounds > 10) {
                     $totalRounds = $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS;
                 }
@@ -264,8 +339,8 @@ try {
 
                 $state['round']++;
                 $state['status'] = 'playing';
-                $state['current_word'] = $word;
-                $state['current_category'] = null;
+                $state['current_word'] = $prompt; // CONSIGNA
+                $state['current_category'] = $preferredCategory;
                 $state['round_duration'] = $duration;
                 $state['total_rounds'] = $totalRounds;
                 $state['round_start_at'] = $round_start_at;
@@ -330,12 +405,13 @@ try {
                 if (empty($trimmed)) {
                     continue;
                 }
-                
-                $validation = validatePlayerWord($trimmed, $state['current_word']);
-                
+
+                // current_word ahora es CONSIGNA, así que no se usa como restricción para validar respuestas.
+                $validation = validatePlayerWord($trimmed);
+
                 if ($validation['valid']) {
                     $normalized = strtoupper($trimmed);
-                    
+
                     if (!in_array($normalized, $validAnswers, true)) {
                         $validAnswers[] = $normalized;
                     }
@@ -343,16 +419,16 @@ try {
                     $errors[] = $validation['error'];
                 }
             }
-            
+
             if (count($validAnswers) > MAX_WORDS_PER_PLAYER) {
                 $validAnswers = array_slice($validAnswers, 0, MAX_WORDS_PER_PLAYER);
             }
 
             $state['players'][$playerId]['answers'] = $validAnswers;
-            
+
             $hasMaxWords = count($validAnswers) >= MAX_WORDS_PER_PLAYER;
             $forcedPass = !empty($input['forced_pass']);
-            
+
             if ($hasMaxWords || $forcedPass) {
                 $state['players'][$playerId]['status'] = 'ready';
             }
@@ -385,11 +461,11 @@ try {
             }
 
             $elapsed = time() - $state['round_started_at'];
-            
+
             if ($elapsed < $state['round_duration'] - 5) {
                 $state['round_duration'] = $elapsed + 5;
                 $state['last_update'] = time();
-                
+
                 if (saveGameState($gameId, $state)) {
                     notifyGameChanged($gameId);
                     $response = [
@@ -433,19 +509,19 @@ try {
                     if (empty($trimmed)) {
                         continue;
                     }
-                    
+
                     $normalized = strtoupper($trimmed);
-                    
+
                     // Obtener palabra canónica usando motor inteligente
                     $canonical = $engine->getCanonicalWord($normalized);
                     if ($canonical === null) {
                         // Si no está en diccionario, usar palabra normalizada
                         $canonical = $normalized;
                     }
-                    
+
                     // Guardar mapeo original → canónica
                     $wordCanonicals[$normalized] = $canonical;
-                    
+
                     // Agrupar por palabra canónica
                     if (!isset($wordCounts[$canonical])) {
                         $wordCounts[$canonical] = [];
@@ -601,24 +677,24 @@ try {
                 $response = ['success' => false, 'message' => 'game_id y player_id requeridos'];
                 break;
             }
-            
+
             $state = loadGameState($gameId);
-            
+
             if (!$state || !isset($state['players'][$playerId])) {
                 $response = ['success' => false, 'message' => 'Jugador no encontrado'];
                 break;
             }
-            
+
             $newName = trim($input['name'] ?? '');
-            
+
             if (strlen($newName) < 2 || strlen($newName) > 20) {
                 $response = ['success' => false, 'message' => 'Nombre invalido'];
                 break;
             }
-            
+
             $state['players'][$playerId]['name'] = $newName;
             $state['last_update'] = time();
-            
+
             if (saveGameState($gameId, $state)) {
                 trackGameAction($gameId, 'player_name_updated', []);
                 notifyGameChanged($gameId);
@@ -658,13 +734,13 @@ try {
                 'words' => array_values($words)
             ];
             break;
-            
+
         case 'get_stats':
             if (!DEV_MODE) {
                 $response = ['success' => false, 'message' => 'No disponible'];
                 break;
             }
-            
+
             $response = [
                 'success' => true,
                 'stats' => [
@@ -681,7 +757,7 @@ try {
     }
 
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
-    
+
 } catch (Exception $e) {
     logMessage('Error fatal: ' . $e->getMessage(), 'ERROR');
     http_response_code(500);
