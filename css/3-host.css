@@ -8,7 +8,7 @@
     padding: var(--space-lg);
     background: linear-gradient(135deg, var(--color-bg-darker) 0%, #1a1f3a 100%);
     color: var(--color-text-light);
-    MARGIN: AUTO;
+    margin: auto;
     width: calc(100% - 4em);
 }
 
@@ -336,6 +336,7 @@
     border: 1px solid rgba(139, 92, 246, 0.2);
     max-height: 200px;
     overflow-y: auto;
+    justify-content: center;
 }
 
 .btn-remove-player {
@@ -480,6 +481,41 @@
     }
 }
 
+/* NEW: Better mid breakpoint (avoids unusable layout between 1400 and 1024) */
+@media (max-width: 1280px) {
+    .tv-layout {
+        grid-template-columns: 180px 1fr;
+        grid-template-rows: auto 1fr auto auto;
+        height: auto;
+    }
+
+    .ranking-panel {
+        grid-row: 2;
+        grid-column: 1;
+        max-height: none;
+    }
+
+    .center-panel {
+        grid-row: 2;
+        grid-column: 2;
+        padding: var(--space-2xl);
+        gap: var(--space-xl);
+    }
+
+    .top-words-panel {
+        grid-row: 3;
+        grid-column: 1 / -1;
+        max-height: 160px;
+    }
+
+    .players-grid,
+    .results-panel {
+        grid-row: 4;
+        grid-column: 1 / -1;
+        max-height: 220px;
+    }
+}
+
 @media (max-width: 1024px) {
     .tv-layout {
         grid-template-columns: 1fr;
@@ -488,14 +524,28 @@
         height: auto;
     }
 
-    .ranking-panel,
-    .top-words-panel {
+    /* FIX: avoid overlap by explicitly assigning rows */
+    .ranking-panel {
+        grid-row: 2;
         grid-column: 1;
-        max-height: 120px;
+        max-height: 140px;
     }
 
     .center-panel {
         grid-row: 3;
+        grid-column: 1;
+        padding: var(--space-2xl);
+    }
+
+    .top-words-panel {
+        grid-row: 4;
+        grid-column: 1;
+        max-height: 140px;
+    }
+
+    .players-grid,
+    .results-panel {
+        grid-row: 5;
         grid-column: 1;
     }
 
@@ -534,7 +584,7 @@
 
     .ranking-panel,
     .top-words-panel {
-        max-height: 100px;
+        max-height: 120px;
         padding: var(--space-md);
     }
 
@@ -552,7 +602,7 @@
     }
 
     .players-grid {
-        max-height: 150px;
+        max-height: 180px;
         gap: var(--space-md);
         padding: var(--space-md);
     }
@@ -600,7 +650,7 @@
     .ranking-panel,
     .top-words-panel,
     .results-panel {
-        max-height: 80px;
+        max-height: 100px;
         padding: var(--space-md);
         gap: var(--space-sm);
     }
@@ -637,7 +687,7 @@
 
     .players-grid {
         grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        max-height: 120px;
+        max-height: 160px;
         gap: var(--space-md);
         padding: var(--space-md);
     }

@@ -94,7 +94,14 @@ class HostManager {
             btnCreateGame: safeGetElement('btn-create-game'),
             statusMessage: safeGetElement('status-message'),
             timerDisplay: safeGetElement('timer-display'),
+
+            // Legacy (prev UI)
             gameCodeTv: safeGetElement('game-code-tv'),
+
+            // Current UI (host.html)
+            codeStickerFloating: safeGetElement('code-sticker-floating'),
+            codeStickerValue: safeGetElement('code-sticker-value'),
+
             rankingList: safeGetElement('ranking-list'),
             wordDisplay: safeGetElement('word-display'),
             countdownDisplay: safeGetElement('countdown-display'),
@@ -107,11 +114,7 @@ class HostManager {
             controlsPanel: safeGetElement('controls-panel'),
             btnConfig: safeGetElement('btn-config'),
             configDropdown: safeGetElement('config-dropdown-host'),
-
-            // ⚠️ Robustez UI: si el botón "Empezar" se mueve o se renombra,
-            // tratamos de encontrarlo por id viejo y/o por clase.
-            btnStartRound: safeGetElement('btn-start-round') || safeGetElement('btn-empezar') || document.querySelector('.btn-empezar'),
-
+            btnStartRound: safeGetElement('btn-start-round'),
             btnEndRound: safeGetElement('btn-end-round'),
             btnNextRound: safeGetElement('btn-next-round'),
             btnFinishGame: safeGetElement('btn-finish-game'),
@@ -125,6 +128,28 @@ class HostManager {
             hamburgerBtn: safeGetElement('btn-hamburger-host'),
             hamburgerMenu: safeGetElement('hamburger-menu-host')
         };
+    }
+
+    getGameCodeClickTarget() {
+        return this.elements.codeStickerFloating
+            || this.elements.codeStickerValue
+            || this.elements.gameCodeTv;
+    }
+
+    getGameCodeText() {
+        const code = (this.elements.codeStickerValue?.textContent
+            || this.elements.gameCodeTv?.textContent
+            || this.gameId
+            || '').toString().trim();
+
+        if (!code || code === '------' || code === '----') return '';
+        return code;
+    }
+
+    setGameCodeText(code) {
+        if (!code) return;
+        if (this.elements.gameCodeTv) this.elements.gameCodeTv.textContent = code;
+        if (this.elements.codeStickerValue) this.elements.codeStickerValue.textContent = code;
     }
 
     attachEventListeners() {
@@ -231,12 +256,7 @@ class HostManager {
         }
 
         if (this.elements.btnStartRound) {
-            // Si el botón quedó dentro de un <form> por un cambio de layout,
-            // evitar submit/navegación.
-            this.elements.btnStartRound.addEventListener('click', (e) => {
-                if (e && typeof e.preventDefault === 'function') e.preventDefault();
-                this.startRound();
-            });
+            this.elements.btnStartRound.addEventListener('click', () => this.startRound());
         }
 
         if (this.elements.btnEndRound) {
@@ -412,7 +432,7 @@ class HostManager {
     }
 
     setupGameCodeCopy() {
-        const sticker = this.elements.gameCodeTv;
+        const sticker = this.getGameCodeClickTarget();
         if (!sticker) return;
 
         sticker.title = 'Click para copiar el código';
@@ -431,10 +451,8 @@ class HostManager {
     }
 
     async copyGameCodeToClipboard() {
-        const sticker = this.elements.gameCodeTv;
-        const code = (sticker?.textContent || '').trim();
-
-        if (!code || code === '------') return;
+        const code = this.getGameCodeText();
+        if (!code) return;
 
         try {
             if (navigator.clipboard && window.isSecureContext) {
@@ -467,7 +485,7 @@ class HostManager {
     }
 
     showGameCodeCopiedIndicator() {
-        const sticker = this.elements.gameCodeTv;
+        const sticker = this.getGameCodeClickTarget();
         if (!sticker) return;
 
         sticker.classList.remove('copied');
@@ -569,9 +587,7 @@ class HostManager {
         safeHideElement(this.elements.modalCreateGame);
         safeShowElement(this.elements.gameScreen);
 
-        if (this.elements.gameCodeTv) {
-            this.elements.gameCodeTv.textContent = this.gameId;
-        }
+        this.setGameCodeText(this.gameId);
 
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
@@ -669,6 +685,9 @@ class HostManager {
         this.updateWordDisplay();
         this.updateButtonStates();
         this.updateTimer();
+
+        // Keep code text synced (in case DOM got rebuilt or recovered state)
+        this.setGameCodeText(this.gameId);
     }
 
     updateRoundInfo() {
