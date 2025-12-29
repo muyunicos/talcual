@@ -15,6 +15,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// MEJORA #24: Rate limiting básico
+function checkRateLimit() {
+    $ip = $_SERVER['REMOTE_ADDR'];
+    $cacheKey = 'rate_limit:' . md5($ip);
+    $cacheFile = sys_get_temp_dir() . '/' . $cacheKey . '.txt';
+    
+    $limit = 100; // requests per minute
+    $window = 60;
+    
+    if (file_exists($cacheFile)) {
+        $data = json_decode(file_get_contents($cacheFile), true);
+        $elapsed = time() - $data['timestamp'];
+        
+        if ($elapsed < $window) {
+            $data['count']++;
+            if ($data['count'] > $limit) {
+                http_response_code(429);
+                echo json_encode(['success' => false, 'message' => 'Rate limit exceeded']);
+                exit;
+            }
+        } else {
+            $data = ['timestamp' => time(), 'count' => 1];
+        }
+        file_put_contents($cacheFile, json_encode($data));
+    } else {
+        file_put_contents($cacheFile, json_encode(['timestamp' => time(), 'count' => 1]));
+    }
+}
+
+checkRateLimit();
+
 // Leer input
 $input = json_decode(file_get_contents('php://input'), true);
 
@@ -65,7 +96,7 @@ switch ($action) {
             'round_started_at' => null,
             'round_start_at' => null,  // NUEVO: Timestamp futuro para countdown
             'round_details' => [],
-            'round_top_words' => [],
+            'round_top_words' => [], // FIX: Nombre consistente
             'game_history' => []
         ];
 
@@ -225,6 +256,12 @@ switch ($action) {
 
         if (!$state || !isset($state['players'][$playerId])) {
             $response = ['success' => false, 'message' => 'Jugador no encontrado'];
+            break;
+        }
+
+        // MEJORA #25: Validar que la ronda esté activa
+        if ($state['status'] !== 'playing') {
+            $response = ['success' => false, 'message' => 'No hay ronda activa'];
             break;
         }
 
@@ -404,7 +441,7 @@ switch ($action) {
             return $b['count'] - $a['count'];
         });
 
-        $state['round_top_words'] = array_slice($topWords, 0, 10);
+        $state['round_top_words'] = array_slice($topWords, 0, 10); // FIX: Nombre consistente
 
         // Cambiar estado
         if ($state['round'] >= $state['total_rounds']) {
@@ -454,7 +491,7 @@ switch ($action) {
         $state['current_word'] = null;
         $state['round_started_at'] = null;
         $state['round_start_at'] = null;
-        $state['round_top_words'] = [];
+        $state['round_top_words'] = []; // FIX: Nombre consistente
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'game_reset', []);
