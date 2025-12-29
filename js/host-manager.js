@@ -225,23 +225,33 @@ class HostManager {
     
     /**
      * MEJORA #26: Fallback inteligente en lugar de polling cada 100ms
-     * Solo hace forceRefresh() si SSE muere >30 segundos
+     * Solo hace forceRefresh() si SSE muere > MESSAGE_TIMEOUT
+     * Usa COMM_CONFIG para evitar valores hardcodeados
      */
     setupFallbackRefresh() {
         if (this.fallbackRefreshInterval) {
             clearInterval(this.fallbackRefreshInterval);
         }
         
-        debug('🔄 Iniciando fallback refresh (30s sin SSE = forceRefresh)', 'info');
+        // Obtener CONFIG con fallback
+        const commConfig = window.COMM?.COMM_CONFIG || {
+            MESSAGE_TIMEOUT: 30000,
+            HEARTBEAT_CHECK_INTERVAL: 5000
+        };
+        
+        const checkInterval = commConfig.HEARTBEAT_CHECK_INTERVAL;
+        const messageTimeout = commConfig.MESSAGE_TIMEOUT;
+        
+        debug(`🔄 Iniciando fallback refresh (${messageTimeout}ms sin SSE = forceRefresh)`, 'info');
         
         this.fallbackRefreshInterval = setInterval(() => {
             const timeSinceLastSSE = Date.now() - this.lastSSEMessageTime;
             
-            if (timeSinceLastSSE > 30000 && this.client && this.gameId) {
+            if (timeSinceLastSSE > messageTimeout && this.client && this.gameId) {
                 console.warn(`⚠️ [HOST] SSE sin mensajes ${Math.floor(timeSinceLastSSE / 1000)}s, forzando refresh...`);
                 this.client.forceRefresh();
             }
-        }, 30000); // Check cada 30s
+        }, checkInterval);
     }
     
     async createGame() {
