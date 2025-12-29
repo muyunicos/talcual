@@ -76,8 +76,10 @@ class PlayerManager {
             countdownOverlay: safeGetElement('countdown-overlay'),
             countdownNumber: safeGetElement('countdown-number'),
             playerNameDisplay: safeGetElement('player-name-display'),
-            btnEditName: safeGetElement('btn-edit-name'),
-            btnExit: safeGetElement('btn-exit'),
+            btnConfigMenu: safeGetElement('btn-config-menu'),
+            configDropdown: safeGetElement('config-dropdown'),
+            optionEditName: safeGetElement('option-edit-name'),
+            optionExit: safeGetElement('option-exit'),
             modalNameInput: safeGetElement('modal-name-input'),
             modalBtnCancel: safeGetElement('modal-btn-cancel'),
             modalBtnSave: safeGetElement('modal-btn-save')
@@ -115,8 +117,26 @@ class PlayerManager {
             this.elements.btnSubmit.addEventListener('click', () => this.submitWords());
         }
         
-        if (this.elements.btnEditName) {
-            this.elements.btnEditName.addEventListener('click', () => this.showEditNameModal());
+        // Config menu dropdown
+        if (this.elements.btnConfigMenu) {
+            this.elements.btnConfigMenu.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleConfigDropdown();
+            });
+        }
+        
+        if (this.elements.optionEditName) {
+            this.elements.optionEditName.addEventListener('click', () => {
+                this.hideConfigDropdown();
+                this.showEditNameModal();
+            });
+        }
+        
+        if (this.elements.optionExit) {
+            this.elements.optionExit.addEventListener('click', () => {
+                this.hideConfigDropdown();
+                this.exitGame();
+            });
         }
         
         if (this.elements.modalBtnCancel) {
@@ -127,8 +147,32 @@ class PlayerManager {
             this.elements.modalBtnSave.addEventListener('click', () => this.saveNewName());
         }
         
-        if (this.elements.btnExit) {
-            this.elements.btnExit.addEventListener('click', () => this.exitGame());
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.footer-left')) {
+                this.hideConfigDropdown();
+            }
+        });
+    }
+    
+    toggleConfigDropdown() {
+        if (!this.elements.configDropdown) return;
+        if (this.elements.configDropdown.style.display === 'none') {
+            this.showConfigDropdown();
+        } else {
+            this.hideConfigDropdown();
+        }
+    }
+    
+    showConfigDropdown() {
+        if (this.elements.configDropdown) {
+            this.elements.configDropdown.style.display = 'block';
+        }
+    }
+    
+    hideConfigDropdown() {
+        if (this.elements.configDropdown) {
+            this.elements.configDropdown.style.display = 'none';
         }
     }
     
@@ -671,4 +715,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js cargado - Countdown sincronizado, auto-submit, categoría, resumen de resultados', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js cargado - Dropdown config menu, edit name, exit options', 'color: #FF00FF; font-weight: bold; font-size: 12px');
