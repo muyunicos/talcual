@@ -77,18 +77,23 @@ while (true) {
         if ($state) {
             sendSSE('update', $state);
             $lastModified = $currentModified;
-            $lastHeartbeat = time();
             logMessage("SSE update enviado para {$gameId}", 'DEBUG');
+            // 🔧 FIX #23: NO resetear $lastHeartbeat aquí - causa que heartbeat nunca se envíe
+            // $lastHeartbeat = time();  // ← ELIMINADO
         }
     } else {
         // Si no hay cambios, cargar estado solo para determinar sleep time
         $state = loadGameState($gameId);
     }
     
-    if (time() - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
+    // 🔧 FIX #23: Enviar heartbeat independientemente de actualizaciones de estado
+    // Esto garantiza que el cliente SIEMPRE reciba algo cada SSE_HEARTBEAT_INTERVAL segundos
+    $now = time();
+    if ($now - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
         echo ": heartbeat\n\n";
         flush();
-        $lastHeartbeat = time();
+        $lastHeartbeat = $now;
+        logMessage("SSE heartbeat enviado para {$gameId}", 'DEBUG');
     }
 
     // Ajustar sleep time basado en status (solo si state fue cargado)
