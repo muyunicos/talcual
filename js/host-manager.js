@@ -13,8 +13,8 @@ class HostManager {
         this.debugMode = false;
         this.updatePending = false;
         this.updateTimeout = null;
-        this.periodicSyncInterval = null;
-        this.lastSyncTime = 0;
+        this.fallbackRefreshInterval = null;
+        this.lastSSEMessageTime = 0;
         this.elements = {};
         this.copyIndicatorTimeout = null;
     }
@@ -212,45 +212,36 @@ class HostManager {
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
         this.client.connect();
+        this.lastSSEMessageTime = Date.now();
         
         this.controlsVisible = false;
         safeHideElement(this.elements.controlsPanel);
         
-        this.setupPeriodicSync();
+        // MEJORA #26: Reemplazar setupPeriodicSync() con fallback robusto
+        this.setupFallbackRefresh();
         
         this.handleStateUpdate(state);
     }
     
-    setupPeriodicSync() {
-        if (this.periodicSyncInterval) {
-            clearInterval(this.periodicSyncInterval);
+    /**
+     * MEJORA #26: Fallback inteligente en lugar de polling cada 100ms
+     * Solo hace forceRefresh() si SSE muere >30 segundos
+     */
+    setupFallbackRefresh() {
+        if (this.fallbackRefreshInterval) {
+            clearInterval(this.fallbackRefreshInterval);
         }
         
-        debug('🔄 Iniciando sincronización periódica (100ms)', 'info');
+        debug('🔄 Iniciando fallback refresh (30s sin SSE = forceRefresh)', 'info');
         
-        this.periodicSyncInterval = setInterval(async () => {
-            try {
-                const now = Date.now();
-                if (now - this.lastSyncTime < 100) {
-                    return;
-                }
-                this.lastSyncTime = now;
-                
-                const result = await this.client.sendAction('get_state', { game_id: this.gameId });
-                
-                if (result.success && result.state) {
-                    const oldTimestamp = this.gameState?.last_update || 0;
-                    const newTimestamp = result.state?.last_update || 0;
-                    
-                    if (newTimestamp > oldTimestamp) {
-                        debug('🔄 Sincronización periódica: Estado actualizado', 'debug');
-                        this.handleStateUpdate(result.state);
-                    }
-                }
-            } catch (error) {
-                debug('ℹ️ Sincronización periódica falló (SSE probablemente activo)', 'debug');
+        this.fallbackRefreshInterval = setInterval(() => {
+            const timeSinceLastSSE = Date.now() - this.lastSSEMessageTime;
+            
+            if (timeSinceLastSSE > 30000 && this.client && this.gameId) {
+                console.warn(`⚠️ [HOST] SSE sin mensajes ${Math.floor(timeSinceLastSSE / 1000)}s, forzando refresh...`);
+                this.client.forceRefresh();
             }
-        }, 100);
+        }, 30000); // Check cada 30s
     }
     
     async createGame() {
@@ -302,6 +293,7 @@ class HostManager {
     
     handleStateUpdate(state) {
         this.gameState = state;
+        this.lastSSEMessageTime = Date.now(); // ← Actualizar timestamp SSE
         debug('📈 Estado actualizado:', state.status);
         this.debouncedUpdateHostUI();
     }
