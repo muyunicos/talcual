@@ -1,12 +1,11 @@
 /**
  * @file player-manager.js
- * @description Gestor de lógica del jugador
- * Maneja:
- * - Unirse a partidas
- * - Sesión del jugador (recuperación automática)
- * - Gestión de palabras
- * - UI del jugador
- * - Integración con GameClient (SSE)
+ * @description Gestor mejorado de lógica del jugador
+ * Cambios:
+ * - Throttle en envío de palabras
+ * - Validación en servidor integrada
+ * - Manejo de errores mejorado
+ * - Código más limpio y mantenible
  */
 
 class PlayerManager {
@@ -20,52 +19,13 @@ class PlayerManager {
         this.myWords = [];
         this.maxWords = 6;
         this.timerInterval = null;
-        this.countdownInterval = null;
+        
+        // Throttle para envío de palabras
+        this.lastWordsUpdateTime = 0;
+        this.wordsUpdatePending = false;
         
         // Elementos del DOM
-        this.elements = {
-            // Modales
-            modalJoinGame: null,
-            gameScreen: null,
-            modalEditName: null,
-            
-            // Inputs del modal de unión
-            inputGameCode: null,
-            inputPlayerName: null,
-            btnJoin: null,
-            colorSelector: null,
-            statusMessage: null,
-            
-            // Header
-            headerRound: null,
-            headerTimer: null,
-            headerCode: null,
-            
-            // UI del juego
-            playerScore: null,
-            statusCard: null,
-            currentWord: null,
-            waitingMessage: null,
-            wordsInputSection: null,
-            currentWordInput: null,
-            btnAddWord: null,
-            wordsListContainer: null,
-            wordsList: null,
-            wordCount: null,
-            maxWordsDisplay: null,
-            btnSubmit: null,
-            resultsSection: null,
-            countdownOverlay: null,
-            countdownNumber: null,
-            playerNameDisplay: null,
-            btnEditName: null,
-            btnExit: null,
-            
-            // Modal editar nombre
-            modalNameInput: null,
-            modalBtnCancel: null,
-            modalBtnSave: null
-        };
+        this.elements = {};
     }
     
     /**
@@ -76,7 +36,6 @@ class PlayerManager {
         this.cacheElements();
         this.attachEventListeners();
         
-        // Intentar recuperar sesión existente
         const savedGameId = getLocalStorage('gameId');
         const savedPlayerId = getLocalStorage('playerId');
         const savedPlayerName = getLocalStorage('playerName');
@@ -135,69 +94,57 @@ class PlayerManager {
     
     /**
      * Adjunta event listeners
-     * FIX #4: Inicializar color por defecto correctamente
      */
     attachEventListeners() {
-        // Botón unirse
         if (this.elements.btnJoin) {
             this.elements.btnJoin.addEventListener('click', () => this.joinGame());
         }
         
-        // Enter en inputs
         if (this.elements.inputGameCode) {
             this.elements.inputGameCode.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.elements.inputPlayerName.focus();
             });
         }
+        
         if (this.elements.inputPlayerName) {
             this.elements.inputPlayerName.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.joinGame();
             });
         }
         
-        // Selector de color - FIX #4: Mejor validación y inicialización
+        // Color selector
         const colorOptions = this.elements.colorSelector?.querySelectorAll('.aura-circle');
         if (colorOptions && colorOptions.length > 0) {
-            // Encontrar el ya seleccionado o seleccionar el primero
             let selectedOption = this.elements.colorSelector.querySelector('.aura-circle.selected');
             if (!selectedOption) {
                 selectedOption = colorOptions[0];
                 selectedOption.classList.add('selected');
             }
             
-            // Inicializar playerColor con el color por defecto
-            this.playerColor = selectedOption.dataset.color;
-            if (!this.playerColor) {
-                console.warn('⚠️ Color sin data-color attribute, usando fallback');
-                this.playerColor = '#FF9966,#FF5E62'; // Fallback
-            }
+            this.playerColor = selectedOption.dataset.color || '#FF9966,#FF5E62';
             
-            // Event listeners para cambiar color
             colorOptions.forEach(option => {
                 option.addEventListener('click', () => {
                     colorOptions.forEach(opt => opt.classList.remove('selected'));
                     option.classList.add('selected');
-                    this.playerColor = option.dataset.color;
-                    if (!this.playerColor) {
-                        console.warn('⚠️ Opción sin data-color');
-                        this.playerColor = '#FF9966,#FF5E62';
-                    }
+                    this.playerColor = option.dataset.color || '#FF9966,#FF5E62';
                 });
             });
         } else {
-            console.warn('⚠️ No color options found in DOM');
-            this.playerColor = '#FF9966,#FF5E62'; // Fallback
+            this.playerColor = '#FF9966,#FF5E62';
         }
         
         // Palabras
         if (this.elements.btnAddWord) {
             this.elements.btnAddWord.addEventListener('click', () => this.addWord());
         }
+        
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.addWord();
             });
         }
+        
         if (this.elements.btnSubmit) {
             this.elements.btnSubmit.addEventListener('click', () => this.submitWords());
         }
@@ -206,9 +153,11 @@ class PlayerManager {
         if (this.elements.btnEditName) {
             this.elements.btnEditName.addEventListener('click', () => this.showEditNameModal());
         }
+        
         if (this.elements.modalBtnCancel) {
             this.elements.modalBtnCancel.addEventListener('click', () => this.hideEditNameModal());
         }
+        
         if (this.elements.modalBtnSave) {
             this.elements.modalBtnSave.addEventListener('click', () => this.saveNewName());
         }
@@ -226,10 +175,6 @@ class PlayerManager {
         safeShowElement(this.elements.modalJoinGame);
         safeHideElement(this.elements.gameScreen);
         
-        // FIX #4: Ya se inicializa playerColor en attachEventListeners
-        // No necesita otra selección aquí
-        
-        // Focus en input de código
         if (this.elements.inputGameCode) {
             setTimeout(() => this.elements.inputGameCode.focus(), 100);
         }
@@ -237,7 +182,6 @@ class PlayerManager {
     
     /**
      * Intenta recuperar una sesión anterior
-     * FIX #9: Pasar player_id al crear GameClient
      */
     async recoverSession(gameId, playerId, playerName, playerColor) {
         try {
@@ -246,7 +190,6 @@ class PlayerManager {
             this.playerName = playerName;
             this.playerColor = playerColor;
             
-            // ✅ FIX #9: Pasar playerId al constructor
             this.client = new GameClient(gameId, playerId, 'player');
             const result = await this.client.sendAction('get_state');
             
@@ -277,29 +220,22 @@ class PlayerManager {
      * Carga la pantalla de juego
      */
     loadGameScreen(state) {
-        // FIX #4: Validar que playerColor no sea null
         if (!this.playerColor) {
-            console.warn('⚠️ playerColor es null, usando fallback');
             this.playerColor = '#FF9966,#FF5E62';
         }
         
-        // Aplicar gradiente de color
         applyColorGradient(this.playerColor);
         
-        // Mostrar pantalla de juego
         safeHideElement(this.elements.modalJoinGame);
         safeShowElement(this.elements.gameScreen);
         
-        // Actualizar UI
         if (this.elements.headerCode) this.elements.headerCode.textContent = this.gameId;
         if (this.elements.playerNameDisplay) this.elements.playerNameDisplay.textContent = this.playerName;
         
-        // Conectar cliente
         this.client.onStateUpdate = (s) => this.handleStateUpdate(s);
         this.client.onConnectionLost = () => this.handleConnectionLost();
         this.client.connect();
         
-        // Aplicar estado
         this.handleStateUpdate(state);
     }
     
@@ -310,7 +246,6 @@ class PlayerManager {
         const code = this.elements.inputGameCode?.value?.trim().toUpperCase();
         const name = this.elements.inputPlayerName?.value?.trim();
         
-        // Validar color
         if (!this.playerColor) {
             if (this.elements.statusMessage) {
                 this.elements.statusMessage.innerHTML = '⚠️ Selecciona un aura';
@@ -318,7 +253,6 @@ class PlayerManager {
             return;
         }
         
-        // Validar
         if (!isValidGameCode(code)) {
             if (this.elements.statusMessage) {
                 this.elements.statusMessage.innerHTML = '⚠️ Código inválido';
@@ -337,7 +271,6 @@ class PlayerManager {
         this.playerName = name;
         this.playerId = generatePlayerId();
         
-        // Guardar sesión
         setLocalStorage('gameId', this.gameId);
         setLocalStorage('playerId', this.playerId);
         setLocalStorage('playerName', this.playerName);
@@ -347,12 +280,12 @@ class PlayerManager {
             this.elements.btnJoin.disabled = true;
             this.elements.btnJoin.textContent = 'Conectando...';
         }
+        
         if (this.elements.statusMessage) {
             this.elements.statusMessage.innerHTML = '⏳ Conectando...';
         }
         
         try {
-            // ✅ FIX #9: Pasar playerId al constructor
             this.client = new GameClient(this.gameId, this.playerId, 'player');
             
             const result = await this.client.sendAction('join_game', {
@@ -373,7 +306,7 @@ class PlayerManager {
                 }
             }
         } catch (error) {
-            debug('Error uniendose:', error, 'error');
+            debug('Error uniéndose:', error, 'error');
             if (this.elements.statusMessage) {
                 this.elements.statusMessage.innerHTML = '❌ Error de conexión';
             }
@@ -391,19 +324,16 @@ class PlayerManager {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
         
-        // Actualizar puntuación
         const me = state.players?.[this.playerId];
         if (me && this.elements.playerScore) {
             this.elements.playerScore.textContent = (me.score || 0) + ' pts';
         }
         
-        // Actualizar ronda
         if (this.elements.headerRound) {
             const total = state.total_rounds || 3;
             this.elements.headerRound.textContent = `Ronda ${state.round || 0}/${total}`;
         }
         
-        // Manejo de estado
         switch (state.status) {
             case 'waiting':
                 this.showWaitingState();
@@ -452,7 +382,6 @@ class PlayerManager {
             const isReady = me?.status === 'ready';
             
             if (isReady) {
-                // Ya envió respuestas
                 if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
                 if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
                 if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
@@ -464,7 +393,6 @@ class PlayerManager {
                 }
                 safeHideElement(this.elements.wordsInputSection);
             } else {
-                // Puede escribir
                 if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
                 if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
                 if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
@@ -473,7 +401,6 @@ class PlayerManager {
                 safeHideElement(this.elements.waitingMessage);
                 safeShowElement(this.elements.wordsInputSection);
                 
-                // Limpiar palabras si es nueva ronda
                 if (!me?.answers || me.answers.length === 0) {
                     this.myWords = [];
                     this.updateWordsList();
@@ -481,7 +408,6 @@ class PlayerManager {
             }
         }
         
-        // Timer
         if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
@@ -497,6 +423,11 @@ class PlayerManager {
         const word = input.value.trim();
         if (!word) return;
         
+        if (word.length > COMM_CONFIG.MAX_WORD_LENGTH) {
+            showNotification(`Palabra demasiado larga (máx ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
+            return;
+        }
+        
         if (this.myWords.length >= this.maxWords) {
             showNotification(`Máximo ${this.maxWords} palabras`, 'warning');
             return;
@@ -511,7 +442,7 @@ class PlayerManager {
         this.myWords.push(normalized);
         input.value = '';
         this.updateWordsList();
-        this.sendWordsUpdate();
+        this.scheduleWordsUpdate();
         input.focus();
     }
     
@@ -545,7 +476,31 @@ class PlayerManager {
     removeWord(index) {
         this.myWords.splice(index, 1);
         this.updateWordsList();
-        this.sendWordsUpdate();
+        this.scheduleWordsUpdate();
+    }
+    
+    /**
+     * Programa actualización de palabras con throttle
+     * Máximo cada 2 segundos para evitar sobrecargar
+     */
+    scheduleWordsUpdate() {
+        const now = Date.now();
+        const timeSinceLastUpdate = now - this.lastWordsUpdateTime;
+        
+        if (timeSinceLastUpdate >= COMM_CONFIG.WORDS_UPDATE_THROTTLE) {
+            // Envíar inmediatamente
+            this.sendWordsUpdate();
+        } else {
+            // Programar para más tarde
+            if (!this.wordsUpdatePending) {
+                this.wordsUpdatePending = true;
+                const delay = COMM_CONFIG.WORDS_UPDATE_THROTTLE - timeSinceLastUpdate;
+                
+                setTimeout(() => {
+                    this.sendWordsUpdate();
+                }, delay);
+            }
+        }
     }
     
     /**
@@ -553,6 +508,9 @@ class PlayerManager {
      */
     async sendWordsUpdate() {
         if (!this.client) return;
+        
+        this.lastWordsUpdateTime = Date.now();
+        this.wordsUpdatePending = false;
         
         try {
             await this.client.sendAction('submit_answers', {
@@ -760,7 +718,6 @@ class PlayerManager {
 // Instancia global
 let playerManager = null;
 
-// FIX #3: Inicialización correcta - solo una vez
 document.addEventListener('DOMContentLoaded', () => {
     if (!playerManager) {
         playerManager = new PlayerManager();
@@ -768,4 +725,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js cargado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ player-manager.js cargado - Mejorado con throttle y validación', 'color: #10B981; font-weight: bold');

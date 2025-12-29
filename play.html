@@ -132,11 +132,13 @@
     </div>
 
     <!-- Scripts Modulares en orden correcto -->
-    <!-- 1. shared-utils.js: Utilidades base (sin dependencias) -->
+    <!-- 1. communication.js: Sistema centralizado de eventos (sin dependencias) -->
+    <script src="./js/communication.js"></script>
+    <!-- 2. shared-utils.js: Utilidades base (sin dependencias) -->
     <script src="./js/shared-utils.js"></script>
-    <!-- 2. game-client.js: Cliente SSE (depende de shared-utils) -->
+    <!-- 3. game-client.js: Cliente SSE (depende de communication.js y shared-utils.js) -->
     <script src="./js/game-client.js"></script>
-    <!-- 3. player-manager.js: Gestor principal (depende de game-client y shared-utils) -->
+    <!-- 4. player-manager.js: Gestor principal (depende de game-client.js y shared-utils.js) -->
     <script src="./js/player-manager.js"></script>
 </body>
 </html>
