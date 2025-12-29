@@ -41,7 +41,7 @@ if (!gameExists($gameId)) {
 
 $lastModified = 0;
 $startTime = time();
-$lastHeartbeat = time();
+$lastHeartbeat = microtime(true);
 $connectionBroken = false;
 
 while (true) {
@@ -67,9 +67,8 @@ while (true) {
     
     $currentModified = filemtime($stateFile);
     
-    // 🔧 FIX #19: Solo cargar estado si hubo cambios, evitar I/O innecesario
     $state = null;
-    $sleep = 500000; // default sleep time
+    $sleep = 500000;
     
     if ($currentModified > $lastModified) {
         $state = loadGameState($gameId);
@@ -78,17 +77,12 @@ while (true) {
             sendSSE('update', $state);
             $lastModified = $currentModified;
             logMessage("SSE update enviado para {$gameId}", 'DEBUG');
-            // 🔧 FIX #23: NO resetear $lastHeartbeat aquí - causa que heartbeat nunca se envíe
-            // $lastHeartbeat = time();  // ← ELIMINADO
         }
     } else {
-        // Si no hay cambios, cargar estado solo para determinar sleep time
         $state = loadGameState($gameId);
     }
     
-    // 🔧 FIX #23: Enviar heartbeat independientemente de actualizaciones de estado
-    // Esto garantiza que el cliente SIEMPRE reciba algo cada SSE_HEARTBEAT_INTERVAL segundos
-    $now = time();
+    $now = microtime(true);
     if ($now - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
         echo ": heartbeat\n\n";
         flush();
@@ -96,16 +90,15 @@ while (true) {
         logMessage("SSE heartbeat enviado para {$gameId}", 'DEBUG');
     }
 
-    // Ajustar sleep time basado en status (solo si state fue cargado)
     if ($state) {
         $playerCount = count($state['players'] ?? []);
         
         if ($playerCount > 0 && $state['status'] === 'waiting') {
-            $sleep = 30000;  // 30ms - polling rápido si hay jugadores esperando
+            $sleep = 30000;
         } elseif ($state['status'] === 'playing') {
-            $sleep = 100000; // 100ms - polling moderado durante juego
+            $sleep = 100000;
         } else {
-            $sleep = 500000; // 500ms - polling lento en otros estados
+            $sleep = 500000;
         }
     }
     
