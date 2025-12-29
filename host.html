@@ -13,11 +13,11 @@
 <body>
     <!-- MODAL CREAR JUEGO -->
     <div class="modal-overlay" id="modal-create-game">
-        <div class="modal-create-game">
+        <div class="modal-content">
             <div class="modal-title">📋 Crear Nueva Partida</div>
             
             <div class="input-group">
-                <label class="input-label">Código de Sala (opcional)</label>
+                <label class="input-label" for="custom-code">Código de Sala (opcional)</label>
                 <input type="text" id="custom-code" class="input-field" 
                        placeholder="Dejar vacío para generar" maxlength="6">
                 <small class="custom-code-info">
@@ -25,17 +25,11 @@
                 </small>
             </div>
             
-            <button class="btn-create-game" id="btn-create-game">
+            <button class="btn-modal-primary btn-create-game" id="btn-create-game">
                 🎮 Crear Partida
             </button>
             
             <div id="status-message" class="status-message-modal"></div>
-            
-            <div class="btn-back">
-                <a href="index.html" class="btn-back-link">
-                    ← Volver al inicio
-                </a>
-            </div>
         </div>
     </div>
 
@@ -48,7 +42,7 @@
                     <img src="/images/logo.webp" alt="TalCual Party">
                 </div>
                 <div class="timer-display" id="timer-display">02:00</div>
-                <div class="game-code-sticker" id="game-code-tv">------</div>
+                <div class="code-sticker code-sticker--large" id="game-code-tv" aria-label="Código de sala">------</div>
             </div>
 
             <!-- RANKING IZQUIERDA -->
@@ -81,6 +75,9 @@
             <button class="btn-control btn-next" id="btn-new-game">🔄 Nueva Partida</button>
         </div>
     </div>
+
+    <!-- BOTÓN HOME -->
+    <a href="index.html" class="btn-home" aria-label="Volver al inicio">🏠</a>
 
     <!-- Scripts Modulares (orden importa) -->
     <script src="/js/communication.js"></script>
