@@ -75,7 +75,7 @@ define('SSE_HEARTBEAT_INTERVAL', max(5, min(60, (int)env('SSE_HEARTBEAT_INTERVAL
 // CONFIGURACIÓN RATE LIMIT (MEJORA #26: arquitectura push-only requiere límite mayor)
 // Con polling eliminado, 1000 req/min es suficiente para uso legítimo
 define('RATE_LIMIT_REQUESTS', max(100, min(5000, (int)env('RATE_LIMIT_REQUESTS', 1000))));
-define('RATE_LIMIT_WINDOW', max(30, (int)env('RATE_LIMIT_WINDOW', 60));
+define('RATE_LIMIT_WINDOW', max(30, (int)env('RATE_LIMIT_WINDOW', 60)));
 
 // CONFIGURACIÓN PHP
 if (DEV_MODE) {
