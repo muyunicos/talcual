@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anfitrión - TalCual Party</title>
-    <link rel="icon" href="/images/icon.webp" type="image/webp">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="css/1-global.css">
     <link rel="stylesheet" href="css/4-components.css">
     <link rel="stylesheet" href="css/3-host.css">
@@ -17,7 +17,7 @@
             <div class="modal-title">📋 Crear Nueva Partida</div>
             
             <div class="input-group">
-                <label class="input-label">Código de Sala (opcional)</label>
+                <label class="input-label" for="custom-code">Código de Sala (opcional)</label>
                 <input type="text" id="custom-code" class="input-field" 
                        placeholder="Dejar vacío para generar" maxlength="6">
                 <small class="custom-code-info">
@@ -29,10 +29,10 @@
                 🎮 Crear Partida
             </button>
             
-            <div id="status-message" style="text-align: center; margin-top: 20px; font-size: 1.1em;"></div>
+            <div id="status-message" class="status-message-modal"></div>
             
-            <div class="btn-back" style="margin-top: 20px; text-align: center;">
-                <a href="index.html" style="color: white; opacity: 0.8; text-decoration: none;">
+            <div class="btn-back">
+                <a href="index.html" class="btn-back-link">
                     ← Volver al inicio
                 </a>
             </div>
@@ -48,7 +48,7 @@
                     <img src="/images/logo.webp" alt="TalCual Party">
                 </div>
                 <div class="timer-display" id="timer-display">02:00</div>
-                <div class="game-code-sticker" id="game-code-tv">------</div>
+                <div class="code-sticker code-sticker--large" id="game-code-tv" aria-label="Código de sala">------</div>
             </div>
 
             <!-- RANKING IZQUIERDA -->
@@ -60,8 +60,8 @@
             <!-- CENTRO - Palabra/Estado -->
             <div class="center-panel">
                 <div class="status-message" id="status-message">Esperando jugadores...</div>
-                <div class="word-display" id="word-display" style="display: none;"></div>
-                <div class="countdown-display" id="countdown-display" style="display: none;"></div>
+                <div class="word-display" id="word-display"></div>
+                <div class="countdown-display" id="countdown-display"></div>
             </div>
 
             <!-- TOP PALABRAS DERECHA -->
@@ -84,8 +84,9 @@
 
     <!-- Scripts Modulares (orden importa) -->
     <script src="/js/communication.js"></script>
-    <script src="/js/game-client.js"></script>
     <script src="/js/shared-utils.js"></script>
+    <script src="/js/aura-system.js"></script>
+    <script src="/js/game-client.js"></script>
     <script src="/js/host-manager.js"></script>
 </body>
 </html>

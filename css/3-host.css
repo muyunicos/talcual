@@ -1,31 +1,110 @@
 /* ============================================
    3-HOST.CSS - PANTALLA TV (HOST.HTML)
-   Estilos Exclusivos de la Pantalla Anfitríón
+   Estilos Exclusivos de la Pantalla Anfitrión
+   Optimizado: Responsive mejorado, sin duplicados
    ============================================ */
 
-/* ========== GRID DE TV HOST ========== */
+/* ========== GRID DE TV HOST - OPTIMIZADO PARA PANTALLAS GRANDES ========== */
 .tv-layout {
     display: grid;
-    grid-template-rows: 120px 1fr 200px;
-    grid-template-columns: 300px 1fr 300px;
     height: 100vh;
-    gap: 15px;
-    padding: 20px;
+    padding: clamp(10px, 2%, 20px);
+    gap: clamp(10px, 2%, 20px);
     position: relative;
     z-index: 1;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* DESKTOP (1920px+) - 3 columnas - MEJORADO PARA USAR ESPACIO */
+@media (min-width: 1920px) {
+    .tv-layout {
+        grid-template-columns: 1fr 2.5fr 1fr;
+        grid-template-rows: min-content 1fr min-content;
+        grid-template-areas:
+            "header header header"
+            "ranking center topwords"
+            "players players players";
+        gap: clamp(15px, 3%, 30px);
+        padding: clamp(15px, 3%, 30px);
+    }
+}
+
+/* LAPTOP (1366px-1919px) - 3 columnas ajustadas */
+@media (min-width: 1366px) and (max-width: 1919px) {
+    .tv-layout {
+        grid-template-columns: 0.9fr 2fr 0.9fr;
+        grid-template-rows: min-content 1fr min-content;
+        grid-template-areas:
+            "header header header"
+            "ranking center topwords"
+            "players players players";
+        gap: clamp(12px, 2%, 20px);
+        padding: clamp(12px, 2%, 20px);
+    }
+}
+
+/* TABLET (1024px-1365px) - 2 columnas */
+@media (min-width: 1024px) and (max-width: 1365px) {
+    .tv-layout {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        grid-template-areas:
+            "header header"
+            "ranking center"
+            "topwords topwords"
+            "players players";
+        gap: 1rem;
+    }
+}
+
+/* MOBILE (768px-1023px) - 1 columna */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .tv-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto auto;
+        grid-template-areas:
+            "header"
+            "center"
+            "ranking"
+            "topwords"
+            "players";
+        gap: 0.8rem;
+        padding: 0.5rem;
+    }
+}
+
+/* SMALL MOBILE (480px-767px) - 1 columna, comprimido */
+@media (max-width: 767px) {
+    .tv-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto auto;
+        grid-template-areas:
+            "header"
+            "center"
+            "ranking"
+            "topwords"
+            "players";
+        gap: 0.6rem;
+        padding: 0.4rem;
+        height: auto;
+        min-height: 100vh;
+    }
 }
 
 /* ========== HEADER TV ========== */
 .tv-header {
-    grid-column: 1 / -1;
+    grid-area: header;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
     border-radius: 20px;
-    padding: 15px 40px;
+    padding: clamp(12px, 2%, 20px) clamp(20px, 3%, 40px);
     box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+    gap: clamp(10px, 2%, 20px);
 }
 
 .logo-container {
@@ -35,25 +114,47 @@
 }
 
 .logo-container img {
-    max-height: 80px;
+    max-height: clamp(60px, 8vw, 90px);
     width: auto;
     filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
 }
 
+/* ========== GAME CODE STICKER - Ahora usa clase code-sticker ========== */
+.game-code-sticker {
+    justify-self: end;
+}
+
 /* ========== RANKING IZQUIERDA ========== */
 .ranking-panel {
+    grid-area: ranking;
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
     border-radius: 20px;
-    padding: 20px;
+    padding: clamp(15px, 2%, 20px);
     overflow-y: auto;
     box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.ranking-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ranking-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ranking-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
 }
 
 .ranking-title {
     font-family: var(--font-display);
-    font-size: 1.8em;
-    margin-bottom: 20px;
+    font-size: clamp(1.4em, 3vw, 1.8em);
+    margin-bottom: clamp(15px, 2%, 20px);
     text-align: center;
     text-shadow: 3px 3px 0px #000;
 }
@@ -63,11 +164,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 15px;
-    margin: 8px 0;
+    padding: clamp(10px, 1.5%, 15px) clamp(12px, 2%, 15px);
+    margin: clamp(6px, 1%, 10px) 0;
     background: rgba(255,255,255,0.15);
     border-radius: 12px;
-    font-size: 1.2em;
+    font-size: clamp(1em, 2vw, 1.2em);
     box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
     transition: all 0.2s;
 }
@@ -93,22 +194,25 @@
 
 /* ========== PANEL CENTRAL ========== */
 .center-panel {
+    grid-area: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 30px;
+    gap: clamp(20px, 3%, 30px);
+    padding: clamp(20px, 2%, 30px);
 }
 
 /* ========== TIMER HOST ========== */
 .timer-display {
-    font-size: 4em;
+    font-size: clamp(2.5em, 8vw, 4em);
     font-weight: 900;
     font-family: var(--font-display);
     text-shadow: 4px 4px 0px #000;
     text-align: center;
     justify-self: center;
     transition: all 0.3s ease;
+    letter-spacing: 2px;
 }
 
 .timer-display.warning {
@@ -119,20 +223,22 @@
 /* ========== DISPLAY PALABRA ========== */
 .word-display {
     font-family: var(--font-display);
-    font-size: 8em;
+    font-size: clamp(5em, 12vw, 8em);
     font-weight: 900;
     text-shadow: 6px 6px 0px #000;
     text-align: center;
-    letter-spacing: 10px;
+    letter-spacing: clamp(5px, 2vw, 10px);
     color: var(--cian);
     animation: glow 2s ease-in-out infinite alternate;
     line-height: 1;
+    word-wrap: break-word;
+    max-width: 100%;
 }
 
 /* ========== COUNTDOWN DISPLAY ========== */
 .countdown-display {
     font-family: var(--font-display);
-    font-size: 18em;
+    font-size: clamp(10em, 25vw, 18em);
     font-weight: 900;
     text-shadow: 8px 8px 0px #000;
     color: var(--amarillo);
@@ -143,7 +249,7 @@
 /* ========== STATUS MESSAGE ========== */
 .status-message {
     font-family: var(--font-primary);
-    font-size: 2.5em;
+    font-size: clamp(1.8em, 4vw, 2.5em);
     font-weight: 800;
     text-align: center;
     text-shadow: 3px 3px 0px #000;
@@ -152,33 +258,51 @@
 
 /* ========== TOP PALABRAS DERECHA ========== */
 .top-words-panel {
+    grid-area: topwords;
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
     border-radius: 20px;
-    padding: 20px;
+    padding: clamp(15px, 2%, 20px);
     overflow-y: auto;
     box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.top-words-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.top-words-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.top-words-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
 }
 
 .top-words-title {
     font-family: var(--font-display);
-    font-size: 1.8em;
-    margin-bottom: 20px;
+    font-size: clamp(1.4em, 3vw, 1.8em);
+    margin-bottom: clamp(15px, 2%, 20px);
     text-align: center;
     text-shadow: 3px 3px 0px #000;
 }
 
 /* ========== ITEM PALABRA TOP ========== */
 .top-word-item {
-    padding: 12px 15px;
-    margin: 8px 0;
+    padding: clamp(10px, 1.5%, 15px) clamp(12px, 2%, 15px);
+    margin: clamp(6px, 1%, 10px) 0;
     background: rgba(255,255,255,0.15);
     border-radius: 12px;
-    font-size: 1.2em;
+    font-size: clamp(1em, 2vw, 1.2em);
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+    transition: all 0.2s;
 }
 
 .top-word-item .word {
@@ -195,27 +319,76 @@
     box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
 }
 
-/* ========== GRID DE JUGADORES ABAJO ========== */
-.players-grid {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    padding: 20px;
+/* ========== GRID DE JUGADORES ABAJO - MEJORADO ========== */
+#players-grid {
+    grid-area: players;
+    display: grid;
+    gap: clamp(15px, 2%, 20px);
+    padding: clamp(15px, 2%, 20px);
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
     border-radius: 20px;
     overflow-y: auto;
     box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+    max-height: clamp(150px, 25vh, 250px);
+}
+
+#players-grid::-webkit-scrollbar {
+    height: 8px;
+}
+
+#players-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#players-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+
+/* DESKTOP: Expande al máximo con grid dinámico */
+@media (min-width: 1920px) {
+    #players-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        max-height: 30vh;
+    }
+}
+
+/* LAPTOP */
+@media (min-width: 1366px) and (max-width: 1919px) {
+    #players-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    }
+}
+
+/* TABLET */
+@media (min-width: 1024px) and (max-width: 1365px) {
+    #players-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    }
+}
+
+/* MOBILE */
+@media (max-width: 1023px) {
+    #players-grid {
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    }
+}
+
+/* ========== CONTENEDOR TARJETA (Squarcle + Nombre) ========== */
+.player-card-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 /* ========== TARJETA SQUARCLE JUGADOR ========== */
 .player-squarcle {
-    width: 140px;
-    height: 140px;
-    border-radius: 25px;
+    width: clamp(100px, 12vw, 140px);
+    height: clamp(100px, 12vw, 140px);
+    border-radius: clamp(15px, 3vw, 25px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -224,15 +397,43 @@
     position: relative;
     animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    outline: none;
+    flex-shrink: 0;
 }
 
 .player-squarcle:hover {
     transform: scale(1.05) rotate(2deg);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 4px 4px 0px #000;
+}
+
+.player-squarcle:focus-visible {
+    outline: 3px solid var(--cian);
+    outline-offset: 2px;
+}
+
+/* Estados visuales de la tarjeta */
+.player-squarcle.connected {
+    border-color: #00FF00;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5), 4px 4px 0px #000;
 }
 
 .player-squarcle.ready {
-    animation: readyBounce 1s infinite;
+    animation: readyPulse 1s infinite;
+    border-color: var(--amarillo);
+    box-shadow: 0 0 20px rgba(255, 237, 46, 0.7), 4px 4px 0px #000;
+}
+
+.player-squarcle.answered {
+    border-color: var(--cian);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.5), 4px 4px 0px #000;
+}
+
+.player-squarcle.disconnected {
+    opacity: 0.5;
+    border-color: #FF4444;
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.3), 4px 4px 0px #000;
 }
 
 .player-squarcle::before {
@@ -242,18 +443,18 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('bg.webp');
+    background-image: url('../images/bg.webp');
     background-repeat: repeat;
     background-size: 100px;
     opacity: 0.15;
     pointer-events: none;
-    border-radius: 25px;
+    border-radius: clamp(15px, 3vw, 25px);
 }
 
 /* ========== INICIAL DEL JUGADOR ========== */
 .player-initial {
     font-family: var(--font-display);
-    font-size: 5em;
+    font-size: clamp(3em, 8vw, 5em);
     color: white;
     text-shadow: 4px 4px 0px #000;
     line-height: 1;
@@ -261,13 +462,12 @@
     z-index: 1;
 }
 
-/* ========== ETIQUETA NOMBRE JUGADOR ========== */
+/* ========== ETIQUETA NOMBRE JUGADOR (Debajo de la tarjeta) ========== */
 .player-name-label {
-    font-size: 0.9em;
+    font-size: clamp(0.75em, 1.5vw, 0.9em);
     color: white;
     font-weight: 800;
     text-shadow: 2px 2px 0px #000;
-    margin-top: 5px;
     max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -277,7 +477,7 @@
     z-index: 1;
 }
 
-/* ========== BADGE PUNTOS ========== */
+/* ========== BADGE PUNTOS (Sobre la tarjeta) ========== */
 .player-score-badge {
     position: absolute;
     top: -10px;
@@ -285,11 +485,12 @@
     background: var(--amarillo);
     color: #000;
     font-family: var(--font-display);
-    font-size: 1.2em;
+    font-size: clamp(0.8em, 2vw, 1.2em);
     padding: 5px 12px;
     border-radius: 20px;
     box-shadow: 3px 3px 0px #000;
     z-index: 2;
+    font-weight: 900;
 }
 
 /* ========== ICONO ESTADO JUGADOR ========== */
@@ -297,7 +498,7 @@
     position: absolute;
     top: -10px;
     left: -10px;
-    font-size: 2em;
+    font-size: clamp(1.5em, 3vw, 2em);
     filter: drop-shadow(2px 2px 0px #000);
     z-index: 2;
 }
@@ -316,9 +517,36 @@
     z-index: 2;
 }
 
+/* ========== BOTÓN EXPULSAR (Hover) ========== */
+.player-squarcle .btn-kick {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: #FF4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 0.8em;
+    display: none;
+    z-index: 3;
+    box-shadow: 2px 2px 0px #000;
+}
+
+.player-squarcle:hover .btn-kick {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.player-squarcle .btn-kick:hover {
+    transform: scale(1.1);
+}
+
 /* ========== MODALES - HOST ========== */
 .modal-overlay {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -327,24 +555,13 @@
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(10px);
     z-index: 9999;
-    justify-content: center;
+    display: none;
     align-items: center;
+    justify-content: center;
 }
 
 .modal-overlay.active {
     display: flex;
-}
-
-.modal-create-game {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    border-radius: 25px;
-    padding: 40px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-    position: relative;
-    animation: modalSlideIn 0.3s ease-out;
 }
 
 /* ========== PANEL CONTROLES ========== */
@@ -354,52 +571,22 @@
     right: 20px;
     background: rgba(0,0,0,0.9);
     backdrop-filter: blur(20px);
-    padding: 20px;
+    padding: clamp(15px, 2%, 20px);
     border-radius: 20px;
     display: none;
     z-index: 100;
     box-shadow: 4px 4px 0px #000;
     border: 3px solid var(--cian);
+    gap: clamp(8px, 1%, 15px);
+    flex-direction: column;
 }
 
 .controls-panel.visible {
-    display: block;
+    display: flex;
     animation: slideIn 0.3s ease-out;
 }
 
-/* ========== WELCOME MESSAGE ========== */
-.waiting-message {
-    text-align: center;
-    padding: 40px 20px;
-    font-size: 1.3em;
-    color: #2E004E;
-    font-weight: 800;
-}
-
-/* ========== ESTILOS INLINE ========== */
-.btn-back {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.btn-back a {
-    color: white;
-    opacity: 0.8;
-    text-decoration: none;
-}
-
-.btn-back a:hover {
-    opacity: 1;
-}
-
-.custom-code-info {
-    display: block;
-    text-align: center;
-    margin-top: 10px;
-    opacity: 0.8;
-}
-
-/* ========== STATUS CARD ========== */
+/* ========== STATUS CARD (Modal) ========== */
 .status-card {
     background: rgba(255,255,255,0.9);
     border-radius: 20px;
@@ -410,134 +597,72 @@
     color: #000;
 }
 
-/* ========== HOST MEDIA QUERIES ========== */
-@media (max-width: 1400px) {
-    .tv-layout {
-        grid-template-columns: 250px 1fr 250px;
-    }
+/* ========== BOTÓN VOLVER ========== */
+.btn-back {
+    margin-top: 20px;
+    text-align: center;
+}
 
-    .word-display {
-        font-size: 6em;
-        letter-spacing: 5px;
-    }
+.btn-back-link {
+    color: white;
+    opacity: 0.8;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
 
-    .countdown-display {
-        font-size: 12em;
-    }
+.btn-back-link:hover {
+    opacity: 1;
+}
 
-    .timer-display {
-        font-size: 3em;
+/* ========== ANIMACIONES CUSTOM ========== */
+@keyframes glow {
+    from {
+        filter: drop-shadow(0 0 20px #00F0FF);
+    }
+    to {
+        filter: drop-shadow(0 0 40px #FF0055);
     }
 }
 
-@media (max-width: 1024px) {
-    .tv-layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto 1fr auto;
+@keyframes countdownPulse {
+    0% {
+        transform: scale(0.5) rotate(-20deg);
+        opacity: 0;
     }
-
-    .ranking-panel,
-    .top-words-panel {
-        display: none;
+    50% {
+        transform: scale(1.2) rotate(10deg);
     }
-
-    .word-display {
-        font-size: 5em;
-        letter-spacing: 3px;
-    }
-
-    .countdown-display {
-        font-size: 10em;
-    }
-
-    .timer-display {
-        font-size: 2.5em;
-    }
-
-    .center-panel {
-        gap: 20px;
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
     }
 }
 
-@media (max-width: 768px) {
-    .tv-header {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 10px 20px;
+@keyframes readyPulse {
+    0%, 100% {
+        transform: scale(1);
     }
-
-    .logo-container {
-        justify-self: center;
-    }
-
-    .logo-container img {
-        max-height: 50px;
-    }
-
-    .timer-display {
-        font-size: 2em;
-    }
-
-    .game-code-sticker {
-        font-size: 1.2em;
-        padding: 8px 15px;
-        justify-self: center;
-    }
-
-    .word-display {
-        font-size: 3.5em;
-        letter-spacing: 2px;
-    }
-
-    .countdown-display {
-        font-size: 8em;
-    }
-
-    .status-message {
-        font-size: 1.5em;
-    }
-
-    .players-grid {
-        gap: 15px;
-        padding: 15px;
-    }
-
-    .player-squarcle {
-        width: 100px;
-        height: 100px;
-    }
-
-    .player-initial {
-        font-size: 3em;
-    }
-
-    .ranking-item,
-    .top-word-item {
-        font-size: 0.9em;
-        padding: 8px 10px;
+    50% {
+        transform: scale(1.05);
     }
 }
 
-@media (max-width: 480px) {
-    .tv-header {
-        padding: 8px 15px;
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
     }
-
-    .timer-display {
-        font-size: 1.5em;
+    50% {
+        transform: scale(1.1);
     }
+}
 
-    .word-display {
-        font-size: 2.5em;
-        letter-spacing: 1px;
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
     }
-
-    .countdown-display {
-        font-size: 6em;
-    }
-
-    .players-grid {
-        gap: 10px;
-        padding: 10px;
+    to {
+        opacity: 1;
+        transform: translateX(0);
     }
 }

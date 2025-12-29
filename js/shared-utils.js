@@ -4,6 +4,35 @@
  */
 
 // ============================================================================
+// DEBUGGING
+// ============================================================================
+
+/**
+ * Sistema centralizado de debugging
+ * Facilita tracing sin consola.log directa
+ * @param {string} message - Mensaje a loguear
+ * @param {*} data - Datos adicionales (opcional)
+ * @param {string} type - Tipo: 'info' (default), 'error', 'warn'
+ */
+function debug(message, data = null, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const prefix = `[${timestamp}]`;
+    
+    switch (type) {
+        case 'error':
+            console.error(`${prefix} ❌ ${message}`, data || '');
+            break;
+        case 'warn':
+            console.warn(`${prefix} ⚠️ ${message}`, data || '');
+            break;
+        case 'info':
+        default:
+            console.log(`${prefix} ${message}`, data || '');
+            break;
+    }
+}
+
+// ============================================================================
 // GESTIÓN DE TIEMPO
 // ============================================================================
 
@@ -317,4 +346,25 @@ function generateGameCode(length = 4) {
     return code;
 }
 
-console.log('%c✅ shared-utils.js cargado - Optimizado sin dead code', 'color: #10B981; font-weight: bold');
+// ============================================================================
+// APLICAR GRADIENTES DE COLOR (Player Manager)
+// ============================================================================
+
+/**
+ * Aplica gradiente de aura del jugador
+ * @param {string} colorString - String con dos colores separados por coma (ej: "#FF9966,#FF5E62")
+ */
+function applyColorGradient(colorString) {
+    if (!colorString) return;
+    
+    const colors = colorString.split(',').map(c => c.trim());
+    if (colors.length < 2) {
+        colors.push(colors[0]); // Si solo hay un color, usarlo para ambos
+    }
+    
+    const root = document.documentElement;
+    root.style.setProperty('--aura-color-1', colors[0]);
+    root.style.setProperty('--aura-color-2', colors[1] || colors[0]);
+}
+
+console.log('%c✅ shared-utils.js cargado - Con función debug centralizada', 'color: #10B981; font-weight: bold');

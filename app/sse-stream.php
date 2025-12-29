@@ -41,7 +41,7 @@ if (!gameExists($gameId)) {
 
 $lastModified = 0;
 $startTime = time();
-$lastHeartbeat = time();
+$lastHeartbeat = microtime(true);
 $connectionBroken = false;
 
 while (true) {
@@ -67,37 +67,42 @@ while (true) {
     
     $currentModified = filemtime($stateFile);
     
+    $state = null;
+    $sleep = 500000;
+    
     if ($currentModified > $lastModified) {
         $state = loadGameState($gameId);
         
         if ($state) {
             sendSSE('update', $state);
             $lastModified = $currentModified;
-            $lastHeartbeat = time();
             logMessage("SSE update enviado para {$gameId}", 'DEBUG');
         }
+    } else {
+        $state = loadGameState($gameId);
     }
     
-    if (time() - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
+    $now = microtime(true);
+    if ($now - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
         echo ": heartbeat\n\n";
         flush();
-        $lastHeartbeat = time();
+        $lastHeartbeat = $now;
+        logMessage("SSE heartbeat enviado para {$gameId}", 'DEBUG');
     }
 
-    $state = loadGameState($gameId);
     if ($state) {
         $playerCount = count($state['players'] ?? []);
         
         if ($playerCount > 0 && $state['status'] === 'waiting') {
-            usleep(30000);
+            $sleep = 30000;
         } elseif ($state['status'] === 'playing') {
-            usleep(100000);
+            $sleep = 100000;
         } else {
-            usleep(500000);
+            $sleep = 500000;
         }
-    } else {
-        usleep(500000);
     }
+    
+    usleep($sleep);
 }
 
 if ($connectionBroken) {

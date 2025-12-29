@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jugador - TalCual Party</title>
-    <!-- Favicon removido: directorio /images no existe en el repositorio -->
-    <!-- Si necesitas favicon, coloca icon.webp en /images/ o usa CDN -->
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
     
     <!-- CSS Reorganizado - Usando rutas relativas consistentes -->
     <link rel="stylesheet" href="./css/1-global.css">
@@ -20,47 +19,30 @@
             <div class="modal-title">📱 Unirse a Partida</div>
             
             <div class="input-group">
-                <label class="input-label">Código de Sala</label>
+                <label class="input-label" for="input-game-code">Código de Sala</label>
                 <input type="text" id="input-game-code" class="input-field" 
                        placeholder="Ej: CASA" maxlength="6" autocomplete="off">
             </div>
 
             <div class="input-group">
-                <label class="input-label">Tu Nombre</label>
+                <label class="input-label" for="input-player-name">Tu Nombre</label>
                 <input type="text" id="input-player-name" class="input-field" 
                        placeholder="" maxlength="20" autocomplete="on">
             </div>
 
             <div class="input-group">
-                <label class="input-label">Elige tu Aura</label>
+                <label class="input-label">✨ Elige tu Aura</label>
                 <div class="aura-selector" id="color-selector">
-                    <!-- Fire - Seleccionado por defecto -->
-                    <div class="aura-circle selected" data-color="#FF9966,#FF5E62" 
-                         style="background: linear-gradient(135deg, #FF9966, #FF5E62);"></div>
-                    <!-- Ice -->
-                    <div class="aura-circle" data-color="#00F260,#0575E6" 
-                         style="background: linear-gradient(135deg, #00F260, #0575E6);"></div>
-                    <!-- Candy -->
-                    <div class="aura-circle" data-color="#F37335,#FDC830" 
-                         style="background: linear-gradient(135deg, #F37335, #FDC830);"></div>
-                    <!-- Mystic -->
-                    <div class="aura-circle" data-color="#8E2DE2,#4A00E0" 
-                         style="background: linear-gradient(135deg, #8E2DE2, #4A00E0);"></div>
-                    <!-- Electric -->
-                    <div class="aura-circle" data-color="#12c2e9,#f64f59" 
-                         style="background: linear-gradient(135deg, #12c2e9, #f64f59);"></div>
-                    <!-- Toxic -->
-                    <div class="aura-circle" data-color="#DCE35B,#45B649" 
-                         style="background: linear-gradient(135deg, #DCE35B, #45B649);"></div>
+                    <!-- Generado dinámicamente por aura-system.js -->
                 </div>
             </div>
 
             <button class="btn-join" id="btn-join">🎮 ¡Jugar!</button>
             
-            <div id="status-message" style="text-align: center; margin-top: 20px; font-size: 1.1em;"></div>
+            <div id="status-message" class="status-message-modal"></div>
             
-            <div class="btn-back" style="margin-top: 20px; text-align: center;">
-                <a href="./index.html" style="color: white; opacity: 0.8; text-decoration: none;">
+            <div class="btn-back">
+                <a href="./index.html" class="btn-back-link">
                     ← Volver al inicio
                 </a>
             </div>
@@ -70,30 +52,30 @@
     <!-- PANTALLA DE JUEGO -->
     <div class="game-screen" id="game-screen">
         <div class="top-header">
-            <div class="header-round" id="header-round">Ronda 0/3</div>
-            <div class="header-timer" id="header-timer">⏳ 00:00</div>
-            <div class="header-code-sticker" id="header-code">----</div>
+            <div class="header-round" id="header-round" aria-live="polite" aria-label="Ronda actual">Ronda 0/3</div>
+            <div class="header-timer" id="header-timer" aria-live="polite" aria-label="Tiempo restante">⏳ 00:00</div>
+            <div class="code-sticker code-sticker--small" id="header-code" aria-label="Código de sala">----</div>
         </div>
 
         <div class="player-info">
             <div class="player-score" id="player-score">0 pts</div>
         </div>
 
-        <div class="status-card" id="status-card">
-            <div class="current-word" id="current-word" style="display:none;"></div>
+        <div class="status-card" id="status-card" role="status" aria-live="polite" aria-atomic="true">
+            <div class="current-word hidden" id="current-word"></div>
             <div class="waiting-message" id="waiting-message">
                 El anfitrión iniciará la ronda pronto
             </div>
         </div>
 
-        <div class="words-input-section" id="words-input-section" style="display:none;">
+        <div class="words-input-section hidden" id="words-input-section">
             <div class="input-row">
                 <input type="text" id="current-word-input" class="word-input" 
                        placeholder="Escribe..." autocomplete="off">
-                <button class="btn-add" id="btn-add-word">✍️</button>
+                <button class="btn-add" id="btn-add-word" aria-label="Agregar palabra">✍️</button>
             </div>
 
-            <div class="words-list" id="words-list-container" style="display:none;">
+            <div class="words-list hidden" id="words-list-container">
                 <div class="words-list-title">
                     Tus palabras (<span id="word-count">0</span>/<span id="max-words">6</span>)
                 </div>
@@ -101,7 +83,7 @@
             </div>
 
             <div class="submit-section">
-                <button class="btn-submit" id="btn-submit">⏭️ PASO</button>
+                <button class="btn-submit" id="btn-submit" aria-label="Pasar al siguiente">⏭️ PASO</button>
             </div>
         </div>
 
@@ -112,7 +94,7 @@
                 <div class="player-name-display" id="player-name-display">---</div>
                 <button class="btn-edit-name" id="btn-edit-name">✍️</button>
             </div>
-            <button class="btn-exit" id="btn-exit">Salir</button>
+            <button class="btn-exit" id="btn-exit" aria-label="Salir del juego">Salir</button>
         </div>
     </div>
 
@@ -131,8 +113,10 @@
         </div>
     </div>
 
+    <!-- Scripts Modulares (orden importa) -->
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
+    <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/player-manager.js"></script>
 </body>
