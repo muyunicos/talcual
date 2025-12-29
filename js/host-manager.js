@@ -198,16 +198,20 @@ class HostManager {
         return false;
     }
     
+    // ✅ FIX #18: Usar safeShowElement() y safeHideElement() en lugar de .classList
+    // para ser consistente con el resto del código
     showCreateGameModal() {
-        this.elements.modalCreateGame.classList.add('active');
-        this.elements.gameScreen.classList.remove('active');
+        safeShowElement(this.elements.modalCreateGame);
+        safeHideElement(this.elements.gameScreen);
     }
     
     loadGameScreen(state) {
-        this.elements.modalCreateGame.classList.remove('active');
-        this.elements.gameScreen.classList.add('active');
+        safeHideElement(this.elements.modalCreateGame);
+        safeShowElement(this.elements.gameScreen);
         
-        this.elements.gameCodeTv.textContent = this.gameId;
+        if (this.elements.gameCodeTv) {
+            this.elements.gameCodeTv.textContent = this.gameId;
+        }
         
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
@@ -258,7 +262,9 @@ class HostManager {
         let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
         
         if (customCode && !isValidGameCode(customCode)) {
-            this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3-6 caracteres)';
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3-6 caracteres)';
+            }
             return;
         }
         
@@ -268,9 +274,14 @@ class HostManager {
         
         this.gameId = customCode;
         
-        this.elements.btnCreateGame.disabled = true;
-        this.elements.btnCreateGame.textContent = 'Conectando...';
-        this.elements.statusMessage.innerHTML = '⏳ Conectando...';
+        if (this.elements.btnCreateGame) {
+            this.elements.btnCreateGame.disabled = true;
+            this.elements.btnCreateGame.textContent = 'Conectando...';
+        }
+        
+        if (this.elements.statusMessage) {
+            this.elements.statusMessage.innerHTML = '⏳ Conectando...';
+        }
         
         try {
             this.client = new GameClient(this.gameId, null, 'host');
@@ -289,15 +300,23 @@ class HostManager {
                 showNotification(`🎮 Partida creada: ${this.gameId}`, 'success');
                 
             } else {
-                this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'Desconocido');
-                this.elements.btnCreateGame.disabled = false;
-                this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+                if (this.elements.statusMessage) {
+                    this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'Desconocido');
+                }
+                if (this.elements.btnCreateGame) {
+                    this.elements.btnCreateGame.disabled = false;
+                    this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+                }
             }
         } catch (error) {
             debug('Error creando juego:', error, 'error');
-            this.elements.statusMessage.innerHTML = '❌ Error de conexión';
-            this.elements.btnCreateGame.disabled = false;
-            this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '❌ Error de conexión';
+            }
+            if (this.elements.btnCreateGame) {
+                this.elements.btnCreateGame.disabled = false;
+                this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+            }
         }
     }
     
@@ -541,41 +560,53 @@ class HostManager {
     
     async startRound() {
         try {
-            this.elements.btnStartRound.disabled = true;
-            this.elements.btnStartRound.textContent = 'Iniciando...';
+            if (this.elements.btnStartRound) {
+                this.elements.btnStartRound.disabled = true;
+                this.elements.btnStartRound.textContent = 'Iniciando...';
+            }
             
             const result = await this.client.sendAction('start_round', {});
             
             if (!result.success) {
                 showNotification('Error iniciando ronda', 'error');
-                this.elements.btnStartRound.disabled = false;
-                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+                if (this.elements.btnStartRound) {
+                    this.elements.btnStartRound.disabled = false;
+                    this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+                }
             }
         } catch (error) {
             debug('Error iniciando ronda:', error, 'error');
             showNotification('Error de conexión', 'error');
-            this.elements.btnStartRound.disabled = false;
-            this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+            if (this.elements.btnStartRound) {
+                this.elements.btnStartRound.disabled = false;
+                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+            }
         }
     }
     
     async endRound() {
         try {
-            this.elements.btnEndRound.disabled = true;
-            this.elements.btnEndRound.textContent = 'Finalizando...';
+            if (this.elements.btnEndRound) {
+                this.elements.btnEndRound.disabled = true;
+                this.elements.btnEndRound.textContent = 'Finalizando...';
+            }
             
             const result = await this.client.sendAction('end_round', {});
             
             if (!result.success) {
                 showNotification('Error finalizando ronda', 'error');
-                this.elements.btnEndRound.disabled = false;
-                this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+                if (this.elements.btnEndRound) {
+                    this.elements.btnEndRound.disabled = false;
+                    this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+                }
             }
         } catch (error) {
             debug('Error finalizando ronda:', error, 'error');
             showNotification('Error de conexión', 'error');
-            this.elements.btnEndRound.disabled = false;
-            this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+            if (this.elements.btnEndRound) {
+                this.elements.btnEndRound.disabled = false;
+                this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+            }
         }
     }
     
