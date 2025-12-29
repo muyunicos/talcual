@@ -4,8 +4,8 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-    background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
-    color: #e0e7ff;
+    background: linear-gradient(135deg, var(--color-bg-darker) 0%, #1a1f3a 100%);
+    color: var(--color-text-light);
 }
 
 /* TOP HEADER */
@@ -13,16 +13,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: var(--space-md) var(--space-lg);
     background: rgba(15, 23, 42, 0.8);
     border-bottom: 1px solid rgba(139, 92, 246, 0.2);
-    gap: 20px;
+    gap: var(--space-lg);
 }
 
 .header-round {
     font-size: 14px;
     font-weight: 600;
-    color: #c7d2fe;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -30,7 +30,7 @@
 .header-timer {
     font-size: 18px;
     font-weight: 700;
-    color: #fbbf24;
+    color: var(--color-accent-amber);
     font-family: 'Courier New', monospace;
     letter-spacing: 1px;
     text-align: center;
@@ -41,24 +41,24 @@
     font-size: 14px;
     font-weight: 700;
     letter-spacing: 2px;
-    padding: 6px 12px;
+    padding: var(--space-xs) var(--space-md);
     background: rgba(139, 92, 246, 0.2);
     border: 1px solid rgba(139, 92, 246, 0.4);
-    border-radius: 6px;
+    border-radius: var(--radius-btn);
 }
 
 /* PLAYER INFO */
 .player-info {
-    padding: 12px 20px;
+    padding: var(--space-md) var(--space-lg);
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: var(--space-md);
 }
 
 .player-score {
     font-size: 16px;
     font-weight: 700;
-    color: #fbbf24;
+    color: var(--color-accent-amber);
 }
 
 /* STATUS CARD */
@@ -68,31 +68,31 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
-    padding: 40px 20px;
+    gap: var(--space-lg);
+    padding: var(--space-4xl) var(--space-lg);
 }
 
 .category-label {
     font-size: 14px;
     font-weight: 600;
-    color: #a5f3fc;
+    color: var(--color-accent-cyan);
     background: rgba(6, 182, 212, 0.1);
-    padding: 8px 16px;
-    border-radius: 6px;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-btn);
     border: 1px solid rgba(6, 182, 212, 0.3);
 }
 
 .current-word {
     font-size: 48px;
     font-weight: 700;
-    color: #fbbf24;
+    color: var(--color-accent-amber);
     text-transform: uppercase;
     letter-spacing: 2px;
 }
 
 .waiting-message {
     font-size: 18px;
-    color: #c7d2fe;
+    color: var(--color-text-muted);
     text-align: center;
     line-height: 1.5;
 }
@@ -101,25 +101,25 @@
 .words-input-section {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding: 20px;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
     background: rgba(15, 23, 42, 0.5);
 }
 
 .input-row {
     display: flex;
-    gap: 10px;
+    gap: var(--space-md);
 }
 
 .word-input {
     flex: 1;
-    padding: 12px 16px;
+    padding: var(--padding-input-field);
     font-size: 16px;
-    border-radius: 8px;
+    border-radius: var(--radius-input);
     border: 2px solid rgba(139, 92, 246, 0.3);
     background: rgba(30, 41, 59, 0.5);
-    color: #e0e7ff;
-    transition: all 0.3s ease;
+    color: var(--color-text-light);
+    transition: all var(--transition-normal);
 }
 
 .word-input:focus {
@@ -134,14 +134,14 @@
 }
 
 .btn-add {
-    padding: 12px 20px;
-    border-radius: 8px;
+    padding: var(--padding-btn-control);
+    border-radius: var(--radius-btn);
     border: 2px solid rgba(139, 92, 246, 0.3);
     background: rgba(139, 92, 246, 0.2);
-    color: #e0e7ff;
+    color: var(--color-text-light);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--transition-normal);
     font-size: 14px;
 }
 
@@ -163,26 +163,26 @@
 .words-list-title {
     font-size: 12px;
     font-weight: 600;
-    color: #c7d2fe;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-md);
 }
 
 .words-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-md);
 }
 
 .word-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-md);
     background: rgba(34, 197, 94, 0.2);
     border: 1px solid rgba(34, 197, 94, 0.3);
-    border-radius: 20px;
+    border-radius: var(--radius-full);
     color: #86efac;
     font-size: 12px;
     font-weight: 600;
@@ -191,7 +191,7 @@
 .word-chip .remove {
     cursor: pointer;
     opacity: 0.7;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 }
 
 .word-chip .remove:hover {
@@ -200,20 +200,20 @@
 
 .submit-section {
     display: flex;
-    gap: 10px;
+    gap: var(--space-md);
     justify-content: center;
 }
 
 .btn-submit {
-    padding: 14px 40px;
+    padding: var(--space-lg) var(--space-4xl);
     font-size: 16px;
     font-weight: 700;
-    border-radius: 8px;
+    border-radius: var(--radius-btn);
     border: 2px solid rgba(34, 197, 94, 0.3);
     background: rgba(34, 197, 94, 0.2);
     color: #86efac;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--transition-normal);
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -235,17 +235,17 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding: 20px;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
     background: rgba(15, 23, 42, 0.5);
     overflow-y: auto;
 }
 
 .result-item {
-    padding: 12px 16px;
+    padding: var(--space-md) var(--space-lg);
     background: rgba(30, 41, 59, 0.5);
     border: 1px solid rgba(139, 92, 246, 0.2);
-    border-radius: 8px;
+    border-radius: var(--radius-input);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -253,12 +253,12 @@
 
 .result-word {
     font-weight: 600;
-    color: #fbbf24;
+    color: var(--color-accent-amber);
 }
 
 .result-status {
     font-size: 12px;
-    color: #c7d2fe;
+    color: var(--color-text-muted);
 }
 
 /* BOTTOM FOOTER */
@@ -266,23 +266,23 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: var(--space-md) var(--space-lg);
     background: rgba(15, 23, 42, 0.8);
     border-top: 1px solid rgba(139, 92, 246, 0.2);
-    gap: 15px;
+    gap: var(--space-lg);
 }
 
 .footer-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-md);
     position: relative;
 }
 
 .player-name-display {
     font-size: 14px;
     font-weight: 600;
-    color: #c7d2fe;
+    color: var(--color-text-muted);
 }
 
 .btn-config-menu {
@@ -291,11 +291,11 @@
     border-radius: 50%;
     border: 2px solid rgba(139, 92, 246, 0.3);
     background: rgba(139, 92, 246, 0.2);
-    color: #e0e7ff;
+    color: var(--color-text-light);
     font-size: 18px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--transition-normal);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -313,7 +313,7 @@
     left: 0;
     background: rgba(30, 41, 59, 0.95);
     border: 1px solid rgba(139, 92, 246, 0.3);
-    border-radius: 8px;
+    border-radius: var(--radius-input);
     min-width: 160px;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
     z-index: 100;
@@ -323,21 +323,21 @@
 .config-option {
     display: block;
     width: 100%;
-    padding: 12px 16px;
+    padding: var(--space-md) var(--space-lg);
     border: none;
     background: transparent;
-    color: #c7d2fe;
+    color: var(--color-text-muted);
     text-align: left;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 }
 
 .config-option:hover {
     background: rgba(139, 92, 246, 0.2);
-    color: #e0e7ff;
-    padding-left: 20px;
+    color: var(--color-text-light);
+    padding-left: var(--space-xl);
 }
 
 .config-option:last-child {
@@ -345,15 +345,15 @@
 }
 
 .btn-exit {
-    padding: 10px 16px;
-    border-radius: 6px;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(239, 68, 68, 0.3);
     background: rgba(239, 68, 68, 0.1);
     color: #fca5a5;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--transition-normal);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -384,7 +384,7 @@
 .countdown-number {
     font-size: 120px;
     font-weight: 700;
-    color: #fbbf24;
+    color: var(--color-accent-amber);
     line-height: 1;
     animation: pulse-countdown 1s infinite;
 }
@@ -399,10 +399,20 @@
 }
 
 /* RESPONSIVE */
+@media (max-width: 1024px) {
+    .current-word {
+        font-size: 40px;
+    }
+    
+    .status-card {
+        padding: var(--space-3xl) var(--space-lg);
+    }
+}
+
 @media (max-width: 768px) {
     .top-header {
         flex-wrap: wrap;
-        gap: 10px;
+        gap: var(--space-md);
     }
 
     .word-input {
@@ -410,7 +420,7 @@
     }
 
     .status-card {
-        padding: 30px 15px;
+        padding: var(--space-2xl) var(--space-md);
     }
 
     .current-word {
@@ -419,6 +429,78 @@
 
     .bottom-footer {
         flex-direction: column;
-        gap: 10px;
+        gap: var(--space-md);
+    }
+    
+    .countdown-number {
+        font-size: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+    .top-header {
+        padding: var(--space-md) var(--space-md);
+        gap: var(--space-md);
+    }
+    
+    .header-timer {
+        font-size: 16px;
+    }
+    
+    .code-sticker--small {
+        font-size: 12px;
+        padding: var(--space-xs) var(--space-sm);
+    }
+    
+    .player-info {
+        padding: var(--space-md) var(--space-md);
+    }
+    
+    .status-card {
+        padding: var(--space-xl) var(--space-md);
+        gap: var(--space-md);
+    }
+    
+    .current-word {
+        font-size: 28px;
+    }
+    
+    .waiting-message {
+        font-size: 16px;
+    }
+    
+    .words-input-section {
+        padding: var(--space-md);
+        gap: var(--space-md);
+    }
+    
+    .word-input {
+        font-size: 14px;
+        padding: 10px 12px;
+    }
+    
+    .btn-add {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+    
+    .btn-submit {
+        padding: var(--space-lg) var(--space-2xl);
+        font-size: 14px;
+    }
+    
+    .bottom-footer {
+        padding: var(--space-md);
+        gap: var(--space-md);
+    }
+    
+    .btn-config-menu {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    .countdown-number {
+        font-size: 60px;
     }
 }
