@@ -4,11 +4,12 @@
     grid-template-columns: 200px 1fr 200px;
     grid-template-rows: auto 1fr auto auto;
     gap: var(--space-lg);
-    height: calc(100vh - 140px);
+    height: calc(100vh - 6em);
     padding: var(--space-lg);
     background: linear-gradient(135deg, var(--color-bg-darker) 0%, #1a1f3a 100%);
     color: var(--color-text-light);
-    position: relative;
+    MARGIN: AUTO;
+    width: calc(100% - 4em);
 }
 
 /* TV Header - TIMER CENTERED WITH ROUND INFO BELOW */
