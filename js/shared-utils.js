@@ -5,6 +5,7 @@
 
 // Global dictionary cache
 let dictionaryCache = null;
+let dictionaryPromise = null;
 
 // ============================================================================
 // DEBUGGING
@@ -336,32 +337,128 @@ function generatePlayerId() {
 }
 
 /**
+ * Normaliza un texto para usar como código de sala.
+ * - Quita espacios
+ * - Pasa a mayúsculas
+ * - Remueve diacríticos (ÁÉÍÓÚ -> AEIOU)
+ * - Mantiene sólo A-Z y 0-9
+ * @param {string} input
+ * @returns {string}
+ */
+function normalizeWordForCode(input) {
+    if (input === null || input === undefined) return '';
+
+    let w = String(input).trim().toUpperCase();
+
+    // Remover diacríticos (compatibilidad amplia)
+    if (typeof w.normalize === 'function') {
+        w = w.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    // Quitar espacios y caracteres no seguros para un code
+    w = w.replace(/\s+/g, '');
+    w = w.replace(/[^A-Z0-9]/g, '');
+
+    return w;
+}
+
+/**
+ * Extrae todas las palabras "tip" desde el diccionario jerárquico.
+ * Soporta estructuras anidadas del tipo:
+ * { "CATEGORIA": [ { "CONSIGNA": ["Cine", "Bar|Barrio", ...] } ] }
+ * @param {*} data
+ * @returns {Array<string>}
+ */
+function extractWordsFromDictionary(data) {
+    const raw = [];
+
+    const walk = (node) => {
+        if (!node) return;
+
+        if (Array.isArray(node)) {
+            node.forEach(walk);
+            return;
+        }
+
+        const t = typeof node;
+        if (t === 'string') {
+            raw.push(node);
+            return;
+        }
+
+        if (t === 'object') {
+            Object.values(node).forEach(walk);
+        }
+    };
+
+    walk(data);
+
+    const out = [];
+    const seen = new Set();
+
+    raw.forEach(str => {
+        if (typeof str !== 'string') return;
+
+        // Separar sinónimos: "Bar|Barrio" -> ["Bar", "Barrio"]
+        str.split('|').forEach(part => {
+            const normalized = normalizeWordForCode(part);
+            if (!normalized) return;
+
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                out.push(normalized);
+            }
+        });
+    });
+
+    return out;
+}
+
+/**
  * Carga el diccionario de manera asincrónica
  * @returns {Promise<Array>} Array de palabras del diccionario
  */
 async function loadDictionary() {
     if (dictionaryCache) return dictionaryCache;
-    
-    try {
-        const response = await fetch('/app/diccionario.json');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        
-        // Extraer array de palabras (soporta múltiples formatos)
-        dictionaryCache = data.palabras || data.words || data || [];
-        
-        debug(`📚 Diccionario cargado: ${dictionaryCache.length} palabras`, 'info');
-        return dictionaryCache;
-    } catch (error) {
-        debug('Error cargando diccionario, usando fallback', error, 'warn');
-        // Fallback: palabras comunes de 4-6 letras (memorables para códigos)
-        return [
-            'CASA', 'MESA', 'LIBRO', 'GATO', 'PERRO', 'AGUA', 'FUEGO', 'VIENTO', 'LLUVIA', 'SOL',
-            'LUNA', 'ESTRELLA', 'ARBOL', 'FLOR', 'PAJARO', 'PESCADO', 'LECHE', 'PAN', 'VINO', 'CARNE',
-            'QUESO', 'MANZANA', 'PERA', 'UVA', 'PLATANO', 'NARANJA', 'LIMON', 'TOMATE', 'PAPA', 'ARROZ',
-            'FRESA', 'MELÓN', 'SANDÍA', 'PIÑA', 'CIRUELA', 'DURAZNO', 'NUEZ', 'ALMENDRA', 'CACAHUATE'
-        ];
-    }
+    if (dictionaryPromise) return dictionaryPromise;
+
+    dictionaryPromise = (async () => {
+        try {
+            const response = await fetch('/app/diccionario.json', { cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+
+            // Nuevo formato: JSON jerárquico por categorías/consignas
+            const extracted = extractWordsFromDictionary(data);
+
+            // Fallback a formatos anteriores si el extractor no encontró nada
+            if (extracted.length) {
+                dictionaryCache = extracted;
+            } else {
+                const maybe = data?.palabras || data?.words || data;
+                dictionaryCache = Array.isArray(maybe) ? maybe.map(normalizeWordForCode).filter(Boolean) : [];
+            }
+
+            debug(`📚 Diccionario cargado: ${dictionaryCache.length} palabras`, null, 'info');
+            dictionaryPromise = null;
+            return dictionaryCache;
+        } catch (error) {
+            debug('Error cargando diccionario, usando fallback', error, 'warn');
+            dictionaryPromise = null;
+
+            // Fallback: palabras comunes de 4-6 letras (memorables para códigos)
+            dictionaryCache = [
+                'CASA', 'MESA', 'LIBRO', 'GATO', 'PERRO', 'AGUA', 'FUEGO', 'VIENTO', 'LLUVIA', 'SOL',
+                'LUNA', 'ESTRELLA', 'ARBOL', 'FLOR', 'PAJARO', 'PESCADO', 'LECHE', 'PAN', 'VINO', 'CARNE',
+                'QUESO', 'MANZANA', 'PERA', 'UVA', 'PLATANO', 'NARANJA', 'LIMON', 'TOMATE', 'PAPA', 'ARROZ',
+                'FRESA', 'MELON', 'SANDIA', 'PINA', 'CIRUELA', 'DURAZNO', 'NUEZ', 'ALMENDRA', 'CACAHUATE'
+            ];
+
+            return dictionaryCache;
+        }
+    })();
+
+    return dictionaryPromise;
 }
 
 /**
@@ -372,15 +469,18 @@ async function loadDictionary() {
  * @returns {Array} Palabras filtradas
  */
 function filterWordsByLength(words, minLength, maxLength) {
-    return words.filter(word => {
-        // Extraer texto limpio de palabra (soporta objetos {palabra: "..."} o strings)
-        const text = typeof word === 'string' ? word : (word.palabra || word.word || '');
-        const len = text.trim().length;
-        return len >= minLength && len <= maxLength;
-    }).map(word => {
-        // Normalizar a string limpio
-        return (typeof word === 'string' ? word : (word.palabra || word.word || '')).trim();
-    });
+    if (!Array.isArray(words)) return [];
+
+    return words
+        .map(word => {
+            // Extraer texto limpio de palabra (soporta objetos {palabra: "..."} o strings)
+            const text = typeof word === 'string' ? word : (word?.palabra || word?.word || '');
+            return normalizeWordForCode(text);
+        })
+        .filter(word => {
+            const len = word.length;
+            return len >= minLength && len <= maxLength;
+        });
 }
 
 /**
@@ -397,15 +497,15 @@ async function generateGameCode() {
         const validWords = filterWordsByLength(dict, 4, 6);
         
         if (validWords.length === 0) {
-            debug('⚠️ No hay palabras válidas en diccionario, usando generador aleatorio', 'warn');
+            debug('⚠️ No hay palabras válidas en diccionario, usando generador aleatorio', null, 'warn');
             return generateRandomLetterCode(4);
         }
         
         // Seleccionar 1 palabra aleatoria del diccionario
         const randomIndex = Math.floor(Math.random() * validWords.length);
-        const code = validWords[randomIndex].toUpperCase().trim();
+        const code = validWords[randomIndex];
         
-        debug(`✅ Código generado: ${code}`, 'info');
+        debug(`✅ Código generado: ${code}`, null, 'info');
         return code;
     } catch (error) {
         debug('Error en generateGameCode, usando fallback', error, 'warn');
@@ -424,7 +524,7 @@ function generateRandomLetterCode(length = 4) {
     for (let i = 0; i < length; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    debug(`⚠️ Código aleatorio generado: ${code}`, 'warn');
+    debug(`⚠️ Código aleatorio generado: ${code}`, null, 'warn');
     return code;
 }
 
