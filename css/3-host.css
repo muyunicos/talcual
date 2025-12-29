@@ -224,7 +224,9 @@
     position: relative;
     animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: all 0.3s ease;
+    /* FIX #2: Añadir borde para mejor definición */
+    border: 4px solid rgba(255,255,255,0.3);
 }
 
 .player-squarcle:hover {
@@ -233,6 +235,20 @@
 
 .player-squarcle.ready {
     animation: readyBounce 1s infinite;
+    /* FIX #2: Indicador visual de "listo" */
+    border-color: var(--amarillo);
+    box-shadow: 0 0 15px rgba(255,237,46,0.7), 4px 4px 0px #000;
+}
+
+.player-squarcle.answered {
+    /* FIX #2: Indicador de "respondió" */
+    border-color: var(--cian);
+}
+
+.player-squarcle.disconnected {
+    /* FIX #2: Indicador de "desconectado" */
+    opacity: 0.5;
+    border-color: #ff4444;
 }
 
 .player-squarcle::before {
@@ -327,12 +343,13 @@
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(10px);
     z-index: 9999;
-    justify-content: center;
-    align-items: center;
+    /* FIX #1: Asegurar que flexbox esté activo cuando .active */
 }
 
 .modal-overlay.active {
     display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* ========== PANEL CONTROLES ========== */
@@ -399,6 +416,7 @@
 }
 
 /* ========== HOST MEDIA QUERIES ========== */
+/* FIX #3: Añadir breakpoint para iPad Landscape (1200px) */
 @media (max-width: 1400px) {
     .tv-layout {
         grid-template-columns: 250px 1fr 250px;
@@ -415,6 +433,64 @@
 
     .timer-display {
         font-size: 3em;
+    }
+}
+
+/* FIX #3: Nuevo breakpoint para iPad Landscape */
+@media (max-width: 1200px) {
+    .tv-layout {
+        grid-template-rows: 100px 1fr 180px;
+        grid-template-columns: 220px 1fr 220px;
+        gap: 12px;
+        padding: 15px;
+    }
+
+    .tv-header {
+        padding: 12px 30px;
+    }
+
+    .logo-container img {
+        max-height: 70px;
+    }
+
+    .timer-display {
+        font-size: 2.8em;
+    }
+
+    .word-display {
+        font-size: 5em;
+        letter-spacing: 4px;
+    }
+
+    .countdown-display {
+        font-size: 11em;
+    }
+
+    .ranking-title,
+    .top-words-title {
+        font-size: 1.6em;
+    }
+
+    .ranking-item,
+    .top-word-item {
+        font-size: 1em;
+        padding: 10px 12px;
+        margin: 6px 0;
+    }
+
+    .players-grid {
+        max-height: 170px;
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .player-squarcle {
+        width: 120px;
+        height: 120px;
+    }
+
+    .player-initial {
+        font-size: 4em;
     }
 }
 
