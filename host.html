@@ -87,14 +87,26 @@
 
     <!-- PANTALLA DE HOST -->
     <div class="game-screen" id="game-screen">
+        <!-- LOGO FLOTANTE (Arriba a la izquierda) -->
+        <div class="logo-floating" id="logo-floating">
+            <img src="/images/logo.webp" alt="TalCual Party">
+        </div>
+
+        <!-- CÓDIGO DE SALA (Flotante, estilo amarillo inclinado) -->
+        <div class="code-sticker-floating" id="code-sticker-floating">
+            <div class="code-sticker-label">Código Sala</div>
+            <div class="code-sticker-value" id="code-sticker-value">----</div>
+        </div>
+
         <div class="tv-layout">
-            <!-- HEADER con LOGO -->
+            <!-- HEADER CON TEMPORIZADOR CENTRADO Y RONDA -->
             <div class="tv-header">
-                <div class="logo-container">
-                    <img src="/images/logo.webp" alt="TalCual Party">
+                <div class="timer-container">
+                    <div class="timer-display" id="timer-display">00:00</div>
+                    <div class="round-info" id="round-info" style="display: none;">
+                        Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span>
+                    </div>
                 </div>
-                <div class="timer-display" id="timer-display">00:00</div>
-                <div class="code-sticker code-sticker--large" id="game-code-tv" aria-label="Código de sala">------</div>
             </div>
 
             <!-- RANKING IZQUIERDA -->
@@ -106,9 +118,6 @@
             <!-- CENTRO - Estado/Palabra/Categoría -->
             <div class="center-panel">
                 <div class="status-message" id="status-message" role="status" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
-                <div class="round-info" id="round-info" style="display: none;">
-                    Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span>
-                </div>
                 <div class="category-display" id="category-display" style="display: none;">
                     <span class="label">Categoría:</span>
                     <span class="value" id="category-value"></span>
@@ -127,6 +136,11 @@
                 <div id="top-words-list"></div>
             </div>
 
+            <!-- BOTÓN ¡EMPEZAR! (Encima de jugadores, centrado) -->
+            <div class="start-button-container">
+                <button class="btn-empezar" id="btn-start-round" style="display: none;">¡Empezar!</button>
+            </div>
+
             <!-- JUGADORES ABAJO -->
             <div class="players-grid" id="players-grid"></div>
 
@@ -136,26 +150,9 @@
                 <div id="results-content"></div>
             </div>
         </div>
-
-        <!-- CONTROLES -->
-        <div class="controls-panel" id="controls-panel">
-            <div class="controls-group">
-                <button class="btn-control btn-start" id="btn-start-round" style="display: none;">▶️ Iniciar Ronda</button>
-                <button class="btn-control btn-end" id="btn-end-round" style="display: none;">⏹️ Finalizar Ronda</button>
-                <button class="btn-control btn-next" id="btn-next-round" style="display: none;">⏭️ Siguiente</button>
-                <button class="btn-control btn-finish" id="btn-finish-game" style="display: none;">🏁 Terminar</button>
-                <button class="btn-control btn-new" id="btn-new-game" style="display: none;">🔄 Nueva</button>
-            </div>
-            <button class="btn-control btn-config" id="btn-config" title="Configurar partida">⚙️ Config</button>
-            <div class="config-dropdown-host" id="config-dropdown-host" style="display: none;">
-                <button class="config-option" id="option-config-settings">⚙️ Configuración</button>
-                <button class="config-option" id="option-restart-round">🔄 Reiniciar Ronda</button>
-                <button class="config-option" id="option-end-game">🏁 Terminar Partida</button>
-            </div>
-        </div>
     </div>
 
-    <!-- BOTÓN HAMBURGUESA (Reemplaza home button) -->
+    <!-- BOTÓN HAMBURGUESA (Abajo a la izquierda flotando) -->
     <button class="btn-hamburger" id="btn-hamburger-host" aria-label="Abrir menú">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
