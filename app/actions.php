@@ -16,19 +16,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 /**
  * 🔧 FIX #32: Crea archivos de notificación per-game para que SSE sepa que hay cambios
+ * Usa un contador secuencial en lugar de timestamp para detectar TODOS los cambios
  * Archivos: {GAME_ID}_all.json y {GAME_ID}_host.json
- * Sin tocar filemtime() del GAME.json directamente
  */
 function notifyGameChanged($gameId, $isHostOnlyChange = false) {
     $notifyAll = GAME_STATES_DIR . '/' . $gameId . '_all.json';
     $notifyHost = GAME_STATES_DIR . '/' . $gameId . '_host.json';
     
-    // Todos ven este cambio
-    $result1 = @file_put_contents($notifyAll, (string)time(), LOCK_EX);
+    // Leer contador actual (empieza en 0)
+    $allCounter = 0;
+    if (file_exists($notifyAll)) {
+        $content = @file_get_contents($notifyAll);
+        if ($content && is_numeric($content)) {
+            $allCounter = (int)$content;
+        }
+    }
+    
+    // Incrementar y escribir
+    $allCounter++;
+    @file_put_contents($notifyAll, (string)$allCounter, LOCK_EX);
     
     // Si es un cambio que solo afecta al host
     if ($isHostOnlyChange) {
-        $result2 = @file_put_contents($notifyHost, (string)time(), LOCK_EX);
+        $hostCounter = 0;
+        if (file_exists($notifyHost)) {
+            $content = @file_get_contents($notifyHost);
+            if ($content && is_numeric($content)) {
+                $hostCounter = (int)$content;
+            }
+        }
+        $hostCounter++;
+        @file_put_contents($notifyHost, (string)$hostCounter, LOCK_EX);
     }
 }
 
