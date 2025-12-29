@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anfitrión - TalCual Party</title>
+    <title>Tal Cual - Host</title>
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/1-global.css">
     <link rel="stylesheet" href="./css/4-components.css">
@@ -40,20 +40,32 @@
             
             <div class="input-group">
                 <label class="input-label" for="config-total-rounds">Cantidad de Rondas</label>
-                <input type="number" id="config-total-rounds" class="input-field" 
-                       min="1" max="10" value="3">
+                <div class="input-control">
+                    <button class="btn-adjust" id="btn-decrease-rounds">−</button>
+                    <input type="number" id="config-total-rounds" class="input-field input-field-number" 
+                           min="1" max="10" value="3">
+                    <button class="btn-adjust" id="btn-increase-rounds">+</button>
+                </div>
             </div>
             
             <div class="input-group">
                 <label class="input-label" for="config-round-duration">Duración de Ronda (segundos)</label>
-                <input type="number" id="config-round-duration" class="input-field" 
-                       min="30" max="300" value="120" step="10">
+                <div class="input-control">
+                    <button class="btn-adjust" id="btn-decrease-duration">−</button>
+                    <input type="number" id="config-round-duration" class="input-field input-field-number" 
+                           min="30" max="300" value="60" step="10">
+                    <button class="btn-adjust" id="btn-increase-duration">+</button>
+                </div>
             </div>
             
             <div class="input-group">
                 <label class="input-label" for="config-min-players">Mínimo de Jugadores</label>
-                <input type="number" id="config-min-players" class="input-field" 
-                       min="1" max="6" value="2">
+                <div class="input-control">
+                    <button class="btn-adjust" id="btn-decrease-min-players">−</button>
+                    <input type="number" id="config-min-players" class="input-field input-field-number" 
+                           min="1" max="6" value="2">
+                    <button class="btn-adjust" id="btn-increase-min-players">+</button>
+                </div>
             </div>
             
             <div class="modal-buttons">
@@ -71,7 +83,7 @@
                 <div class="logo-container">
                     <img src="/images/logo.webp" alt="TalCual Party">
                 </div>
-                <div class="timer-display" id="timer-display">02:00</div>
+                <div class="timer-display" id="timer-display">00:00</div>
                 <div class="code-sticker code-sticker--large" id="game-code-tv" aria-label="Código de sala">------</div>
             </div>
 
@@ -81,13 +93,22 @@
                 <div id="ranking-list"></div>
             </div>
 
-            <!-- CENTRO - Palabra/Estado -->
+            <!-- CENTRO - Estado/Palabra/Categoría -->
             <div class="center-panel">
                 <div class="status-message" id="status-message">Esperando jugadores...</div>
-                <div class="round-info" id="round-info" style="display: none;">Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span></div>
-                <div class="category-display" id="category-display" style="display: none;"></div>
-                <div class="word-display" id="word-display"></div>
-                <div class="countdown-display" id="countdown-display"></div>
+                <div class="round-info" id="round-info" style="display: none;">
+                    Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span>
+                </div>
+                <div class="category-display" id="category-display" style="display: none;">
+                    <span class="label">Categoría:</span>
+                    <span class="value" id="category-value"></span>
+                </div>
+                <div class="word-display" id="word-display" style="display: none;">
+                    <span class="word" id="word-value"></span>
+                </div>
+                <div class="countdown-display" id="countdown-display" style="display: none;">
+                    <span id="countdown-value">3</span>
+                </div>
             </div>
 
             <!-- TOP PALABRAS DERECHA -->
@@ -98,21 +119,29 @@
 
             <!-- JUGADORES ABAJO -->
             <div class="players-grid" id="players-grid"></div>
+
+            <!-- RESULTADOS -->
+            <div class="results-panel" id="results-panel" style="display: none;">
+                <div class="results-title">Resultados de la Ronda</div>
+                <div id="results-content"></div>
+            </div>
         </div>
 
         <!-- CONTROLES -->
         <div class="controls-panel" id="controls-panel">
             <button class="btn-control btn-config" id="btn-config" title="Configurar partida">⚙️ Config</button>
-            <button class="btn-control btn-start" id="btn-start-round">▶️ Iniciar Ronda</button>
-            <button class="btn-control btn-end" id="btn-end-round">⏹️ Finalizar Ronda</button>
-            <button class="btn-control btn-next" id="btn-new-game">🔄 Nueva Partida</button>
+            <button class="btn-control btn-start" id="btn-start-round" style="display: none;">▶️ Iniciar Ronda</button>
+            <button class="btn-control btn-end" id="btn-end-round" style="display: none;">⏹️ Finalizar Ronda</button>
+            <button class="btn-control btn-next" id="btn-next-round" style="display: none;">⏭️ Siguiente</button>
+            <button class="btn-control btn-finish" id="btn-finish-game" style="display: none;">🏁 Terminar</button>
+            <button class="btn-control btn-new" id="btn-new-game" style="display: none;">🔄 Nueva</button>
         </div>
     </div>
 
     <!-- BOTÓN HOME -->
     <a href="index.html" class="btn-home" aria-label="Volver al inicio">🏠</a>
 
-    <!-- Scripts Modulares (orden importa) -->
+    <!-- Scripts Modulares -->
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
     <script src="./js/aura-system.js"></script>
