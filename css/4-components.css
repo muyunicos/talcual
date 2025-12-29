@@ -308,13 +308,13 @@ select:focus {
 
 /* Compatibilidad hacia atrás - Aliases para clases existentes */
 .game-code-sticker {
-    @extends .code-sticker;
-    @extends .code-sticker--large;
+    /* Usa .code-sticker + .code-sticker--large en HTML */
+    /* O agregar en HTML: class="code-sticker code-sticker--large" */
 }
 
 .header-code-sticker {
-    @extends .code-sticker;
-    @extends .code-sticker--small;
+    /* Usa .code-sticker + .code-sticker--small en HTML */
+    /* O agregar en HTML: class="code-sticker code-sticker--small" */
 }
 
 /* ========== MODAL DIALOG BASE ========== */
