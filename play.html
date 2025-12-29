@@ -58,7 +58,7 @@
             <div class="category-label" id="category-label" style="display: none;"></div>
             <div class="current-word hidden" id="current-word"></div>
             <div class="waiting-message" id="waiting-message">
-                El anfitrón iniciará la ronda pronto
+                El anfitrión iniciará la ronda pronto
             </div>
         </div>
 
@@ -83,12 +83,16 @@
 
         <div class="results-section" id="results-section"></div>
 
+        <!-- FOOTER CON OPCIONES -->
         <div class="bottom-footer">
-            <div class="player-name-section">
+            <div class="footer-left">
                 <div class="player-name-display" id="player-name-display">---</div>
-                <button class="btn-edit-name" id="btn-edit-name">Edit</button>
+                <button class="btn-config-menu" id="btn-config-menu" title="Menú de opciones" aria-label="Abrir menú">...</button>
+                <div class="config-dropdown" id="config-dropdown" style="display: none;">
+                    <button class="config-option" id="option-edit-name">Cambiar nombre</button>
+                    <button class="config-option" id="option-exit">Salir</button>
+                </div>
             </div>
-            <button class="btn-exit" id="btn-exit" aria-label="Salir del juego">Exit</button>
         </div>
     </div>
 
