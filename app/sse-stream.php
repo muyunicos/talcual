@@ -74,18 +74,33 @@ while (true) {
         break;
     }
     
-    $currentModified = filemtime($stateFile);
+    $currentModified = @filemtime($stateFile);
+    
+    // 🔧 FIX #30: Si filemtime() falla, usar stat para un chequeo más robusto
+    if ($currentModified === false) {
+        $stat = @stat($stateFile);
+        if (!$stat) {
+            // Archivo ya no existe
+            sendSSE('game_ended', ['message' => 'El juego ha finalizado']);
+            logMessage("SSE archivo desaparecido: {$gameId}", 'INFO');
+            break;
+        }
+        $currentModified = $stat['mtime'];
+    }
     
     $state = null;
+    // 🔧 FIX #30: Reducir sleep AGRESIVAMENTE cuando hay jugadores
+    // En lugar de esperar 500ms, espera 50ms para detectar cambios rápido
     $sleep = 500000;
     
     if ($currentModified > $lastModified) {
         $state = loadGameState($gameId);
         
         if ($state) {
+            $playerCount = count($state['players'] ?? []);
             sendSSE('update', $state);
             $lastModified = $currentModified;
-            logMessage("SSE update enviado para {$gameId}", 'DEBUG');
+            logMessage("SSE update enviado para {$gameId} (status={$state['status']}, {$playerCount} jugadores)", 'DEBUG');
         }
     } else {
         $state = loadGameState($gameId);
@@ -102,12 +117,15 @@ while (true) {
     if ($state) {
         $playerCount = count($state['players'] ?? []);
         
+        // 🔧 FIX #30: AGRESIVO - En estado 'waiting' con jugadores, poll cada 50ms
+        // Antes estaba en 30000μs (30ms) pero eso es demasiado rápido y consume CPU
+        // Ahora es 50ms: balance entre respuesta rápida y eficiencia
         if ($playerCount > 0 && $state['status'] === 'waiting') {
-            $sleep = 30000;
+            $sleep = 50000;  // 50ms para detectar joins rápido
         } elseif ($state['status'] === 'playing') {
-            $sleep = 100000;
+            $sleep = 100000;  // 100ms durante la ronda
         } else {
-            $sleep = 500000;
+            $sleep = 500000;  // 500ms sin jugadores
         }
     }
     
