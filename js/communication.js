@@ -1,8 +1,7 @@
 /**
  * @file communication.js
  * @description Sistema centralizado de comunicación SSE para TalCual
- * Define tipos de eventos, esquemas de validación y constantes de comunicación.
- * Mantiene un único origen de verdad para cliente-servidor.
+ * Define tipos de eventos y constantes de comunicación.
  */
 
 // ============================================================================
@@ -75,158 +74,24 @@ const COMM_CONFIG = {
 };
 
 // ============================================================================
-// ESQUEMAS DE VALIDACIÓN
-// ============================================================================
-
-const EVENT_SCHEMAS = {
-  // Estado del juego
-  'game:state:update': {
-    required: ['game_id', 'status', 'players', 'round'],
-    optional: ['current_word', 'round_started_at', 'round_duration', 'total_rounds', 'top_words', '_version']
-  },
-  
-  'game:round:started': {
-    required: ['game_id', 'round', 'current_word', 'round_started_at', 'round_duration'],
-    optional: ['total_rounds']
-  },
-  
-  'game:round:ended': {
-    required: ['game_id', 'round', 'results'],
-    optional: ['next_round_at']
-  },
-  
-  'game:player:joined': {
-    required: ['game_id', 'player_id', 'player_name'],
-    optional: ['total_players', 'timestamp']
-  },
-  
-  'game:player:left': {
-    required: ['game_id', 'player_id'],
-    optional: ['remaining_players', 'timestamp']
-  },
-  
-  // Acciones de cliente
-  'player:answers:submit': {
-    required: ['game_id', 'player_id', 'answers'],
-    optional: ['forced_pass', 'timestamp']
-  },
-  
-  'player:ready': {
-    required: ['game_id', 'player_id'],
-    optional: ['timestamp']
-  },
-  
-  'player:name:changed': {
-    required: ['game_id', 'player_id', 'new_name'],
-    optional: ['timestamp']
-  },
-  
-  'player:heartbeat': {
-    required: ['game_id', 'player_id'],
-    optional: ['timestamp']
-  }
-};
-
-// ============================================================================
-// VALIDACIÓN DE EVENTOS
+// VALIDACIÓN DE API
 // ============================================================================
 
 /**
- * Valida si un evento cumple con su esquema
- * @param {string} eventType - Tipo de evento
- * @param {object} payload - Datos del evento
- * @returns {object} { valid: boolean, errors: string[] }
- */
-function validateEvent(eventType, payload) {
-  const errors = [];
-  const schema = EVENT_SCHEMAS[eventType];
-  
-  if (!schema) {
-    errors.push(`Tipo de evento desconocido: ${eventType}`);
-    return { valid: false, errors };
-  }
-  
-  if (!payload || typeof payload !== 'object') {
-    errors.push('Payload debe ser un objeto');
-    return { valid: false, errors };
-  }
-  
-  // Validar campos requeridos
-  if (schema.required) {
-    schema.required.forEach(field => {
-      if (!payload.hasOwnProperty(field) || payload[field] === null || payload[field] === undefined) {
-        errors.push(`Campo requerido faltante: ${field}`);
-      }
-    });
-  }
-  
-  // Validar tipos básicos
-  if (payload.game_id && typeof payload.game_id !== 'string') {
-    errors.push('game_id debe ser string');
-  }
-  
-  if (payload.player_id && typeof payload.player_id !== 'string') {
-    errors.push('player_id debe ser string');
-  }
-  
-  if (payload.answers && !Array.isArray(payload.answers)) {
-    errors.push('answers debe ser un array');
-  }
-  
-  if (payload.players && typeof payload.players !== 'object') {
-    errors.push('players debe ser un objeto');
-  }
-  
-  return {
-    valid: errors.length === 0,
-    errors
-  };
-}
-
-// ============================================================================
-// HELPER PARA CREAR PAYLOADS
-// ============================================================================
-
-/**
- * Crea un payload de evento con timestamp
- * @param {string} eventType - Tipo de evento
- * @param {object} data - Datos adicionales
- * @returns {object} Payload completo
- */
-function createEventPayload(eventType, data = {}) {
-  return {
-    ...data,
-    _event_type: eventType,
-    _timestamp: Math.floor(Date.now() / 1000),
-    _version: 1
-  };
-}
-
-/**
- * Valida y logea respuestas de API
+ * Valida respuesta de API
  * @param {object} response - Respuesta del servidor
- * @returns {boolean} true si es válida
+ * @returns {boolean} true si tiene estructura correcta
  */
 function validateAPIResponse(response) {
-  if (!response) {
-    console.warn('[COMM] Respuesta vacía del servidor');
-    return false;
-  }
-  
-  if (response.success === undefined) {
-    console.warn('[COMM] Respuesta sin campo success');
-    return false;
-  }
-  
-  return true;
+  return response && typeof response === 'object' && response.success !== undefined;
 }
 
 // ============================================================================
-// UTILITY FUNCTIONS
+// UTILIDADES
 // ============================================================================
 
 /**
- * Calcula delay de reconexión con backoff exponencial y jitter
+ * Calcula delay de reconexión con backoff exponencial + jitter
  * @param {number} attemptNumber - Número de intento (base 1)
  * @returns {number} Delay en ms
  */
@@ -266,12 +131,14 @@ function getConnectionHealth(connectionMetrics) {
   return 'healthy';
 }
 
+// ============================================================================
+// EXPORT
+// ============================================================================
+
 if (typeof window !== 'undefined') {
   window.COMM = {
     EVENT_TYPES,
     COMM_CONFIG,
-    validateEvent,
-    createEventPayload,
     validateAPIResponse,
     calculateReconnectDelay,
     getConnectionHealth
@@ -282,8 +149,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     EVENT_TYPES,
     COMM_CONFIG,
-    validateEvent,
-    createEventPayload,
     validateAPIResponse,
     calculateReconnectDelay,
     getConnectionHealth
