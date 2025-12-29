@@ -19,8 +19,9 @@ function checkRateLimit() {
     $cacheKey = 'rate_limit:' . md5($ip);
     $cacheFile = sys_get_temp_dir() . '/' . $cacheKey . '.txt';
     
-    $limit = 100;
-    $window = 60;
+    // MEJORA #26: Usar constantes desde settings.php (1000 req/min en lugar de 100)
+    $limit = RATE_LIMIT_REQUESTS;
+    $window = RATE_LIMIT_WINDOW;
     
     if (file_exists($cacheFile)) {
         $data = json_decode(file_get_contents($cacheFile), true);
@@ -485,6 +486,43 @@ switch ($action) {
             }
         } else {
             $response = ['success' => true, 'message' => 'Ya no estás en el juego'];
+        }
+        break;
+
+    // MEJORA #27: Implementar accion faltante update_player_name
+    case 'update_player_name':
+        if (!$gameId || !$playerId) {
+            $response = ['success' => false, 'message' => 'game_id y player_id requeridos'];
+            break;
+        }
+        
+        $state = loadGameState($gameId);
+        
+        if (!$state || !isset($state['players'][$playerId])) {
+            $response = ['success' => false, 'message' => 'Jugador no encontrado'];
+            break;
+        }
+        
+        $newName = trim($input['name'] ?? '');
+        
+        if (strlen($newName) < 2 || strlen($newName) > 20) {
+            $response = ['success' => false, 'message' => 'Nombre inválido (2-20 caracteres)'];
+            break;
+        }
+        
+        $oldName = $state['players'][$playerId]['name'];
+        $state['players'][$playerId]['name'] = $newName;
+        $state['last_update'] = time();
+        
+        if (saveGameState($gameId, $state)) {
+            trackGameAction($gameId, 'player_name_updated', ['player_id' => $playerId, 'old_name' => $oldName, 'new_name' => $newName]);
+            $response = [
+                'success' => true,
+                'message' => 'Nombre actualizado',
+                'state' => $state
+            ];
+        } else {
+            $response = ['success' => false, 'message' => 'Error actualizando nombre'];
         }
         break;
 
