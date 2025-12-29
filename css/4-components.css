@@ -4,6 +4,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    position: fixed;
+    height: 100%;
+    z-index: 1;
+
 }
 
 .modal-overlay.hidden {
