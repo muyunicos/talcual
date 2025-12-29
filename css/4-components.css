@@ -1,323 +1,138 @@
 /* ============================================
    4-COMPONENTS.CSS - COMPONENTES REUTILIZABLES
-   Botones, Inputs, Tarjetas, Modales
-   Optimizado: Sin duplicación con 2-play.css y 3-host.css
+   Botones, Inputs, Tarjetas, Modales, Code Stickers
    ============================================ */
 
-/* ========== BOTÓN GENERAL ========== */
+/* ========== BOTONES GENERALES ========== */
 .btn, button:not(.no-style) {
     background: var(--magenta);
     color: white;
     border: none;
-    border-radius: 25px;
-    padding: 15px 35px;
+    border-radius: var(--radius-xl);
+    padding: var(--padding-button);
     font-size: 1.2em;
     font-weight: 800;
     font-family: var(--font-primary);
     cursor: pointer;
     text-transform: uppercase;
     box-shadow: var(--sombra-dura);
-    transition: all 0.2s;
-    position: relative;
+    transition: all var(--transition-normal);
 }
 
-.btn:hover:not(:disabled),
-button:not(.no-style):hover:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px #000;
+.btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-mega);
 }
 
-.btn:active:not(:disabled),
-button:not(.no-style):active:not(:disabled) {
-    transform: translate(4px, 4px);
-    box-shadow: none;
+.btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: var(--sombra-sm);
 }
 
-.btn:disabled,
-button:not(.no-style):disabled {
+.btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-/* ========== BOTÓN JACKBOX ========== */
-.btn-jackbox {
-    background: var(--magenta);
-    color: white;
-    font-family: var(--font-primary);
-    font-weight: 900;
-    font-size: 1.2em;
-    padding: 15px 40px;
-    border: none;
-    border-radius: 50px;
-    cursor: pointer;
-    box-shadow: var(--sombra-dura);
-    transition: all 0.1s;
-    text-transform: uppercase;
-}
-
-.btn-jackbox:hover {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px #000;
-}
-
-.btn-jackbox:active {
-    transform: translate(4px, 4px);
-    box-shadow: none;
-}
-
-.btn-jackbox:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.btn-jackbox.cian {
-    background: var(--cian);
-    color: #000;
-}
-
-.btn-jackbox.amarillo {
+/* ========== CÓDIGO DE SALA (STICKER UNIFICADO) ========== */
+.code-sticker {
     background: var(--amarillo);
     color: #000;
-}
-
-/* ========== BOTÓN CONTROL ========== */
-.btn-control {
-    display: block;
-    width: 100%;
-    padding: 12px 25px;
-    margin: 8px 0;
-    border: none;
-    border-radius: 50px;
-    font-family: var(--font-primary);
-    font-size: 1.1em;
+    transform: rotate(-3deg);
+    letter-spacing: 3px;
+    font-family: var(--font-display);
     font-weight: 900;
-    cursor: pointer;
-    transition: all 0.1s;
-    box-shadow: 3px 3px 0px #000;
-}
-
-.btn-control:hover {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0px #000;
-}
-
-.btn-control:active {
-    transform: translate(3px, 3px);
-    box-shadow: none;
-}
-
-.btn-control:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.btn-start {
-    background: var(--cian);
-    color: #000;
-}
-
-.btn-end {
-    background: var(--magenta);
-    color: white;
-}
-
-.btn-next {
-    background: var(--amarillo);
-    color: #000;
-}
-
-/* ========== INPUTS GENERALES ========== */
-input[type="text"],
-input[type="number"],
-select {
-    width: 100%;
-    padding: 15px 20px;
-    border: 4px solid #000;
-    border-radius: 20px;
-    font-size: 1.1em;
-    font-weight: 700;
-    font-family: var(--font-primary);
-    background: white;
     box-shadow: var(--sombra-dura);
-    transition: all 0.2s;
-}
-
-input:focus,
-select:focus {
+    border-radius: var(--radius-md);
+    display: inline-block;
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--transition-normal);
     outline: none;
-    border-color: var(--cian);
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px #000;
 }
 
-/* ========== INPUT FIELD (COMPARTIDO) ========== */
-.input-field {
-    width: 100%;
-    padding: 18px;
-    border: 4px solid #000;
-    border-radius: 15px;
-    background: rgba(255,255,255,0.9);
-    color: #000;
-    font-family: var(--font-primary);
-    font-weight: 800;
-    text-align: center;
-    text-transform: uppercase;
-    box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
-    font-size: 1.3em;
-    outline: none;
-    transition: all 0.2s ease;
+.code-sticker:hover {
+    transform: rotate(-3deg) translateY(-2px);
+    box-shadow: var(--sombra-mega);
 }
 
-.input-field::placeholder {
-    color: rgba(0,0,0,0.4);
+.code-sticker--large {
+    font-size: clamp(1.2em, 2vw, 1.5em);
+    padding: clamp(10px, 2%, 15px) clamp(20px, 3%, 30px);
 }
 
-.input-field:focus {
-    outline: none;
-    border-color: var(--cian);
-    transform: translate(1px, 1px);
-    box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
+.code-sticker--small {
+    font-size: 1.1em;
+    padding: var(--space-sm) var(--space-lg);
 }
 
-/* ========== WORD INPUT (COMPARTIDO) ========== */
+.code-sticker.copied::after {
+    content: '✓ Copiado';
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2ecc71;
+    color: white;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-sm);
+    font-size: 0.75em;
+    white-space: nowrap;
+    box-shadow: var(--sombra-sm);
+}
+
+/* ========== INPUTS ========== */
+.input-field,
 .word-input {
-    flex: 1;
-    padding: 18px;
+    width: 100%;
+    padding: var(--padding-input);
     border: 4px solid #000;
-    border-radius: 15px;
+    border-radius: var(--radius-md);
     background: white;
     color: #000;
     font-family: var(--font-primary);
     font-weight: 800;
     text-align: center;
     text-transform: uppercase;
-    box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+    box-shadow: var(--sombra-dura);
     font-size: 1.2em;
     outline: none;
-    transition: all 0.2s ease;
+    transition: all var(--transition-normal);
 }
 
+.input-field::placeholder,
 .word-input::placeholder {
     color: rgba(0,0,0,0.4);
 }
 
+.input-field:focus,
 .word-input:focus {
-    outline: none;
     border-color: var(--cian);
-    transform: translate(1px, 1px);
-    box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-mega);
 }
 
 .input-label {
     font-family: var(--font-display);
     display: block;
     font-size: 1.1em;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 0px #000;
+    margin-bottom: var(--space-md);
+    text-shadow: var(--sombra-sm);
 }
 
 .input-group {
-    margin-bottom: 25px;
-    display: flex;
-    flex-direction: column;
+    margin-bottom: var(--space-2xl);
 }
 
-.input-jackbox {
-    font-family: var(--font-primary);
-    font-weight: 700;
-    font-size: 1.2em;
-    padding: 15px 20px;
-    border: 4px solid #000;
-    border-radius: 15px;
-    background: white;
-    color: #000;
-    box-shadow: var(--sombra-dura);
-    text-align: center;
-    text-transform: uppercase;
+.custom-code-info {
+    display: block;
+    margin-top: var(--space-sm);
+    font-size: 0.85em;
+    opacity: 0.8;
+    color: var(--cian);
 }
 
-.input-jackbox:focus {
-    outline: none;
-    border-color: var(--cian);
-    transform: translate(1px, 1px);
-    box-shadow: 3px 3px 0px #000;
-}
-
-/* ========== CÓDIGO DE SALA (STICKER) - UNIFICADO ========== */
-/* Clase base para code stickers - reutilizable en play.html y host.html */
-.code-sticker {
-    background: var(--magenta);
-    color: white;
-    font-family: var(--font-display);
-    font-weight: 900;
-    letter-spacing: 2px;
-    box-shadow: 4px 4px 0px #000;
-    border-radius: 15px;
-    display: inline-block;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.2s ease;
-    outline: none;
-    position: relative;
-}
-
-.code-sticker:hover {
-    transform: translateY(-1px);
-}
-
-.code-sticker:active {
-    transform: translateY(0);
-}
-
-/* Variante grande para TV (host.html) */
-.code-sticker--large {
-    font-size: clamp(1em, 2vw, 1.3em);
-    padding: clamp(8px, 1.5%, 12px) clamp(15px, 2%, 25px);
-}
-
-/* Variante pequeña para móvil (play.html) */
-.code-sticker--small {
-    font-size: 1.2em;
-    padding: 8px 16px;
-    border-radius: 12px;
-    box-shadow: 3px 3px 0px #000;
-}
-
-/* Estados especiales */
-.code-sticker.copied {
-    outline: 3px solid #2ecc71;
-    box-shadow: 0 0 0 6px rgba(46, 204, 113, 0.25), 4px 4px 0px rgba(0,0,0,0.4);
-}
-
-.code-sticker.copied::after {
-    content: 'Copiado';
-    position: absolute;
-    top: -12px;
-    right: -12px;
-    background: #2ecc71;
-    color: #000;
-    font-family: var(--font-primary);
-    font-size: 0.75em;
-    font-weight: 900;
-    padding: 4px 10px;
-    border-radius: 999px;
-    box-shadow: 2px 2px 0px #000;
-}
-
-/* Compatibilidad hacia atrás - Aliases para clases existentes */
-.game-code-sticker {
-    @extends .code-sticker;
-    @extends .code-sticker--large;
-}
-
-.header-code-sticker {
-    @extends .code-sticker;
-    @extends .code-sticker--small;
-}
-
-/* ========== MODAL DIALOG BASE ========== */
+/* ========== MODALES UNIFICADOS ========== */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -325,43 +140,28 @@ select:focus {
     width: 100%;
     height: 100%;
     background: rgba(0,0,0,0.9);
+    backdrop-filter: blur(10px);
     z-index: 200;
     display: none;
     justify-content: center;
     align-items: center;
-    backdrop-filter: blur(10px);
 }
 
 .modal-overlay.active {
     display: flex;
 }
 
-/* Modal content base */
 .modal-content {
-    background: rgba(255,255,255,0.95);
-    border-radius: 25px;
-    padding: 35px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 6px 6px 0px #000;
-    position: relative;
-    animation: slideUp 0.3s ease-out;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-/* Variante para modales con fondo violeta/blur */
-.modal-join-game,
-.modal-create-game {
     background: rgba(46, 0, 78, 0.95);
     backdrop-filter: blur(20px);
-    border-radius: 25px;
-    padding: 30px 25px;
-    max-width: 400px;
+    border-radius: var(--radius-xl);
+    padding: var(--space-3xl) var(--space-2xl);
+    max-width: 450px;
     width: 90%;
-    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), 4px 4px 0px #000;
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), var(--sombra-dura);
     border: 3px solid var(--cian);
-    animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
 }
 
 .modal-title {
@@ -369,155 +169,155 @@ select:focus {
     font-size: 1.8em;
     color: var(--cian);
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: var(--space-2xl);
     text-shadow: var(--sombra-dura);
-    letter-spacing: 1px;
 }
 
-.modal-input {
+/* ========== BOTONES MODAL ========== */
+.btn-modal-primary {
     width: 100%;
-    padding: 12px 16px;
-    margin: 15px 0;
-    border-radius: 12px;
-    border: 3px solid var(--cian);
-    background: rgba(255, 255, 255, 0.95);
-    font-family: var(--font-primary);
-    font-weight: 700;
-    font-size: 1em;
-    color: #000;
-    outline: none;
-    transition: all 0.2s ease;
-}
-
-.modal-input:focus {
-    border-color: var(--magenta);
-    box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
-}
-
-.modal-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.modal-btn {
-    flex: 1;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 10px;
-    font-family: var(--font-primary);
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: var(--sombra-media);
-}
-
-.modal-btn-save {
-    background: var(--amarillo);
-    color: #000;
-}
-
-.modal-btn-save:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-dura);
-}
-
-.modal-btn-cancel {
-    background: rgba(255, 255, 255, 0.3);
+    padding: 14px 20px;
+    margin: var(--space-lg) 0;
+    background: var(--magenta);
     color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-display);
+    font-size: 1.3em;
+    font-weight: 900;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: var(--sombra-dura);
+    transition: all var(--transition-normal);
 }
 
-.modal-btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.5);
+.btn-modal-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-mega);
 }
 
-/* ========== AURA SELECTOR ========== */
+.btn-modal-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-create-game {
+    background: var(--cian);
+    color: #000;
+}
+
+.status-message-modal {
+    text-align: center;
+    min-height: 25px;
+    color: var(--amarillo);
+    font-weight: 700;
+    margin: var(--space-md) 0;
+    text-shadow: var(--sombra-sm);
+}
+
+/* ========== SELECTOR DE AURA ========== */
 .aura-selector {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin: 15px 10px;
+    gap: var(--space-md);
+    margin: var(--space-lg) 0;
     justify-items: center;
 }
 
 .aura-circle {
-    width: 60%;
-    aspect-ratio: 1 / 1;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     border: 4px solid rgba(255, 255, 255, 0.4);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 0 0 rgba(255, 255, 255, 0);
-    position: relative;
-    overflow: hidden;
-    animation: popIn 0.4s ease-out;
 }
 
 .aura-circle:hover {
     border-color: rgba(255, 255, 255, 0.8);
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 4px 4px 0px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
 }
 
 .aura-circle.selected {
-    border: 4px solid #ffe900;
-    transform: scale(1.1);
+    border: 4px solid var(--amarillo);
+    transform: scale(1.15);
+    box-shadow: 0 0 20px var(--amarillo);
 }
 
-.aura-circle::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), transparent 60%);
-    pointer-events: none;
-}
-
-/* ========== TARJETA BLANCA ========== */
-.card {
-    background: rgba(255, 255, 255, 0.9);
-    color: #000;
-    border-radius: 25px;
-    padding: 30px;
-    box-shadow: var(--sombra-dura);
-    margin-bottom: 20px;
-    position: relative;
-}
-
-.card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
+/* ========== BOTONES DE CONTROL (HOST) ========== */
+.btn-control {
     width: 100%;
-    height: 100%;
-    background-image: url('../images/bg.webp');
-    background-repeat: repeat;
-    background-size: 200px;
-    opacity: 0.05;
-    border-radius: 25px;
-    pointer-events: none;
-}
-
-.container-white {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 20px;
-    padding: 20px;
+    padding: var(--space-md) var(--space-xl);
+    margin: var(--space-sm) 0;
+    border: none;
+    border-radius: var(--radius-full);
+    font-family: var(--font-primary);
+    font-size: 1.1em;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all var(--transition-fast);
     box-shadow: var(--sombra-dura);
-    color: #000;
 }
 
-/* ========== BOTÓN EDITAR NOMBRE ========== */
+.btn-control:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-mega);
+}
+
+.btn-start { background: var(--cian); color: #000; }
+.btn-end { background: var(--magenta); color: white; }
+.btn-next { background: var(--amarillo); color: #000; }
+
+/* ========== BOTONES ADICIONALES ========== */
+.btn-add {
+    padding: 12px 16px;
+    background: var(--cian);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 900;
+    font-size: 1.1em;
+    cursor: pointer;
+    box-shadow: var(--sombra-media);
+    transition: all var(--transition-normal);
+}
+
+.btn-add:hover {
+    transform: scale(1.05);
+}
+
+.btn-submit {
+    flex: 1;
+    padding: 12px 20px;
+    background: var(--amarillo);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.1em;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: var(--sombra-dura);
+    transition: all var(--transition-normal);
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-mega);
+}
+
 .btn-edit-name {
     background: rgba(255,255,255,0.2);
     border: 2px solid rgba(255,255,255,0.4);
-    border-radius: 10px;
-    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm) var(--space-md);
     color: white;
     font-size: 1.3em;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--transition-normal);
 }
 
 .btn-edit-name:hover {
@@ -525,142 +325,51 @@ select:focus {
     transform: scale(1.1);
 }
 
-/* ========== BOTÓN SALIR ========== */
 .btn-exit {
-    padding: 10px 20px;
+    padding: var(--space-md) var(--space-lg);
     background: var(--magenta);
     color: white;
     border: none;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-family: var(--font-primary);
     font-size: 1em;
     font-weight: 800;
     cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 2px 2px 0px #000;
+    box-shadow: var(--sombra-sm);
+    transition: all var(--transition-normal);
 }
 
 .btn-exit:hover {
-    transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0px #000;
+    transform: scale(1.05);
 }
 
-/* ========== LOADING SPINNER ========== */
-.loading-spinner {
-    width: 60px;
-    height: 60px;
-    border: 6px solid rgba(255, 255, 255, 0.3);
-    border-top: 6px solid var(--cian);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 30px auto;
-}
-
-/* ========== ANIMACIONES BASE ========== */
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes popIn {
-    0% {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* ========== RESPONSIVE COMPONENTS ========== */
+/* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
-    .btn {
-        font-size: 1em;
-        padding: 10px 20px;
+    .modal-content {
+        padding: var(--space-2xl) var(--space-lg);
+        max-width: 95%;
     }
-
-    .modal-content,
-    .modal-join-game,
-    .modal-create-game {
-        padding: 20px 15px;
-        max-width: 90%;
+    
+    .code-sticker--large {
+        font-size: 1.1em;
+        padding: var(--space-sm) var(--space-lg);
     }
-
-    .modal-title {
-        font-size: 1.6em;
-        margin-bottom: 15px;
-    }
-
-    .modal-input {
-        padding: 12px 12px;
-        font-size: 1em;
-        margin-bottom: 12px;
-    }
-
-    .modal-btn {
-        padding: 12px;
-        font-size: 0.95em;
-    }
-
+    
     .aura-circle {
         width: 60px;
         height: 60px;
     }
-
-    .input-field {
-        padding: 14px;
-        font-size: 1.1em;
-    }
-
-    .word-input {
-        padding: 14px;
-        font-size: 1em;
-    }
 }
 
 @media (max-width: 480px) {
-    .btn {
-        font-size: 0.95em;
-        padding: 8px 16px;
+    .btn-home {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5em;
     }
-
-    .input-field {
-        font-size: 1em;
-        padding: 12px;
-    }
-
-    .word-input {
-        font-size: 0.95em;
-        padding: 12px;
-    }
-
+    
     .aura-circle {
         width: 50px;
         height: 50px;
-    }
-
-    .code-sticker--large {
-        font-size: 1em;
-        padding: 6px 12px;
-    }
-
-    .code-sticker--small {
-        font-size: 0.9em;
-        padding: 5px 10px;
     }
 }

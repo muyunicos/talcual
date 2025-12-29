@@ -15,15 +15,54 @@
 
 /* ========== VARIABLES GLOBALES ========== */
 :root {
+    /* Colores */
     --violeta-profundo: #2E004E;
     --cian: #00F0FF;
     --magenta: #FF0055;
     --amarillo: #FFD700;
-    --sombra-dura: 4px 4px 0px #000;
+    
+    /* Sombras */
+    --sombra-xs: 1px 1px 0px #000;
+    --sombra-sm: 2px 2px 0px #000;
     --sombra-media: 2px 2px 0px rgba(0,0,0,0.3);
-    --fondo-tv: #2E004E;
+    --sombra-dura: 4px 4px 0px #000;
+    --sombra-mega: 6px 6px 0px #000;
+    
+    /* Espaciado */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-base: 15px;
+    --space-lg: 20px;
+    --space-xl: 25px;
+    --space-2xl: 30px;
+    --space-3xl: 35px;
+    --space-4xl: 40px;
+    
+    /* Radio de esquinas */
+    --radius-sm: 10px;
+    --radius-md: 15px;
+    --radius-lg: 20px;
+    --radius-xl: 25px;
+    --radius-full: 50px;
+    
+    /* Padding */
+    --padding-sm: 8px 12px;
+    --padding-md: 12px 18px;
+    --padding-lg: 15px 25px;
+    --padding-xl: 18px 35px;
+    --padding-button: 15px 35px;
+    --padding-input: 18px;
+    --padding-modal: 35px;
+    
+    /* Fuentes */
     --font-primary: 'Nunito', sans-serif;
     --font-display: 'Fredoka One', cursive;
+    
+    /* Transiciones */
+    --transition-fast: 0.1s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.5s ease;
 }
 
 /* ========== ESTILOS BASE BODY ========== */
@@ -31,7 +70,6 @@ body {
     font-family: var(--font-primary);
     font-weight: 700;
     background-color: var(--violeta-profundo);
-    /* Imagen de fondo cover delante del color */
     background-image: url('../images/bg.webp'); 
     background-repeat: no-repeat;
     background-position: center center;
@@ -45,7 +83,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Textura de fondo sutil (Opcional si la imagen ya tiene patrón) */
 body::before {
     content: '';
     position: fixed;
@@ -53,16 +90,14 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(46, 0, 78, 0.4); /* Capa violeta sobre la imagen si es necesario */
+    background: rgba(46, 0, 78, 0.4);
     mix-blend-mode: overlay;
     pointer-events: none;
     z-index: 0;
 }
 
-/* ========== TIPOGRAFÍAS BASE ========== */
-html {
-    font-size: 16px;
-}
+/* ========== TIPOGRAFÍAS ========== */
+html { font-size: 16px; }
 
 h1, h2, h3, h4, h5, h6,
 .title, .logo-text, 
@@ -82,85 +117,17 @@ p, .text {
     line-height: 1.5;
 }
 
-small {
-    font-size: 0.85em;
-    font-weight: 600;
-}
-
-strong {
-    font-weight: 900;
-}
+small { font-size: 0.85em; font-weight: 600; }
+strong { font-weight: 900; }
 
 /* ========== LINKS ========== */
 a {
     color: var(--cian);
     text-decoration: none;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 }
 
-a:hover {
-    text-decoration: underline;
-}
-
-/* ========== TABLAS ========== */
-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    overflow: hidden;
-    border-radius: 15px;
-    box-shadow: var(--sombra-dura);
-}
-
-table th {
-    background: var(--violeta-profundo);
-    color: white;
-    padding: 15px;
-    font-family: var(--font-display);
-    text-align: left;
-    border-bottom: 4px solid #000;
-}
-
-table td {
-    background: white;
-    color: #000;
-    padding: 12px 15px;
-    border-bottom: 2px solid #eee;
-    font-weight: 700;
-}
-
-table tr:last-child td {
-    border-bottom: none;
-}
-
-/* ========== BADGES ========== */
-.badge {
-    display: inline-block;
-    background: var(--amarillo);
-    color: #000;
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-size: 0.9em;
-    font-weight: 800;
-    box-shadow: var(--sombra-media);
-    margin: 0 5px;
-}
-
-.badge.cian {
-    background: var(--cian);
-    color: #000;
-}
-
-.badge.magenta {
-    background: var(--magenta);
-    color: white;
-}
-
-/* ========== AURAS (Generadas dinámicamente) ========== */
-/* Clase base para elementos con aura */
-.has-aura {
-    transition: background 0.5s ease;
-}
+a:hover { text-decoration: underline; }
 
 /* ========== LANDING PAGE ========== */
 .landing-container {
@@ -174,11 +141,11 @@ table tr:last-child td {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 20px;
+    padding: var(--space-lg);
 }
 
 .logo-header {
-    margin-bottom: 40px;
+    margin-bottom: var(--space-2xl);
 }
 
 .logo-header img {
@@ -186,6 +153,93 @@ table tr:last-child td {
     width: 100%;
     height: auto;
     filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5));
+}
+
+.logo-header h1 {
+    margin-top: var(--space-lg);
+    color: var(--cian);
+}
+
+.subtitle {
+    font-size: 1.3em;
+    margin-bottom: var(--space-2xl);
+    color: var(--amarillo);
+    text-shadow: var(--sombra-media);
+}
+
+.btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    width: 100%;
+    max-width: 350px;
+    margin-bottom: auto;
+}
+
+.btn-create,
+.btn-join {
+    width: 100%;
+    padding: var(--space-lg) var(--space-2xl);
+    font-size: 1.4em;
+    font-family: var(--font-display);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--sombra-dura);
+    transition: all var(--transition-normal);
+    text-align: center;
+    display: block;
+}
+
+.btn-create {
+    background: var(--cian);
+    color: #000;
+}
+
+.btn-join {
+    background: var(--magenta);
+    color: white;
+}
+
+.btn-create:hover,
+.btn-join:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-mega);
+    text-decoration: none;
+}
+
+.version {
+    margin-top: var(--space-3xl);
+    font-size: 0.9em;
+    opacity: 0.7;
+    color: white;
+}
+
+/* ========== BOTÓN HOME (Reemplazo de btn-back) ========== */
+.btn-home {
+    position: fixed;
+    bottom: var(--space-lg);
+    left: var(--space-lg);
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8em;
+    color: white;
+    text-decoration: none;
+    box-shadow: var(--sombra-media);
+    transition: all var(--transition-normal);
+    z-index: 100;
+}
+
+.btn-home:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+    box-shadow: var(--sombra-dura);
+    text-decoration: none;
 }
 
 /* ========== CLASES DE UTILIDAD ========== */
