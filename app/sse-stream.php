@@ -67,6 +67,10 @@ while (true) {
     
     $currentModified = filemtime($stateFile);
     
+    // 🔧 FIX #19: Solo cargar estado si hubo cambios, evitar I/O innecesario
+    $state = null;
+    $sleep = 500000; // default sleep time
+    
     if ($currentModified > $lastModified) {
         $state = loadGameState($gameId);
         
@@ -76,6 +80,9 @@ while (true) {
             $lastHeartbeat = time();
             logMessage("SSE update enviado para {$gameId}", 'DEBUG');
         }
+    } else {
+        // Si no hay cambios, cargar estado solo para determinar sleep time
+        $state = loadGameState($gameId);
     }
     
     if (time() - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
@@ -84,20 +91,20 @@ while (true) {
         $lastHeartbeat = time();
     }
 
-    $state = loadGameState($gameId);
+    // Ajustar sleep time basado en status (solo si state fue cargado)
     if ($state) {
         $playerCount = count($state['players'] ?? []);
         
         if ($playerCount > 0 && $state['status'] === 'waiting') {
-            usleep(30000);
+            $sleep = 30000;  // 30ms - polling rápido si hay jugadores esperando
         } elseif ($state['status'] === 'playing') {
-            usleep(100000);
+            $sleep = 100000; // 100ms - polling moderado durante juego
         } else {
-            usleep(500000);
+            $sleep = 500000; // 500ms - polling lento en otros estados
         }
-    } else {
-        usleep(500000);
     }
+    
+    usleep($sleep);
 }
 
 if ($connectionBroken) {
