@@ -96,16 +96,16 @@ while (true) {
         $lastHeartbeat = time();
     }
 
-    // ✅ MEJORA #26: Polling inteligente basado en estado del juego
-    // Reduce latencia de detección de nuevos jugadores de 200ms a 50ms
+    // ✅ MEJORA #26 + HOTFIX #2: Polling inteligente basado en estado del juego
+    // HOTFIX #2: Redución a 30ms cuando hay jugadores esperando
     $state = loadGameState($gameId);
     if ($state) {
         $playerCount = count($state['players'] ?? []);
         
-        // CRÍTICO: Mientras esperamos jugadores, máxima atención (50ms)
+        // CRÍTICO: Mientras esperamos jugadores, máxima atención (30ms en lugar de 50ms)
         if ($playerCount > 0 && $state['status'] === 'waiting') {
-            usleep(50000);  // 50ms - máxima sensibilidad
-            logMessage("SSE sleep 50ms (waiting with {$playerCount} players)", 'DEBUG');
+            usleep(30000);  // 30ms - máxima sensibilidad (HOTFIX #2)
+            logMessage("SSE sleep 30ms (waiting with {$playerCount} players)", 'DEBUG');
         }
         // Durante juego activo: moderadamente rápido (100ms)
         elseif ($state['status'] === 'playing') {

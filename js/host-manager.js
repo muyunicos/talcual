@@ -180,7 +180,7 @@ class HostManager {
     }
     
     /**
-     * ✅ MEJORA #27: Sincronización periódica cada 500ms
+     * ✅ HOTFIX #1: Sincronización periódica cada 100ms (antes: 500ms)
      * Fallback automático si SSE falla o se retrasa
      */
     setupPeriodicSync() {
@@ -188,13 +188,13 @@ class HostManager {
             clearInterval(this.periodicSyncInterval);
         }
         
-        debug('🔄 Iniciando sincronización periódica (500ms)', 'info');
+        debug('🔄 Iniciando sincronización periódica (100ms)', 'info');
         
         this.periodicSyncInterval = setInterval(async () => {
             try {
-                // Evitar spam: máximo 1 sincronización por segundo
+                // HOTFIX #1: Reducir throttling de 1s a 100ms para detección más rápida
                 const now = Date.now();
-                if (now - this.lastSyncTime < 1000) {
+                if (now - this.lastSyncTime < 100) {
                     return;
                 }
                 this.lastSyncTime = now;
@@ -216,7 +216,7 @@ class HostManager {
                 // Fallback silencioso - SSE probablemente funciona
                 debug('ℹ️ Sincronización periódica falló (SSE probablemente activo)', 'debug');
             }
-        }, 500);
+        }, 100); // HOTFIX #1: 100ms en lugar de 500ms
     }
     
     /**
@@ -570,4 +570,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - Mejorado con periodic sync y debounce', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - HOTFIX #1: sincronización cada 100ms', 'color: #10B981; font-weight: bold');

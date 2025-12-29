@@ -97,7 +97,8 @@ switch ($action) {
             'round_start_at' => null,  // NUEVO: Timestamp futuro para countdown
             'round_details' => [],
             'round_top_words' => [], // FIX: Nombre consistente
-            'game_history' => []
+            'game_history' => [],
+            'last_update' => time() // 🔥 CRITICAL: Timestamp para detección de cambios
         ];
 
         if (saveGameState($gameId, $state)) {
@@ -161,6 +162,9 @@ switch ($action) {
             'answers' => [],
             'round_results' => []
         ];
+
+        // 🔥 CRITICAL: Actualizar timestamp para que el host detecte cambios
+        $state['last_update'] = time();
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'player_joined', ['player_name' => $playerName]);
@@ -227,6 +231,7 @@ switch ($action) {
         $state['round_duration'] = $duration;
         $state['round_start_at'] = $round_start_at;  // NUEVO: Timestamp futuro
         $state['round_started_at'] = $round_start_at; // Se usará cuando realmente inicie
+        $state['last_update'] = time(); // 🔥 Actualizar timestamp
 
         // Resetear jugadores para nueva ronda
         foreach ($state['players'] as $playerId => $player) {
@@ -307,6 +312,8 @@ switch ($action) {
             $state['players'][$playerId]['status'] = 'ready';
         }
 
+        $state['last_update'] = time(); // 🔥 Actualizar timestamp
+
         if (saveGameState($gameId, $state)) {
             $response = [
                 'success' => true,
@@ -338,6 +345,7 @@ switch ($action) {
         // Solo acortar si quedan más de 5 segundos
         if ($elapsed < $state['round_duration'] - 5) {
             $state['round_duration'] = $elapsed + 5;
+            $state['last_update'] = time(); // 🔥 Actualizar timestamp
             
             if (saveGameState($gameId, $state)) {
                 logMessage("Timer acortado a 5 segundos en game {$gameId}", 'INFO');
@@ -442,6 +450,7 @@ switch ($action) {
         });
 
         $state['round_top_words'] = array_slice($topWords, 0, 10); // FIX: Nombre consistente
+        $state['last_update'] = time(); // 🔥 Actualizar timestamp
 
         // Cambiar estado
         if ($state['round'] >= $state['total_rounds']) {
@@ -492,6 +501,7 @@ switch ($action) {
         $state['round_started_at'] = null;
         $state['round_start_at'] = null;
         $state['round_top_words'] = []; // FIX: Nombre consistente
+        $state['last_update'] = time(); // 🔥 Actualizar timestamp
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'game_reset', []);
@@ -515,6 +525,7 @@ switch ($action) {
         if ($state && isset($state['players'][$playerId])) {
             $playerName = $state['players'][$playerId]['name'];
             unset($state['players'][$playerId]);
+            $state['last_update'] = time(); // 🔥 Actualizar timestamp
 
             if (saveGameState($gameId, $state)) {
                 trackGameAction($gameId, 'player_left', ['player_name' => $playerName]);
