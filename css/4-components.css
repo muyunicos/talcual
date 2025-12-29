@@ -306,16 +306,45 @@ select:focus {
     box-shadow: var(--sombra-sm);
 }
 
-/* Compatibilidad hacia atrás - Aliases para clases existentes */
+/* Compatibilidad hacia atrás - Aliases ahora funcionales (Phase 3) */
 .game-code-sticker {
-    /* Usa .code-sticker + .code-sticker--large en HTML */
-    /* O agregar en HTML: class="code-sticker code-sticker--large" */
+    background: var(--magenta);
+    color: white;
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: 2px;
+    box-shadow: var(--sombra-dura);
+    border-radius: var(--radius-md);
+    display: inline-block;
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--transition-normal);
+    outline: none;
+    position: relative;
+    font-size: clamp(1em, 2vw, 1.3em);
+    padding: clamp(8px, 1.5%, 12px) clamp(15px, 2%, 25px);
 }
 
 .header-code-sticker {
-    /* Usa .code-sticker + .code-sticker--small en HTML */
-    /* O agregar en HTML: class="code-sticker code-sticker--small" */
+    background: var(--magenta);
+    color: white;
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: 2px;
+    box-shadow: var(--sombra-dura);
+    border-radius: var(--radius-md);
+    display: inline-block;
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--transition-normal);
+    outline: none;
+    position: relative;
+    font-size: 1.2em;
+    padding: var(--space-sm) var(--space-lg);
 }
+
+/* DEPRECATED: These classes exist for backward compatibility only */
+/* Phase 4+: Migrate HTML to use .code-sticker variants directly, then remove */
 
 /* ========== MODAL DIALOG BASE ========== */
 .modal-overlay {
