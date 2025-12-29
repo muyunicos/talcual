@@ -322,6 +322,10 @@ class GameClient {
       this.isConnected = false;
       console.log(`🔌 [${this.role}] SSE desconectado`);
     }
+    
+    // ✅ FIX #14: Resetear reconnectAttempts cuando se desconecta para evitar
+    // que se agoten los intentos prematuramente durante reconexiones máltiples
+    this.reconnectAttempts = 0;
   }
 
   /**
