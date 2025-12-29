@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 function notifyGameChanged($gameId, $isHostOnlyChange = false) {
     $notifyAll = GAME_STATES_DIR . '/' . $gameId . '_all.json';
     $notifyHost = GAME_STATES_DIR . '/' . $gameId . '_host.json';
-    
+
     $allCounter = 0;
     if (file_exists($notifyAll)) {
         $content = @file_get_contents($notifyAll);
@@ -27,10 +27,10 @@ function notifyGameChanged($gameId, $isHostOnlyChange = false) {
             $allCounter = (int)$content;
         }
     }
-    
+
     $allCounter++;
     @file_put_contents($notifyAll, (string)$allCounter, LOCK_EX);
-    
+
     if ($isHostOnlyChange) {
         $hostCounter = 0;
         if (file_exists($notifyHost)) {
@@ -48,10 +48,10 @@ function checkRateLimit() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $cacheKey = 'rate_limit:' . md5($ip);
     $cacheFile = sys_get_temp_dir() . '/' . $cacheKey . '.txt';
-    
+
     $limit = RATE_LIMIT_REQUESTS;
     $window = RATE_LIMIT_WINDOW;
-    
+
     if (file_exists($cacheFile)) {
         $raw = file_get_contents($cacheFile);
         $data = json_decode($raw, true);
@@ -61,7 +61,7 @@ function checkRateLimit() {
         }
 
         $elapsed = time() - (int)$data['timestamp'];
-        
+
         if ($elapsed < $window) {
             $data['count']++;
             if ($data['count'] > $limit) {
@@ -80,42 +80,59 @@ function checkRateLimit() {
 }
 
 /**
- * Devuelve una consigna aleatoria desde app/diccionario.json.
- * Soporta 2 formatos:
- * 1) Legacy: { "categorias": { "GENERAL": ["CASA", ...] } }
- * 2) Nuevo: { "CATEGORIA": [ { "CONSIGNA": ["Tip", ...] }, ... ] }
- * @param string|null $preferredCategory
- * @returns array{category:?string,prompt:string}
+ * Carga diccionario desde app/diccionario.json.
+ * @returns array
  */
-function pickRandomPromptFromDictionary($preferredCategory = null) {
+function loadRawDictionaryJson() {
     $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
 
     if (!file_exists($file)) {
-        return ['category' => null, 'prompt' => 'JUEGO'];
+        return [];
     }
 
     $raw = @file_get_contents($file);
     $data = json_decode($raw ?: '', true);
 
-    if (!is_array($data)) {
-        return ['category' => null, 'prompt' => 'JUEGO'];
+    return is_array($data) ? $data : [];
+}
+
+/**
+ * Devuelve pool de consignas (prompts) para una categoría.
+ * Soporta 2 formatos:
+ * 1) Legacy: { "categorias": { "GENERAL": ["CASA", ...] } }
+ * 2) Nuevo: { "CATEGORIA": [ { "CONSIGNA": ["Tip", ...] }, ... ] }
+ *
+ * @param string|null $preferredCategory
+ * @returns array{category:?string,prompts:array}
+ */
+function getPromptPoolFromDictionary($preferredCategory = null) {
+    $data = loadRawDictionaryJson();
+
+    if (empty($data)) {
+        return ['category' => null, 'prompts' => ['JUEGO']];
     }
 
     // ===== Legacy format =====
     if (isset($data['categorias']) && is_array($data['categorias'])) {
         $cats = array_keys($data['categorias']);
-        $cat = null;
-
-        if ($preferredCategory && isset($data['categorias'][$preferredCategory])) {
-            $cat = $preferredCategory;
-        } elseif (!empty($cats)) {
-            $cat = $cats[array_rand($cats)];
+        if (empty($cats)) {
+            return ['category' => null, 'prompts' => ['JUEGO']];
         }
 
-        $pool = ($cat && isset($data['categorias'][$cat]) && is_array($data['categorias'][$cat])) ? $data['categorias'][$cat] : [];
-        $prompt = !empty($pool) ? (string)$pool[array_rand($pool)] : 'JUEGO';
+        $cat = ($preferredCategory && isset($data['categorias'][$preferredCategory]))
+            ? $preferredCategory
+            : $cats[array_rand($cats)];
 
-        return ['category' => $cat, 'prompt' => $prompt];
+        $pool = (isset($data['categorias'][$cat]) && is_array($data['categorias'][$cat])) ? $data['categorias'][$cat] : [];
+        $prompts = array_values(array_unique(array_filter(array_map(function ($p) {
+            return is_string($p) ? trim($p) : '';
+        }, $pool))));
+
+        if (empty($prompts)) {
+            $prompts = ['JUEGO'];
+        }
+
+        return ['category' => $cat, 'prompts' => $prompts];
     }
 
     // ===== New format =====
@@ -124,7 +141,7 @@ function pickRandomPromptFromDictionary($preferredCategory = null) {
     }));
 
     if (empty($cats)) {
-        return ['category' => null, 'prompt' => 'JUEGO'];
+        return ['category' => null, 'prompts' => ['JUEGO']];
     }
 
     $cat = ($preferredCategory && isset($data[$preferredCategory])) ? $preferredCategory : $cats[array_rand($cats)];
@@ -143,8 +160,57 @@ function pickRandomPromptFromDictionary($preferredCategory = null) {
         }
     }
 
-    $prompt = !empty($prompts) ? (string)$prompts[array_rand($prompts)] : 'JUEGO';
-    return ['category' => $cat, 'prompt' => $prompt];
+    $prompts = array_values(array_unique($prompts));
+    if (empty($prompts)) {
+        $prompts = ['JUEGO'];
+    }
+
+    return ['category' => $cat, 'prompts' => $prompts];
+}
+
+/**
+ * Selecciona consigna sin repetir durante la sesión (por categoría).
+ * Si no quedan más consignas, resetea el historial para esa categoría.
+ *
+ * @param array $state
+ * @param string|null $preferredCategory
+ * @returns array{category:?string,prompt:string,used_prompts:array}
+ */
+function pickNonRepeatingPrompt($state, $preferredCategory = null) {
+    $poolInfo = getPromptPoolFromDictionary($preferredCategory);
+    $category = $poolInfo['category'];
+    $prompts = $poolInfo['prompts'];
+
+    $used = [];
+    if (isset($state['used_prompts']) && is_array($state['used_prompts']) && $category !== null) {
+        $used = $state['used_prompts'][$category] ?? [];
+        if (!is_array($used)) $used = [];
+    }
+
+    $available = array_values(array_diff($prompts, $used));
+
+    // Si ya se usaron todas, resetear para esa categoría
+    if (empty($available)) {
+        $used = [];
+        $available = $prompts;
+    }
+
+    $prompt = !empty($available) ? (string)$available[array_rand($available)] : 'JUEGO';
+
+    // Persistir en used_prompts
+    $used[] = $prompt;
+
+    // Cap de seguridad
+    if (count($used) > 500) {
+        $used = array_slice($used, -500);
+    }
+
+    $newUsedPrompts = (isset($state['used_prompts']) && is_array($state['used_prompts'])) ? $state['used_prompts'] : [];
+    if ($category !== null) {
+        $newUsedPrompts[$category] = $used;
+    }
+
+    return ['category' => $category, 'prompt' => $prompt, 'used_prompts' => $newUsedPrompts];
 }
 
 try {
@@ -198,6 +264,7 @@ try {
                 'current_word' => null,
                 'current_category' => null,
                 'selected_category' => $selectedCategory,
+                'used_prompts' => [],
                 'round_duration' => $roundDuration,
                 'round_started_at' => null,
                 'round_start_at' => null,
@@ -283,7 +350,6 @@ try {
             break;
 
         case 'start_round':
-            // FIX #41: Mejorar manejo de errores con try-catch adicional
             try {
                 if (!$gameId) {
                     $response = ['success' => false, 'message' => 'game_id requerido'];
@@ -308,7 +374,7 @@ try {
                     break;
                 }
 
-                // "word" ahora representa la CONSIGNA (opcional). Si viene vacía, se elige una al azar desde diccionario.
+                // "word" ahora representa la CONSIGNA (opcional). Si viene vacía, se elige una sin repetir desde diccionario.
                 $prompt = trim((string)($input['word'] ?? ''));
 
                 $categoryFromRequest = isset($input['category']) ? trim((string)$input['category']) : null;
@@ -318,9 +384,10 @@ try {
                 if ($preferredCategory === '') $preferredCategory = null;
 
                 if ($prompt === '') {
-                    $picked = pickRandomPromptFromDictionary($preferredCategory);
+                    $picked = pickNonRepeatingPrompt($state, $preferredCategory);
                     $prompt = (string)($picked['prompt'] ?? 'JUEGO');
                     $preferredCategory = $picked['category'] ?? $preferredCategory;
+                    $state['used_prompts'] = $picked['used_prompts'] ?? ($state['used_prompts'] ?? []);
                 }
 
                 $duration = intval($input['duration'] ?? $state['round_duration'] ?? DEFAULT_ROUND_DURATION);
@@ -365,7 +432,6 @@ try {
                         'state' => $state
                     ];
                 } else {
-                    // FIX #41: Mensaje más específico cuando saveGameState falla
                     logMessage('[ERROR] start_round: saveGameState falló para ' . $gameId, 'ERROR');
                     $response = [
                         'success' => false,
@@ -406,7 +472,6 @@ try {
                     continue;
                 }
 
-                // current_word ahora es CONSIGNA, así que no se usa como restricción para validar respuestas.
                 $validation = validatePlayerWord($trimmed);
 
                 if ($validation['valid']) {
@@ -500,9 +565,8 @@ try {
             $engine = WordEquivalenceEngine::getInstance();
             $wordCounts = [];
             $playerWords = [];
-            $wordCanonicals = []; // Mapeo de palabra original → canónica
+            $wordCanonicals = [];
 
-            // Procesar respuestas de todos los jugadores
             foreach ($state['players'] as $pId => $player) {
                 foreach ($player['answers'] as $word) {
                     $trimmed = trim($word);
@@ -512,17 +576,13 @@ try {
 
                     $normalized = strtoupper($trimmed);
 
-                    // Obtener palabra canónica usando motor inteligente
                     $canonical = $engine->getCanonicalWord($normalized);
                     if ($canonical === null) {
-                        // Si no está en diccionario, usar palabra normalizada
                         $canonical = $normalized;
                     }
 
-                    // Guardar mapeo original → canónica
                     $wordCanonicals[$normalized] = $canonical;
 
-                    // Agrupar por palabra canónica
                     if (!isset($wordCounts[$canonical])) {
                         $wordCounts[$canonical] = [];
                     }
@@ -530,7 +590,6 @@ try {
                         $wordCounts[$canonical][] = $player['name'];
                     }
 
-                    // Registrar palabra del jugador
                     if (!isset($playerWords[$pId])) {
                         $playerWords[$pId] = [];
                     }
@@ -540,7 +599,6 @@ try {
                 }
             }
 
-            // Calcular puntos basado en palabras canónicas
             foreach ($state['players'] as $pId => $player) {
                 $roundResults = [];
                 $roundScore = 0;
@@ -567,7 +625,6 @@ try {
                 $state['players'][$pId]['status'] = 'connected';
             }
 
-            // Generar lista de palabras más populares
             $topWords = [];
             foreach ($wordCounts as $word => $players) {
                 if (count($players) > 1) {
