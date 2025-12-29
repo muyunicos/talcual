@@ -473,7 +473,7 @@ class HostManager {
         });
         
         if (this.elements.rankingList) {
-            this.elements.rankingList.innerHTML = html || '<div style="opacity: 0.5;">Esperando jugadores...</div>';
+            this.elements.rankingList.innerHTML = html || '<div style="opacity: 0.5; text-align: center; padding: 20px;">Esperando jugadores...</div>';
         }
     }
     
@@ -491,7 +491,7 @@ class HostManager {
         });
         
         if (this.elements.topWordsList) {
-            this.elements.topWordsList.innerHTML = html || '<div style="opacity: 0.5;">Sin palabras aún</div>';
+            this.elements.topWordsList.innerHTML = html || '<div style="opacity: 0.5; text-align: center; padding: 20px;">Sin palabras aún</div>';
         }
     }
     
@@ -564,6 +564,7 @@ class HostManager {
 
         try {
             const result = await this.client.sendAction('leave_game', {
+                game_id: this.gameId,
                 player_id: playerId
             });
 
@@ -601,19 +602,20 @@ class HostManager {
                 const activePlayers = Object.values(this.gameState.players || {})
                     .filter(p => !p.disconnected).length;
                 
-                if (activePlayers >= this.gameConfig.minPlayers) {
-                    message = `🏃 ${activePlayers} listo(s) - ¿Comenzamos?`;
-                } else if (activePlayers === 1) {
-                    message = `👥 Falta ${this.gameConfig.minPlayers - activePlayers} jugador(es)`;
+                if (activePlayers === 0) {
+                    message = '👥 Esperando al primer jugador';
+                } else if (activePlayers < this.gameConfig.minPlayers) {
+                    const needed = this.gameConfig.minPlayers - activePlayers;
+                    message = `👥 ${activePlayers} conectado${activePlayers === 1 ? '' : 's'} - Falta${needed === 1 ? '' : 'n'} ${needed} para comenzar`;
                 } else {
-                    message = `👥 ${activePlayers} jugador(es) conectado(s)`;
+                    message = `🏃 ¡${activePlayers} listo${activePlayers === 1 ? '' : 's'}! Presiona ENTER para comenzar`;
                 }
                 break;
             case 'playing':
-                message = `📚 Ronda ${this.gameState.round}/${this.gameConfig.totalRounds}`;
+                message = `📚 Escribiendo...`;
                 break;
             case 'round_ended':
-                message = '✅ Ronda terminada';
+                message = '✅ Mostrando resultados';
                 break;
             case 'finished':
                 message = '🎉 ¡Partida finalizada!';
@@ -723,6 +725,7 @@ class HostManager {
             }
             
             const result = await this.client.sendAction('start_round', {
+                game_id: this.gameId,
                 duration: this.gameConfig.roundDuration,
                 total_rounds: this.gameConfig.totalRounds
             });
@@ -751,7 +754,9 @@ class HostManager {
                 this.elements.btnEndRound.textContent = 'Finalizando...';
             }
             
-            const result = await this.client.sendAction('end_round', {});
+            const result = await this.client.sendAction('end_round', {
+                game_id: this.gameId
+            });
             
             if (!result.success) {
                 showNotification('Error finalizando ronda', 'error');
@@ -778,6 +783,7 @@ class HostManager {
             }
             
             const result = await this.client.sendAction('start_round', {
+                game_id: this.gameId,
                 duration: this.gameConfig.roundDuration,
                 total_rounds: this.gameConfig.totalRounds
             });
@@ -806,7 +812,9 @@ class HostManager {
                 this.elements.btnFinishGame.textContent = 'Terminando...';
             }
             
-            const result = await this.client.sendAction('reset_game', {});
+            const result = await this.client.sendAction('reset_game', {
+                game_id: this.gameId
+            });
             
             if (!result.success) {
                 showNotification('Error terminando partida', 'error');
