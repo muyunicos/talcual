@@ -241,7 +241,8 @@ class GameClient {
     this.isConnected = false;
     this.metrics.errorsCount++;
     
-    if (this.eventSource.readyState === EventSource.CLOSED) {
+    // ✅ FIX: Validar que eventSource existe antes de acceder readyState
+    if (this.eventSource && this.eventSource.readyState === EventSource.CLOSED) {
       this.handleReconnect();
     }
   }
