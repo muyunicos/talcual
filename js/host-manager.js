@@ -478,6 +478,7 @@ class HostManager {
         if (player.status === 'ready') return '✅';
         if (player.status === 'answered') return '📝';
         if (player.status === 'waiting') return '⏳';
+        if (player.status === 'connected') return '👥';
         return '👤';
     }
     
@@ -643,4 +644,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - FIX #29: Estado connected ahora muestra 👥', 'color: #10B981; font-weight: bold');
