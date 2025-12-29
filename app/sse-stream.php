@@ -44,6 +44,12 @@ $startTime = time();
 $lastHeartbeat = microtime(true);
 $connectionBroken = false;
 
+// 🔧 FIX #27: Enviar heartbeat inicial inmediatamente después de conectar
+// Esto evita race condition donde SSE conecta antes de que archivo JSON exista
+echo ": heartbeat\n\n";
+flush();
+logMessage("SSE heartbeat inicial enviado para {$gameId}", 'DEBUG');
+
 while (true) {
     if (time() - $startTime > SSE_TIMEOUT) {
         logMessage("SSE timeout alcanzado para {$gameId}", 'INFO');
