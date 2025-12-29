@@ -210,6 +210,7 @@ try {
             break;
 
         case 'start_round':
+            // FIX #41: Mejorar manejo de errores con try-catch adicional
             try {
                 if (!$gameId) {
                     $response = ['success' => false, 'message' => 'game_id requerido'];
@@ -288,7 +289,12 @@ try {
                         'state' => $state
                     ];
                 } else {
-                    $response = ['success' => false, 'message' => 'Error guardando estado'];
+                    // FIX #41: Mensaje más específico cuando saveGameState falla
+                    logMessage('[ERROR] start_round: saveGameState falló para ' . $gameId, 'ERROR');
+                    $response = [
+                        'success' => false,
+                        'message' => 'Error guardando estado del juego. Intenta nuevamente.'
+                    ];
                 }
             } catch (Exception $e) {
                 logMessage('Error en start_round: ' . $e->getMessage(), 'ERROR');
