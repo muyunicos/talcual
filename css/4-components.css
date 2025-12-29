@@ -498,8 +498,7 @@ select:focus {
     padding: var(--space-2xl) var(--space-xl);
     max-width: 400px;
     width: 90%;
-    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), var(--sombra-dura);
-    border: 3px solid var(--cian);
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), var(--sombra-dura)
     animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -585,7 +584,7 @@ select:focus {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-md);
-    margin: var(--space-lg) 0;
+    margin: var(--space-lg) var(--space-md);
     justify-items: center;
 }
 
@@ -604,8 +603,7 @@ select:focus {
 
 .aura-circle:hover {
     border-color: rgba(255, 255, 255, 0.8);
-    transform: scale(1.1);
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5), var(--sombra-dura);
 }
 
 .aura-circle.selected {
@@ -692,8 +690,8 @@ select:focus {
 }
 
 .btn-exit:hover {
-    transform: scale(1.05);
-    box-shadow: var(--sombra-media);
+    transform: translate(var(--size-xs), var(--size-xs));
+    box-shadow: var(--sombra-xs);
 }
 
 /* ========== LOADING SPINNER ========== */
@@ -748,8 +746,8 @@ select:focus {
     .modal-content,
     .modal-join-game,
     .modal-create-game {
-        padding: var(--space-2xl) var(--space-lg);
-        max-width: 95%;
+        padding: var(--space-lg) var(--space-md);
+        max-width: 90%;
     }
 
     .modal-title {

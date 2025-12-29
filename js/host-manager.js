@@ -198,19 +198,31 @@ class HostManager {
         return false;
     }
     
+    // ✅ FIX #18: Usar safeShowElement() y safeHideElement() en lugar de .classList
+    // para ser consistente con el resto del código
     showCreateGameModal() {
-        this.elements.modalCreateGame.classList.add('active');
-        this.elements.gameScreen.classList.remove('active');
+        safeShowElement(this.elements.modalCreateGame);
+        safeHideElement(this.elements.gameScreen);
     }
     
     loadGameScreen(state) {
-        this.elements.modalCreateGame.classList.remove('active');
-        this.elements.gameScreen.classList.add('active');
+        safeHideElement(this.elements.modalCreateGame);
+        safeShowElement(this.elements.gameScreen);
         
-        this.elements.gameCodeTv.textContent = this.gameId;
+        if (this.elements.gameCodeTv) {
+            this.elements.gameCodeTv.textContent = this.gameId;
+        }
         
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
+        
+        // 🔧 FIX #25: Escuchar 'connected' event para actualizar lastSSEMessageTime
+        // Esto permite que el heartbeat sea detectado sin esperar un 'update' event
+        this.client.on('connected', () => {
+            this.lastSSEMessageTime = Date.now();
+            debug('📡 [HOST] SSE conectado - heartbeat será recibido', 'debug');
+        });
+        
         this.client.connect();
         this.lastSSEMessageTime = Date.now();
         
@@ -225,30 +237,42 @@ class HostManager {
     
     /**
      * MEJORA #26: Fallback inteligente en lugar de polling cada 100ms
-     * Solo hace forceRefresh() si SSE muere >30 segundos
+     * Solo hace forceRefresh() si SSE muere > MESSAGE_TIMEOUT
+     * Usa COMM_CONFIG para evitar valores hardcodeados
      */
     setupFallbackRefresh() {
         if (this.fallbackRefreshInterval) {
             clearInterval(this.fallbackRefreshInterval);
         }
         
-        debug('🔄 Iniciando fallback refresh (30s sin SSE = forceRefresh)', 'info');
+        // Obtener CONFIG con fallback
+        const commConfig = window.COMM?.COMM_CONFIG || {
+            MESSAGE_TIMEOUT: 30000,
+            HEARTBEAT_CHECK_INTERVAL: 5000
+        };
+        
+        const checkInterval = commConfig.HEARTBEAT_CHECK_INTERVAL;
+        const messageTimeout = commConfig.MESSAGE_TIMEOUT;
+        
+        debug(`🔄 Iniciando fallback refresh (${messageTimeout}ms sin SSE = forceRefresh)`, 'info');
         
         this.fallbackRefreshInterval = setInterval(() => {
             const timeSinceLastSSE = Date.now() - this.lastSSEMessageTime;
             
-            if (timeSinceLastSSE > 30000 && this.client && this.gameId) {
+            if (timeSinceLastSSE > messageTimeout && this.client && this.gameId) {
                 console.warn(`⚠️ [HOST] SSE sin mensajes ${Math.floor(timeSinceLastSSE / 1000)}s, forzando refresh...`);
                 this.client.forceRefresh();
             }
-        }, 30000); // Check cada 30s
+        }, checkInterval);
     }
     
     async createGame() {
         let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
         
         if (customCode && !isValidGameCode(customCode)) {
-            this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3-6 caracteres)';
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3-6 caracteres)';
+            }
             return;
         }
         
@@ -258,9 +282,14 @@ class HostManager {
         
         this.gameId = customCode;
         
-        this.elements.btnCreateGame.disabled = true;
-        this.elements.btnCreateGame.textContent = 'Conectando...';
-        this.elements.statusMessage.innerHTML = '⏳ Conectando...';
+        if (this.elements.btnCreateGame) {
+            this.elements.btnCreateGame.disabled = true;
+            this.elements.btnCreateGame.textContent = 'Conectando...';
+        }
+        
+        if (this.elements.statusMessage) {
+            this.elements.statusMessage.innerHTML = '⏳ Conectando...';
+        }
         
         try {
             this.client = new GameClient(this.gameId, null, 'host');
@@ -279,21 +308,29 @@ class HostManager {
                 showNotification(`🎮 Partida creada: ${this.gameId}`, 'success');
                 
             } else {
-                this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'Desconocido');
-                this.elements.btnCreateGame.disabled = false;
-                this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+                if (this.elements.statusMessage) {
+                    this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'Desconocido');
+                }
+                if (this.elements.btnCreateGame) {
+                    this.elements.btnCreateGame.disabled = false;
+                    this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+                }
             }
         } catch (error) {
             debug('Error creando juego:', error, 'error');
-            this.elements.statusMessage.innerHTML = '❌ Error de conexión';
-            this.elements.btnCreateGame.disabled = false;
-            this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+            if (this.elements.statusMessage) {
+                this.elements.statusMessage.innerHTML = '❌ Error de conexión';
+            }
+            if (this.elements.btnCreateGame) {
+                this.elements.btnCreateGame.disabled = false;
+                this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
+            }
         }
     }
     
     handleStateUpdate(state) {
         this.gameState = state;
-        this.lastSSEMessageTime = Date.now(); // ← Actualizar timestamp SSE
+        this.lastSSEMessageTime = Date.now();
         debug('📈 Estado actualizado:', state.status);
         this.debouncedUpdateHostUI();
     }
@@ -531,41 +568,53 @@ class HostManager {
     
     async startRound() {
         try {
-            this.elements.btnStartRound.disabled = true;
-            this.elements.btnStartRound.textContent = 'Iniciando...';
+            if (this.elements.btnStartRound) {
+                this.elements.btnStartRound.disabled = true;
+                this.elements.btnStartRound.textContent = 'Iniciando...';
+            }
             
             const result = await this.client.sendAction('start_round', {});
             
             if (!result.success) {
                 showNotification('Error iniciando ronda', 'error');
-                this.elements.btnStartRound.disabled = false;
-                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+                if (this.elements.btnStartRound) {
+                    this.elements.btnStartRound.disabled = false;
+                    this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+                }
             }
         } catch (error) {
             debug('Error iniciando ronda:', error, 'error');
             showNotification('Error de conexión', 'error');
-            this.elements.btnStartRound.disabled = false;
-            this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+            if (this.elements.btnStartRound) {
+                this.elements.btnStartRound.disabled = false;
+                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+            }
         }
     }
     
     async endRound() {
         try {
-            this.elements.btnEndRound.disabled = true;
-            this.elements.btnEndRound.textContent = 'Finalizando...';
+            if (this.elements.btnEndRound) {
+                this.elements.btnEndRound.disabled = true;
+                this.elements.btnEndRound.textContent = 'Finalizando...';
+            }
             
             const result = await this.client.sendAction('end_round', {});
             
             if (!result.success) {
                 showNotification('Error finalizando ronda', 'error');
-                this.elements.btnEndRound.disabled = false;
-                this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+                if (this.elements.btnEndRound) {
+                    this.elements.btnEndRound.disabled = false;
+                    this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+                }
             }
         } catch (error) {
             debug('Error finalizando ronda:', error, 'error');
             showNotification('Error de conexión', 'error');
-            this.elements.btnEndRound.disabled = false;
-            this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+            if (this.elements.btnEndRound) {
+                this.elements.btnEndRound.disabled = false;
+                this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
+            }
         }
     }
     
