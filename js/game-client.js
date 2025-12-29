@@ -324,10 +324,20 @@ class GameClient {
   }
 
   /**
-   * Envía acción al servidor
+   * ✅ MEJORA #28: Envía acción al servidor con emisión inmediata de eventos críticos
+   * Reduce latencia emitiendo cambios inmediatamente sin esperar SSE
    */
   async sendAction(action, data = {}) {
     console.log(`📤 [${this.role}] Enviando acción: ${action}`);
+    
+    // ✅ MEJORA #28: Lista de acciones críticas que se emiten inmediatamente
+    const criticalActions = [
+      'join_game',      // Jugador se une
+      'leave_game',     // Jugador se va
+      'start_round',    // Host inicia ronda
+      'end_round',      // Host termina ronda
+      'submit_answers'  // Jugador envía respuestas
+    ];
     
     try {
       const payload = {
@@ -349,6 +359,20 @@ class GameClient {
       
       if (result && typeof result === 'object' && result.success !== undefined) {
         console.log(`✅ [${this.role}] Respuesta para ${action}:`, result.success ? '✓' : '✗');
+        
+        // ✅ MEJORA #28: Si es acción crítica y la respuesta contiene estado,
+        // emitir inmediatamente sin esperar SSE
+        if (criticalActions.includes(action) && result.state) {
+          console.log(`⚡ [${this.role}] Emitiendo evento crítico inmediatamente: ${action}`);
+          
+          this.gameState = result.state;
+          this.lastMessageHash = JSON.stringify(result.state);
+          this.lastMessageTime = Date.now();
+          
+          // Emitir evento inmediatamente (no esperar SSE)
+          this.safeCallCallback(this.onStateUpdate, result.state, 'onStateUpdate (immediate)');
+          this.emit('state:update', result.state);
+        }
       }
       
       return result;
@@ -444,4 +468,4 @@ function showNotification(message, type = 'info') {
   console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
-console.log('%c✅ GameClient - Sistema robusto de comunicación SSE con validación y event emitter', 'color: #10B981; font-weight: bold');
+console.log('%c✅ GameClient - Sistema robusto de comunicación SSE con mejora #28 (emisión crítica inmediata)', 'color: #10B981; font-weight: bold');
