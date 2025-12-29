@@ -11,8 +11,6 @@ class HostManager {
         this.timerInterval = null;
         this.controlsVisible = false;
         this.debugMode = false;
-        this.updatePending = false;
-        this.updateTimeout = null;
         this.fallbackRefreshInterval = null;
         this.lastSSEMessageTime = 0;
         this.elements = {};
@@ -198,8 +196,6 @@ class HostManager {
         return false;
     }
     
-    // ✅ FIX #18: Usar safeShowElement() y safeHideElement() en lugar de .classList
-    // para ser consistente con el resto del código
     showCreateGameModal() {
         safeShowElement(this.elements.modalCreateGame);
         safeHideElement(this.elements.gameScreen);
@@ -332,23 +328,10 @@ class HostManager {
         this.gameState = state;
         this.lastSSEMessageTime = Date.now();
         debug('📈 Estado actualizado:', state.status);
-        this.debouncedUpdateHostUI();
-    }
-    
-    debouncedUpdateHostUI() {
-        if (this.updateTimeout) {
-            clearTimeout(this.updateTimeout);
-        }
-        
-        if (this.updatePending) {
-            return;
-        }
-        
-        this.updatePending = true;
-        this.updateTimeout = setTimeout(() => {
-            this.updateHostUI();
-            this.updatePending = false;
-        }, 500);
+        // 🔧 FIX #31: QUITAR el debounce excesivo - actualizar UI directamente
+        // El debounce de 500ms causaba que se perdieran updates de join_game
+        // Ahora se actualiza la UI inmediatamente en cada cambio de estado
+        this.updateHostUI();
     }
     
     updateHostUI() {
@@ -487,7 +470,8 @@ class HostManager {
         
         switch (this.gameState.status) {
             case 'waiting':
-                message = `👥 ${Object.keys(this.gameState.players || {}).length} jugadores conectados`;
+                const playerCount = Object.keys(this.gameState.players || {}).length;
+                message = `👥 ${playerCount} jugadores conectados`;
                 break;
             case 'playing':
                 message = `📚 Ronda ${this.gameState.round}/${this.gameState.total_rounds}`;
@@ -513,8 +497,20 @@ class HostManager {
         const isPlaying = this.gameState.status === 'playing';
         const numPlayers = Object.keys(this.gameState.players || {}).length;
         
+        // 🔧 FIX #31: Validar que hay al menos MIN_PLAYERS activos (no desconectados)
+        const activePlayers = Object.values(this.gameState.players || {})
+            .filter(p => !p.disconnected);
+        const activeCount = activePlayers.length;
+        
         if (this.elements.btnStartRound) {
-            this.elements.btnStartRound.disabled = !isWaiting || numPlayers === 0;
+            // Botón habilitado si: estado es waiting Y hay al menos MIN_PLAYERS activos
+            const canStart = isWaiting && activeCount >= 2;  // MIN_PLAYERS es 2 (ver settings.php)
+            this.elements.btnStartRound.disabled = !canStart;
+            
+            // Debug: mostrar por qué está habilitado/deshabilitado
+            if (!canStart) {
+                debug(`Botón deshabilitado: isWaiting=${isWaiting}, activeCount=${activeCount}`, 'debug');
+            }
         }
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.disabled = !isPlaying;
@@ -577,7 +573,7 @@ class HostManager {
             const result = await this.client.sendAction('start_round', {});
             
             if (!result.success) {
-                showNotification('Error iniciando ronda', 'error');
+                showNotification('Error iniciando ronda: ' + (result.message || 'desconocido'), 'error');
                 if (this.elements.btnStartRound) {
                     this.elements.btnStartRound.disabled = false;
                     this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
@@ -644,4 +640,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - FIX #29: Estado connected ahora muestra 👥', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - FIX #31: Debounce removido para updates inmediatos', 'color: #10B981; font-weight: bold');
