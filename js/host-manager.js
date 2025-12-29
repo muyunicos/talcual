@@ -107,7 +107,11 @@ class HostManager {
             controlsPanel: safeGetElement('controls-panel'),
             btnConfig: safeGetElement('btn-config'),
             configDropdown: safeGetElement('config-dropdown-host'),
-            btnStartRound: safeGetElement('btn-start-round'),
+
+            // ⚠️ Robustez UI: si el botón "Empezar" se mueve o se renombra,
+            // tratamos de encontrarlo por id viejo y/o por clase.
+            btnStartRound: safeGetElement('btn-start-round') || safeGetElement('btn-empezar') || document.querySelector('.btn-empezar'),
+
             btnEndRound: safeGetElement('btn-end-round'),
             btnNextRound: safeGetElement('btn-next-round'),
             btnFinishGame: safeGetElement('btn-finish-game'),
@@ -227,7 +231,12 @@ class HostManager {
         }
 
         if (this.elements.btnStartRound) {
-            this.elements.btnStartRound.addEventListener('click', () => this.startRound());
+            // Si el botón quedó dentro de un <form> por un cambio de layout,
+            // evitar submit/navegación.
+            this.elements.btnStartRound.addEventListener('click', (e) => {
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                this.startRound();
+            });
         }
 
         if (this.elements.btnEndRound) {
