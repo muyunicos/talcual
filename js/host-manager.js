@@ -500,10 +500,20 @@ class HostManager {
             .filter(p => !p.disconnected);
         const activeCount = activePlayers.length;
         
+        // 🔧 DEBUG FIX #35: Log detallado de validación de botón
+        debug(`💡 updateButtonStates: isWaiting=${isWaiting}, activeCount=${activeCount}, numPlayers=${numPlayers}`, 'debug');
+        
+        if (this.gameState.players) {
+            Object.entries(this.gameState.players).forEach(([pid, p]) => {
+                debug(`  - ${p.name}: disconnected=${p.disconnected}, status=${p.status}`, 'debug');
+            });
+        }
+        
         if (this.elements.btnStartRound) {
             // Botón habilitado si: estado es waiting Y hay al menos MIN_PLAYERS activos
             const canStart = isWaiting && activeCount >= 2;  // MIN_PLAYERS es 2 (ver settings.php)
             this.elements.btnStartRound.disabled = !canStart;
+            debug(`Botón Iniciar Ronda: disabled=${!canStart}, canStart=${canStart}`, 'debug');
         }
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.disabled = !isPlaying;
