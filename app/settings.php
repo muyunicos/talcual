@@ -72,6 +72,11 @@ define('CLEANUP_PROBABILITY', max(0.0, min(1.0, (float)env('CLEANUP_PROBABILITY'
 define('SSE_TIMEOUT', max(60, min(3600, (int)env('SSE_TIMEOUT', 900)))); // Entre 1-60 min
 define('SSE_HEARTBEAT_INTERVAL', max(5, min(60, (int)env('SSE_HEARTBEAT_INTERVAL', 15)))); // Entre 5-60 seg
 
+// CONFIGURACIÓN RATE LIMIT (MEJORA #26: arquitectura push-only requiere límite mayor)
+// Con polling eliminado, 1000 req/min es suficiente para uso legítimo
+define('RATE_LIMIT_REQUESTS', max(100, min(5000, (int)env('RATE_LIMIT_REQUESTS', 1000))));
+define('RATE_LIMIT_WINDOW', max(30, (int)env('RATE_LIMIT_WINDOW', 60));
+
 // CONFIGURACIÓN PHP
 if (DEV_MODE) {
     error_reporting(E_ALL);
