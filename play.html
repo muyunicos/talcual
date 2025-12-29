@@ -17,10 +17,10 @@
     <!-- MODAL UNIRSE AL JUEGO -->
     <div class="modal-overlay" id="modal-join-game">
         <div class="modal-join-game">
-            <div class="modal-title">📱 Unirse a Partida</div>
+            <div class="modal-title">\ud83d\udcf1 Unirse a Partida</div>
             
             <div class="input-group">
-                <label class="input-label">Código de Sala</label>
+                <label class="input-label">C\u00f3digo de Sala</label>
                 <input type="text" id="input-game-code" class="input-field" 
                        placeholder="Ej: CASA" maxlength="6" autocomplete="off">
             </div>
@@ -35,33 +35,27 @@
                 <label class="input-label">Elige tu Aura</label>
                 <div class="aura-selector" id="color-selector">
                     <!-- Fire - Seleccionado por defecto -->
-                    <div class="aura-circle selected" data-color="#FF9966,#FF5E62" 
-                         style="background: linear-gradient(135deg, #FF9966, #FF5E62);"></div>
+                    <div class="aura-circle aura-fire selected" data-color="#FF9966,#FF5E62"></div>
                     <!-- Ice -->
-                    <div class="aura-circle" data-color="#00F260,#0575E6" 
-                         style="background: linear-gradient(135deg, #00F260, #0575E6);"></div>
+                    <div class="aura-circle aura-ice" data-color="#00F260,#0575E6"></div>
                     <!-- Candy -->
-                    <div class="aura-circle" data-color="#F37335,#FDC830" 
-                         style="background: linear-gradient(135deg, #F37335, #FDC830);"></div>
+                    <div class="aura-circle aura-candy" data-color="#F37335,#FDC830"></div>
                     <!-- Mystic -->
-                    <div class="aura-circle" data-color="#8E2DE2,#4A00E0" 
-                         style="background: linear-gradient(135deg, #8E2DE2, #4A00E0);"></div>
+                    <div class="aura-circle aura-mystic" data-color="#8E2DE2,#4A00E0"></div>
                     <!-- Electric -->
-                    <div class="aura-circle" data-color="#12c2e9,#f64f59" 
-                         style="background: linear-gradient(135deg, #12c2e9, #f64f59);"></div>
+                    <div class="aura-circle aura-electric" data-color="#12c2e9,#f64f59"></div>
                     <!-- Toxic -->
-                    <div class="aura-circle" data-color="#DCE35B,#45B649" 
-                         style="background: linear-gradient(135deg, #DCE35B, #45B649);"></div>
+                    <div class="aura-circle aura-toxic" data-color="#DCE35B,#45B649"></div>
                 </div>
             </div>
 
-            <button class="btn-join" id="btn-join">🎮 ¡Jugar!</button>
+            <button class="btn-join" id="btn-join">\ud83c\udfae \ufe0f \u00a1Jugar!</button>
             
-            <div id="status-message" style="text-align: center; margin-top: 20px; font-size: 1.1em;"></div>
+            <div id="status-message" class="status-message-modal"></div>
             
-            <div class="btn-back" style="margin-top: 20px; text-align: center;">
-                <a href="./index.html" style="color: white; opacity: 0.8; text-decoration: none;">
-                    ← Volver al inicio
+            <div class="btn-back">
+                <a href="./index.html" class="btn-back-link">
+                    \u2190 Volver al inicio
                 </a>
             </div>
         </div>
@@ -71,7 +65,7 @@
     <div class="game-screen" id="game-screen">
         <div class="top-header">
             <div class="header-round" id="header-round">Ronda 0/3</div>
-            <div class="header-timer" id="header-timer">⏳ 00:00</div>
+            <div class="header-timer" id="header-timer">\u23f3 00:00</div>
             <div class="header-code-sticker" id="header-code">----</div>
         </div>
 
@@ -80,20 +74,20 @@
         </div>
 
         <div class="status-card" id="status-card">
-            <div class="current-word" id="current-word" style="display:none;"></div>
+            <div class="current-word hidden" id="current-word"></div>
             <div class="waiting-message" id="waiting-message">
-                El anfitrión iniciará la ronda pronto
+                El anfitr\u00edán iniciara\u0301 la ronda pronto
             </div>
         </div>
 
-        <div class="words-input-section" id="words-input-section" style="display:none;">
+        <div class="words-input-section hidden" id="words-input-section">
             <div class="input-row">
                 <input type="text" id="current-word-input" class="word-input" 
                        placeholder="Escribe..." autocomplete="off">
                 <button class="btn-add" id="btn-add-word">✍️</button>
             </div>
 
-            <div class="words-list" id="words-list-container" style="display:none;">
+            <div class="words-list hidden" id="words-list-container">
                 <div class="words-list-title">
                     Tus palabras (<span id="word-count">0</span>/<span id="max-words">6</span>)
                 </div>
