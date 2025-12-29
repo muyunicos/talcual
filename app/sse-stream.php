@@ -1,5 +1,5 @@
 <?php
-// 🔧 FIX #33: SSE usando patrón de notificación per-game con contador monótonico
+// 🔧 FIX #33: SSE usando patrón de notificación per-game con contador monotónico
 // Archivos: {GAME_ID}_all.json, {GAME_ID}_host.json
 // Contienen un número que incrementa con cada cambio (nunca retrocede)
 
@@ -55,7 +55,7 @@ function sendSSE($event, $data) {
 }
 
 /**
- * Lee el contador monótonico del archivo de notificación
+ * Lee el contador monotónico del archivo de notificación
  * Nunca retrocede, siempre incrementa
  */
 function getNotifyCounter($filePath) {
@@ -63,8 +63,8 @@ function getNotifyCounter($filePath) {
         return 0;
     }
     $content = @file_get_contents($filePath);
-    if ($content && is_numeric($content)) {
-        return (int)$content;
+    if ($content && is_numeric(trim($content))) {
+        return (int)trim($content);
     }
     return 0;
 }
@@ -81,6 +81,7 @@ $startTime = time();
 $maxDuration = 1800; // 30 minutos
 $heartbeatInterval = 30; // cada 30s
 $lastHeartbeat = time();
+$pollingInterval = 1; // segundos entre checks
 
 // Enviar evento de conexión inmediato
 sendSSE('connected', [
@@ -105,7 +106,7 @@ while ((time() - $startTime) < $maxDuration) {
         break;
     }
     
-    // 🔧 FIX #33: Leer contador monótonico (nunca retrocede)
+    // 🔧 FIX #33: Leer contador monotónico (nunca retrocede)
     clearstatcache(false, $notifyFile);
     $currentNotify = getNotifyCounter($notifyFile);
     
@@ -122,6 +123,9 @@ while ((time() - $startTime) < $maxDuration) {
             $lastNotify = $currentNotify;
             
             logMessage("SSE update enviado para {$gameId} (counter: {$currentNotify}, status={$state['status']}, {$playerCount} activos)", 'DEBUG');
+            
+            // 🔧 Esperar un poco antes de volver a chequear para evitar duplicados
+            usleep(100000); // 100ms
         }
     }
     
@@ -138,7 +142,7 @@ while ((time() - $startTime) < $maxDuration) {
     }
     
     // Dormir 1 segundo
-    sleep(1);
+    sleep($pollingInterval);
 }
 
 logMessage("SSE terminado para {$gameId}", 'DEBUG');
