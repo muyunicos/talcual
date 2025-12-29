@@ -196,6 +196,7 @@ function validatePlayerColor($color) {
 }
 
 // Guardar estado del juego con lock mejorado (MEJORA #2: Race conditions)
+// FIX #41: Validaciones robustas de directorio para resolver HTTP 500
 function saveGameState($gameId, $state) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) {
