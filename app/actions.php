@@ -15,17 +15,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 function checkRateLimit() {
-    $ip = $_SERVER['REMOTE_ADDR'];
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $cacheKey = 'rate_limit:' . md5($ip);
     $cacheFile = sys_get_temp_dir() . '/' . $cacheKey . '.txt';
     
-    // MEJORA #26: Usar constantes desde settings.php (1000 req/min en lugar de 100)
     $limit = RATE_LIMIT_REQUESTS;
     $window = RATE_LIMIT_WINDOW;
     
     if (file_exists($cacheFile)) {
-        $data = json_decode(file_get_contents($cacheFile), true);
-        $elapsed = time() - $data['timestamp'];
+        $raw = file_get_contents($cacheFile);
+        $data = json_decode($raw, true);
+
+        if (!is_array($data) || !isset($data['timestamp'], $data['count'])) {
+            $data = ['timestamp' => time(), 'count' => 0];
+        }
+
+        $elapsed = time() - (int)$data['timestamp'];
         
         if ($elapsed < $window) {
             $data['count']++;
@@ -39,24 +44,26 @@ function checkRateLimit() {
         }
         file_put_contents($cacheFile, json_encode($data));
     } else {
-        file_put_contents($cacheFile, json_encode(['timestamp' => time(), 'count' => 1]));
+        $data = ['timestamp' => time(), 'count' => 1];
+        file_put_contents($cacheFile, json_encode($data));
     }
 }
 
 checkRateLimit();
 
-$input = json_decode(file_get_contents('php://input'), true);
+$inputRaw = file_get_contents('php://input');
+$input = json_decode($inputRaw, true);
 
-if (!$input) {
+if (!is_array($input)) {
     echo json_encode(['success' => false, 'message' => 'JSON inválido']);
     exit;
 }
 
-$action = $input['action'] ?? null;
+$action = isset($input['action']) ? trim((string)$input['action']) : null;
 $gameId = sanitizeGameId($input['game_id'] ?? null);
 $playerId = sanitizePlayerId($input['player_id'] ?? null);
 
-logMessage("API Action: {$action} | Game: {$gameId} | Player: {$playerId}", 'DEBUG');
+logMessage("API Action: {$action} | Raw game_id: " . ($input['game_id'] ?? 'null') . " | Normalized: {$gameId} | Raw player_id: " . ($input['player_id'] ?? 'null') . " | Normalized: {$playerId}", 'DEBUG');
 
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
@@ -141,6 +148,7 @@ switch ($action) {
             'color' => $playerColor,
             'score' => 0,
             'status' => 'connected',
+            'disconnected' => false,
             'answers' => [],
             'round_results' => []
         ];
@@ -172,7 +180,11 @@ switch ($action) {
             break;
         }
 
-        if (count($state['players']) < MIN_PLAYERS) {
+        $activePlayers = array_filter($state['players'], function ($player) {
+            return empty($player['disconnected']);
+        });
+
+        if (count($activePlayers) < MIN_PLAYERS) {
             $response = ['success' => false, 'message' => 'Mínimo ' . MIN_PLAYERS . ' jugadores'];
             break;
         }
@@ -206,10 +218,13 @@ switch ($action) {
         $state['round_started_at'] = $round_start_at;
         $state['last_update'] = time();
 
-        foreach ($state['players'] as $playerId => $player) {
-            $state['players'][$playerId]['status'] = 'playing';
-            $state['players'][$playerId]['answers'] = [];
-            $state['players'][$playerId]['round_results'] = [];
+        foreach ($state['players'] as $pId => $player) {
+            if (!empty($player['disconnected'])) {
+                continue;
+            }
+            $state['players'][$pId]['status'] = 'playing';
+            $state['players'][$pId]['answers'] = [];
+            $state['players'][$pId]['round_results'] = [];
         }
 
         if (saveGameState($gameId, $state)) {
@@ -255,7 +270,7 @@ switch ($action) {
             if ($validation['valid']) {
                 $normalized = strtoupper($trimmed);
                 
-                if (!in_array($normalized, $validAnswers)) {
+                if (!in_array($normalized, $validAnswers, true)) {
                     $validAnswers[] = $normalized;
                 }
             } else {
@@ -270,7 +285,7 @@ switch ($action) {
         $state['players'][$playerId]['answers'] = $validAnswers;
         
         $hasMaxWords = count($validAnswers) >= MAX_WORDS_PER_PLAYER;
-        $forcedPass = $input['forced_pass'] ?? false;
+        $forcedPass = !empty($input['forced_pass']);
         
         if ($hasMaxWords || $forcedPass) {
             $state['players'][$playerId]['status'] = 'ready';
@@ -340,7 +355,7 @@ switch ($action) {
         $wordCounts = [];
         $playerWords = [];
 
-        foreach ($state['players'] as $playerId => $player) {
+        foreach ($state['players'] as $pId => $player) {
             foreach ($player['answers'] as $word) {
                 $trimmed = trim($word);
                 if (empty($trimmed)) {
@@ -355,20 +370,20 @@ switch ($action) {
 
                 $wordCounts[$normalized][] = $player['name'];
 
-                if (!isset($playerWords[$playerId])) {
-                    $playerWords[$playerId] = [];
+                if (!isset($playerWords[$pId])) {
+                    $playerWords[$pId] = [];
                 }
 
-                $playerWords[$playerId][] = $normalized;
+                $playerWords[$pId][] = $normalized;
             }
         }
 
-        foreach ($state['players'] as $playerId => $player) {
+        foreach ($state['players'] as $pId => $player) {
             $roundResults = [];
             $roundScore = 0;
 
-            if (isset($playerWords[$playerId])) {
-                foreach ($playerWords[$playerId] as $word) {
+            if (!empty($playerWords[$pId])) {
+                foreach ($playerWords[$pId] as $word) {
                     $count = count($wordCounts[$word]);
                     $points = $count > 1 ? $count : 0;
 
@@ -384,9 +399,9 @@ switch ($action) {
                 }
             }
 
-            $state['players'][$playerId]['round_results'] = $roundResults;
-            $state['players'][$playerId]['score'] += $roundScore;
-            $state['players'][$playerId]['status'] = 'connected';
+            $state['players'][$pId]['round_results'] = $roundResults;
+            $state['players'][$pId]['score'] += $roundScore;
+            $state['players'][$pId]['status'] = 'connected';
         }
 
         $topWords = [];
@@ -439,11 +454,12 @@ switch ($action) {
             break;
         }
 
-        foreach ($state['players'] as $playerId => $player) {
-            $state['players'][$playerId]['score'] = 0;
-            $state['players'][$playerId]['status'] = 'connected';
-            $state['players'][$playerId]['answers'] = [];
-            $state['players'][$playerId]['round_results'] = [];
+        foreach ($state['players'] as $pId => $player) {
+            $state['players'][$pId]['score'] = 0;
+            $state['players'][$pId]['status'] = 'connected';
+            $state['players'][$pId]['disconnected'] = false;
+            $state['players'][$pId]['answers'] = [];
+            $state['players'][$pId]['round_results'] = [];
         }
 
         $state['round'] = 0;
@@ -474,7 +490,7 @@ switch ($action) {
 
         if ($state && isset($state['players'][$playerId])) {
             $playerName = $state['players'][$playerId]['name'];
-            unset($state['players'][$playerId]);
+            $state['players'][$playerId]['disconnected'] = true;
             $state['last_update'] = time();
 
             if (saveGameState($gameId, $state)) {
@@ -489,7 +505,6 @@ switch ($action) {
         }
         break;
 
-    // MEJORA #27: Implementar accion faltante update_player_name
     case 'update_player_name':
         if (!$gameId || !$playerId) {
             $response = ['success' => false, 'message' => 'game_id y player_id requeridos'];
