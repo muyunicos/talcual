@@ -72,11 +72,12 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    margin: 15px 0;
+    margin: 15px 10px;
+    justify-items: center;
 }
 
 .aura-circle {
-    width: 100%;
+    width: 90%;
     aspect-ratio: 1 / 1;
     border-radius: 50%;
     border: 4px solid rgba(255, 255, 255, 0.4);
@@ -90,19 +91,15 @@
 
 /* Estado normal: hover */
 .aura-circle:hover {
-    transform: scale(1.08);
     border-color: rgba(255, 255, 255, 0.8);
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 4px 4px 0px rgba(0, 0, 0, 0.3);
 }
 
 /* Estado seleccionado */
 .aura-circle.selected {
-    border-color: white;
-    box-shadow: 0 0 30px rgba(255, 255, 255, 0.8), 
-                inset 0 0 20px rgba(255, 255, 255, 0.3),
-                4px 4px 0px #000;
+    border-color: #ffe900;
+    
     transform: scale(1.1);
-    animation: selectPulse 0.5s ease-out;
 }
 
 /* Pseudo-elemento para brillo */
