@@ -1,10 +1,10 @@
 /* ============================================
    3-HOST.CSS - PANTALLA TV (HOST.HTML)
    Estilos Exclusivos de la Pantalla Anfitrión
+   Optimizado: Responsive mejorado, sin duplicados
    ============================================ */
 
-/* ========== GRID DE TV HOST ========== */
-/* RESPONSIVIDAD CON GRID AREAS - CORREGIDO #2 */
+/* ========== GRID DE TV HOST - OPTIMIZADO PARA PANTALLAS GRANDES ========== */
 .tv-layout {
     display: grid;
     height: 100vh;
@@ -12,34 +12,40 @@
     gap: clamp(10px, 2%, 20px);
     position: relative;
     z-index: 1;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
 }
 
-/* DESKTOP (1920px+) - 3 columnas */
+/* DESKTOP (1920px+) - 3 columnas - MEJORADO PARA USAR ESPACIO */
 @media (min-width: 1920px) {
     .tv-layout {
-        grid-template-columns: 1fr 2fr 1fr;
+        grid-template-columns: 1fr 2.5fr 1fr;
         grid-template-rows: min-content 1fr min-content;
         grid-template-areas:
             "header header header"
             "ranking center topwords"
             "players players players";
+        gap: clamp(15px, 3%, 30px);
+        padding: clamp(15px, 3%, 30px);
     }
 }
 
-/* LAPTOP (1366px) - 3 columnas ajustadas */
+/* LAPTOP (1366px-1919px) - 3 columnas ajustadas */
 @media (min-width: 1366px) and (max-width: 1919px) {
     .tv-layout {
-        grid-template-columns: 1fr 1.5fr 1fr;
+        grid-template-columns: 0.9fr 2fr 0.9fr;
         grid-template-rows: min-content 1fr min-content;
         grid-template-areas:
             "header header header"
             "ranking center topwords"
             "players players players";
-        gap: clamp(8px, 1.5%, 15px);
+        gap: clamp(12px, 2%, 20px);
+        padding: clamp(12px, 2%, 20px);
     }
 }
 
-/* TABLET (1024px) - 2 columnas */
+/* TABLET (1024px-1365px) - 2 columnas */
 @media (min-width: 1024px) and (max-width: 1365px) {
     .tv-layout {
         grid-template-columns: 1fr 1fr;
@@ -53,7 +59,7 @@
     }
 }
 
-/* MOBILE (768px) - 1 columna */
+/* MOBILE (768px-1023px) - 1 columna */
 @media (min-width: 768px) and (max-width: 1023px) {
     .tv-layout {
         grid-template-columns: 1fr;
@@ -69,7 +75,7 @@
     }
 }
 
-/* SMALL MOBILE (480px) - 1 columna, comprimido */
+/* SMALL MOBILE (480px-767px) - 1 columna, comprimido */
 @media (max-width: 767px) {
     .tv-layout {
         grid-template-columns: 1fr;
@@ -113,50 +119,9 @@
     filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
 }
 
-/* ========== GAME CODE STICKER ========== */
+/* ========== GAME CODE STICKER - Ahora usa clase code-sticker ========== */
 .game-code-sticker {
     justify-self: end;
-    background: rgba(255, 0, 85, 0.9);
-    color: white;
-    padding: clamp(8px, 1.5%, 12px) clamp(15px, 2%, 25px);
-    border-radius: 15px;
-    font-weight: 900;
-    font-size: clamp(1em, 2vw, 1.3em);
-    letter-spacing: 2px;
-    box-shadow: 4px 4px 0px rgba(0,0,0,0.4);
-    font-family: var(--font-display);
-    cursor: pointer;
-    user-select: none;
-    position: relative;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, outline-color 0.15s ease;
-}
-
-.game-code-sticker:hover {
-    transform: translateY(-1px);
-}
-
-.game-code-sticker:active {
-    transform: translateY(0);
-}
-
-.game-code-sticker.copied {
-    outline: 3px solid #2ecc71;
-    box-shadow: 0 0 0 6px rgba(46, 204, 113, 0.25), 4px 4px 0px rgba(0,0,0,0.4);
-}
-
-.game-code-sticker.copied::after {
-    content: 'Copiado';
-    position: absolute;
-    top: -12px;
-    right: -12px;
-    background: #2ecc71;
-    color: #000;
-    font-family: var(--font-primary);
-    font-size: 0.75em;
-    font-weight: 900;
-    padding: 4px 10px;
-    border-radius: 999px;
-    box-shadow: 2px 2px 0px #000;
 }
 
 /* ========== RANKING IZQUIERDA ========== */
@@ -354,7 +319,7 @@
     box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
 }
 
-/* ========== GRID DE JUGADORES ABAJO ========== */
+/* ========== GRID DE JUGADORES ABAJO - MEJORADO ========== */
 #players-grid {
     grid-area: players;
     display: grid;
@@ -365,7 +330,7 @@
     border-radius: 20px;
     overflow-y: auto;
     box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
-    max-height: clamp(150px, 20vh, 200px);
+    max-height: clamp(150px, 25vh, 250px);
 }
 
 #players-grid::-webkit-scrollbar {
@@ -381,28 +346,29 @@
     border-radius: 10px;
 }
 
-/* DESKTOP: 140px min */
+/* DESKTOP: Expande al máximo con grid dinámico */
 @media (min-width: 1920px) {
     #players-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        max-height: 30vh;
     }
 }
 
-/* LAPTOP: 120px min */
+/* LAPTOP */
 @media (min-width: 1366px) and (max-width: 1919px) {
     #players-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     }
 }
 
-/* TABLET: 100px min */
+/* TABLET */
 @media (min-width: 1024px) and (max-width: 1365px) {
     #players-grid {
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     }
 }
 
-/* MOBILE: 80px min */
+/* MOBILE */
 @media (max-width: 1023px) {
     #players-grid {
         grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
@@ -579,7 +545,7 @@
     transform: scale(1.1);
 }
 
-/* ========== MODALES - HOST - CORREGIDO #3 ========== */
+/* ========== MODALES - HOST ========== */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -596,31 +562,6 @@
 
 .modal-overlay.active {
     display: flex;
-}
-
-/* Modal Content - Centrado */
-.modal-join-game,
-.modal-create-game {
-    background: white;
-    border-radius: 20px;
-    padding: 2rem;
-    max-width: 500px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
 }
 
 /* ========== PANEL CONTROLES ========== */
@@ -645,47 +586,7 @@
     animation: slideIn 0.3s ease-out;
 }
 
-/* ========== BOTÓN CONTROL ========== */
-.btn-control {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 12px;
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: 0.95em;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    box-shadow: var(--sombra-media);
-    transition: all 0.2s ease;
-    outline: none;
-}
-
-.btn-start {
-    background: #00FF00;
-    color: #000;
-}
-
-.btn-end {
-    background: var(--magenta);
-    color: white;
-}
-
-.btn-next {
-    background: var(--cian);
-    color: #000;
-}
-
-.btn-control:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-dura);
-}
-
-.btn-control:active {
-    transform: translateY(1px);
-}
-
-/* ========== STATUS CARD ========== */
+/* ========== STATUS CARD (Modal) ========== */
 .status-card {
     background: rgba(255,255,255,0.9);
     border-radius: 20px;
@@ -696,7 +597,7 @@
     color: #000;
 }
 
-/* ========== BTN BACK ========== */
+/* ========== BOTÓN VOLVER ========== */
 .btn-back {
     margin-top: 20px;
     text-align: center;
@@ -711,4 +612,57 @@
 
 .btn-back-link:hover {
     opacity: 1;
+}
+
+/* ========== ANIMACIONES CUSTOM ========== */
+@keyframes glow {
+    from {
+        filter: drop-shadow(0 0 20px #00F0FF);
+    }
+    to {
+        filter: drop-shadow(0 0 40px #FF0055);
+    }
+}
+
+@keyframes countdownPulse {
+    0% {
+        transform: scale(0.5) rotate(-20deg);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2) rotate(10deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@keyframes readyPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
