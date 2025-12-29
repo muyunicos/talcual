@@ -1,5 +1,7 @@
 .player-layout {
-    
+    height: calc(100vh - 6em);
+    MARGIN: AUTO;
+    width: calc(100% - 4em);
 }
 /* TOP HEADER */
 .top-header {
