@@ -11,6 +11,8 @@
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
     z-index: 1000;
+    overflow: auto;
+    padding: 20px 0;
 }
 
 .modal-overlay.hidden {
@@ -28,6 +30,9 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     max-width: 500px;
     width: 90%;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    margin: auto;
     color: var(--color-text-light);
 }
 
@@ -256,8 +261,13 @@
 
 /* ========== RESPONSIVE MEDIA QUERIES ========== */
 @media (max-width: 768px) {
+    .modal-overlay {
+        padding: 15px 0;
+    }
+    
     .modal-content {
         max-width: 90%;
+        max-height: calc(100vh - 30px);
         padding: var(--padding-modal);
     }
     
@@ -284,8 +294,13 @@
 }
 
 @media (max-width: 480px) {
+    .modal-overlay {
+        padding: 10px 0;
+    }
+    
     .modal-content {
         max-width: 95%;
+        max-height: calc(100vh - 20px);
         padding: var(--space-lg);
         gap: 15px;
     }
