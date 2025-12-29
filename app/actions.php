@@ -1,9 +1,6 @@
 <?php
-// Maneja todas las acciones del juego
-
 require_once __DIR__ . '/config.php';
 
-// Headers para JSON
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
@@ -14,16 +11,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-/**
- * 🔧 FIX #32: Crea archivos de notificación per-game para que SSE sepa que hay cambios
- * Usa un contador secuencial en lugar de timestamp para detectar TODOS los cambios
- * Archivos: {GAME_ID}_all.json y {GAME_ID}_host.json
- */
 function notifyGameChanged($gameId, $isHostOnlyChange = false) {
     $notifyAll = GAME_STATES_DIR . '/' . $gameId . '_all.json';
     $notifyHost = GAME_STATES_DIR . '/' . $gameId . '_host.json';
     
-    // Leer contador actual (empieza en 0)
     $allCounter = 0;
     if (file_exists($notifyAll)) {
         $content = @file_get_contents($notifyAll);
@@ -32,11 +23,9 @@ function notifyGameChanged($gameId, $isHostOnlyChange = false) {
         }
     }
     
-    // Incrementar y escribir
     $allCounter++;
     @file_put_contents($notifyAll, (string)$allCounter, LOCK_EX);
     
-    // Si es un cambio que solo afecta al host
     if ($isHostOnlyChange) {
         $hostCounter = 0;
         if (file_exists($notifyHost)) {
@@ -91,7 +80,7 @@ $inputRaw = file_get_contents('php://input');
 $input = json_decode($inputRaw, true);
 
 if (!is_array($input)) {
-    echo json_encode(['success' => false, 'message' => 'JSON inválido']);
+    echo json_encode(['success' => false, 'message' => 'JSON invalido']);
     exit;
 }
 
@@ -99,9 +88,9 @@ $action = isset($input['action']) ? trim((string)$input['action']) : null;
 $gameId = sanitizeGameId($input['game_id'] ?? null);
 $playerId = sanitizePlayerId($input['player_id'] ?? null);
 
-logMessage("API Action: {$action} | Raw game_id: " . ($input['game_id'] ?? 'null') . " | Normalized: {$gameId} | Raw player_id: " . ($input['player_id'] ?? 'null') . " | Normalized: {$playerId}", 'DEBUG');
+logMessage("API Action: {$action} | game_id: {$gameId} | player_id: {$playerId}", 'DEBUG');
 
-$response = ['success' => false, 'message' => 'Acción no válida'];
+$response = ['success' => false, 'message' => 'Accion no valida'];
 
 switch ($action) {
 
@@ -115,16 +104,26 @@ switch ($action) {
             }
         }
 
+        $totalRounds = intval($input['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS);
+        $roundDuration = intval($input['round_duration'] ?? DEFAULT_ROUND_DURATION);
+        $minPlayers = intval($input['min_players'] ?? MIN_PLAYERS);
+        
+        if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = DEFAULT_TOTAL_ROUNDS;
+        if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = DEFAULT_ROUND_DURATION;
+        if ($minPlayers < 1 || $minPlayers > 6) $minPlayers = MIN_PLAYERS;
+
         $state = [
             'game_id' => $gameId,
             'players' => [],
             'round' => 0,
-            'total_rounds' => DEFAULT_TOTAL_ROUNDS,
+            'total_rounds' => $totalRounds,
             'status' => 'waiting',
             'current_word' => null,
-            'round_duration' => DEFAULT_ROUND_DURATION,
+            'current_category' => null,
+            'round_duration' => $roundDuration,
             'round_started_at' => null,
             'round_start_at' => null,
+            'min_players' => $minPlayers,
             'round_details' => [],
             'round_top_words' => [],
             'game_history' => [],
@@ -161,19 +160,19 @@ switch ($action) {
         $playerColor = validatePlayerColor($input['color'] ?? null);
 
         if (strlen($playerName) < 2 || strlen($playerName) > 20) {
-            $response = ['success' => false, 'message' => 'Nombre inválido (2-20 caracteres)'];
+            $response = ['success' => false, 'message' => 'Nombre invalido'];
             break;
         }
         
         if (count($state['players']) >= MAX_PLAYERS) {
-            $response = ['success' => false, 'message' => 'Sala llena (máximo ' . MAX_PLAYERS . ' jugadores)'];
+            $response = ['success' => false, 'message' => 'Sala llena'];
             break;
         }
 
         if (isset($state['players'][$playerId])) {
             $response = [
                 'success' => true,
-                'message' => 'Ya estás en el juego',
+                'message' => 'Ya estas en el juego',
                 'state' => $state
             ];
             break;
@@ -222,8 +221,10 @@ switch ($action) {
             return empty($player['disconnected']);
         });
 
-        if (count($activePlayers) < MIN_PLAYERS) {
-            $response = ['success' => false, 'message' => 'Mínimo ' . MIN_PLAYERS . ' jugadores'];
+        $minPlayers = $state['min_players'] ?? MIN_PLAYERS;
+        
+        if (count($activePlayers) < $minPlayers) {
+            $response = ['success' => false, 'message' => 'Minimo ' . $minPlayers . ' jugadores'];
             break;
         }
 
@@ -235,14 +236,19 @@ switch ($action) {
         
         $validation = validatePlayerWord($word);
         if (!$validation['valid']) {
-            $response = ['success' => false, 'message' => 'Palabra inválida: ' . $validation['error']];
+            $response = ['success' => false, 'message' => 'Palabra invalida'];
             break;
         }
         
-        $duration = intval($input['duration'] ?? DEFAULT_ROUND_DURATION);
+        $duration = intval($input['duration'] ?? $state['round_duration'] ?? DEFAULT_ROUND_DURATION);
+        $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS);
         
         if ($duration < 30 || $duration > 300) {
-            $duration = DEFAULT_ROUND_DURATION;
+            $duration = $state['round_duration'] ?? DEFAULT_ROUND_DURATION;
+        }
+        
+        if ($totalRounds < 1 || $totalRounds > 10) {
+            $totalRounds = $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS;
         }
 
         $countdownDuration = 4;
@@ -251,7 +257,9 @@ switch ($action) {
         $state['round']++;
         $state['status'] = 'playing';
         $state['current_word'] = $word;
+        $state['current_category'] = null;
         $state['round_duration'] = $duration;
+        $state['total_rounds'] = $totalRounds;
         $state['round_start_at'] = $round_start_at;
         $state['round_started_at'] = $round_start_at;
         $state['last_update'] = time();
@@ -266,7 +274,7 @@ switch ($action) {
         }
 
         if (saveGameState($gameId, $state)) {
-            trackGameAction($gameId, 'round_started', ['round' => $state['round'], 'word' => $word]);
+            trackGameAction($gameId, 'round_started', ['round' => $state['round']]);
             notifyGameChanged($gameId);
             $response = [
                 'success' => true,
@@ -367,14 +375,14 @@ switch ($action) {
                 notifyGameChanged($gameId);
                 $response = [
                     'success' => true,
-                    'message' => 'Timer acortado a 5 segundos',
+                    'message' => 'Timer acortado',
                     'state' => $state
                 ];
             }
         } else {
             $response = [
                 'success' => true,
-                'message' => 'Timer ya está en los últimos 5 segundos',
+                'message' => 'Timer ya en ultimos 5 segundos',
                 'state' => $state
             ];
         }
@@ -465,7 +473,7 @@ switch ($action) {
 
         if ($state['round'] >= $state['total_rounds']) {
             $state['status'] = 'finished';
-            trackGameAction($gameId, 'game_finished', ['total_rounds' => $state['round']]);
+            trackGameAction($gameId, 'game_finished', []);
         } else {
             $state['status'] = 'round_ended';
         }
@@ -473,7 +481,7 @@ switch ($action) {
         $state['round_start_at'] = null;
 
         if (saveGameState($gameId, $state)) {
-            trackGameAction($gameId, 'round_ended', ['round' => $state['round']]);
+            trackGameAction($gameId, 'round_ended', []);
             notifyGameChanged($gameId);
             $response = [
                 'success' => true,
@@ -507,6 +515,7 @@ switch ($action) {
         $state['round'] = 0;
         $state['status'] = 'waiting';
         $state['current_word'] = null;
+        $state['current_category'] = null;
         $state['round_started_at'] = null;
         $state['round_start_at'] = null;
         $state['round_top_words'] = [];
@@ -537,7 +546,7 @@ switch ($action) {
             $state['last_update'] = time();
 
             if (saveGameState($gameId, $state)) {
-                trackGameAction($gameId, 'player_left', ['player_name' => $playerName]);
+                trackGameAction($gameId, 'player_left', []);
                 notifyGameChanged($gameId);
                 $response = [
                     'success' => true,
@@ -545,7 +554,7 @@ switch ($action) {
                 ];
             }
         } else {
-            $response = ['success' => true, 'message' => 'Ya no estás en el juego'];
+            $response = ['success' => true, 'message' => 'Ya no estas en el juego'];
         }
         break;
 
@@ -565,7 +574,7 @@ switch ($action) {
         $newName = trim($input['name'] ?? '');
         
         if (strlen($newName) < 2 || strlen($newName) > 20) {
-            $response = ['success' => false, 'message' => 'Nombre inválido (2-20 caracteres)'];
+            $response = ['success' => false, 'message' => 'Nombre invalido'];
             break;
         }
         
@@ -574,7 +583,7 @@ switch ($action) {
         $state['last_update'] = time();
         
         if (saveGameState($gameId, $state)) {
-            trackGameAction($gameId, 'player_name_updated', ['player_id' => $playerId, 'old_name' => $oldName, 'new_name' => $newName]);
+            trackGameAction($gameId, 'player_name_updated', []);
             notifyGameChanged($gameId);
             $response = [
                 'success' => true,
@@ -630,7 +639,7 @@ switch ($action) {
         break;
 
     default:
-        $response = ['success' => false, 'message' => 'Acción desconocida: ' . $action];
+        $response = ['success' => false, 'message' => 'Accion desconocida'];
         break;
 }
 
