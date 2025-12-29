@@ -17,6 +17,7 @@ class HostManager {
         };
         this.elements = {};
         this.copyIndicatorTimeout = null;
+        this.dropdownOpen = false;
     }
     
     initialize() {
@@ -38,6 +39,7 @@ class HostManager {
         }
         
         document.addEventListener('keypress', (e) => this.handleKeyPress(e));
+        document.addEventListener('click', (e) => this.handleDocumentClick(e));
         debug('✅ HostManager inicializado');
     }
     
@@ -62,6 +64,7 @@ class HostManager {
             resultsContent: safeGetElement('results-content'),
             controlsPanel: safeGetElement('controls-panel'),
             btnConfig: safeGetElement('btn-config'),
+            configDropdown: safeGetElement('config-dropdown-host'),
             btnStartRound: safeGetElement('btn-start-round'),
             btnEndRound: safeGetElement('btn-end-round'),
             btnNextRound: safeGetElement('btn-next-round'),
@@ -87,7 +90,36 @@ class HostManager {
         }
 
         if (this.elements.btnConfig) {
-            this.elements.btnConfig.addEventListener('click', () => this.showConfigModal());
+            this.elements.btnConfig.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleConfigDropdown();
+            });
+        }
+
+        // Config dropdown options
+        const optionSettings = safeGetElement('option-config-settings');
+        const optionRestartRound = safeGetElement('option-restart-round');
+        const optionEndGame = safeGetElement('option-end-game');
+
+        if (optionSettings) {
+            optionSettings.addEventListener('click', () => {
+                this.hideConfigDropdown();
+                this.showConfigModal();
+            });
+        }
+
+        if (optionRestartRound) {
+            optionRestartRound.addEventListener('click', () => {
+                this.hideConfigDropdown();
+                this.restartRound();
+            });
+        }
+
+        if (optionEndGame) {
+            optionEndGame.addEventListener('click', () => {
+                this.hideConfigDropdown();
+                this.finishGame();
+            });
         }
         
         if (this.elements.btnConfigCancel) {
@@ -120,6 +152,35 @@ class HostManager {
 
         this.setupGameCodeCopy();
         this.setupConfigInputAdjusters();
+    }
+
+    handleDocumentClick(e) {
+        // Close dropdown if clicking outside
+        if (this.dropdownOpen && this.elements.configDropdown && this.elements.btnConfig) {
+            if (!this.elements.configDropdown.contains(e.target) && e.target !== this.elements.btnConfig) {
+                this.hideConfigDropdown();
+            }
+        }
+    }
+
+    toggleConfigDropdown() {
+        if (this.dropdownOpen) {
+            this.hideConfigDropdown();
+        } else {
+            this.showConfigDropdown();
+        }
+    }
+
+    showConfigDropdown() {
+        if (!this.elements.configDropdown) return;
+        safeShowElement(this.elements.configDropdown);
+        this.dropdownOpen = true;
+    }
+
+    hideConfigDropdown() {
+        if (!this.elements.configDropdown) return;
+        safeHideElement(this.elements.configDropdown);
+        this.dropdownOpen = false;
     }
 
     setupConfigInputAdjusters() {
@@ -603,22 +664,25 @@ class HostManager {
                     .filter(p => !p.disconnected).length;
                 
                 if (activePlayers === 0) {
-                    message = '👥 Esperando al primer jugador';
+                    message = '👥 ESPERANDO JUGADORES';
                 } else if (activePlayers < this.gameConfig.minPlayers) {
                     const needed = this.gameConfig.minPlayers - activePlayers;
-                    message = `👥 ${activePlayers} conectado${activePlayers === 1 ? '' : 's'} - Falta${needed === 1 ? '' : 'n'} ${needed} para comenzar`;
+                    message = `👥 ${activePlayers} conectado${activePlayers === 1 ? '' : 's'}<br>Falta${needed === 1 ? '' : 'n'} ${needed} para comenzar`;
                 } else {
-                    message = `🏃 ¡${activePlayers} listo${activePlayers === 1 ? '' : 's'}! Presiona ENTER para comenzar`;
+                    message = `🏃 ¡${activePlayers} listo${activePlayers === 1 ? '' : 's'}!<br>Presiona ENTER para comenzar`;
                 }
                 break;
             case 'playing':
-                message = `📚 Escribiendo...`;
+                message = `📚 ESCRIBIENDO...<br>Categoría: ${sanitizeText(this.gameState.current_category || 'N/A')}`;
                 break;
             case 'round_ended':
-                message = '✅ Mostrando resultados';
+                message = '✅ PROCESANDO RESULTADOS';
                 break;
             case 'finished':
-                message = '🎉 ¡Partida finalizada!';
+                const winner = Object.values(this.gameState.players || {})
+                    .sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+                const winnerName = winner ? sanitizeText(winner.name) : 'Todos';
+                message = `🎉 ¡${winnerName} GANÓ!<br>Puntuación final: ${winner?.score || 0}`;
                 break;
         }
         
@@ -775,6 +839,29 @@ class HostManager {
         }
     }
 
+    async restartRound() {
+        if (!confirm('¿Reiniciar la ronda actual?')) {
+            return;
+        }
+
+        try {
+            const result = await this.client.sendAction('start_round', {
+                game_id: this.gameId,
+                duration: this.gameConfig.roundDuration,
+                total_rounds: this.gameConfig.totalRounds
+            });
+            
+            if (result.success) {
+                showNotification('✅ Ronda reiniciada', 'success');
+            } else {
+                showNotification('Error reiniciando ronda', 'error');
+            }
+        } catch (error) {
+            debug('Error reiniciando ronda:', error, 'error');
+            showNotification('Error de conexión', 'error');
+        }
+    }
+
     async nextRound() {
         try {
             if (this.elements.btnNextRound) {
@@ -858,4 +945,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js - Diccionario async, control de rondas, configuración, eliminación de jugadores', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js - Config dropdown, status messages mejorados, reinicio de ronda', 'color: #10B981; font-weight: bold');
