@@ -1,6 +1,6 @@
 /**
  * @file player-manager.js
- * @description Gestor mejorado de lógica del jugador con sistema de auras dinámicas
+ * @description Gestor mejorado de lógica del jugador con countdown sincronizado y auto-submit
  */
 
 class PlayerManager {
@@ -14,24 +14,19 @@ class PlayerManager {
         this.myWords = [];
         this.maxWords = 6;
         this.timerInterval = null;
+        this.countdownTimeout = null;
         
-        // Throttle para envío de palabras
         this.lastWordsUpdateTime = 0;
         this.wordsUpdatePending = false;
         
-        // Auras generadas
         this.availableAuras = [];
         this.selectedAura = null;
         
-        // Elementos del DOM
         this.elements = {};
     }
     
-    /**
-     * Inicializa el gestor del jugador
-     */
     initialize() {
-        debug('🌢 Inicializando PlayerManager');
+        debug('🍢 Inicializando PlayerManager');
         this.cacheElements();
         this.attachEventListeners();
         
@@ -51,9 +46,6 @@ class PlayerManager {
         debug('✅ PlayerManager inicializado');
     }
     
-    /**
-     * Cachea referencias a elementos del DOM
-     */
     cacheElements() {
         this.elements = {
             modalJoinGame: safeGetElement('modal-join-game'),
@@ -69,6 +61,7 @@ class PlayerManager {
             headerCode: safeGetElement('header-code'),
             playerScore: safeGetElement('player-score'),
             statusCard: safeGetElement('status-card'),
+            categoryLabel: safeGetElement('category-label'),
             currentWord: safeGetElement('current-word'),
             waitingMessage: safeGetElement('waiting-message'),
             wordsInputSection: safeGetElement('words-input-section'),
@@ -91,9 +84,6 @@ class PlayerManager {
         };
     }
     
-    /**
-     * Adjunta event listeners
-     */
     attachEventListeners() {
         if (this.elements.btnJoin) {
             this.elements.btnJoin.addEventListener('click', () => this.joinGame());
@@ -111,7 +101,6 @@ class PlayerManager {
             });
         }
         
-        // Palabras
         if (this.elements.btnAddWord) {
             this.elements.btnAddWord.addEventListener('click', () => this.addWord());
         }
@@ -126,7 +115,6 @@ class PlayerManager {
             this.elements.btnSubmit.addEventListener('click', () => this.submitWords());
         }
         
-        // Editar nombre
         if (this.elements.btnEditName) {
             this.elements.btnEditName.addEventListener('click', () => this.showEditNameModal());
         }
@@ -139,23 +127,17 @@ class PlayerManager {
             this.elements.modalBtnSave.addEventListener('click', () => this.saveNewName());
         }
         
-        // Salir
         if (this.elements.btnExit) {
             this.elements.btnExit.addEventListener('click', () => this.exitGame());
         }
     }
     
-    /**
-     * Muestra modal de unión
-     */
     showJoinModal() {
         safeShowElement(this.elements.modalJoinGame);
         safeHideElement(this.elements.gameScreen);
         
-        // Generar auras aleatorias
         this.availableAuras = generateRandomAuras();
         
-        // Renderizar selector de auras
         if (this.elements.colorSelector) {
             const randomAura = this.availableAuras[Math.floor(Math.random() * this.availableAuras.length)];
             renderAuraSelectors(
@@ -167,7 +149,6 @@ class PlayerManager {
                     this.selectedAura = aura;
                 }
             );
-            // Preseleccionar una al azar
             this.playerColor = randomAura.hex;
             this.selectedAura = randomAura;
         }
@@ -177,9 +158,6 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Intenta recuperar una sesión anterior
-     */
     async recoverSession(gameId, playerId, playerName, playerColor) {
         try {
             this.gameId = gameId;
@@ -193,7 +171,6 @@ class PlayerManager {
             if (result.success && result.state) {
                 const state = result.state;
                 
-                // Verificar que el jugador sigue en el juego
                 if (state.players && state.players[playerId]) {
                     debug('✅ Sesión recuperada');
                     this.loadGameScreen(state);
@@ -201,7 +178,6 @@ class PlayerManager {
                 }
             }
             
-            // Si falla, limpiar y mostrar modal
             debug('⚠️ No se pudo recuperar sesión');
             clearGameSession();
             this.showJoinModal();
@@ -213,15 +189,11 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Carga la pantalla de juego
-     */
     loadGameScreen(state) {
         if (!this.playerColor) {
             this.playerColor = '#FF0055,#00F0FF';
         }
         
-        // Aplicar gradiente + bg.webp
         applyColorGradient(this.playerColor);
         
         safeHideElement(this.elements.modalJoinGame);
@@ -237,9 +209,6 @@ class PlayerManager {
         this.handleStateUpdate(state);
     }
     
-    /**
-     * Unirse a un juego
-     */
     async joinGame() {
         const code = this.elements.inputGameCode?.value?.trim().toUpperCase();
         const name = this.elements.inputPlayerName?.value?.trim();
@@ -315,9 +284,6 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Maneja actualizaciones de estado
-     */
     handleStateUpdate(state) {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
@@ -327,7 +293,6 @@ class PlayerManager {
             this.elements.playerScore.textContent = (me.score || 0) + ' pts';
         }
         
-        // FIX: Mostrar ronda correctamente
         if (this.elements.headerRound) {
             const round = state.round || 0;
             const total = state.total_rounds || 3;
@@ -350,32 +315,24 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Muestra estado de espera
-     */
     showWaitingState() {
         safeHideElement(this.elements.currentWord);
+        safeHideElement(this.elements.categoryLabel);
         safeShowElement(this.elements.waitingMessage);
         if (this.elements.waitingMessage) {
-            this.elements.waitingMessage.textContent = 'El anfitríon iniciará la ronda pronto';
+            this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
         }
         safeHideElement(this.elements.wordsInputSection);
         safeHideElement(this.elements.resultsSection);
         safeHideElement(this.elements.countdownOverlay);
+        this.stopTimer();
     }
     
-    /**
-     * Muestra estado de juego
-     */
     showPlayingState(state) {
         debug('🎮 Estado PLAYING detectado', 'debug');
         
-        safeHideElement(this.elements.countdownOverlay);
         safeHideElement(this.elements.resultsSection);
         safeHideElement(this.elements.waitingMessage);
-        
-        // FIX: Asegurar que el estado contiene current_word
-        debug('Estado recibido:', JSON.stringify(state), 'debug');
         
         if (!state.current_word) {
             debug('❌ PROBLEMA: No hay current_word en el estado!', 'error');
@@ -386,11 +343,17 @@ class PlayerManager {
             return;
         }
         
-        // Mostrar palabra
         if (this.elements.currentWord) {
             this.elements.currentWord.textContent = state.current_word;
             safeShowElement(this.elements.currentWord);
             debug(`💡 Palabra mostrada: ${state.current_word}`, 'debug');
+        }
+        
+        if (this.elements.categoryLabel && state.current_category) {
+            this.elements.categoryLabel.textContent = `Categoría: ${state.current_category}`;
+            safeShowElement(this.elements.categoryLabel);
+        } else {
+            safeHideElement(this.elements.categoryLabel);
         }
         
         const me = state.players?.[this.playerId];
@@ -399,7 +362,6 @@ class PlayerManager {
         debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, 'debug');
         
         if (isReady) {
-            // Ya envié mis palabras
             debug('📝 Ya enviaste tus palabras', 'debug');
             if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
@@ -412,7 +374,6 @@ class PlayerManager {
             }
             safeHideElement(this.elements.wordsInputSection);
         } else {
-            // Puedo escribir palabras
             debug('🔑 Puedes escribir palabras', 'debug');
             if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
@@ -422,26 +383,20 @@ class PlayerManager {
             safeHideElement(this.elements.waitingMessage);
             safeShowElement(this.elements.wordsInputSection);
             
-            // Limpiar palabras si es la primera vez
             if (!me?.answers || me.answers.length === 0) {
                 this.myWords = [];
                 this.updateWordsList();
             } else {
-                // Cargar palabras existentes
                 this.myWords = me.answers || [];
                 this.updateWordsList();
             }
         }
         
-        // Iniciar timer
         if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
     }
     
-    /**
-     * Añade una palabra a la lista
-     */
     addWord() {
         const input = this.elements.currentWordInput;
         if (!input) return;
@@ -472,9 +427,6 @@ class PlayerManager {
         input.focus();
     }
     
-    /**
-     * Actualiza lista de palabras en UI
-     */
     updateWordsList() {
         if (this.elements.wordCount) {
             this.elements.wordCount.textContent = this.myWords.length;
@@ -496,28 +448,19 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Elimina palabra de la lista
-     */
     removeWord(index) {
         this.myWords.splice(index, 1);
         this.updateWordsList();
         this.scheduleWordsUpdate();
     }
     
-    /**
-     * Programa actualización de palabras con throttle
-     * Máximo cada 2 segundos para evitar sobrecargar
-     */
     scheduleWordsUpdate() {
         const now = Date.now();
         const timeSinceLastUpdate = now - this.lastWordsUpdateTime;
         
         if (timeSinceLastUpdate >= COMM_CONFIG.WORDS_UPDATE_THROTTLE) {
-            // Envír inmediatamente
             this.sendWordsUpdate();
         } else {
-            // Programar para más tarde
             if (!this.wordsUpdatePending) {
                 this.wordsUpdatePending = true;
                 const delay = COMM_CONFIG.WORDS_UPDATE_THROTTLE - timeSinceLastUpdate;
@@ -529,9 +472,6 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Envía actualización de palabras
-     */
     async sendWordsUpdate() {
         if (!this.client) return;
         
@@ -548,9 +488,6 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Envía palabras finales
-     */
     async submitWords() {
         if (!this.client || !this.elements.btnSubmit) return;
         
@@ -586,13 +523,12 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Muestra resultados de ronda
-     */
     showResults(state) {
         safeHideElement(this.elements.wordsInputSection);
         safeHideElement(this.elements.currentWord);
+        safeHideElement(this.elements.categoryLabel);
         safeHideElement(this.elements.waitingMessage);
+        this.stopTimer();
         
         const me = state.players?.[this.playerId];
         const myResults = me?.round_results;
@@ -628,9 +564,6 @@ class PlayerManager {
         safeShowElement(this.elements.resultsSection);
     }
     
-    /**
-     * Muestra resultados finales
-     */
     showFinalResults(state) {
         this.showResults(state);
         if (this.elements.waitingMessage) {
@@ -639,9 +572,6 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Inicia timer continuo
-     */
     startContinuousTimer(state) {
         this.stopTimer();
         this.updateTimerFromState(state);
@@ -655,27 +585,30 @@ class PlayerManager {
         }, 1000);
     }
     
-    /**
-     * Actualiza timer
-     */
     updateTimerFromState(state) {
         const remaining = getRemainingTime(state.round_started_at, state.round_duration);
         updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
+        
+        if (remaining <= 0 && this.gameState.status === 'playing') {
+            this.autoSubmitWords();
+        }
     }
     
-    /**
-     * Detiene timer
-     */
     stopTimer() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
         }
     }
+
+    async autoSubmitWords() {
+        const me = this.gameState.players?.[this.playerId];
+        if (me?.status !== 'ready') {
+            debug('🔅 Auto-enviando palabras al terminar el tiempo', 'info');
+            await this.submitWords();
+        }
+    }
     
-    /**
-     * Muestra modal de editar nombre
-     */
     showEditNameModal() {
         if (this.elements.modalNameInput) {
             this.elements.modalNameInput.value = this.playerName;
@@ -686,16 +619,10 @@ class PlayerManager {
         }
     }
     
-    /**
-     * Oculta modal de editar nombre
-     */
     hideEditNameModal() {
         safeHideElement(this.elements.modalEditName);
     }
     
-    /**
-     * Guarda nuevo nombre
-     */
     async saveNewName() {
         const newName = this.elements.modalNameInput?.value?.trim();
         
@@ -721,17 +648,11 @@ class PlayerManager {
         this.hideEditNameModal();
     }
     
-    /**
-     * Maneja pérdida de conexión
-     */
     handleConnectionLost() {
         alert('Desconectado del servidor');
         this.exitGame();
     }
     
-    /**
-     * Salir del juego
-     */
     exitGame() {
         if (this.client) {
             this.client.disconnect();
@@ -741,7 +662,6 @@ class PlayerManager {
     }
 }
 
-// Instancia global
 let playerManager = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -751,4 +671,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js cargado - FIX #39: Corregir referencia a variable aura -> randomAura', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js cargado - Countdown sincronizado, auto-submit, categoría, resumen de resultados', 'color: #FF00FF; font-weight: bold; font-size: 12px');
