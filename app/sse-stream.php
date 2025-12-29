@@ -5,17 +5,24 @@
 
 require_once __DIR__ . '/config.php';
 
-header('Content-Type: text/event-stream');
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Connection: keep-alive');
-header('X-Accel-Buffering: no');
+// 🔧 CRITICAL: Headers para evitar buffering en TODOS los niveles
+header('Content-Type: text/event-stream; charset=utf-8');
+header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
+header('Connection: keep-alive');
+header('X-Accel-Buffering: no');  // Nginx
+header('X-Content-Type-Options: nosniff');
 
+// Deshabilitar output buffering desde PHP
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', '1');
     @apache_setenv('dont-vary', '1');
 }
+
+ini_set('output_buffering', 'off');
+ini_set('zlib.output_compression', 'off');
+ini_set('implicit_flush', 'on');
 
 $gameId = sanitizeGameId($_GET['game_id'] ?? null);
 $playerId = sanitizePlayerId($_GET['player_id'] ?? null);
@@ -40,6 +47,11 @@ function sendSSE($event, $data) {
     echo "event: {$event}\n";
     echo "data: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
     flush();
+    
+    // Fuerza flush en Apache también
+    if (function_exists('apache_flush')) {
+        @apache_flush();
+    }
 }
 
 // 🔧 FIX #33: Usar archivos de notificación per-game
@@ -106,6 +118,9 @@ while ((time() - $startTime) < $maxDuration) {
     if ($now - $lastHeartbeat >= $heartbeatInterval) {
         echo ": heartbeat\n\n";
         flush();
+        if (function_exists('apache_flush')) {
+            @apache_flush();
+        }
         $lastHeartbeat = $now;
         logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
     }
