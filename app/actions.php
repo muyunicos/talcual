@@ -4,7 +4,6 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
 require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/word-comparison-engine.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -100,7 +99,7 @@ function loadRawDictionaryJson() {
  * Devuelve pool de consignas (prompts) para una categoría.
  * Soporta 2 formatos:
  * 1) Legacy: { "categorias": { "GENERAL": ["CASA", ...] } }
- * 2) Nuevo: { "CATEGORIA": [ { "CONSIGNA": ["Tip", ...] }, ... ] }
+ * 2) Nuevo: { "CATEGORIA": [ { "CONSIGNA": ["Palabra1|Sinonimo", ...] }, ... ] }
  *
  * @param string|null $preferredCategory
  * @returns array{category:?string,prompts:array}
@@ -561,89 +560,33 @@ try {
                 break;
             }
 
-            // FEAT: Usar motor inteligente de comparación de palabras
-            $engine = WordEquivalenceEngine::getInstance();
-            $wordCounts = [];
-            $playerWords = [];
-            $wordCanonicals = [];
-
-            foreach ($state['players'] as $pId => $player) {
-                foreach ($player['answers'] as $word) {
-                    $trimmed = trim($word);
-                    if (empty($trimmed)) {
-                        continue;
-                    }
-
-                    $normalized = strtoupper($trimmed);
-
-                    $canonical = $engine->getCanonicalWord($normalized);
-                    if ($canonical === null) {
-                        $canonical = $normalized;
-                    }
-
-                    $wordCanonicals[$normalized] = $canonical;
-
-                    if (!isset($wordCounts[$canonical])) {
-                        $wordCounts[$canonical] = [];
-                    }
-                    if (!in_array($player['name'], $wordCounts[$canonical])) {
-                        $wordCounts[$canonical][] = $player['name'];
-                    }
-
-                    if (!isset($playerWords[$pId])) {
-                        $playerWords[$pId] = [];
-                    }
-                    if (!in_array($canonical, $playerWords[$pId])) {
-                        $playerWords[$pId][] = $canonical;
-                    }
-                }
+            // Requiere resultados del host
+            $hostResults = $input['host_results'] ?? null;
+            if (!is_array($hostResults) || !isset($hostResults['players']) || !is_array($hostResults['players'])) {
+                $response = ['success' => false, 'message' => 'host_results requerido'];
+                break;
             }
 
+            // Aplicar resultados del host al estado
             foreach ($state['players'] as $pId => $player) {
-                $roundResults = [];
-                $roundScore = 0;
-
-                if (!empty($playerWords[$pId])) {
-                    foreach ($playerWords[$pId] as $canonical) {
-                        $count = count($wordCounts[$canonical]);
-                        $points = $count > 1 ? $count : 0;
-
-                        $matchedWith = array_diff($wordCounts[$canonical], [$player['name']]);
-
-                        $roundResults[$canonical] = [
-                            'points' => $points,
-                            'count' => $count,
-                            'matched_with' => array_values($matchedWith)
-                        ];
-
-                        $roundScore += $points;
-                    }
-                }
+                $pRes = $hostResults['players'][$pId] ?? null;
+                $roundResults = (is_array($pRes) && isset($pRes['round_results']) && is_array($pRes['round_results'])) ? $pRes['round_results'] : [];
+                $delta = (is_array($pRes) && isset($pRes['score_delta'])) ? intval($pRes['score_delta']) : 0;
 
                 $state['players'][$pId]['round_results'] = $roundResults;
-                $state['players'][$pId]['score'] += $roundScore;
+                $state['players'][$pId]['score'] = intval($state['players'][$pId]['score'] ?? 0) + $delta;
                 $state['players'][$pId]['status'] = 'connected';
             }
 
             $topWords = [];
-            foreach ($wordCounts as $word => $players) {
-                if (count($players) > 1) {
-                    $topWords[] = [
-                        'word' => $word,
-                        'count' => count($players),
-                        'players' => $players
-                    ];
-                }
+            if (isset($hostResults['round_top_words']) && is_array($hostResults['round_top_words'])) {
+                $topWords = $hostResults['round_top_words'];
             }
 
-            usort($topWords, function($a, $b) {
-                return $b['count'] - $a['count'];
-            });
-
-            $state['round_top_words'] = array_slice($topWords, 0, 10);
+            $state['round_top_words'] = $topWords;
             $state['last_update'] = time();
 
-            if ($state['round'] >= $state['total_rounds']) {
+            if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS)) {
                 $state['status'] = 'finished';
                 trackGameAction($gameId, 'game_finished', []);
             } else {
@@ -660,6 +603,8 @@ try {
                     'message' => 'Ronda finalizada',
                     'state' => $state
                 ];
+            } else {
+                $response = ['success' => false, 'message' => 'Error guardando resultados'];
             }
             break;
 
