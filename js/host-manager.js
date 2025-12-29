@@ -215,6 +215,14 @@ class HostManager {
         
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
+        
+        // 🔧 FIX #25: Escuchar 'connected' event para actualizar lastSSEMessageTime
+        // Esto permite que el heartbeat sea detectado sin esperar un 'update' event
+        this.client.on('connected', () => {
+            this.lastSSEMessageTime = Date.now();
+            debug('📡 [HOST] SSE conectado - heartbeat será recibido', 'debug');
+        });
+        
         this.client.connect();
         this.lastSSEMessageTime = Date.now();
         
@@ -322,7 +330,7 @@ class HostManager {
     
     handleStateUpdate(state) {
         this.gameState = state;
-        this.lastSSEMessageTime = Date.now(); // ← Actualizar timestamp SSE
+        this.lastSSEMessageTime = Date.now();
         debug('📈 Estado actualizado:', state.status);
         this.debouncedUpdateHostUI();
     }
