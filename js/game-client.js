@@ -170,7 +170,8 @@ class GameClient {
     this.lastMessageTime = Date.now();
     this.parseErrorCount = 0;
     this.consecutiveEmptyMessages = 0;
-    this.metrics.reconnectsCount === 0 && (this.metrics.reconnectsCount = 0);
+    // 🔧 FIX #22: No es necesario resetear reconnectsCount cada conexión exitosa
+    // Solo incrementarlo en handleReconnect(). Eliminar línea redundante.
     
     this.startHeartbeatMonitor();
     this.emit('connected', { timestamp: Date.now() });
@@ -280,6 +281,7 @@ class GameClient {
     }
     
     this.reconnectAttempts++;
+    this.metrics.reconnectsCount++;
     
     let delay;
     if (window.COMM?.calculateReconnectDelay) {
@@ -296,7 +298,6 @@ class GameClient {
     }
     
     console.log(`🔄 [${this.role}] Reconectando en ${Math.floor(delay)}ms (intento ${this.reconnectAttempts}/${commConfig.RECONNECT_MAX_ATTEMPTS})`);
-    this.metrics.reconnectsCount++;
     this.emit('reconnecting', { attempt: this.reconnectAttempts, delay });
     
     setTimeout(() => {
@@ -324,7 +325,7 @@ class GameClient {
     }
     
     // ✅ FIX #14: Resetear reconnectAttempts cuando se desconecta para evitar
-    // que se agoten los intentos prematuramente durante reconexiones máltiples
+    // que se agoten los intentos prematuramente durante reconexiones múltiples
     this.reconnectAttempts = 0;
   }
 
