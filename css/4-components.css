@@ -128,6 +128,99 @@ button:not(.no-style):disabled {
     color: #000;
 }
 
+/* ========== BOTÓN MODAL PRIMARY ========== */
+.btn-modal-primary {
+    width: 100%;
+    padding: 14px 20px;
+    margin: var(--space-lg) 0;
+    background: var(--magenta);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-display);
+    font-size: 1.3em;
+    font-weight: 900;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: var(--sombra-dura);
+    transition: all var(--transition-normal);
+}
+
+.btn-modal-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-mega);
+}
+
+.btn-modal-primary:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: var(--sombra-sm);
+}
+
+.btn-modal-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-create-game {
+    background: var(--cian);
+    color: #000;
+}
+
+/* ========== BOTÓN ADD ========== */
+.btn-add {
+    padding: 12px 16px;
+    background: var(--cian);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 900;
+    font-size: 1.1em;
+    cursor: pointer;
+    box-shadow: var(--sombra-media);
+    transition: all var(--transition-normal);
+}
+
+.btn-add:hover {
+    transform: scale(1.05);
+    box-shadow: var(--sombra-dura);
+}
+
+.btn-add:active {
+    transform: scale(0.95);
+}
+
+/* ========== BOTÓN SUBMIT ========== */
+.btn-submit {
+    flex: 1;
+    padding: 12px 20px;
+    background: var(--amarillo);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.1em;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: var(--sombra-dura);
+    transition: all var(--transition-normal);
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-mega);
+}
+
+.btn-submit:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: var(--sombra-sm);
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /* ========== INPUTS GENERALES ========== */
 input[type="text"],
 input[type="number"],
@@ -224,6 +317,16 @@ select:focus {
     flex-direction: column;
 }
 
+/* Info text bajo inputs */
+.custom-code-info {
+    display: block;
+    margin-top: var(--space-sm);
+    font-size: 0.85em;
+    opacity: 0.8;
+    color: var(--cian);
+    text-shadow: var(--sombra-xs);
+}
+
 .input-jackbox {
     font-family: var(--font-primary);
     font-weight: 700;
@@ -266,11 +369,12 @@ select:focus {
 }
 
 .code-sticker:hover {
-    transform: translateY(-1px);
+    transform: rotate(-3deg) translateY(-2px);
+    box-shadow: var(--sombra-mega);
 }
 
 .code-sticker:active {
-    transform: translateY(0);
+    transform: rotate(-3deg) translateY(0);
 }
 
 /* Variante grande para TV (host.html) */
@@ -294,18 +398,20 @@ select:focus {
 }
 
 .code-sticker.copied::after {
-    content: 'Copiado';
+    content: '✓ Copiado';
     position: absolute;
-    top: -12px;
-    right: -12px;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
     background: #2ecc71;
-    color: #000;
+    color: white;
     font-family: var(--font-primary);
     font-size: 0.75em;
     font-weight: 900;
     padding: var(--space-xs) var(--space-md);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
     box-shadow: var(--sombra-sm);
+    white-space: nowrap;
 }
 
 /* Compatibilidad hacia atrás - Aliases ahora funcionales (Phase 3) */
@@ -367,21 +473,23 @@ select:focus {
     display: flex;
 }
 
-/* Modal content base */
+/* Modal content base - UNIFIED */
 .modal-content {
-    background: rgba(255,255,255,0.95);
+    background: rgba(46, 0, 78, 0.95);
+    backdrop-filter: blur(20px);
     border-radius: var(--radius-xl);
-    padding: var(--padding-modal);
-    max-width: 400px;
+    padding: var(--space-3xl) var(--space-2xl);
+    max-width: 450px;
     width: 90%;
-    box-shadow: var(--sombra-mega);
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), var(--sombra-dura);
+    border: 3px solid var(--cian);
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
-    animation: slideUp 0.3s ease-out;
     max-height: 90vh;
     overflow-y: auto;
 }
 
-/* Variante para modales con fondo violeta/blur */
+/* Variante para modales con fondo violeta/blur - LEGACY SUPPORT */
 .modal-join-game,
 .modal-create-game {
     background: rgba(46, 0, 78, 0.95);
@@ -390,8 +498,7 @@ select:focus {
     padding: var(--space-2xl) var(--space-xl);
     max-width: 400px;
     width: 90%;
-    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), var(--sombra-dura);
-    border: 3px solid var(--cian);
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), var(--sombra-dura)
     animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -462,6 +569,16 @@ select:focus {
     background: rgba(255, 255, 255, 0.5);
 }
 
+/* Status message en modales */
+.status-message-modal {
+    text-align: center;
+    min-height: 25px;
+    color: var(--amarillo);
+    font-weight: 700;
+    margin: var(--space-md) 0;
+    text-shadow: var(--sombra-sm);
+}
+
 /* ========== AURA SELECTOR ========== */
 .aura-selector {
     display: grid;
@@ -472,8 +589,8 @@ select:focus {
 }
 
 .aura-circle {
-    width: 60%;
-    aspect-ratio: 1 / 1;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     border: 4px solid rgba(255, 255, 255, 0.4);
     cursor: pointer;
@@ -490,8 +607,9 @@ select:focus {
 }
 
 .aura-circle.selected {
-    border: 4px solid #ffe900;
-    transform: scale(1.1);
+    border: 4px solid var(--amarillo);
+    transform: scale(1.15);
+    box-shadow: 0 0 20px var(--amarillo);
 }
 
 .aura-circle::before {

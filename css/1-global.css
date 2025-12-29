@@ -238,6 +238,114 @@ table tr:last-child td {
     filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5));
 }
 
+.logo-header h1 {
+    margin-top: var(--space-lg);
+    color: var(--cian);
+    font-size: 2.5em;
+}
+
+/* Subtitle landing */
+.subtitle {
+    font-size: 1.3em;
+    margin-bottom: var(--space-2xl);
+    color: var(--amarillo);
+    text-shadow: var(--sombra-media);
+    font-weight: 800;
+}
+
+/* Grupo de botones landing */
+.btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    width: 100%;
+    max-width: 350px;
+    margin-bottom: auto;
+}
+
+/* Botones específicos del landing */
+.btn-create,
+.btn-join {
+    width: 100%;
+    padding: var(--space-lg) var(--space-2xl);
+    font-size: 1.4em;
+    font-family: var(--font-display);
+    font-weight: 900;
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--sombra-dura);
+    transition: all var(--transition-normal);
+    text-align: center;
+    display: block;
+    cursor: pointer;
+    text-transform: none;
+}
+
+.btn-create {
+    background: var(--cian);
+    color: #000;
+}
+
+.btn-join {
+    background: var(--magenta);
+    color: white;
+}
+
+.btn-create:hover,
+.btn-join:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-mega);
+    text-decoration: none;
+}
+
+.btn-create:active,
+.btn-join:active {
+    transform: translateY(1px);
+    box-shadow: var(--sombra-sm);
+}
+
+/* Versión - footer del landing */
+.version {
+    margin-top: var(--space-3xl);
+    font-size: 0.9em;
+    opacity: 0.7;
+    color: white;
+    text-shadow: var(--sombra-xs);
+}
+
+/* ========== BOTÓN HOME (Reemplazo de btn-back) ========== */
+.btn-home {
+    position: fixed;
+    bottom: var(--space-lg);
+    left: var(--space-lg);
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8em;
+    color: white;
+    text-decoration: none;
+    box-shadow: var(--sombra-media);
+    transition: all var(--transition-normal);
+    z-index: 100;
+}
+
+.btn-home:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+    box-shadow: var(--sombra-dura);
+    text-decoration: none;
+}
+
+.btn-home:active {
+    transform: scale(0.95);
+}
+
 /* ========== CLASES DE UTILIDAD ========== */
 .text-center { text-align: center; }
 .hidden { display: none !important; }
@@ -245,3 +353,38 @@ table tr:last-child td {
 .flex { display: flex; }
 .flex-column { display: flex; flex-direction: column; }
 .flex-center { display: flex; justify-content: center; align-items: center; }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .logo-header h1 {
+        font-size: 2em;
+    }
+    
+    .subtitle {
+        font-size: 1.1em;
+    }
+    
+    .btn-create,
+    .btn-join {
+        font-size: 1.2em;
+        padding: var(--space-md) var(--space-xl);
+    }
+}
+
+@media (max-width: 480px) {
+    .btn-home {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5em;
+        bottom: var(--space-md);
+        left: var(--space-md);
+    }
+    
+    .logo-header h1 {
+        font-size: 1.8em;
+    }
+    
+    .subtitle {
+        font-size: 1em;
+    }
+}

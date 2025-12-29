@@ -15,7 +15,7 @@
 <body>
     <!-- MODAL UNIRSE AL JUEGO -->
     <div class="modal-overlay" id="modal-join-game">
-        <div class="modal-join-game">
+        <div class="modal-content">
             <div class="modal-title">📱 Unirse a Partida</div>
             
             <div class="input-group">
@@ -37,15 +37,9 @@
                 </div>
             </div>
 
-            <button class="btn-join" id="btn-join">🎮 ¡Jugar!</button>
+            <button class="btn-modal-primary" id="btn-join">🎮 ¡Jugar!</button>
             
             <div id="status-message" class="status-message-modal"></div>
-            
-            <div class="btn-back">
-                <a href="./index.html" class="btn-back-link">
-                    ← Volver al inicio
-                </a>
-            </div>
         </div>
     </div>
 
@@ -105,13 +99,16 @@
     <div class="modal-overlay" id="modal-edit-name">
         <div class="modal-content">
             <div class="modal-title">Cambiar Nombre</div>
-            <input type="text" id="modal-name-input" class="modal-input" maxlength="20" autocomplete="off">
+            <input type="text" id="modal-name-input" class="input-field" maxlength="20" autocomplete="off">
             <div class="modal-buttons">
-                <button class="modal-btn modal-btn-cancel" id="modal-btn-cancel">Cancelar</button>
-                <button class="modal-btn modal-btn-save" id="modal-btn-save">Guardar</button>
+                <button class="btn" id="modal-btn-cancel">Cancelar</button>
+                <button class="btn-modal-primary" id="modal-btn-save">Guardar</button>
             </div>
         </div>
     </div>
+
+    <!-- BOTÓN HOME -->
+    <a href="./index.html" class="btn-home" aria-label="Volver al inicio">🏠</a>
 
     <!-- Scripts Modulares (orden importa) -->
     <script src="./js/communication.js"></script>
