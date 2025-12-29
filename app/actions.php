@@ -15,26 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 /**
- * 🔧 FIX #32: Crea archivos de notificación para que SSE sepa que hay cambios
+ * 🔧 FIX #32: Crea archivos de notificación per-game para que SSE sepa que hay cambios
+ * Archivos: {GAME_ID}_all.json y {GAME_ID}_host.json
  * Sin tocar filemtime() del GAME.json directamente
  */
 function notifyGameChanged($gameId, $isHostOnlyChange = false) {
-    $notifyAll = GAME_STATES_DIR . '/GAME_all.json';
-    $notifyHost = GAME_STATES_DIR . '/GAME_host.json';
-    
-    // 🔍 DEBUG
-    logMessage("🔔 notifyGameChanged llamado para {$gameId}", 'INFO');
+    $notifyAll = GAME_STATES_DIR . '/' . $gameId . '_all.json';
+    $notifyHost = GAME_STATES_DIR . '/' . $gameId . '_host.json';
     
     // Todos ven este cambio
     $result1 = @file_put_contents($notifyAll, (string)time(), LOCK_EX);
-    logMessage("   - GAME_all.json: " . ($result1 ? "✅ escrito" : "❌ falló"), 'INFO');
     
     // Si es un cambio que solo afecta al host
     if ($isHostOnlyChange) {
         $result2 = @file_put_contents($notifyHost, (string)time(), LOCK_EX);
-        logMessage("   - GAME_host.json: " . ($result2 ? "✅ escrito" : "❌ falló"), 'INFO');
     }
 }
+
 function checkRateLimit() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $cacheKey = 'rate_limit:' . md5($ip);
