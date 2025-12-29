@@ -23,15 +23,26 @@ class HostManager {
         // Create game modal helpers
         this.createModalInitialized = false;
         this.userEditedCode = false;
+
+        // Host-only: override de status mientras calcula
+        this.hostStatusOverride = null;
+
+        // Motor de comparación (host)
+        this.wordEngine = null;
+        this.wordEngineReady = false;
+        this.wordEngineInitPromise = null;
     }
-    
+
     initialize() {
         debug('🌟 Inicializando HostManager');
         this.cacheElements();
         this.attachEventListeners();
-        
+
+        // Precargar motor de palabras lo antes posible
+        this.initWordEngine();
+
         const savedGameId = getLocalStorage('gameId');
-        
+
         if (savedGameId) {
             debug('🔄 Intentando recuperar sesión del host');
             this.recoverSession(savedGameId).then(recovered => {
@@ -44,12 +55,35 @@ class HostManager {
             // 🔧 FIX: Mostrar modal de crear partida (NO config)
             this.showCreateGameModal();
         }
-        
+
         document.addEventListener('keypress', (e) => this.handleKeyPress(e));
         document.addEventListener('click', (e) => this.handleDocumentClick(e));
         debug('✅ HostManager inicializado');
     }
-    
+
+    initWordEngine() {
+        if (this.wordEngineInitPromise) return this.wordEngineInitPromise;
+
+        this.wordEngineInitPromise = (async () => {
+            try {
+                if (typeof WordEquivalenceEngine !== 'function') {
+                    console.warn('⚠️ WordEquivalenceEngine no está disponible. Verificar inclusión de js/word-comparison.js');
+                    this.wordEngineReady = false;
+                    return;
+                }
+
+                this.wordEngine = new WordEquivalenceEngine();
+                await this.wordEngine.init('/js/sinonimos.json');
+                this.wordEngineReady = true;
+            } catch (e) {
+                console.error('❌ Error inicializando word engine:', e);
+                this.wordEngineReady = false;
+            }
+        })();
+
+        return this.wordEngineInitPromise;
+    }
+
     cacheElements() {
         this.elements = {
             modalCreateGame: safeGetElement('modal-create-game'),
@@ -88,12 +122,12 @@ class HostManager {
             hamburgerMenu: safeGetElement('hamburger-menu-host')
         };
     }
-    
+
     attachEventListeners() {
         if (this.elements.btnCreateGame) {
             this.elements.btnCreateGame.addEventListener('click', () => this.createGame());
         }
-        
+
         if (this.elements.customCodeInput) {
             this.elements.customCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.createGame();
@@ -183,19 +217,19 @@ class HostManager {
                 this.finishGame();
             });
         }
-        
+
         if (this.elements.btnConfigCancel) {
             this.elements.btnConfigCancel.addEventListener('click', () => this.hideConfigModal());
         }
-        
+
         if (this.elements.btnConfigSave) {
             this.elements.btnConfigSave.addEventListener('click', () => this.saveGameConfig());
         }
-        
+
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.addEventListener('click', () => this.startRound());
         }
-        
+
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.addEventListener('click', () => this.endRound());
         }
@@ -207,7 +241,7 @@ class HostManager {
         if (this.elements.btnFinishGame) {
             this.elements.btnFinishGame.addEventListener('click', () => this.finishGame());
         }
-        
+
         if (this.elements.btnNewGame) {
             this.elements.btnNewGame.addEventListener('click', () => this.createNewGame());
         }
@@ -445,7 +479,7 @@ class HostManager {
             showNotification('No puedes configurar durante una ronda activa', 'warning');
             return;
         }
-        
+
         if (this.elements.configTotalRounds) {
             this.elements.configTotalRounds.value = this.gameConfig.totalRounds;
         }
@@ -455,7 +489,7 @@ class HostManager {
         if (this.elements.configMinPlayers) {
             this.elements.configMinPlayers.value = this.gameConfig.minPlayers;
         }
-        
+
         safeShowElement(this.elements.modalGameConfig);
     }
 
@@ -486,7 +520,7 @@ class HostManager {
         showNotification('✅ Configuración guardada', 'success');
         debug(`Config: ${totalRounds} rondas, ${roundDuration}s, mín ${minPlayers} jugadores`);
     }
-    
+
     handleKeyPress(event) {
         if (event.key === 'Enter') {
             if (this.elements.btnStartRound && !this.elements.btnStartRound.disabled) {
@@ -494,14 +528,14 @@ class HostManager {
             }
         }
     }
-    
+
     async recoverSession(gameId) {
         try {
             this.gameId = gameId;
             this.client = new GameClient(gameId, null, 'host');
-            
+
             const result = await this.client.sendAction('get_state', { game_id: gameId });
-            
+
             if (result.success && result.state) {
                 debug('✅ Sesión del host recuperada');
                 this.loadGameScreen(result.state);
@@ -510,10 +544,10 @@ class HostManager {
         } catch (error) {
             debug('Error recuperando sesión:', error, 'error');
         }
-        
+
         return false;
     }
-    
+
     showCreateGameModal() {
         safeShowElement(this.elements.modalCreateGame);
         safeHideElement(this.elements.gameScreen);
@@ -521,24 +555,24 @@ class HostManager {
         // Async init (categories + suggested code)
         this.initializeCreateGameForm();
     }
-    
+
     loadGameScreen(state) {
         safeHideElement(this.elements.modalCreateGame);
         safeShowElement(this.elements.gameScreen);
-        
+
         if (this.elements.gameCodeTv) {
             this.elements.gameCodeTv.textContent = this.gameId;
         }
-        
+
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
-        
+
         this.client.connect();
         safeShowElement(this.elements.controlsPanel);
-        
+
         this.handleStateUpdate(state);
     }
-    
+
     async createGame() {
         let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
         const selectedCategory = this.elements.categorySelect?.value || null;
@@ -549,26 +583,26 @@ class HostManager {
             }
             return;
         }
-        
+
         if (!customCode) {
             customCode = await generateGameCodeForCategory(selectedCategory, 3, 5);
         }
-        
+
         this.gameId = customCode;
         setLocalStorage('selectedCategory', selectedCategory);
-        
+
         if (this.elements.btnCreateGame) {
             this.elements.btnCreateGame.disabled = true;
             this.elements.btnCreateGame.textContent = 'Conectando...';
         }
-        
+
         if (this.elements.statusMessage) {
             this.elements.statusMessage.innerHTML = '⏳ Conectando...';
         }
-        
+
         try {
             this.client = new GameClient(this.gameId, null, 'host');
-            
+
             const result = await this.client.sendAction('create_game', {
                 game_id: this.gameId,
                 total_rounds: this.gameConfig.totalRounds,
@@ -576,16 +610,16 @@ class HostManager {
                 min_players: this.gameConfig.minPlayers,
                 category: selectedCategory
             });
-            
+
             if (result.success) {
                 debug(`✅ Juego creado: ${this.gameId}`);
-                
+
                 setLocalStorage('gameId', this.gameId);
                 setLocalStorage('gameConfig', JSON.stringify(this.gameConfig));
-                
+
                 this.loadGameScreen(result.state || {});
                 showNotification(`🎮 Partida: ${this.gameId}`, 'success');
-                
+
             } else {
                 if (this.elements.statusMessage) {
                     this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'Desconocido');
@@ -615,7 +649,7 @@ class HostManager {
 
     updateHostUI() {
         if (!this.gameState) return;
-        
+
         debug('🖥️ Actualizando UI del host', 'debug');
         this.updateRanking();
         this.updateTopWords();
@@ -637,10 +671,10 @@ class HostManager {
         } else {
             const roundDisplay = document.getElementById('round-display');
             const totalRoundsDisplay = document.getElementById('total-rounds-display');
-            
+
             if (roundDisplay) roundDisplay.textContent = this.gameState.round || 0;
             if (totalRoundsDisplay) totalRoundsDisplay.textContent = this.gameConfig.totalRounds;
-            
+
             safeShowElement(roundInfo);
         }
     }
@@ -674,14 +708,14 @@ class HostManager {
             safeHideElement(wordDisplay);
         }
     }
-    
+
     updateRanking() {
         if (!this.gameState.players) return;
-        
+
         const ranking = Object.values(this.gameState.players)
             .sort((a, b) => (b.score || 0) - (a.score || 0))
             .slice(0, 5);
-        
+
         let html = '';
         ranking.forEach((player, idx) => {
             const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][idx];
@@ -693,15 +727,15 @@ class HostManager {
                 </div>
             `;
         });
-        
+
         if (this.elements.rankingList) {
             this.elements.rankingList.innerHTML = html || '<div style="opacity: 0.5; text-align: center; padding: 20px;">Esperando jugadores...</div>';
         }
     }
-    
+
     updateTopWords() {
         if (!this.gameState.round_top_words) return;
-        
+
         let html = '';
         this.gameState.round_top_words.forEach((item) => {
             html += `
@@ -711,45 +745,45 @@ class HostManager {
                 </div>
             `;
         });
-        
+
         if (this.elements.topWordsList) {
             this.elements.topWordsList.innerHTML = html || '<div style="opacity: 0.5; text-align: center; padding: 20px;">Sin palabras aún</div>';
         }
     }
-    
+
     updatePlayersGrid() {
         const grid = this.elements.playersGrid;
         if (!grid) return;
-        
+
         if (!this.gameState.players) {
             grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
             return;
         }
-        
+
         const players = Object.values(this.gameState.players);
-        
+
         if (players.length === 0) {
             grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
             return;
         }
-        
+
         let html = '';
-        
+
         players.forEach(player => {
             try {
                 const colors = player.color?.split(',') || ['#808080', '#404040'];
                 const color1 = colors[0]?.trim() || '#808080';
                 const color2 = colors[1]?.trim() || '#404040';
                 const gradient = `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
-                
+
                 const statusClass = this.getStatusClass(player);
                 const statusEmoji = this.getStatusEmoji(player);
                 const glowColor = color1;
                 const glowShadow = `0 0 24px ${glowColor}88, 0 0 48px ${glowColor}44, inset 0 0 24px ${glowColor}22`;
                 const initial = (player.name || 'J')[0].toUpperCase();
-                
+
                 html += `
-                    <div class="player-squarcle status-${statusClass}" 
+                    <div class="player-squarcle status-${statusClass}"
                          data-player-id="${player.id}"
                          style="background: ${gradient}; box-shadow: ${glowShadow};">
                         <div class="player-initial">${initial}</div>
@@ -762,9 +796,9 @@ class HostManager {
                 debug(`Error renderizando squarcle para ${player.name}:`, error, 'error');
             }
         });
-        
+
         grid.innerHTML = html;
-        
+
         grid.querySelectorAll('.btn-remove-player').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -772,7 +806,7 @@ class HostManager {
                 this.removePlayer(playerId);
             });
         });
-        
+
         debug(`✅ ${players.length} jugadores renderizados`, 'debug');
     }
 
@@ -798,7 +832,7 @@ class HostManager {
             showNotification('Error al eliminar jugador', 'error');
         }
     }
-    
+
     getStatusClass(player) {
         if (player.disconnected) return 'disconnected';
         if (player.status === 'ready') return 'ready';
@@ -806,7 +840,7 @@ class HostManager {
         if (player.status === 'waiting') return 'waiting';
         return 'connected';
     }
-    
+
     getStatusEmoji(player) {
         if (player.disconnected) return '❌';
         if (player.status === 'ready') return '✅';
@@ -815,15 +849,20 @@ class HostManager {
         if (player.status === 'connected') return '👥';
         return '👤';
     }
-    
+
     updateStatusMessage() {
+        if (this.hostStatusOverride && this.elements.statusMessage) {
+            this.elements.statusMessage.innerHTML = this.hostStatusOverride;
+            return;
+        }
+
         let message = 'Cargando...';
-        
+
         switch (this.gameState.status) {
             case 'waiting':
                 const activePlayers = Object.values(this.gameState.players || {})
                     .filter(p => !p.disconnected).length;
-                
+
                 if (activePlayers === 0) {
                     message = '👥 ESPERANDO JUGADORES';
                 } else if (activePlayers < this.gameConfig.minPlayers) {
@@ -837,7 +876,7 @@ class HostManager {
                 message = `📚 ESCRIBIENDO...<br>Categoría: ${sanitizeText(this.gameState.current_category || 'N/A')}`;
                 break;
             case 'round_ended':
-                message = '✅ PROCESANDO RESULTADOS';
+                message = '✅ RESULTADOS LISTOS';
                 break;
             case 'finished':
                 const winner = Object.values(this.gameState.players || {})
@@ -846,29 +885,29 @@ class HostManager {
                 message = `🎉 ¡${winnerName} GANÓ!<br>Puntuación final: ${winner?.score || 0}`;
                 break;
         }
-        
+
         if (this.elements.statusMessage) {
             this.elements.statusMessage.innerHTML = message;
         }
     }
-    
+
     updateButtonStates() {
         const isWaiting = this.gameState.status === 'waiting';
         const isPlaying = this.gameState.status === 'playing';
         const isRoundEnded = this.gameState.status === 'round_ended';
         const isFinished = this.gameState.status === 'finished';
-        
+
         const activePlayers = Object.values(this.gameState.players || {})
             .filter(p => !p.disconnected);
         const activeCount = activePlayers.length;
         const canStartRound = isWaiting && activeCount >= this.gameConfig.minPlayers;
         const isLastRound = this.gameState.round >= this.gameConfig.totalRounds;
-        
+
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.disabled = !canStartRound;
             this.elements.btnStartRound.style.display = isWaiting ? 'block' : 'none';
         }
-        
+
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.disabled = !isPlaying;
             this.elements.btnEndRound.style.display = isPlaying ? 'block' : 'none';
@@ -883,16 +922,16 @@ class HostManager {
             this.elements.btnFinishGame.disabled = !isRoundEnded;
             this.elements.btnFinishGame.style.display = (isRoundEnded && isLastRound) ? 'block' : 'none';
         }
-        
+
         if (this.elements.btnNewGame) {
             this.elements.btnNewGame.style.display = isFinished ? 'block' : 'none';
         }
-        
+
         if (this.elements.btnConfig) {
             this.elements.btnConfig.disabled = !isWaiting;
         }
     }
-    
+
     updateTimer() {
         if (this.gameState.status !== 'playing') {
             this.stopTimer();
@@ -901,11 +940,11 @@ class HostManager {
             }
             return;
         }
-        
+
         if (this.gameState.round_started_at && this.gameState.round_duration) {
             const now = Math.floor(Date.now() / 1000);
             const remaining = this.gameState.round_duration - (now - this.gameState.round_started_at);
-            
+
             if (remaining > 0) {
                 this.startContinuousTimer();
             } else {
@@ -913,12 +952,12 @@ class HostManager {
             }
         }
     }
-    
+
     startContinuousTimer() {
         if (this.timerInterval) return;
-        
+
         this.updateTimerFromState();
-        
+
         this.timerInterval = setInterval(() => {
             if (this.client && this.gameState && this.gameState.status === 'playing') {
                 this.updateTimerFromState();
@@ -927,34 +966,34 @@ class HostManager {
             }
         }, 1000);
     }
-    
+
     updateTimerFromState() {
         const now = Math.floor(Date.now() / 1000);
         const elapsed = now - this.gameState.round_started_at;
         const remaining = Math.max(0, this.gameState.round_duration - elapsed);
         updateTimerDisplay(remaining, this.elements.timerDisplay);
     }
-    
+
     stopTimer() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
         }
     }
-    
+
     async startRound() {
         try {
             if (this.elements.btnStartRound) {
                 this.elements.btnStartRound.disabled = true;
                 this.elements.btnStartRound.textContent = 'Iniciando...';
             }
-            
+
             const result = await this.client.sendAction('start_round', {
                 game_id: this.gameId,
                 duration: this.gameConfig.roundDuration,
                 total_rounds: this.gameConfig.totalRounds
             });
-            
+
             if (!result.success) {
                 showNotification('Error iniciando: ' + (result.message || 'desconocido'), 'error');
                 if (this.elements.btnStartRound) {
@@ -971,26 +1010,139 @@ class HostManager {
             }
         }
     }
-    
+
+    buildHostResultsFromState(state) {
+        const players = state?.players || {};
+        const engine = this.wordEngine;
+
+        const wordCounts = {}; // canonical -> { players: [name...] }
+        const playerCanonicals = {}; // playerId -> [canonical...]
+
+        Object.keys(players).forEach((pId) => {
+            const player = players[pId];
+            if (!player || player.disconnected) return;
+
+            const answers = Array.isArray(player.answers) ? player.answers : [];
+            const seen = new Set();
+
+            answers.forEach((w) => {
+                const raw = (w || '').toString().trim();
+                if (!raw) return;
+
+                const canonical = (engine && this.wordEngineReady)
+                    ? engine.getCanonical(raw)
+                    : raw.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+                if (!canonical) return;
+                if (seen.has(canonical)) return;
+                seen.add(canonical);
+
+                if (!playerCanonicals[pId]) playerCanonicals[pId] = [];
+                playerCanonicals[pId].push(canonical);
+
+                if (!wordCounts[canonical]) wordCounts[canonical] = { players: [] };
+                if (!wordCounts[canonical].players.includes(player.name)) {
+                    wordCounts[canonical].players.push(player.name);
+                }
+            });
+        });
+
+        // Resultados por jugador
+        const outPlayers = {};
+
+        Object.keys(players).forEach((pId) => {
+            const player = players[pId];
+            if (!player) return;
+
+            const roundResults = {};
+            let roundScore = 0;
+
+            const canonList = playerCanonicals[pId] || [];
+            canonList.forEach((canonical) => {
+                const count = (wordCounts[canonical]?.players || []).length;
+                const points = count > 1 ? count : 0;
+                const matchedWith = (wordCounts[canonical]?.players || []).filter(n => n !== player.name);
+
+                roundResults[canonical] = {
+                    points,
+                    count,
+                    matched_with: matchedWith
+                };
+
+                roundScore += points;
+            });
+
+            outPlayers[pId] = {
+                score_delta: roundScore,
+                round_results: roundResults
+            };
+        });
+
+        // Top words
+        let topWords = [];
+        Object.keys(wordCounts).forEach((canonical) => {
+            const playersList = wordCounts[canonical].players || [];
+            if (playersList.length > 1) {
+                topWords.push({
+                    word: canonical,
+                    count: playersList.length,
+                    players: playersList
+                });
+            }
+        });
+
+        topWords.sort((a, b) => b.count - a.count);
+        topWords = topWords.slice(0, 10);
+
+        return {
+            players: outPlayers,
+            round_top_words: topWords
+        };
+    }
+
     async endRound() {
         try {
             if (this.elements.btnEndRound) {
                 this.elements.btnEndRound.disabled = true;
                 this.elements.btnEndRound.textContent = 'Finalizando...';
             }
-            
+
+            this.hostStatusOverride = '⏳ CALCULANDO LOS RESULTADOS...';
+            this.updateStatusMessage();
+
+            await this.initWordEngine();
+
+            const hostResults = this.buildHostResultsFromState(this.gameState);
+
             const result = await this.client.sendAction('end_round', {
-                game_id: this.gameId
+                game_id: this.gameId,
+                host_results: hostResults
             });
-            
+
+            // Dejar que el estado (round_ended) pinte el mensaje normal
+            this.hostStatusOverride = null;
+            this.updateStatusMessage();
+
             if (!result.success) {
                 showNotification('Error finalizando ronda', 'error');
                 if (this.elements.btnEndRound) {
                     this.elements.btnEndRound.disabled = false;
                     this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
                 }
+                return;
             }
+
+            // Mensaje breve de confirmación
+            this.hostStatusOverride = '✅ RESULTADOS LISTOS!';
+            this.updateStatusMessage();
+            setTimeout(() => {
+                this.hostStatusOverride = null;
+                this.updateStatusMessage();
+            }, 900);
+
         } catch (error) {
+            this.hostStatusOverride = null;
+            this.updateStatusMessage();
             debug('Error finalizando ronda:', error, 'error');
             showNotification('Error de conexión', 'error');
             if (this.elements.btnEndRound) {
@@ -1011,7 +1163,7 @@ class HostManager {
                 duration: this.gameConfig.roundDuration,
                 total_rounds: this.gameConfig.totalRounds
             });
-            
+
             if (result.success) {
                 showNotification('✅ Ronda reiniciada', 'success');
             } else {
@@ -1029,13 +1181,13 @@ class HostManager {
                 this.elements.btnNextRound.disabled = true;
                 this.elements.btnNextRound.textContent = 'Preparando...';
             }
-            
+
             const result = await this.client.sendAction('start_round', {
                 game_id: this.gameId,
                 duration: this.gameConfig.roundDuration,
                 total_rounds: this.gameConfig.totalRounds
             });
-            
+
             if (!result.success) {
                 showNotification('Error iniciando siguiente ronda', 'error');
                 if (this.elements.btnNextRound) {
@@ -1059,11 +1211,11 @@ class HostManager {
                 this.elements.btnFinishGame.disabled = true;
                 this.elements.btnFinishGame.textContent = 'Terminando...';
             }
-            
+
             const result = await this.client.sendAction('reset_game', {
                 game_id: this.gameId
             });
-            
+
             if (!result.success) {
                 showNotification('Error terminando partida', 'error');
                 if (this.elements.btnFinishGame) {
@@ -1080,14 +1232,14 @@ class HostManager {
             }
         }
     }
-    
+
     createNewGame() {
         if (confirm('¿Iniciar una nueva partida?')) {
             clearGameSession();
             location.reload();
         }
     }
-    
+
     handleConnectionLost() {
         alert('Desconectado del servidor');
         location.reload();
@@ -1106,4 +1258,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js - FIX: Modal config NO aparece al iniciar, hamburguesa menu agregada', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js - Host calcula resultados y envía host_results', 'color: #10B981; font-weight: bold');

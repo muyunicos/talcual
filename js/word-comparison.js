@@ -6,30 +6,32 @@ class WordEquivalenceEngine {
     constructor() {
         this.dictionaryMap = {};
         // Aquí guardaremos las palabras que NO deben perder su vocal final
-        this.strictGenderSet = new Set(); 
+        this.strictGenderSet = new Set();
         this.isLoaded = false;
     }
 
-    async init(jsonUrl = 'sinonimos.json') {
+    async init(jsonUrl = '/js/sinonimos.json') {
         try {
             const response = await fetch(jsonUrl);
-            if (!response.ok) throw new Error("Error cargando JSON");
+            if (!response.ok) throw new Error('Error cargando JSON');
             const data = await response.json();
             this.processDictionary(data);
             this.isLoaded = true;
-            console.log("✅ Motor listo. Palabras estrictas protegidas:", this.strictGenderSet.size);
+            console.log('✅ Motor listo. Palabras estrictas protegidas:', this.strictGenderSet.size);
         } catch (error) {
             console.error(error);
         }
     }
 
     processDictionary(data) {
+        if (!Array.isArray(data)) return;
+
         data.forEach(group => {
             if (!Array.isArray(group) || group.length === 0) return;
 
             // Procesamos la primera palabra para saber si es el ID canónico
             let canonicalRaw = group[0];
-            
+
             // Si la canónica tiene punto, la limpiamos para usarla de ID
             if (canonicalRaw.endsWith('.')) {
                 canonicalRaw = canonicalRaw.slice(0, -1);
@@ -46,6 +48,7 @@ class WordEquivalenceEngine {
                 }
 
                 const norm = this.normalize(cleanWord);
+                if (!norm) return;
 
                 // 2. GUARDAR EN LA LISTA DE PROTECCIÓN
                 if (isStrict) {
@@ -54,10 +57,10 @@ class WordEquivalenceEngine {
 
                 // 3. MAPEAR
                 this.dictionaryMap[norm] = canonicalRaw;
-                
+
                 // Mapeamos también la raíz para búsquedas flexibles
                 // OJO: Al generar el stem inicial, respetamos si es estricta o no
-                const stem = this.getStem(norm); 
+                const stem = this.getStem(norm);
                 if (stem !== norm) {
                     if (!this.dictionaryMap[stem]) {
                         this.dictionaryMap[stem] = canonicalRaw;
@@ -69,10 +72,12 @@ class WordEquivalenceEngine {
 
     normalize(word) {
         if (!word) return '';
-        return word.toString()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        return word
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
             .toUpperCase()
-            .replace(/[^A-Z0-9]/g, ""); // Borra puntos y simbolos del INPUT del usuario
+            .replace(/[^A-Z0-9]/g, ''); // Borra puntos y simbolos del INPUT del usuario
     }
 
     /**
@@ -84,7 +89,7 @@ class WordEquivalenceEngine {
         // 1. Limpieza de Plurales (Siempre permitida, PENAS -> PENA es válido)
         if (stem.endsWith('CES')) stem = stem.slice(0, -3) + 'Z';
         else if (stem.endsWith('S') && stem.length > 3) stem = stem.slice(0, -1);
-        
+
         // 2. Limpieza de Diminutivos (Gatito -> Gat)
         // Esto lo hacemos antes de chequear protección, para que PENITA -> PENA
         stem = stem.replace(/(C)?IT[AO]$/, '');
@@ -93,9 +98,9 @@ class WordEquivalenceEngine {
         // Antes de cortar la vocal final (Género), chequeamos si esta palabra
         // está en la lista de "strictGenderSet" (la que cargamos con puntos).
         if (this.strictGenderSet.has(stem)) {
-            // ¡ALTO! Es una palabra protegida (ej: PENA). 
+            // ¡ALTO! Es una palabra protegida (ej: PENA).
             // Devolvemos "PENA" tal cual, sin cortar la A.
-            return stem; 
+            return stem;
         }
 
         // 3. Limpieza de Vocal Final (Solo si NO es estricta)
@@ -106,14 +111,29 @@ class WordEquivalenceEngine {
         return stem;
     }
 
+    /**
+     * Devuelve una clave canónica para agrupar resultados.
+     * Si está en el diccionario (exacto o por stem), devuelve el ID canónico.
+     * Si no está, devuelve la palabra normalizada.
+     */
+    getCanonical(word) {
+        const n = this.normalize(word);
+        if (!n) return '';
+
+        let id = this.dictionaryMap[n];
+        if (!id) id = this.dictionaryMap[this.getStem(n)];
+
+        return id ? this.normalize(id) : n;
+    }
+
     areEquivalent(word1, word2) {
         if (!this.isLoaded && Object.keys(this.dictionaryMap).length === 0) {
-             console.warn("Diccionario vacío o cargando...");
+            console.warn('Diccionario vacío o cargando...');
         }
 
         const n1 = this.normalize(word1);
         const n2 = this.normalize(word2);
-        
+
         if (n1 === n2) return true;
 
         // Búsqueda Inteligente (Dict -> Stem)
