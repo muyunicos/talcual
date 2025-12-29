@@ -16,7 +16,7 @@ function env($key, $default = null) {
 }
 
 // Obtener directorio raíz del proyecto
-$rootDir = dirname(__DIR__, 2);
+$rootDir = dirname(__DIR__, 1);
 
 // Cargar variables de entorno si existe .env
 if (file_exists($rootDir . '/.env')) {
