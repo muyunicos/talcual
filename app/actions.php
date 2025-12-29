@@ -4,6 +4,7 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/word-comparison-engine.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -419,9 +420,13 @@ try {
                 break;
             }
 
+            // FEAT: Usar motor inteligente de comparación de palabras
+            $engine = WordEquivalenceEngine::getInstance();
             $wordCounts = [];
             $playerWords = [];
+            $wordCanonicals = []; // Mapeo de palabra original → canónica
 
+            // Procesar respuestas de todos los jugadores
             foreach ($state['players'] as $pId => $player) {
                 foreach ($player['answers'] as $word) {
                     $trimmed = trim($word);
@@ -430,33 +435,48 @@ try {
                     }
                     
                     $normalized = strtoupper($trimmed);
-
-                    if (!isset($wordCounts[$normalized])) {
-                        $wordCounts[$normalized] = [];
+                    
+                    // Obtener palabra canónica usando motor inteligente
+                    $canonical = $engine->getCanonicalWord($normalized);
+                    if ($canonical === null) {
+                        // Si no está en diccionario, usar palabra normalizada
+                        $canonical = $normalized;
+                    }
+                    
+                    // Guardar mapeo original → canónica
+                    $wordCanonicals[$normalized] = $canonical;
+                    
+                    // Agrupar por palabra canónica
+                    if (!isset($wordCounts[$canonical])) {
+                        $wordCounts[$canonical] = [];
+                    }
+                    if (!in_array($player['name'], $wordCounts[$canonical])) {
+                        $wordCounts[$canonical][] = $player['name'];
                     }
 
-                    $wordCounts[$normalized][] = $player['name'];
-
+                    // Registrar palabra del jugador
                     if (!isset($playerWords[$pId])) {
                         $playerWords[$pId] = [];
                     }
-
-                    $playerWords[$pId][] = $normalized;
+                    if (!in_array($canonical, $playerWords[$pId])) {
+                        $playerWords[$pId][] = $canonical;
+                    }
                 }
             }
 
+            // Calcular puntos basado en palabras canónicas
             foreach ($state['players'] as $pId => $player) {
                 $roundResults = [];
                 $roundScore = 0;
 
                 if (!empty($playerWords[$pId])) {
-                    foreach ($playerWords[$pId] as $word) {
-                        $count = count($wordCounts[$word]);
+                    foreach ($playerWords[$pId] as $canonical) {
+                        $count = count($wordCounts[$canonical]);
                         $points = $count > 1 ? $count : 0;
 
-                        $matchedWith = array_diff($wordCounts[$word], [$player['name']]);
+                        $matchedWith = array_diff($wordCounts[$canonical], [$player['name']]);
 
-                        $roundResults[$word] = [
+                        $roundResults[$canonical] = [
                             'points' => $points,
                             'count' => $count,
                             'matched_with' => array_values($matchedWith)
@@ -471,6 +491,7 @@ try {
                 $state['players'][$pId]['status'] = 'connected';
             }
 
+            // Generar lista de palabras más populares
             $topWords = [];
             foreach ($wordCounts as $word => $players) {
                 if (count($players) > 1) {
