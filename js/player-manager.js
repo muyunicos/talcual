@@ -169,7 +169,7 @@ class PlayerManager {
             );
             // Preseleccionar una al azar
             this.playerColor = randomAura.hex;
-            this.selectedAura = aura;
+            this.selectedAura = randomAura;
         }
         
         if (this.elements.inputGameCode) {
@@ -751,4 +751,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js cargado - FIX #37: Mostrar palabra y campos en estado playing', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js cargado - FIX #39: Corregir referencia a variable aura -> randomAura', 'color: #FF00FF; font-weight: bold; font-size: 12px');
