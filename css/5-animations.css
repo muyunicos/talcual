@@ -37,6 +37,22 @@
     animation: pulse 1s infinite;
 }
 
+/* ========== ANIMACIÓN COUNTDOWN PULSE (NUEVO) ========== */
+@keyframes pulse-countdown {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0.8;
+    }
+}
+
+.countdown-display {
+    animation: pulse-countdown 1s infinite;
+}
+
 /* ========== ANIMACIÓN GLOW ========== */
 @keyframes glow {
     from {
@@ -51,7 +67,7 @@
     animation: glow 2s ease-in-out infinite alternate;
 }
 
-/* ========== ANIMACIÓN COUNTDOWN PULSE ========== */
+/* ========== ANIMACIÓN COUNTDOWN PULSE (Efecto rotación) ========== */
 @keyframes countdownPulse {
     0% {
         transform: scale(0.5) rotate(-20deg);
