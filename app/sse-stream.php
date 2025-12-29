@@ -1,7 +1,7 @@
 <?php
-// 🔧 FIX #33: SSE usando patrón de notificación por game_id
+// 🔧 FIX #33: SSE usando patrón de notificación per-game con contador monótonico
 // Archivos: {GAME_ID}_all.json, {GAME_ID}_host.json
-// En lugar de filemtime() agresivo que causa buffering en Hostinger
+// Contienen un número que incrementa con cada cambio (nunca retrocede)
 
 require_once __DIR__ . '/config.php';
 
@@ -54,14 +54,29 @@ function sendSSE($event, $data) {
     }
 }
 
-// 🔧 FIX #33: Usar archivos de notificación per-game
+/**
+ * Lee el contador monótonico del archivo de notificación
+ * Nunca retrocede, siempre incrementa
+ */
+function getNotifyCounter($filePath) {
+    if (!file_exists($filePath)) {
+        return 0;
+    }
+    $content = @file_get_contents($filePath);
+    if ($content && is_numeric($content)) {
+        return (int)$content;
+    }
+    return 0;
+}
+
+// 🔧 FIX #33: Usar archivos de notificación per-game con contador
 $notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
 $notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
 
 // Único archivo que nos importa según el rol
 $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
 
-$lastNotify = 0;
+$lastNotify = 0;  // Contador anterior
 $startTime = time();
 $maxDuration = 1800; // 30 minutos
 $heartbeatInterval = 30; // cada 30s
@@ -72,7 +87,7 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with per-game notify files'
+    'method' => 'SSE with per-game monotonic counter'
 ]);
 
 logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}", 'DEBUG');
@@ -90,26 +105,23 @@ while ((time() - $startTime) < $maxDuration) {
         break;
     }
     
-    // 🔧 FIX #33: Chequear archivo de notificación per-game
+    // 🔧 FIX #33: Leer contador monótonico (nunca retrocede)
     clearstatcache(false, $notifyFile);
+    $currentNotify = getNotifyCounter($notifyFile);
     
-    if (file_exists($notifyFile)) {
-        $currentNotify = @filemtime($notifyFile) ?: time();
+    if ($currentNotify > $lastNotify) {
+        // Hay cambio(s), enviar estado actualizado
+        $state = loadGameState($gameId);
         
-        if ($currentNotify > $lastNotify) {
-            // Hay cambio, enviar estado actualizado
-            $state = loadGameState($gameId);
+        if ($state) {
+            $playerCount = count(array_filter($state['players'], function($p) {
+                return !$p['disconnected'];
+            }));
             
-            if ($state) {
-                $playerCount = count(array_filter($state['players'], function($p) {
-                    return !$p['disconnected'];
-                }));
-                
-                sendSSE('update', $state);
-                $lastNotify = $currentNotify;
-                
-                logMessage("SSE update enviado para {$gameId} (status={$state['status']}, {$playerCount} activos)", 'DEBUG');
-            }
+            sendSSE('update', $state);
+            $lastNotify = $currentNotify;
+            
+            logMessage("SSE update enviado para {$gameId} (counter: {$currentNotify}, status={$state['status']}, {$playerCount} activos)", 'DEBUG');
         }
     }
     
@@ -125,7 +137,7 @@ while ((time() - $startTime) < $maxDuration) {
         logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
     }
     
-    // Dormir 1 segundo (no 50ms como antes)
+    // Dormir 1 segundo
     sleep(1);
 }
 
