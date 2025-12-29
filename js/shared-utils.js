@@ -152,7 +152,7 @@ function clearGameSession() {
  * @returns {boolean} Es válido
  */
 function isValidGameCode(code) {
-    return code && code.length >= 3 && code.length <= 6;
+    return code && code.length >= 3 && code.length <= 5;
 }
 
 /**
@@ -446,12 +446,10 @@ async function loadDictionary() {
             debug('Error cargando diccionario, usando fallback', error, 'warn');
             dictionaryPromise = null;
 
-            // Fallback: palabras comunes de 4-6 letras (memorables para códigos)
+            // Fallback: palabras comunes de 3-5 letras (memorables para códigos)
             dictionaryCache = [
                 'CASA', 'MESA', 'LIBRO', 'GATO', 'PERRO', 'AGUA', 'FUEGO', 'VIENTO', 'LLUVIA', 'SOL',
-                'LUNA', 'ESTRELLA', 'ARBOL', 'FLOR', 'PAJARO', 'PESCADO', 'LECHE', 'PAN', 'VINO', 'CARNE',
-                'QUESO', 'MANZANA', 'PERA', 'UVA', 'PLATANO', 'NARANJA', 'LIMON', 'TOMATE', 'PAPA', 'ARROZ',
-                'FRESA', 'MELON', 'SANDIA', 'PINA', 'CIRUELA', 'DURAZNO', 'NUEZ', 'ALMENDRA', 'CACAHUATE'
+                'LUNA', 'ARBOL', 'FLOR', 'PAN', 'VINO', 'CARNE', 'QUESO', 'PERA', 'UVA', 'ARROZ'
             ];
 
             return dictionaryCache;
@@ -485,16 +483,16 @@ function filterWordsByLength(words, minLength, maxLength) {
 
 /**
  * Genera código aleatorio para sala usando palabras del diccionario
- * Selecciona 1 palabra válida del diccionario (4-6 caracteres)
+ * Selecciona 1 palabra válida del diccionario (3-5 caracteres)
  * 
- * @returns {Promise<string>} Código generado (ej: "CASA", "LIBRO")
+ * @returns {Promise<string>} Código generado (ej: "SOL", "CASA")
  */
 async function generateGameCode() {
     try {
         const dict = await loadDictionary();
         
-        // Filtrar palabras válidas (4-6 caracteres)
-        const validWords = filterWordsByLength(dict, 4, 6);
+        // Filtrar palabras válidas (3-5 caracteres)
+        const validWords = filterWordsByLength(dict, 3, 5);
         
         if (validWords.length === 0) {
             debug('⚠️ No hay palabras válidas en diccionario, usando generador aleatorio', null, 'warn');
