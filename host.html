@@ -98,10 +98,11 @@
             <!-- HEADER CON TEMPORIZADOR CENTRADO Y RONDA -->
             <div class="tv-header">
                 <div class="timer-container">
-                    <div class="timer-display" id="timer-display">00:00</div>
                     <div class="round-info" id="round-info" style="display: none;">
                         Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span>
                     </div>
+                    <div class="timer-display" id="timer-display">00:00</div>
+                    
                 </div>
             </div>
 
@@ -113,16 +114,20 @@
 
             <!-- CENTRO - Estado/Palabra/Categoría -->
             <div class="center-panel">
-                <div class="status-message" id="status-message" role="status" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
                 <div class="category-display" id="category-display" style="display: none;">
                     <span class="label">Categoría:</span>
                     <span class="value" id="category-value"></span>
                 </div>
+                <div class="status-message" id="status-message" role="status" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
+                
                 <div class="word-display" id="word-display" style="display: none;">
                     <span class="word" id="word-value"></span>
                 </div>
                 <div class="countdown-display" id="countdown-display" style="display: none;">
                     <span id="countdown-value">3</span>
+                </div>
+                <div class="start-button-container">
+                    <button class="btn-empezar" id="btn-start-round" style="display: none;">¡Empezar!</button>
                 </div>
             </div>
 
@@ -132,10 +137,7 @@
                 <div id="top-words-list"></div>
             </div>
 
-            <!-- BOTÓN ¡EMPEZAR! (Encima de jugadores, centrado) -->
-            <div class="start-button-container">
-                <button class="btn-empezar" id="btn-start-round" style="display: none;">¡Empezar!</button>
-            </div>
+           
 
             <!-- JUGADORES ABAJO -->
             <div class="players-grid" id="players-grid"></div>
