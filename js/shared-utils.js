@@ -212,7 +212,17 @@ function safeGetElement(id, orDefault = null) {
  */
 function safeShowElement(element, display = 'block') {
     const el = typeof element === 'string' ? safeGetElement(element) : element;
-    if (el) el.style.display = display;
+    if (!el) return;
+
+    // Para overlays modales, nunca forzar display inline (rompe layout);
+    // se controla exclusivamente con .modal-overlay.hidden
+    if (el.classList && el.classList.contains('modal-overlay')) {
+        el.classList.remove('hidden');
+        el.style.display = '';
+        return;
+    }
+
+    el.style.display = display;
 }
 
 /**
@@ -221,7 +231,16 @@ function safeShowElement(element, display = 'block') {
  */
 function safeHideElement(element) {
     const el = typeof element === 'string' ? safeGetElement(element) : element;
-    if (el) el.style.display = 'none';
+    if (!el) return;
+
+    // Para overlays modales, ocultar via clase .hidden (sin tocar display)
+    if (el.classList && el.classList.contains('modal-overlay')) {
+        el.classList.add('hidden');
+        el.style.display = '';
+        return;
+    }
+
+    el.style.display = 'none';
 }
 
 /**
