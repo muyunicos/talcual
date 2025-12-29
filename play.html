@@ -58,7 +58,7 @@
             <div class="category-label" id="category-label" style="display: none;"></div>
             <div class="current-word hidden" id="current-word"></div>
             <div class="waiting-message" id="waiting-message">
-                El anfitrión iniciará la ronda pronto
+                El anfitríon iniciará la ronda pronto
             </div>
         </div>
 
@@ -111,8 +111,20 @@
         </div>
     </div>
 
-    <!-- BOTÓN HOME -->
-    <a href="./index.html" class="btn-home" aria-label="Volver al inicio">🏠</a>
+    <!-- BOTÓN HAMBURGUESA (Reemplaza home button) -->
+    <button class="btn-hamburger" id="btn-hamburger-player" aria-label="Abrir menú">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+    </button>
+
+    <!-- MENÚ HAMBURGUESA PLAYER -->
+    <nav class="hamburger-menu" id="hamburger-menu-player" style="display: none;" aria-label="Menú de navegación">
+        <div class="hamburger-header">Menú</div>
+        <button class="hamburger-option" id="hamburger-customize">✨ Personalizar</button>
+        <button class="hamburger-option hamburger-danger" id="hamburger-abandon">🚺 Abandonar</button>
+        <a href="./index.html" class="hamburger-option hamburger-home">🏠 Inicio</a>
+    </nav>
 
     <!-- Scripts Modulares (orden importa) -->
     <script src="./js/communication.js"></script>
