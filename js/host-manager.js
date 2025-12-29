@@ -18,6 +18,7 @@ class HostManager {
         this.elements = {};
         this.copyIndicatorTimeout = null;
         this.dropdownOpen = false;
+        this.hamburgerOpen = false;
     }
     
     initialize() {
@@ -31,10 +32,12 @@ class HostManager {
             debug('🔄 Intentando recuperar sesión del host');
             this.recoverSession(savedGameId).then(recovered => {
                 if (!recovered) {
+                    // 🔧 FIX: Mostrar SIEMPRE modal de crear, NUNCA config
                     this.showCreateGameModal();
                 }
             });
         } else {
+            // 🔧 FIX: Mostrar modal de crear partida (NO config)
             this.showCreateGameModal();
         }
         
@@ -74,7 +77,10 @@ class HostManager {
             configRoundDuration: safeGetElement('config-round-duration'),
             configMinPlayers: safeGetElement('config-min-players'),
             btnConfigCancel: safeGetElement('btn-config-cancel'),
-            btnConfigSave: safeGetElement('btn-config-save')
+            btnConfigSave: safeGetElement('btn-config-save'),
+            // 🔧 NEW: Hamburger menu elements
+            hamburgerBtn: safeGetElement('btn-hamburger-host'),
+            hamburgerMenu: safeGetElement('hamburger-menu-host')
         };
     }
     
@@ -93,6 +99,14 @@ class HostManager {
             this.elements.btnConfig.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.toggleConfigDropdown();
+            });
+        }
+
+        // 🔧 NEW: Hamburger menu listeners
+        if (this.elements.hamburgerBtn) {
+            this.elements.hamburgerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleHamburgerMenu();
             });
         }
 
@@ -118,6 +132,40 @@ class HostManager {
         if (optionEndGame) {
             optionEndGame.addEventListener('click', () => {
                 this.hideConfigDropdown();
+                this.finishGame();
+            });
+        }
+
+        // 🔧 NEW: Hamburger menu options
+        const hamburgerRestart = safeGetElement('hamburger-restart-round');
+        const hamburgerNewGame = safeGetElement('hamburger-new-game');
+        const hamburgerSettings = safeGetElement('hamburger-settings');
+        const hamburgerTerminate = safeGetElement('hamburger-terminate');
+
+        if (hamburgerRestart) {
+            hamburgerRestart.addEventListener('click', () => {
+                this.closeHamburgerMenu();
+                this.restartRound();
+            });
+        }
+
+        if (hamburgerNewGame) {
+            hamburgerNewGame.addEventListener('click', () => {
+                this.closeHamburgerMenu();
+                this.createNewGame();
+            });
+        }
+
+        if (hamburgerSettings) {
+            hamburgerSettings.addEventListener('click', () => {
+                this.closeHamburgerMenu();
+                this.showConfigModal();
+            });
+        }
+
+        if (hamburgerTerminate) {
+            hamburgerTerminate.addEventListener('click', () => {
+                this.closeHamburgerMenu();
                 this.finishGame();
             });
         }
@@ -155,12 +203,40 @@ class HostManager {
     }
 
     handleDocumentClick(e) {
-        // Close dropdown if clicking outside
+        // Close dropdowns if clicking outside
         if (this.dropdownOpen && this.elements.configDropdown && this.elements.btnConfig) {
             if (!this.elements.configDropdown.contains(e.target) && e.target !== this.elements.btnConfig) {
                 this.hideConfigDropdown();
             }
         }
+
+        // 🔧 NEW: Close hamburger if clicking outside
+        if (this.hamburgerOpen && this.elements.hamburgerMenu && this.elements.hamburgerBtn) {
+            if (!this.elements.hamburgerMenu.contains(e.target) && e.target !== this.elements.hamburgerBtn) {
+                this.closeHamburgerMenu();
+            }
+        }
+    }
+
+    // 🔧 NEW: Hamburger menu methods
+    toggleHamburgerMenu() {
+        if (this.hamburgerOpen) {
+            this.closeHamburgerMenu();
+        } else {
+            this.openHamburgerMenu();
+        }
+    }
+
+    openHamburgerMenu() {
+        if (!this.elements.hamburgerMenu) return;
+        safeShowElement(this.elements.hamburgerMenu);
+        this.hamburgerOpen = true;
+    }
+
+    closeHamburgerMenu() {
+        if (!this.elements.hamburgerMenu) return;
+        safeHideElement(this.elements.hamburgerMenu);
+        this.hamburgerOpen = false;
     }
 
     toggleConfigDropdown() {
@@ -945,4 +1021,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js - Config dropdown, status messages mejorados, reinicio de ronda', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js - FIX: Modal config NO aparece al iniciar, hamburguesa menu agregada', 'color: #10B981; font-weight: bold');
