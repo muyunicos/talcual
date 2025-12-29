@@ -23,10 +23,11 @@ class PlayerManager {
         this.selectedAura = null;
         
         this.elements = {};
+        this.hamburgerOpen = false;
     }
     
     initialize() {
-        debug('🍢 Inicializando PlayerManager');
+        debug('🌢 Inicializando PlayerManager');
         this.cacheElements();
         this.attachEventListeners();
         
@@ -82,7 +83,10 @@ class PlayerManager {
             optionExit: safeGetElement('option-exit'),
             modalNameInput: safeGetElement('modal-name-input'),
             modalBtnCancel: safeGetElement('modal-btn-cancel'),
-            modalBtnSave: safeGetElement('modal-btn-save')
+            modalBtnSave: safeGetElement('modal-btn-save'),
+            // 🔧 NEW: Hamburger menu elements
+            hamburgerBtn: safeGetElement('btn-hamburger-player'),
+            hamburgerMenu: safeGetElement('hamburger-menu-player')
         };
     }
     
@@ -138,6 +142,31 @@ class PlayerManager {
                 this.exitGame();
             });
         }
+
+        // 🔧 NEW: Hamburger menu listeners
+        if (this.elements.hamburgerBtn) {
+            this.elements.hamburgerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleHamburgerMenu();
+            });
+        }
+
+        const hamburgerCustomize = safeGetElement('hamburger-customize');
+        const hamburgerAbandon = safeGetElement('hamburger-abandon');
+
+        if (hamburgerCustomize) {
+            hamburgerCustomize.addEventListener('click', () => {
+                this.closeHamburgerMenu();
+                this.showEditNameModal();
+            });
+        }
+
+        if (hamburgerAbandon) {
+            hamburgerAbandon.addEventListener('click', () => {
+                this.closeHamburgerMenu();
+                this.exitGame();
+            });
+        }
         
         if (this.elements.modalBtnCancel) {
             this.elements.modalBtnCancel.addEventListener('click', () => this.hideEditNameModal());
@@ -149,8 +178,11 @@ class PlayerManager {
         
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.footer-left')) {
+            if (!e.target.closest('.footer-left') && !e.target.closest('.btn-config-menu')) {
                 this.hideConfigDropdown();
+            }
+            if (!e.target.closest('.hamburger-menu') && !e.target.closest('.btn-hamburger')) {
+                this.closeHamburgerMenu();
             }
         });
     }
@@ -174,6 +206,27 @@ class PlayerManager {
         if (this.elements.configDropdown) {
             this.elements.configDropdown.style.display = 'none';
         }
+    }
+
+    // 🔧 NEW: Hamburger menu methods
+    toggleHamburgerMenu() {
+        if (this.hamburgerOpen) {
+            this.closeHamburgerMenu();
+        } else {
+            this.openHamburgerMenu();
+        }
+    }
+
+    openHamburgerMenu() {
+        if (!this.elements.hamburgerMenu) return;
+        safeShowElement(this.elements.hamburgerMenu);
+        this.hamburgerOpen = true;
+    }
+
+    closeHamburgerMenu() {
+        if (!this.elements.hamburgerMenu) return;
+        safeHideElement(this.elements.hamburgerMenu);
+        this.hamburgerOpen = false;
     }
     
     showJoinModal() {
@@ -364,7 +417,7 @@ class PlayerManager {
         safeHideElement(this.elements.categoryLabel);
         safeShowElement(this.elements.waitingMessage);
         if (this.elements.waitingMessage) {
-            this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
+            this.elements.waitingMessage.textContent = 'El anfitríon iniciará la ronda pronto';
         }
         safeHideElement(this.elements.wordsInputSection);
         safeHideElement(this.elements.resultsSection);
@@ -715,4 +768,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js cargado - Dropdown config menu, edit name, exit options', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Hamburguesa menu agregada, opciones mejoradas', 'color: #FF00FF; font-weight: bold; font-size: 12px');
