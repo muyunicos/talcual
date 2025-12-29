@@ -160,19 +160,10 @@ class HostManager {
     }
     
     handleKeyPress(event) {
-        if (event.key === 'c' || event.key === 'C') {
-            this.toggleControls();
-        }
-    }
-    
-    toggleControls() {
-        this.controlsVisible = !this.controlsVisible;
-        if (this.elements.controlsPanel) {
-            if (this.controlsVisible) {
-                safeShowElement(this.elements.controlsPanel);
-                showNotification('🎬 Controles visibles (presiona C para ocultar)', 'info', 2000);
-            } else {
-                safeHideElement(this.elements.controlsPanel);
+        // FIX #36: Agregar ENTER para iniciar ronda cuando está habilitado
+        if (event.key === 'Enter') {
+            if (this.elements.btnStartRound && !this.elements.btnStartRound.disabled) {
+                this.startRound();
             }
         }
     }
@@ -222,8 +213,9 @@ class HostManager {
         this.client.connect();
         this.lastSSEMessageTime = Date.now();
         
-        this.controlsVisible = false;
-        safeHideElement(this.elements.controlsPanel);
+        // FIX #36: Mostrar panel de controles SIEMPRE (no requiere presionar C)
+        this.controlsVisible = true;
+        safeShowElement(this.elements.controlsPanel);
         
         // MEJORA #26: Reemplazar setupPeriodicSync() con fallback robusto
         this.setupFallbackRefresh();
@@ -469,7 +461,15 @@ class HostManager {
         switch (this.gameState.status) {
             case 'waiting':
                 const playerCount = Object.keys(this.gameState.players || {}).length;
-                message = `👥 ${playerCount} jugadores conectados`;
+                const activePlayers = Object.values(this.gameState.players || {})
+                    .filter(p => !p.disconnected).length;
+                
+                // FIX #36: Cambiar mensaje cuando hay jugadores suficientes
+                if (activePlayers >= 2) {
+                    message = `🏃 ${playerCount} jugadores - ¿Listos para empezar?`;
+                } else {
+                    message = `👥 ${playerCount} jugador(es) conectado(s)`;
+                }
                 break;
             case 'playing':
                 message = `📚 Ronda ${this.gameState.round}/${this.gameState.total_rounds}`;
@@ -500,20 +500,12 @@ class HostManager {
             .filter(p => !p.disconnected);
         const activeCount = activePlayers.length;
         
-        // 🔧 DEBUG FIX #35: Log detallado de validación de botón
-        debug(`💡 updateButtonStates: isWaiting=${isWaiting}, activeCount=${activeCount}, numPlayers=${numPlayers}`, 'debug');
-        
-        if (this.gameState.players) {
-            Object.entries(this.gameState.players).forEach(([pid, p]) => {
-                debug(`  - ${p.name}: disconnected=${p.disconnected}, status=${p.status}`, 'debug');
-            });
-        }
-        
         if (this.elements.btnStartRound) {
             // Botón habilitado si: estado es waiting Y hay al menos MIN_PLAYERS activos
             const canStart = isWaiting && activeCount >= 2;  // MIN_PLAYERS es 2 (ver settings.php)
             this.elements.btnStartRound.disabled = !canStart;
-            debug(`Botón Iniciar Ronda: disabled=${!canStart}, canStart=${canStart}`, 'debug');
+            // FIX #36: Cambiar texto dinámicamente
+            this.elements.btnStartRound.textContent = canStart ? '▶️ Iniciar Ronda (ENTER)' : '⏳ Esperando...';
         }
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.disabled = !isPlaying;
@@ -579,7 +571,7 @@ class HostManager {
                 showNotification('Error iniciando ronda: ' + (result.message || 'desconocido'), 'error');
                 if (this.elements.btnStartRound) {
                     this.elements.btnStartRound.disabled = false;
-                    this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+                    this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda (ENTER)';
                 }
             }
         } catch (error) {
@@ -587,7 +579,7 @@ class HostManager {
             showNotification('Error de conexión', 'error');
             if (this.elements.btnStartRound) {
                 this.elements.btnStartRound.disabled = false;
-                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda';
+                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda (ENTER)';
             }
         }
     }
@@ -643,4 +635,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - FIX #31: Debounce removido para updates inmediatos', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - FIX #36: Controles visibles siempre + ENTER para iniciar', 'color: #10B981; font-weight: bold');
