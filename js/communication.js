@@ -2,6 +2,9 @@
  * @file communication.js
  * @description Sistema centralizado de comunicación SSE para TalCual
  * Define tipos de eventos y constantes de comunicación.
+ * 
+ * SECURITY NOTE: All input validation must be performed both client-side
+ * and server-side. This file defines validation constants for consistency.
  */
 
 // ============================================================================
@@ -48,29 +51,29 @@ const EVENT_TYPES = {
 // ============================================================================
 
 const COMM_CONFIG = {
-  // Timeouts
-  HEARTBEAT_INTERVAL: 30000,
-  MESSAGE_TIMEOUT: 30000,
-  HEARTBEAT_CHECK_INTERVAL: 5000,
+  // Timeouts - Ajustados para detectar desconexiones rápidamente
+  HEARTBEAT_INTERVAL: 30000,        // Intervalo de heartbeat (30s)
+  MESSAGE_TIMEOUT: 30000,            // Timeout de inactividad (30s)
+  HEARTBEAT_CHECK_INTERVAL: 5000,    // Verificar heartbeat cada 5s
   
-  // Reconexión
-  RECONNECT_INITIAL_DELAY: 1000,
-  RECONNECT_MAX_DELAY: 30000,
-  RECONNECT_BACKOFF_MULTIPLIER: 1.5,
-  RECONNECT_MAX_ATTEMPTS: 15,
-  RECONNECT_JITTER_MAX: 1000,
+  // Reconexión - Exponential backoff con jitter para evitar "thundering herd"
+  RECONNECT_INITIAL_DELAY: 1000,           // 1s inicial
+  RECONNECT_MAX_DELAY: 30000,              // Máximo 30s entre intentos
+  RECONNECT_BACKOFF_MULTIPLIER: 1.5,       // Multiplicador exponencial
+  RECONNECT_MAX_ATTEMPTS: 15,               // Máximo 15 intentos (~2min total)
+  RECONNECT_JITTER_MAX: 1000,               // Jitter hasta 1s
   
-  // Rate limiting
-  WORDS_UPDATE_THROTTLE: 2000,
-  STATE_UPDATE_THROTTLE: 500,
+  // Rate limiting - Prevenir saturación del servidor
+  WORDS_UPDATE_THROTTLE: 2000,      // Máximo cada 2s para palabras
+  STATE_UPDATE_THROTTLE: 500,        // Máximo cada 500ms para estado
   
-  // Validación
-  MAX_WORD_LENGTH: 50,
-  MAX_PLAYER_NAME_LENGTH: 20,
-  MIN_PLAYER_NAME_LENGTH: 2,
-  MAX_WORDS_PER_ROUND: 10,
-  GAME_CODE_LENGTH_MIN: 3,
-  GAME_CODE_LENGTH_MAX: 6
+  // Validación - Límites y restricciones
+  MAX_WORD_LENGTH: 50,                      // Longitud máxima de palabra
+  MAX_PLAYER_NAME_LENGTH: 20,               // Longitud máxima de nombre
+  MIN_PLAYER_NAME_LENGTH: 2,                // Longitud mínima de nombre
+  MAX_WORDS_PER_ROUND: 10,                  // Máximo palabras por ronda
+  GAME_CODE_LENGTH_MIN: 3,                  // Longitud mínima de código
+  GAME_CODE_LENGTH_MAX: 6                   // Longitud máxima de código
 };
 
 // ============================================================================
@@ -92,6 +95,12 @@ function validateAPIResponse(response) {
 
 /**
  * Calcula delay de reconexión con backoff exponencial + jitter
+ * Implementa algoritmo estándar para evitar "thundering herd"
+ * 
+ * Fórmula:
+ * - exponentialDelay = min(initialDelay * (multiplier ^ (attempt - 1)), maxDelay)
+ * - finalDelay = exponentialDelay + random(0, jitterMax)
+ * 
  * @param {number} attemptNumber - Número de intento (base 1)
  * @returns {number} Delay en ms
  */
@@ -110,7 +119,12 @@ function calculateReconnectDelay(attemptNumber) {
 
 /**
  * Obtiene el estado de salud de la conexión
+ * Usado para monitoreo y debugging de conexiones
+ * 
  * @param {object} connectionMetrics - Métricas de conexión
+ * @param {number} connectionMetrics.lastMessageTime - Timestamp del último mensaje
+ * @param {number} connectionMetrics.messageCount - Total de mensajes recibidos
+ * @param {number} connectionMetrics.errorCount - Total de errores
  * @returns {string} Estado: 'healthy', 'degraded', 'critical'
  */
 function getConnectionHealth(connectionMetrics) {
@@ -120,14 +134,17 @@ function getConnectionHealth(connectionMetrics) {
   const timeSinceLastMessage = Date.now() - lastMessageTime;
   const errorRate = errorCount / Math.max(messageCount, 1);
   
+  // Critical: >50% errores o timeout
   if (errorRate > 0.5 || timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT) {
     return 'critical';
   }
   
+  // Degraded: >20% errores o inactividad parcial
   if (errorRate > 0.2 || timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT / 2) {
     return 'degraded';
   }
   
+  // Healthy: bajo error rate y actividad reciente
   return 'healthy';
 }
 
@@ -155,4 +172,4 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-console.log('%c✅ communication.js cargado - Sistema centralizado de eventos', 'color: #10B981; font-weight: bold');
+console.log('%c✅ communication.js cargado - Sistema centralizado de eventos con exponential backoff', 'color: #10B981; font-weight: bold');
