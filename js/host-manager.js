@@ -12,6 +12,10 @@ class HostManager {
         this.controlsVisible = false;
         this.debugMode = false;
         
+        // MEJORA #22: Debounce para DOM updates
+        this.updatePending = false;
+        this.updateTimeout = null;
+        
         // Elementos del DOM
         this.elements = {};
     }
@@ -224,7 +228,27 @@ class HostManager {
     handleStateUpdate(state) {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
-        this.updateHostUI();
+        // MEJORA #22: Usar debounce para evitar múltiples updates
+        this.debouncedUpdateHostUI();
+    }
+    
+    /**
+     * Actualización de UI con debounce (máximo 1 cada 500ms)
+     */
+    debouncedUpdateHostUI() {
+        if (this.updateTimeout) {
+            clearTimeout(this.updateTimeout);
+        }
+        
+        if (this.updatePending) {
+            return; // Ya hay una actualización en proceso
+        }
+        
+        this.updatePending = true;
+        this.updateTimeout = setTimeout(() => {
+            this.updateHostUI();
+            this.updatePending = false;
+        }, 500);
     }
     
     /**
@@ -269,22 +293,20 @@ class HostManager {
     }
     
     /**
-     * Actualiza palabras top
+     * Actualiza palabras top - FIX: Usar round_top_words
      */
     updateTopWords() {
-        if (!this.gameState.top_words) return;
+        if (!this.gameState.round_top_words) return; // FIX: Nombre consistente
         
         let html = '';
-        Object.entries(this.gameState.top_words)
-            .slice(0, 5)
-            .forEach(([word, count]) => {
-                html += `
-                    <div class="top-word-item">
-                        <span class="word-text">${sanitizeText(word)}</span>
-                        <span class="word-count">${count}x</span>
-                    </div>
-                `;
-            });
+        this.gameState.round_top_words.forEach((item) => {
+            html += `
+                <div class="top-word-item">
+                    <span class="word-text">${sanitizeText(item.word)}</span>
+                    <span class="word-count">${item.count}x</span>
+                </div>
+            `;
+        });
         
         if (this.elements.topWordsList) {
             this.elements.topWordsList.innerHTML = html || '<div style="opacity: 0.5;">Sin palabras aún</div>';
@@ -501,4 +523,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - Mejorado con código limpio y completo', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - Mejorado con debounce y top_words fix', 'color: #10B981; font-weight: bold');
