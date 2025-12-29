@@ -4,6 +4,12 @@
  * Cada aura es un par de colores para gradientes vibrantes tipo Jackbox
  */
 
+// =========================
+// localStorage KEYS - ESTANDARIZADAS (CORREGIDO #4)
+// =========================
+const AURA_STORAGE_KEY = 'talcual_playerColor';
+const AURA_SESSION_KEY = 'talcual_sessionAuras';
+
 /**
  * 12 Colores Base Neón - Vibrantes y saturados
  * Listos para combinarse en pares (gradientes)
@@ -66,6 +72,56 @@ function generateRandomAuras() {
 function getRandomAura() {
     const auras = generateRandomAuras();
     return auras[Math.floor(Math.random() * auras.length)];
+}
+
+/**
+ * Guarda el color del jugador en localStorage
+ * Usa la clave estandarizada AURA_STORAGE_KEY
+ * @param {string} colorStr - Formato "#COLOR1,#COLOR2"
+ */
+function savePlayerColor(colorStr) {
+    if (!colorStr || !isValidAura(colorStr)) {
+        console.warn('⚠️ Color inválido, no se guardó:', colorStr);
+        return;
+    }
+    
+    try {
+        localStorage.setItem(AURA_STORAGE_KEY, colorStr);
+        console.log(`💾 Color guardado (${AURA_STORAGE_KEY}):`, colorStr);
+    } catch (error) {
+        console.error('Error guardando color:', error);
+    }
+}
+
+/**
+ * Carga el color del jugador desde localStorage
+ * Usa la clave estandarizada AURA_STORAGE_KEY
+ * @returns {string|null} Formato "#COLOR1,#COLOR2" o null
+ */
+function loadPlayerColor() {
+    try {
+        const color = localStorage.getItem(AURA_STORAGE_KEY);
+        if (color && isValidAura(color)) {
+            console.log(`📕 Color cargado (${AURA_STORAGE_KEY}):`, color);
+            return color;
+        }
+    } catch (error) {
+        console.error('Error cargando color:', error);
+    }
+    
+    return null;
+}
+
+/**
+ * Limpia el color guardado del jugador
+ */
+function clearPlayerColor() {
+    try {
+        localStorage.removeItem(AURA_STORAGE_KEY);
+        console.log(`🗑️ Color eliminado (${AURA_STORAGE_KEY})`);
+    } catch (error) {
+        console.error('Error limpiando color:', error);
+    }
 }
 
 /**
@@ -195,8 +251,10 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
             });
             circle.classList.add('selected');
             
+            // Guardar color cuando se selecciona (CORREGIDO #4)
             if (onSelect) {
                 onSelect(aura);
+                savePlayerColor(aura.hex);
             }
         });
         

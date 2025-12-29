@@ -317,6 +317,7 @@ class HostManager {
     updateHostUI() {
         if (!this.gameState) return;
         
+        debug('🖥️ Actualizando UI del host', 'debug');
         this.updateRanking();
         this.updateTopWords();
         this.updatePlayersGrid();
@@ -356,8 +357,8 @@ class HostManager {
         this.gameState.round_top_words.forEach((item) => {
             html += `
                 <div class="top-word-item">
-                    <span class="word-text">${sanitizeText(item.word)}</span>
-                    <span class="word-count">${item.count}x</span>
+                    <span class="word">${sanitizeText(item.word)}</span>
+                    <span class="count">${item.count}x</span>
                 </div>
             `;
         });
@@ -368,28 +369,79 @@ class HostManager {
     }
     
     updatePlayersGrid() {
-        if (!this.gameState.players) return;
+        const grid = this.elements.playersGrid;
+        if (!grid) {
+            debug('❌ #players-grid no encontrado', 'error');
+            return;
+        }
+        
+        if (!this.gameState.players) {
+            debug('⚠️ No hay jugadores en gameState', 'warn');
+            grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
+            return;
+        }
         
         const players = Object.values(this.gameState.players);
+        
+        if (players.length === 0) {
+            debug('⚠️ Array de jugadores vacío', 'warn');
+            grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
+            return;
+        }
+        
         let html = '';
         
         players.forEach(player => {
-            const statusEmoji = player.status === 'ready' ? '✅' : '⏳';
-            const colors = player.color?.split(',') || ['#808080', '#404040'];
-            const gradient = `linear-gradient(135deg, ${colors[0].trim()} 0%, ${colors[1].trim()} 100%)`;
-            
-            html += `
-                <div class="player-card" style="background: ${gradient};">
-                    <div class="player-status">${statusEmoji}</div>
-                    <div class="player-name">${sanitizeText(player.name)}</div>
-                    <div class="player-score">${player.score || 0} pts</div>
-                </div>
-            `;
+            try {
+                // Decodificar colores del aura - CORREGIDO #1
+                const colors = player.color?.split(',') || ['#808080', '#404040'];
+                const color1 = colors[0]?.trim() || '#808080';
+                const color2 = colors[1]?.trim() || '#404040';
+                const gradient = `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
+                
+                // Obtener estado y clase CSS
+                const statusClass = this.getStatusClass(player);
+                const statusEmoji = this.getStatusEmoji(player);
+                
+                // Obtener glow dinámico basado en color
+                const glowColor = color1;
+                const glowShadow = `0 0 24px ${glowColor}88, 0 0 48px ${glowColor}44, inset 0 0 24px ${glowColor}22`;
+                
+                // Obtener inicial del nombre
+                const initial = (player.name || 'J')[0].toUpperCase();
+                
+                html += `
+                    <div class="player-squarcle status-${statusClass}" 
+                         data-player-id="${player.id}" 
+                         style="background: ${gradient}; box-shadow: ${glowShadow};">
+                        <div class="player-initial">${initial}</div>
+                        <div class="player-status-icon">${statusEmoji}</div>
+                        <div class="player-name-label">${sanitizeText(player.name)}</div>
+                    </div>
+                `;
+            } catch (error) {
+                debug(`Error renderizando squarcle para ${player.name}:`, error, 'error');
+            }
         });
         
-        if (this.elements.playersGrid) {
-            this.elements.playersGrid.innerHTML = html || '<div>Sin jugadores</div>';
-        }
+        grid.innerHTML = html;
+        debug(`✅ ${players.length} squarcles renderizados`, 'debug');
+    }
+    
+    getStatusClass(player) {
+        if (player.disconnected) return 'disconnected';
+        if (player.status === 'ready') return 'ready';
+        if (player.status === 'answered') return 'answered';
+        if (player.status === 'waiting') return 'waiting';
+        return 'connected';
+    }
+    
+    getStatusEmoji(player) {
+        if (player.disconnected) return '❌';
+        if (player.status === 'ready') return '✅';
+        if (player.status === 'answered') return '📝';
+        if (player.status === 'waiting') return '⏳';
+        return '👤';
     }
     
     updateStatusMessage() {
@@ -542,4 +594,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js - MEJORA #26: Push-only architecture (sin polling 100ms)', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado', 'color: #10B981; font-weight: bold');
