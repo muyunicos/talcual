@@ -239,30 +239,45 @@ select:focus {
     box-shadow: 2px 2px 0px #000;
 }
 
-.input-field {
-    width: 100%;
-    padding: 18px;
+/* ========== INPUT FIELD (COMPARTIDO) ========== */
+.input-field,
+.word-input {
     border: 4px solid #000;
     border-radius: 15px;
     background: rgba(255,255,255,0.9);
     color: #000;
     font-family: var(--font-primary);
     font-weight: 800;
-    font-size: 1.3em;
     text-align: center;
     text-transform: uppercase;
     box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
 }
 
-.input-field::placeholder {
+.input-field::placeholder,
+.word-input::placeholder {
     color: rgba(0,0,0,0.4);
 }
 
-.input-field:focus {
+.input-field:focus,
+.word-input:focus {
     outline: none;
     border-color: var(--cian);
     transform: translate(1px, 1px);
     box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
+}
+
+/* ========== INPUT FIELD (ESPECIFICO) ========== */
+.input-field {
+    width: 100%;
+    padding: 18px;
+    font-size: 1.3em;
+}
+
+/* ========== WORD INPUT (ESPECIFICO) ========== */
+.word-input {
+    flex: 1;
+    padding: 18px;
+    font-size: 1.2em;
 }
 
 .input-label {
@@ -298,27 +313,35 @@ select:focus {
     box-shadow: 3px 3px 0px #000;
 }
 
-.word-input {
-    flex: 1;
-    padding: 18px;
-    border: 4px solid #000;
-    border-radius: 15px;
-    background: white;
+/* ========== CÓDIGO DE SALA (STICKER) - UNIFICADO ========== */
+.code-sticker {
+    background: var(--amarillo);
     color: #000;
-    font-family: var(--font-primary);
-    font-weight: 800;
+    font-family: var(--font-display);
+    font-weight: 900;
+    transform: rotate(-3deg);
+    display: inline-block;
+    letter-spacing: 3px;
+}
+
+/* Grande - usado en TV (host.html) */
+.code-sticker--large {
+    font-size: 2em;
+    padding: 10px 25px;
+    border-radius: 15px;
+    box-shadow: 4px 4px 0px #000;
+}
+
+/* Pequeño - usado en móvil (play.html) */
+.code-sticker--small {
     font-size: 1.2em;
-    text-align: center;
-    text-transform: uppercase;
-    box-shadow: 3px 3px 0px rgba(0,0,0,0.2);
+    padding: 8px 15px;
+    border-radius: 12px;
+    box-shadow: 3px 3px 0px #000;
+    letter-spacing: 2px;
 }
 
-.word-input:focus {
-    outline: none;
-    border-color: var(--cian);
-}
-
-/* ========== CÓDIGO DE SALA (STICKER) ========== */
+/* Mantener compatibilidad hacia atrás */
 .game-code-sticker {
     background: var(--amarillo);
     color: #000;
@@ -347,6 +370,19 @@ select:focus {
     justify-self: end;
 }
 
+/* ========== MODAL DIALOG BASE ========== */
+.modal-dialog {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border-radius: 25px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
 /* ========== MODALES ========== */
 .modal-overlay {
     display: none;
@@ -372,6 +408,20 @@ select:focus {
     max-width: 400px;
     width: 90%;
     box-shadow: 6px 6px 0px #000;
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+/* Estilos para modales específicos - ahora heredan base */
+.modal-join-game,
+.modal-create-game {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border-radius: 25px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
     position: relative;
     animation: modalSlideIn 0.3s ease-out;
 }
@@ -461,7 +511,7 @@ select:focus {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('bg.webp');
+    background-image: url('../images/bg.webp');
     background-repeat: repeat;
     background-size: 200px;
     opacity: 0.05;
@@ -557,6 +607,26 @@ select:focus {
         padding: 15px;
         font-size: 1em;
     }
+
+    .code-sticker--large {
+        font-size: 1.5em;
+        padding: 8px 20px;
+    }
+
+    .code-sticker--small {
+        font-size: 1em;
+        padding: 6px 12px;
+    }
+
+    .game-code-sticker {
+        font-size: 1.5em;
+        padding: 8px 20px;
+    }
+
+    .header-code-sticker {
+        font-size: 1em;
+        padding: 6px 12px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -567,6 +637,11 @@ select:focus {
 
     .input-field {
         font-size: 1em;
+        padding: 12px;
+    }
+
+    .word-input {
+        font-size: 0.95em;
         padding: 12px;
     }
 }

@@ -137,7 +137,7 @@
     line-height: 1.2;
 }
 
-/* ========== SECIÓN ENTRADA PALABRAS ========== */
+/* ========== SECCIÓN ENTRADA PALABRAS ========== */
 .words-input-section {
     background: rgba(255,255,255,0.9);
     border-radius: 20px;
@@ -312,19 +312,7 @@
     line-height: 1;
 }
 
-/* ========== AURA SELECTOR (MODAL) ========== */
-.modal-join-game {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    border-radius: 25px;
-    padding: 40px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-    position: relative;
-    animation: modalSlideIn 0.3s ease-out;
-}
-
+/* ========== AURA SELECTOR (MODAL) - AHORA EN 4-COMPONENTS ========== */
 .aura-selector {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -421,11 +409,6 @@
 
     .header-timer {
         font-size: 1.8em;
-    }
-
-    .header-code-sticker {
-        font-size: 1em;
-        padding: 6px 12px;
     }
 
     .player-info {
@@ -542,11 +525,6 @@
 
     .countdown-number {
         font-size: 15em;
-    }
-
-    .modal-join-game {
-        padding: 25px;
-        max-width: 90%;
     }
 }
 
