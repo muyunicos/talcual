@@ -87,6 +87,19 @@
     animation: pulse 1s infinite;
 }
 
+.header-code-sticker {
+    font-family: var(--font-display);
+    font-size: 1.2em;
+    justify-self: end;
+    background: rgba(255, 0, 85, 0.9);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 15px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+}
+
 /* ========== PLAYER INFO SECTION ========== */
 .player-info {
     text-align: center;
@@ -137,13 +150,23 @@
     line-height: 1.2;
 }
 
-/* ========== SECCIÓN ENTRADA PALABRAS ========== */
+/* FIX #1: Usar clase .hidden en lugar de inline display:none */
+.current-word.hidden {
+    display: none !important;
+}
+
+/* ========== SECIÓN ENTRADA PALABRAS ========== */
 .words-input-section {
     background: rgba(255,255,255,0.9);
     border-radius: 20px;
     padding: 25px;
     margin-bottom: 25px;
     box-shadow: 4px 4px 0px #000;
+}
+
+/* FIX #1: Usar clase .hidden para elementos dinámicos */
+.words-input-section.hidden {
+    display: none !important;
 }
 
 .input-row {
@@ -154,6 +177,11 @@
 
 .words-list {
     margin-top: 20px;
+}
+
+/* FIX #1: Clase .hidden para elementos dinámicos */
+.words-list.hidden {
+    display: none !important;
 }
 
 .words-list-title {
@@ -194,12 +222,12 @@
     font-size: 1.3em;
 }
 
-/* ========== SECCIÓN SUBMIT ========== */
+/* ========== SECIÓN SUBMIT ========== */
 .submit-section {
     margin-top: 20px;
 }
 
-/* ========== SECCIÓN RESULTADOS ========== */
+/* ========== SECIÓN RESULTADOS ========== */
 .results-section {
     display: none;
     background: rgba(255,255,255,0.9);
@@ -207,6 +235,10 @@
     padding: 25px;
     margin-bottom: 25px;
     box-shadow: 4px 4px 0px #000;
+}
+
+.results-section.visible {
+    display: block;
 }
 
 .results-title {
@@ -312,7 +344,7 @@
     line-height: 1;
 }
 
-/* ========== AURA SELECTOR (MODAL) - AHORA EN 4-COMPONENTS ========== */
+/* ========== AURA SELECTOR (MODAL) ========== */
 .aura-selector {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -338,6 +370,56 @@
     border-color: white;
     box-shadow: 0 0 20px rgba(255,255,255,0.8), 4px 4px 0px rgba(0,0,0,0.5);
     transform: scale(1.15);
+}
+
+/* FIX #2: Estilos de aura usando clases en lugar de inline */
+.aura-fire {
+    background: linear-gradient(135deg, #FF9966, #FF5E62) !important;
+}
+
+.aura-ice {
+    background: linear-gradient(135deg, #00F260, #0575E6) !important;
+}
+
+.aura-candy {
+    background: linear-gradient(135deg, #F37335, #FDC830) !important;
+}
+
+.aura-mystic {
+    background: linear-gradient(135deg, #8E2DE2, #4A00E0) !important;
+}
+
+.aura-electric {
+    background: linear-gradient(135deg, #12c2e9, #f64f59) !important;
+}
+
+.aura-toxic {
+    background: linear-gradient(135deg, #DCE35B, #45B649) !important;
+}
+
+/* ========== STATUS MESSAGE MODAL ========== */
+.status-message-modal {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 1.1em;
+    color: white;
+}
+
+/* ========== BTN BACK ========== */
+.btn-back {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.btn-back-link {
+    color: white;
+    opacity: 0.8;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.btn-back-link:hover {
+    opacity: 1;
 }
 
 /* ========== RESPONSIVE PLAY ========== */
