@@ -396,7 +396,6 @@ class HostManager {
         }
         
         if (!this.gameState.players) {
-            debug('⚠️ No hay jugadores en gameState', 'warn');
             grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
             return;
         }
@@ -404,7 +403,6 @@ class HostManager {
         const players = Object.values(this.gameState.players);
         
         if (players.length === 0) {
-            debug('⚠️ Array de jugadores vacío', 'warn');
             grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
             return;
         }
@@ -506,11 +504,6 @@ class HostManager {
             // Botón habilitado si: estado es waiting Y hay al menos MIN_PLAYERS activos
             const canStart = isWaiting && activeCount >= 2;  // MIN_PLAYERS es 2 (ver settings.php)
             this.elements.btnStartRound.disabled = !canStart;
-            
-            // Debug: mostrar por qué está habilitado/deshabilitado
-            if (!canStart) {
-                debug(`Botón deshabilitado: isWaiting=${isWaiting}, activeCount=${activeCount}`, 'debug');
-            }
         }
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.disabled = !isPlaying;
