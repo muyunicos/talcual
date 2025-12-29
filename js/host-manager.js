@@ -1,6 +1,6 @@
 /**
  * @file host-manager.js
- * @description Gestor de lógica del anfitrion Host
+ * @description Gestor de lógica del anfitrión Host con soporte para configuración de juego
  */
 
 class HostManager {
@@ -10,9 +10,12 @@ class HostManager {
         this.gameState = null;
         this.timerInterval = null;
         this.controlsVisible = false;
-        this.debugMode = false;
-        this.fallbackRefreshInterval = null;
-        this.lastSSEMessageTime = 0;
+        this.countdownInterval = null;
+        this.gameConfig = {
+            totalRounds: 3,
+            roundDuration: 120,
+            minPlayers: 2
+        };
         this.elements = {};
         this.copyIndicatorTimeout = null;
     }
@@ -42,6 +45,7 @@ class HostManager {
     cacheElements() {
         this.elements = {
             modalCreateGame: safeGetElement('modal-create-game'),
+            modalGameConfig: safeGetElement('modal-game-config'),
             gameScreen: safeGetElement('game-screen'),
             customCodeInput: safeGetElement('custom-code'),
             btnCreateGame: safeGetElement('btn-create-game'),
@@ -51,13 +55,20 @@ class HostManager {
             rankingList: safeGetElement('ranking-list'),
             wordDisplay: safeGetElement('word-display'),
             countdownDisplay: safeGetElement('countdown-display'),
-            statusMsg: safeGetElement('status-message'),
+            roundInfo: safeGetElement('round-info'),
+            categoryDisplay: safeGetElement('category-display'),
             topWordsList: safeGetElement('top-words-list'),
             playersGrid: safeGetElement('players-grid'),
             controlsPanel: safeGetElement('controls-panel'),
+            btnConfig: safeGetElement('btn-config'),
             btnStartRound: safeGetElement('btn-start-round'),
             btnEndRound: safeGetElement('btn-end-round'),
-            btnNewGame: safeGetElement('btn-new-game')
+            btnNewGame: safeGetElement('btn-new-game'),
+            configTotalRounds: safeGetElement('config-total-rounds'),
+            configRoundDuration: safeGetElement('config-round-duration'),
+            configMinPlayers: safeGetElement('config-min-players'),
+            btnConfigCancel: safeGetElement('btn-config-cancel'),
+            btnConfigSave: safeGetElement('btn-config-save')
         };
     }
     
@@ -70,6 +81,18 @@ class HostManager {
             this.elements.customCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.createGame();
             });
+        }
+
+        if (this.elements.btnConfig) {
+            this.elements.btnConfig.addEventListener('click', () => this.showConfigModal());
+        }
+        
+        if (this.elements.btnConfigCancel) {
+            this.elements.btnConfigCancel.addEventListener('click', () => this.hideConfigModal());
+        }
+        
+        if (this.elements.btnConfigSave) {
+            this.elements.btnConfigSave.addEventListener('click', () => this.saveGameConfig());
         }
         
         if (this.elements.btnStartRound) {
@@ -158,9 +181,55 @@ class HostManager {
             sticker.classList.remove('copied');
         }, 900);
     }
+
+    showConfigModal() {
+        if (this.gameState?.status !== 'waiting') {
+            showNotification('No puedes configurar durante una ronda activa', 'warning');
+            return;
+        }
+        
+        if (this.elements.configTotalRounds) {
+            this.elements.configTotalRounds.value = this.gameConfig.totalRounds;
+        }
+        if (this.elements.configRoundDuration) {
+            this.elements.configRoundDuration.value = this.gameConfig.roundDuration;
+        }
+        if (this.elements.configMinPlayers) {
+            this.elements.configMinPlayers.value = this.gameConfig.minPlayers;
+        }
+        
+        safeShowElement(this.elements.modalGameConfig);
+    }
+
+    hideConfigModal() {
+        safeHideElement(this.elements.modalGameConfig);
+    }
+
+    saveGameConfig() {
+        const totalRounds = parseInt(this.elements.configTotalRounds?.value || 3);
+        const roundDuration = parseInt(this.elements.configRoundDuration?.value || 120);
+        const minPlayers = parseInt(this.elements.configMinPlayers?.value || 2);
+
+        if (totalRounds < 1 || totalRounds > 10) {
+            showNotification('Rondas debe estar entre 1 y 10', 'error');
+            return;
+        }
+        if (roundDuration < 30 || roundDuration > 300) {
+            showNotification('Duración debe estar entre 30 y 300 segundos', 'error');
+            return;
+        }
+        if (minPlayers < 1 || minPlayers > 6) {
+            showNotification('Mínimo de jugadores debe estar entre 1 y 6', 'error');
+            return;
+        }
+
+        this.gameConfig = { totalRounds, roundDuration, minPlayers };
+        this.hideConfigModal();
+        showNotification('✅ Configuración guardada', 'success');
+        debug(`Configuración guardada: ${totalRounds} rondas, ${roundDuration}s, mín ${minPlayers}`);
+    }
     
     handleKeyPress(event) {
-        // FIX #36: Agregar ENTER para iniciar ronda cuando está habilitado
         if (event.key === 'Enter') {
             if (this.elements.btnStartRound && !this.elements.btnStartRound.disabled) {
                 this.startRound();
@@ -203,55 +272,11 @@ class HostManager {
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
         
-        // 🔧 FIX #25: Escuchar 'connected' event para actualizar lastSSEMessageTime
-        // Esto permite que el heartbeat sea detectado sin esperar un 'update' event
-        this.client.on('connected', () => {
-            this.lastSSEMessageTime = Date.now();
-            debug('📡 [HOST] SSE conectado - heartbeat será recibido', 'debug');
-        });
-        
         this.client.connect();
-        this.lastSSEMessageTime = Date.now();
-        
-        // FIX #36: Mostrar panel de controles SIEMPRE (no requiere presionar C)
         this.controlsVisible = true;
         safeShowElement(this.elements.controlsPanel);
         
-        // MEJORA #26: Reemplazar setupPeriodicSync() con fallback robusto
-        this.setupFallbackRefresh();
-        
         this.handleStateUpdate(state);
-    }
-    
-    /**
-     * MEJORA #26: Fallback inteligente en lugar de polling cada 100ms
-     * Solo hace forceRefresh() si SSE muere > MESSAGE_TIMEOUT
-     * Usa COMM_CONFIG para evitar valores hardcodeados
-     */
-    setupFallbackRefresh() {
-        if (this.fallbackRefreshInterval) {
-            clearInterval(this.fallbackRefreshInterval);
-        }
-        
-        // Obtener CONFIG con fallback
-        const commConfig = window.COMM?.COMM_CONFIG || {
-            MESSAGE_TIMEOUT: 30000,
-            HEARTBEAT_CHECK_INTERVAL: 5000
-        };
-        
-        const checkInterval = commConfig.HEARTBEAT_CHECK_INTERVAL;
-        const messageTimeout = commConfig.MESSAGE_TIMEOUT;
-        
-        debug(`🔄 Iniciando fallback refresh (${messageTimeout}ms sin SSE = forceRefresh)`, 'info');
-        
-        this.fallbackRefreshInterval = setInterval(() => {
-            const timeSinceLastSSE = Date.now() - this.lastSSEMessageTime;
-            
-            if (timeSinceLastSSE > messageTimeout && this.client && this.gameId) {
-                console.warn(`⚠️ [HOST] SSE sin mensajes ${Math.floor(timeSinceLastSSE / 1000)}s, forzando refresh...`);
-                this.client.forceRefresh();
-            }
-        }, checkInterval);
     }
     
     async createGame() {
@@ -284,13 +309,15 @@ class HostManager {
             
             const result = await this.client.sendAction('create_game', {
                 game_id: this.gameId,
-                mode: 'word_matching'
+                total_rounds: this.gameConfig.totalRounds,
+                round_duration: this.gameConfig.roundDuration
             });
             
             if (result.success) {
                 debug(`✅ Juego creado: ${this.gameId}`);
                 
                 setLocalStorage('gameId', this.gameId);
+                setLocalStorage('gameConfig', JSON.stringify(this.gameConfig));
                 
                 this.loadGameScreen(result.state || {});
                 showNotification(`🎮 Partida creada: ${this.gameId}`, 'success');
@@ -318,11 +345,7 @@ class HostManager {
     
     handleStateUpdate(state) {
         this.gameState = state;
-        this.lastSSEMessageTime = Date.now();
         debug('📈 Estado actualizado:', state.status);
-        // 🔧 FIX #31: QUITAR el debounce excesivo - actualizar UI directamente
-        // El debounce de 500ms causaba que se perdieran updates de join_game
-        // Ahora se actualiza la UI inmediatamente en cada cambio de estado
         this.updateHostUI();
     }
     
@@ -334,8 +357,51 @@ class HostManager {
         this.updateTopWords();
         this.updatePlayersGrid();
         this.updateStatusMessage();
+        this.updateRoundInfo();
+        this.updateCategoryDisplay();
+        this.updateWordDisplay();
         this.updateButtonStates();
         this.updateTimer();
+    }
+
+    updateRoundInfo() {
+        const roundInfo = this.elements.roundInfo;
+        if (!roundInfo) return;
+
+        if (this.gameState.status === 'waiting') {
+            safeHideElement(roundInfo);
+        } else {
+            const roundDisplay = document.getElementById('round-display');
+            const totalRoundsDisplay = document.getElementById('total-rounds-display');
+            
+            if (roundDisplay) roundDisplay.textContent = this.gameState.round || 0;
+            if (totalRoundsDisplay) totalRoundsDisplay.textContent = this.gameConfig.totalRounds;
+            
+            safeShowElement(roundInfo);
+        }
+    }
+
+    updateCategoryDisplay() {
+        const categoryDisplay = this.elements.categoryDisplay;
+        if (!categoryDisplay) return;
+
+        if (this.gameState.status === 'playing' && this.gameState.current_category) {
+            categoryDisplay.textContent = `Categoría: ${this.gameState.current_category}`;
+            safeShowElement(categoryDisplay);
+        } else {
+            safeHideElement(categoryDisplay);
+        }
+    }
+
+    updateWordDisplay() {
+        const wordDisplay = this.elements.wordDisplay;
+        if (!wordDisplay) return;
+
+        if (this.gameState.status === 'playing' && this.gameState.current_word) {
+            wordDisplay.textContent = sanitizeText(this.gameState.current_word);
+        } else {
+            wordDisplay.textContent = '';
+        }
     }
     
     updateRanking() {
@@ -382,10 +448,7 @@ class HostManager {
     
     updatePlayersGrid() {
         const grid = this.elements.playersGrid;
-        if (!grid) {
-            debug('❌ #players-grid no encontrado', 'error');
-            return;
-        }
+        if (!grid) return;
         
         if (!this.gameState.players) {
             grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
@@ -403,30 +466,25 @@ class HostManager {
         
         players.forEach(player => {
             try {
-                // Decodificar colores del aura - CORREGIDO #1
                 const colors = player.color?.split(',') || ['#808080', '#404040'];
                 const color1 = colors[0]?.trim() || '#808080';
                 const color2 = colors[1]?.trim() || '#404040';
                 const gradient = `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
                 
-                // Obtener estado y clase CSS
                 const statusClass = this.getStatusClass(player);
                 const statusEmoji = this.getStatusEmoji(player);
-                
-                // Obtener glow dinámico basado en color
                 const glowColor = color1;
                 const glowShadow = `0 0 24px ${glowColor}88, 0 0 48px ${glowColor}44, inset 0 0 24px ${glowColor}22`;
-                
-                // Obtener inicial del nombre
                 const initial = (player.name || 'J')[0].toUpperCase();
                 
                 html += `
                     <div class="player-squarcle status-${statusClass}" 
-                         data-player-id="${player.id}" 
+                         data-player-id="${player.id}"
                          style="background: ${gradient}; box-shadow: ${glowShadow};">
                         <div class="player-initial">${initial}</div>
                         <div class="player-status-icon">${statusEmoji}</div>
                         <div class="player-name-label">${sanitizeText(player.name)}</div>
+                        ${this.gameState.status === 'waiting' ? `<button class="btn-remove-player" data-player-id="${player.id}" title="Eliminar jugador">✕</button>` : ''}
                     </div>
                 `;
             } catch (error) {
@@ -435,7 +493,39 @@ class HostManager {
         });
         
         grid.innerHTML = html;
+        
+        // Añadir event listeners para botones de eliminar
+        grid.querySelectorAll('.btn-remove-player').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const playerId = btn.dataset.playerId;
+                this.removePlayer(playerId);
+            });
+        });
+        
         debug(`✅ ${players.length} squarcles renderizados`, 'debug');
+    }
+
+    async removePlayer(playerId) {
+        const player = this.gameState.players?.[playerId];
+        if (!player) return;
+
+        if (!confirm(`¿Eliminar a ${player.name} del juego?`)) {
+            return;
+        }
+
+        try {
+            const result = await this.client.sendAction('leave_game', {
+                player_id: playerId
+            });
+
+            if (result.success) {
+                showNotification(`${player.name} ha sido eliminado`, 'info');
+            }
+        } catch (error) {
+            debug('Error eliminando jugador:', error, 'error');
+            showNotification('Error al eliminar jugador', 'error');
+        }
     }
     
     getStatusClass(player) {
@@ -464,51 +554,48 @@ class HostManager {
                 const activePlayers = Object.values(this.gameState.players || {})
                     .filter(p => !p.disconnected).length;
                 
-                // FIX #36: Cambiar mensaje cuando hay jugadores suficientes
-                if (activePlayers >= 2) {
-                    message = `🏃 ${playerCount} jugadores - ¿Listos para empezar?`;
+                if (activePlayers >= this.gameConfig.minPlayers) {
+                    message = `🏃 ${activePlayers} jugador(es) - ¿Listos para empezar?`;
+                } else if (activePlayers === 1) {
+                    message = `👥 Falta ${this.gameConfig.minPlayers - activePlayers} jugador(es) para comenzar`;
                 } else {
-                    message = `👥 ${playerCount} jugador(es) conectado(s)`;
+                    message = `👥 ${activePlayers} jugador(es) conectado(s)`;
                 }
                 break;
             case 'playing':
-                message = `📚 Ronda ${this.gameState.round}/${this.gameState.total_rounds}`;
-                if (this.gameState.current_word) {
-                    message += ` - Palabra: <strong>${sanitizeText(this.gameState.current_word)}</strong>`;
-                }
+                message = `📚 Ronda ${this.gameState.round}/${this.gameConfig.totalRounds}`;
                 break;
             case 'round_ended':
-                message = '✅ Ronda terminada';
+                message = '✅ Ronda terminada - Mostrando resultados';
                 break;
             case 'finished':
                 message = '🎉 Partida finalizada';
                 break;
         }
         
-        if (this.elements.statusMsg) {
-            this.elements.statusMsg.innerHTML = message;
+        if (this.elements.statusMessage) {
+            this.elements.statusMessage.innerHTML = message;
         }
     }
     
     updateButtonStates() {
         const isWaiting = this.gameState.status === 'waiting';
         const isPlaying = this.gameState.status === 'playing';
-        const numPlayers = Object.keys(this.gameState.players || {}).length;
         
-        // 🔧 FIX #31: Validar que hay al menos MIN_PLAYERS activos (no desconectados)
         const activePlayers = Object.values(this.gameState.players || {})
             .filter(p => !p.disconnected);
         const activeCount = activePlayers.length;
         
         if (this.elements.btnStartRound) {
-            // Botón habilitado si: estado es waiting Y hay al menos MIN_PLAYERS activos
-            const canStart = isWaiting && activeCount >= 2;  // MIN_PLAYERS es 2 (ver settings.php)
+            const canStart = isWaiting && activeCount >= this.gameConfig.minPlayers;
             this.elements.btnStartRound.disabled = !canStart;
-            // FIX #36: Cambiar texto dinámicamente
-            this.elements.btnStartRound.textContent = canStart ? '▶️ Iniciar Ronda (ENTER)' : '⏳ Esperando...';
+            this.elements.btnStartRound.textContent = canStart ? '▶️ Iniciar (ENTER)' : '⏳ Esperando...';
         }
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.disabled = !isPlaying;
+        }
+        if (this.elements.btnConfig) {
+            this.elements.btnConfig.disabled = !isWaiting;
         }
     }
     
@@ -565,13 +652,16 @@ class HostManager {
                 this.elements.btnStartRound.textContent = 'Iniciando...';
             }
             
-            const result = await this.client.sendAction('start_round', {});
+            const result = await this.client.sendAction('start_round', {
+                duration: this.gameConfig.roundDuration,
+                total_rounds: this.gameConfig.totalRounds
+            });
             
             if (!result.success) {
                 showNotification('Error iniciando ronda: ' + (result.message || 'desconocido'), 'error');
                 if (this.elements.btnStartRound) {
                     this.elements.btnStartRound.disabled = false;
-                    this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda (ENTER)';
+                    this.elements.btnStartRound.textContent = '▶️ Iniciar (ENTER)';
                 }
             }
         } catch (error) {
@@ -579,7 +669,7 @@ class HostManager {
             showNotification('Error de conexión', 'error');
             if (this.elements.btnStartRound) {
                 this.elements.btnStartRound.disabled = false;
-                this.elements.btnStartRound.textContent = '▶️ Iniciar Ronda (ENTER)';
+                this.elements.btnStartRound.textContent = '▶️ Iniciar (ENTER)';
             }
         }
     }
@@ -635,4 +725,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - FIX #36: Controles visibles siempre + ENTER para iniciar', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - Configuración de juego, eliminación de jugadores, y mejor display de ronda/palabra', 'color: #10B981; font-weight: bold');
