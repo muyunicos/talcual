@@ -1,6 +1,6 @@
 /**
  * @file host-manager.js
- * @description Gestor de lógica del anfitrión Host con soporte para configuración de juego
+ * @description Gestor de lógica del anfitrión con configuración y control de flujo
  */
 
 class HostManager {
@@ -9,11 +9,10 @@ class HostManager {
         this.client = null;
         this.gameState = null;
         this.timerInterval = null;
-        this.controlsVisible = false;
         this.countdownInterval = null;
         this.gameConfig = {
             totalRounds: 3,
-            roundDuration: 120,
+            roundDuration: 60,
             minPlayers: 2
         };
         this.elements = {};
@@ -59,10 +58,14 @@ class HostManager {
             categoryDisplay: safeGetElement('category-display'),
             topWordsList: safeGetElement('top-words-list'),
             playersGrid: safeGetElement('players-grid'),
+            resultsPanel: safeGetElement('results-panel'),
+            resultsContent: safeGetElement('results-content'),
             controlsPanel: safeGetElement('controls-panel'),
             btnConfig: safeGetElement('btn-config'),
             btnStartRound: safeGetElement('btn-start-round'),
             btnEndRound: safeGetElement('btn-end-round'),
+            btnNextRound: safeGetElement('btn-next-round'),
+            btnFinishGame: safeGetElement('btn-finish-game'),
             btnNewGame: safeGetElement('btn-new-game'),
             configTotalRounds: safeGetElement('config-total-rounds'),
             configRoundDuration: safeGetElement('config-round-duration'),
@@ -102,12 +105,51 @@ class HostManager {
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.addEventListener('click', () => this.endRound());
         }
+
+        if (this.elements.btnNextRound) {
+            this.elements.btnNextRound.addEventListener('click', () => this.nextRound());
+        }
+
+        if (this.elements.btnFinishGame) {
+            this.elements.btnFinishGame.addEventListener('click', () => this.finishGame());
+        }
         
         if (this.elements.btnNewGame) {
             this.elements.btnNewGame.addEventListener('click', () => this.createNewGame());
         }
 
         this.setupGameCodeCopy();
+        this.setupConfigInputAdjusters();
+    }
+
+    setupConfigInputAdjusters() {
+        const adjusters = [
+            { btnDec: 'btn-decrease-rounds', btnInc: 'btn-increase-rounds', input: 'config-total-rounds', min: 1, max: 10 },
+            { btnDec: 'btn-decrease-duration', btnInc: 'btn-increase-duration', input: 'config-round-duration', min: 30, max: 300, step: 10 },
+            { btnDec: 'btn-decrease-min-players', btnInc: 'btn-increase-min-players', input: 'config-min-players', min: 1, max: 6 }
+        ];
+
+        adjusters.forEach(adjuster => {
+            const input = safeGetElement(adjuster.input);
+            const btnDec = safeGetElement(adjuster.btnDec);
+            const btnInc = safeGetElement(adjuster.btnInc);
+
+            if (btnDec) {
+                btnDec.addEventListener('click', () => {
+                    let val = parseInt(input?.value || adjuster.min) - (adjuster.step || 1);
+                    val = Math.max(adjuster.min, val);
+                    if (input) input.value = val;
+                });
+            }
+
+            if (btnInc) {
+                btnInc.addEventListener('click', () => {
+                    let val = parseInt(input?.value || adjuster.min) + (adjuster.step || 1);
+                    val = Math.min(adjuster.max, val);
+                    if (input) input.value = val;
+                });
+            }
+        });
     }
 
     setupGameCodeCopy() {
@@ -207,7 +249,7 @@ class HostManager {
 
     saveGameConfig() {
         const totalRounds = parseInt(this.elements.configTotalRounds?.value || 3);
-        const roundDuration = parseInt(this.elements.configRoundDuration?.value || 120);
+        const roundDuration = parseInt(this.elements.configRoundDuration?.value || 60);
         const minPlayers = parseInt(this.elements.configMinPlayers?.value || 2);
 
         if (totalRounds < 1 || totalRounds > 10) {
@@ -226,7 +268,7 @@ class HostManager {
         this.gameConfig = { totalRounds, roundDuration, minPlayers };
         this.hideConfigModal();
         showNotification('✅ Configuración guardada', 'success');
-        debug(`Configuración guardada: ${totalRounds} rondas, ${roundDuration}s, mín ${minPlayers}`);
+        debug(`Config: ${totalRounds} rondas, ${roundDuration}s, mín ${minPlayers} jugadores`);
     }
     
     handleKeyPress(event) {
@@ -273,7 +315,6 @@ class HostManager {
         this.client.onConnectionLost = () => this.handleConnectionLost();
         
         this.client.connect();
-        this.controlsVisible = true;
         safeShowElement(this.elements.controlsPanel);
         
         this.handleStateUpdate(state);
@@ -284,7 +325,7 @@ class HostManager {
         
         if (customCode && !isValidGameCode(customCode)) {
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3-6 caracteres)';
+                this.elements.statusMessage.innerHTML = '⚠️ Código inválido';
             }
             return;
         }
@@ -310,7 +351,8 @@ class HostManager {
             const result = await this.client.sendAction('create_game', {
                 game_id: this.gameId,
                 total_rounds: this.gameConfig.totalRounds,
-                round_duration: this.gameConfig.roundDuration
+                round_duration: this.gameConfig.roundDuration,
+                min_players: this.gameConfig.minPlayers
             });
             
             if (result.success) {
@@ -320,7 +362,7 @@ class HostManager {
                 setLocalStorage('gameConfig', JSON.stringify(this.gameConfig));
                 
                 this.loadGameScreen(result.state || {});
-                showNotification(`🎮 Partida creada: ${this.gameId}`, 'success');
+                showNotification(`🎮 Partida: ${this.gameId}`, 'success');
                 
             } else {
                 if (this.elements.statusMessage) {
@@ -386,7 +428,10 @@ class HostManager {
         if (!categoryDisplay) return;
 
         if (this.gameState.status === 'playing' && this.gameState.current_category) {
-            categoryDisplay.textContent = `Categoría: ${this.gameState.current_category}`;
+            const categoryValue = document.getElementById('category-value');
+            if (categoryValue) {
+                categoryValue.textContent = sanitizeText(this.gameState.current_category);
+            }
             safeShowElement(categoryDisplay);
         } else {
             safeHideElement(categoryDisplay);
@@ -398,9 +443,13 @@ class HostManager {
         if (!wordDisplay) return;
 
         if (this.gameState.status === 'playing' && this.gameState.current_word) {
-            wordDisplay.textContent = sanitizeText(this.gameState.current_word);
+            const wordValue = document.getElementById('word-value');
+            if (wordValue) {
+                wordValue.textContent = sanitizeText(this.gameState.current_word);
+            }
+            safeShowElement(wordDisplay);
         } else {
-            wordDisplay.textContent = '';
+            safeHideElement(wordDisplay);
         }
     }
     
@@ -494,7 +543,6 @@ class HostManager {
         
         grid.innerHTML = html;
         
-        // Añadir event listeners para botones de eliminar
         grid.querySelectorAll('.btn-remove-player').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -503,14 +551,14 @@ class HostManager {
             });
         });
         
-        debug(`✅ ${players.length} squarcles renderizados`, 'debug');
+        debug(`✅ ${players.length} jugadores renderizados`, 'debug');
     }
 
     async removePlayer(playerId) {
         const player = this.gameState.players?.[playerId];
         if (!player) return;
 
-        if (!confirm(`¿Eliminar a ${player.name} del juego?`)) {
+        if (!confirm(`¿Eliminar a ${player.name}?`)) {
             return;
         }
 
@@ -520,7 +568,7 @@ class HostManager {
             });
 
             if (result.success) {
-                showNotification(`${player.name} ha sido eliminado`, 'info');
+                showNotification(`${player.name} eliminado`, 'info');
             }
         } catch (error) {
             debug('Error eliminando jugador:', error, 'error');
@@ -550,14 +598,13 @@ class HostManager {
         
         switch (this.gameState.status) {
             case 'waiting':
-                const playerCount = Object.keys(this.gameState.players || {}).length;
                 const activePlayers = Object.values(this.gameState.players || {})
                     .filter(p => !p.disconnected).length;
                 
                 if (activePlayers >= this.gameConfig.minPlayers) {
-                    message = `🏃 ${activePlayers} jugador(es) - ¿Listos para empezar?`;
+                    message = `🏃 ${activePlayers} listo(s) - ¿Comenzamos?`;
                 } else if (activePlayers === 1) {
-                    message = `👥 Falta ${this.gameConfig.minPlayers - activePlayers} jugador(es) para comenzar`;
+                    message = `👥 Falta ${this.gameConfig.minPlayers - activePlayers} jugador(es)`;
                 } else {
                     message = `👥 ${activePlayers} jugador(es) conectado(s)`;
                 }
@@ -566,10 +613,10 @@ class HostManager {
                 message = `📚 Ronda ${this.gameState.round}/${this.gameConfig.totalRounds}`;
                 break;
             case 'round_ended':
-                message = '✅ Ronda terminada - Mostrando resultados';
+                message = '✅ Ronda terminada';
                 break;
             case 'finished':
-                message = '🎉 Partida finalizada';
+                message = '🎉 ¡Partida finalizada!';
                 break;
         }
         
@@ -581,19 +628,39 @@ class HostManager {
     updateButtonStates() {
         const isWaiting = this.gameState.status === 'waiting';
         const isPlaying = this.gameState.status === 'playing';
+        const isRoundEnded = this.gameState.status === 'round_ended';
+        const isFinished = this.gameState.status === 'finished';
         
         const activePlayers = Object.values(this.gameState.players || {})
             .filter(p => !p.disconnected);
         const activeCount = activePlayers.length;
+        const canStartRound = isWaiting && activeCount >= this.gameConfig.minPlayers;
+        const isLastRound = this.gameState.round >= this.gameConfig.totalRounds;
         
         if (this.elements.btnStartRound) {
-            const canStart = isWaiting && activeCount >= this.gameConfig.minPlayers;
-            this.elements.btnStartRound.disabled = !canStart;
-            this.elements.btnStartRound.textContent = canStart ? '▶️ Iniciar (ENTER)' : '⏳ Esperando...';
+            this.elements.btnStartRound.disabled = !canStartRound;
+            this.elements.btnStartRound.style.display = isWaiting ? 'block' : 'none';
         }
+        
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.disabled = !isPlaying;
+            this.elements.btnEndRound.style.display = isPlaying ? 'block' : 'none';
         }
+
+        if (this.elements.btnNextRound) {
+            this.elements.btnNextRound.disabled = !isRoundEnded || isLastRound;
+            this.elements.btnNextRound.style.display = (isRoundEnded && !isLastRound) ? 'block' : 'none';
+        }
+
+        if (this.elements.btnFinishGame) {
+            this.elements.btnFinishGame.disabled = !isRoundEnded;
+            this.elements.btnFinishGame.style.display = (isRoundEnded && isLastRound) ? 'block' : 'none';
+        }
+        
+        if (this.elements.btnNewGame) {
+            this.elements.btnNewGame.style.display = isFinished ? 'block' : 'none';
+        }
+        
         if (this.elements.btnConfig) {
             this.elements.btnConfig.disabled = !isWaiting;
         }
@@ -602,6 +669,9 @@ class HostManager {
     updateTimer() {
         if (this.gameState.status !== 'playing') {
             this.stopTimer();
+            if (this.elements.timerDisplay) {
+                this.elements.timerDisplay.textContent = '00:00';
+            }
             return;
         }
         
@@ -635,7 +705,7 @@ class HostManager {
         const now = Math.floor(Date.now() / 1000);
         const elapsed = now - this.gameState.round_started_at;
         const remaining = Math.max(0, this.gameState.round_duration - elapsed);
-        updateTimerDisplay(remaining, this.elements.timerDisplay, '⏳');
+        updateTimerDisplay(remaining, this.elements.timerDisplay);
     }
     
     stopTimer() {
@@ -658,7 +728,7 @@ class HostManager {
             });
             
             if (!result.success) {
-                showNotification('Error iniciando ronda: ' + (result.message || 'desconocido'), 'error');
+                showNotification('Error iniciando: ' + (result.message || 'desconocido'), 'error');
                 if (this.elements.btnStartRound) {
                     this.elements.btnStartRound.disabled = false;
                     this.elements.btnStartRound.textContent = '▶️ Iniciar (ENTER)';
@@ -699,6 +769,61 @@ class HostManager {
             }
         }
     }
+
+    async nextRound() {
+        try {
+            if (this.elements.btnNextRound) {
+                this.elements.btnNextRound.disabled = true;
+                this.elements.btnNextRound.textContent = 'Preparando...';
+            }
+            
+            const result = await this.client.sendAction('start_round', {
+                duration: this.gameConfig.roundDuration,
+                total_rounds: this.gameConfig.totalRounds
+            });
+            
+            if (!result.success) {
+                showNotification('Error iniciando siguiente ronda', 'error');
+                if (this.elements.btnNextRound) {
+                    this.elements.btnNextRound.disabled = false;
+                    this.elements.btnNextRound.textContent = '📝 Siguiente';
+                }
+            }
+        } catch (error) {
+            debug('Error iniciando siguiente ronda:', error, 'error');
+            showNotification('Error de conexión', 'error');
+            if (this.elements.btnNextRound) {
+                this.elements.btnNextRound.disabled = false;
+                this.elements.btnNextRound.textContent = '📝 Siguiente';
+            }
+        }
+    }
+
+    async finishGame() {
+        try {
+            if (this.elements.btnFinishGame) {
+                this.elements.btnFinishGame.disabled = true;
+                this.elements.btnFinishGame.textContent = 'Terminando...';
+            }
+            
+            const result = await this.client.sendAction('reset_game', {});
+            
+            if (!result.success) {
+                showNotification('Error terminando partida', 'error');
+                if (this.elements.btnFinishGame) {
+                    this.elements.btnFinishGame.disabled = false;
+                    this.elements.btnFinishGame.textContent = '🏁 Terminar';
+                }
+            }
+        } catch (error) {
+            debug('Error terminando partida:', error, 'error');
+            showNotification('Error de conexión', 'error');
+            if (this.elements.btnFinishGame) {
+                this.elements.btnFinishGame.disabled = false;
+                this.elements.btnFinishGame.textContent = '🏁 Terminar';
+            }
+        }
+    }
     
     createNewGame() {
         if (confirm('¿Iniciar una nueva partida?')) {
@@ -725,4 +850,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - Configuración de juego, eliminación de jugadores, y mejor display de ronda/palabra', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js - Control de rondas, configuración, eliminación de jugadores, resultados', 'color: #10B981; font-weight: bold');
