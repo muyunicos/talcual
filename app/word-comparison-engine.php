@@ -1,23 +1,23 @@
 <?php
+declare(strict_types=1);
+
 /**
  * @file word-comparison-engine.php
- * @description Motor inteligente de comparación de palabras con soporte para:
- *              - Sinónimos (definidos en diccionario con |)
- *              - Variaciones de género (masculino/femenino)
- *              - Variaciones de número (singular/plural)
- *              - Palabras compuestas (espacios normalizados)
- *
- * UBICACIÓN: app/word-comparison-engine.php
+ * @description Motor inteligente de comparación de palabras V2.
+ * Incluye caché, normalización unicode real y mejor manejo de plurales.
  */
 
 class WordEquivalenceEngine {
-    private static $instance = null;
-    private $dictionary = null;
-    private $equivalenceTable = null;
-    private $genderVariations = [];
-    private $numberVariations = [];
+    private static ?self $instance = null;
+    private array $dictionary = [];
+    private array $equivalenceTable = [];
+    
+    // Configuración
+    private const CACHE_FILE = __DIR__ . '/word-engine.cache';
+    private const USE_CACHE = true;
+    private const FUZZY_TOLERANCE = 1; // 0 = exacto, 1 = permite 1 letra de error
 
-    public static function getInstance() {
+    public static function getInstance(): self {
         if (self::$instance === null) {
             self::$instance = new self();
         }
@@ -25,246 +25,260 @@ class WordEquivalenceEngine {
     }
 
     private function __construct() {
+        // Intentar cargar desde caché primero para mejorar performance
+        if (self::USE_CACHE && $this->loadFromCache()) {
+            return;
+        }
+
         $this->loadAndProcessDictionary();
-        $this->setupGenderRules();
-        $this->setupNumberRules();
+        
+        if (self::USE_CACHE) {
+            $this->saveToCache();
+        }
     }
 
-    private function loadAndProcessDictionary() {
+    /**
+     * Carga el diccionario JSON y construye la tabla.
+     */
+    private function loadAndProcessDictionary(): void {
         $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
 
         if (!file_exists($file)) {
-            logMessage('[WordEngine] Diccionario no encontrado: ' . $file, 'WARNING');
-            $this->equivalenceTable = [];
+            $this->log('Diccionario no encontrado: ' . $file, 'WARNING');
             return;
         }
 
         $json = file_get_contents($file);
-        $this->dictionary = json_decode($json, true);
+        $data = json_decode($json, true);
 
-        if (!$this->dictionary) {
-            logMessage('[WordEngine] Error decodificando diccionario: ' . json_last_error_msg(), 'ERROR');
-            $this->equivalenceTable = [];
+        if (!$data) {
+            $this->log('Error decodificando diccionario JSON.', 'ERROR');
             return;
         }
 
-        $this->buildEquivalenceTable();
+        $this->dictionary = $data;
+        $this->buildEquivalenceTable($data);
     }
 
     /**
-     * Construye tabla de equivalencias desde diccionario.
-     * Soporta:
-     * - Legacy: { "categorias": { "GENERAL": ["Flores|Ramo", ...] } }
-     * - Nuevo: { "CATEGORIA": [ { "CONSIGNA": ["Flores|Ramo", ...] }, ... ] }
+     * Procesa la estructura del diccionario para aplanar las relaciones.
      */
-    private function buildEquivalenceTable() {
+    private function buildEquivalenceTable(array $data): void {
         $this->equivalenceTable = [];
 
-        if (!is_array($this->dictionary)) {
-            return;
-        }
+        // Detección automática de formato (Legacy vs Nuevo)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveArrayIterator($data),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
 
-        // ===== Legacy format =====
-        if (isset($this->dictionary['categorias']) && is_array($this->dictionary['categorias'])) {
-            foreach ($this->dictionary['categorias'] as $category => $words) {
-                if (!is_array($words)) continue;
-                foreach ($words as $wordEntry) {
-                    $this->processWordEntry($wordEntry);
-                }
-            }
-
-            logMessage('[WordEngine] Tabla equivalencias (legacy) con ' . count($this->equivalenceTable) . ' entradas', 'DEBUG');
-            return;
-        }
-
-        // ===== New format =====
-        foreach ($this->dictionary as $category => $items) {
-            if (!is_array($items)) {
-                continue;
-            }
-
-            foreach ($items as $item) {
-                if (!is_array($item)) {
-                    continue;
-                }
-
-                foreach ($item as $prompt => $words) {
-                    if (!is_array($words)) {
-                        continue;
-                    }
-
-                    foreach ($words as $wordEntry) {
-                        $this->processWordEntry($wordEntry);
-                    }
-                }
+        foreach ($iterator as $key => $value) {
+            // Buscamos strings que contengan palabras (hojas del árbol o arrays de strings)
+            if (is_string($value) && !empty($value)) {
+                $this->processWordEntry($value);
             }
         }
-
-        logMessage('[WordEngine] Tabla equivalencias (nuevo) con ' . count($this->equivalenceTable) . ' entradas', 'DEBUG');
+        
+        $this->log('Tabla construida con ' . count($this->equivalenceTable) . ' entradas.', 'DEBUG');
     }
 
-    private function processWordEntry($entry) {
-        if (!is_string($entry) || empty(trim($entry))) {
-            return;
-        }
-
-        $synonyms = array_map('trim', explode('|', $entry));
+    /**
+     * Genera variaciones para una entrada de diccionario (ej: "Perro|Can")
+     */
+    private function processWordEntry(string $entry): void {
+        $synonyms = explode('|', $entry);
+        $synonyms = array_map('trim', $synonyms);
+        
+        // La primera palabra es la "Canónica" (la verdad absoluta)
         $canonical = $this->normalizeWord($synonyms[0]);
 
-        foreach ($synonyms as $synonym) {
-            $normalized = $this->normalizeWord($synonym);
-            $this->equivalenceTable[$normalized] = $canonical;
+        foreach ($synonyms as $word) {
+            $normalizedBase = $this->normalizeWord($word);
+            
+            // 1. Mapeo directo
+            $this->addMapping($normalizedBase, $canonical);
 
-            $genderVariants = $this->applyGenderVariations($normalized);
-            foreach ($genderVariants as $variant) {
-                $this->equivalenceTable[$variant] = $canonical;
-            }
-
-            $numberVariants = $this->applyNumberVariations($normalized);
-            foreach ($numberVariants as $variant) {
-                $this->equivalenceTable[$variant] = $canonical;
-            }
-
-            foreach ($genderVariants as $genderVar) {
-                $combinedVariants = $this->applyNumberVariations($genderVar);
-                foreach ($combinedVariants as $combined) {
-                    $this->equivalenceTable[$combined] = $canonical;
+            // 2. Variaciones de Género (y sus plurales)
+            $genderVariants = $this->generateGenderVariants($normalizedBase);
+            foreach ($genderVariants as $gVariant) {
+                $this->addMapping($gVariant, $canonical);
+                
+                // Plurales del cambio de género (ej: Actor -> Actriz -> Actrices)
+                $gNumberVariants = $this->generateNumberVariants($gVariant);
+                foreach ($gNumberVariants as $gnVariant) {
+                    $this->addMapping($gnVariant, $canonical);
                 }
+            }
+
+            // 3. Variaciones de Número directas (Singular <-> Plural)
+            $numberVariants = $this->generateNumberVariants($normalizedBase);
+            foreach ($numberVariants as $nVariant) {
+                $this->addMapping($nVariant, $canonical);
             }
         }
     }
 
-    private function normalizeWord($word) {
-        if (!is_string($word)) {
-            return '';
+    private function addMapping(string $variant, string $canonical): void {
+        // Solo agregamos si no existe, o si queremos sobreescribir lógica
+        if (!isset($this->equivalenceTable[$variant])) {
+            $this->equivalenceTable[$variant] = $canonical;
         }
+    }
 
-        $word = trim($word);
-
-        // Intento de normalizar diacríticos (ÁÉÍÓÚÑ -> AEIOUN) cuando sea posible.
-        if (function_exists('iconv')) {
-            $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $word);
-            if ($converted !== false && is_string($converted) && $converted !== '') {
-                $word = $converted;
-            }
+    /**
+     * Normalización moderna usando Intl y Multibyte String.
+     */
+    private function normalizeWord(string $word): string {
+        // 1. Descomponer caracteres Unicode (NFD) para separar acentos
+        if (class_exists('Normalizer')) {
+            $word = Normalizer::normalize($word, Normalizer::FORM_NFD);
         }
-
-        $word = strtoupper($word);
-        $word = preg_replace('/\s+/', ' ', $word);
-
+        
+        // 2. Eliminar marcas diacríticas (acentos)
+        $word = preg_replace('/[\x{0300}-\x{036f}]/u', '', $word);
+        
+        // 3. Convertir a mayúsculas unicode
+        $word = mb_strtoupper($word, 'UTF-8');
+        
+        // 4. Limpiar espacios extra y caracteres no alfanuméricos básicos (opcional, ajustado para palabras compuestas)
+        $word = preg_replace('/\s+/', ' ', trim($word));
+        
         return $word;
     }
 
-    private function setupGenderRules() {
-        $this->genderVariations = [
-            ['pattern' => '/O$/', 'replacement' => 'A'],
-            ['pattern' => '/ITO$/', 'replacement' => 'ITA'],
-            ['pattern' => '/UCO$/', 'replacement' => 'UCA'],
-            ['pattern' => '/INE$/', 'replacement' => 'INA'],
-            ['pattern' => '/EY$/', 'replacement' => 'EINA'],
-            ['pattern' => '/OZ$/', 'replacement' => 'OZA'],
-        ];
-    }
-
-    private function setupNumberRules() {
-        $this->numberVariations = [
-            ['pattern' => '/(A|O|E)$/', 'replacement' => '$1S'],
-            ['pattern' => '/Z$/', 'replacement' => 'CES'],
-            ['pattern' => '/(D|L|N|R|T|J)$/', 'replacement' => '$1ES'],
-        ];
-    }
-
-    private function applyGenderVariations($word) {
+    /**
+     * Genera variantes de género basadas en reglas heurísticas del español.
+     */
+    private function generateGenderVariants(string $word): array {
         $variants = [];
+        
+        $rules = [
+            '/O$/' => 'A',       // ChicO -> ChicA
+            '/A$/' => 'O',       // ChicA -> ChicO (bidireccional)
+            '/TOR$/' => 'TRIZ',  // AcTOR -> AcTRIZ
+            '/ON$/' => 'ONA',    // CampeON -> CampeONA
+            '/IN$/' => 'INA',    // BailarIN -> BailarINA
+        ];
 
-        foreach ($this->genderVariations as $rule) {
-            if (preg_match($rule['pattern'], $word)) {
-                $variant = preg_replace($rule['pattern'], $rule['replacement'], $word);
-                if ($variant !== $word && !in_array($variant, $variants, true)) {
-                    $variants[] = $variant;
-                }
+        foreach ($rules as $pattern => $replacement) {
+            if (preg_match($pattern, $word)) {
+                $variants[] = preg_replace($pattern, $replacement, $word);
             }
         }
 
         return $variants;
     }
 
-    private function applyNumberVariations($word) {
+    /**
+     * Genera variantes de número (Singular <-> Plural).
+     * Corrige el bug de "CANCIONES" -> "CANCIONE".
+     */
+    private function generateNumberVariants(string $word): array {
         $variants = [];
 
-        if (substr($word, -1) === 'S' && strlen($word) > 1) {
-            $singular = substr($word, 0, -1);
-            if ($singular !== $word && !in_array($singular, $variants, true)) {
-                $variants[] = $singular;
+        // A. De Singular a Plural
+        if (preg_match('/[AEIOU]$/', $word)) {
+            $variants[] = $word . 'S';
+        } elseif (preg_match('/[DHLMNRSTJ]$/', $word)) { // Consonantes comunes
+            $variants[] = $word . 'ES';
+        } elseif (preg_match('/Z$/', $word)) {
+            $variants[] = substr($word, 0, -1) . 'CES'; // Luz -> Luces
+        }
+
+        // B. De Plural a Singular (Heurística inversa mejorada)
+        if (substr($word, -3) === 'CES') {
+            $variants[] = substr($word, 0, -3) . 'Z'; // Luces -> Luz
+        } elseif (substr($word, -2) === 'ES') {
+            // Cuidado aquí: "Lunes" termina en ES pero es singular. 
+            // Esta lógica es simple, para un juego suele bastar.
+            $variants[] = substr($word, 0, -2); // Canciones -> Cancion
+        } elseif (substr($word, -1) === 'S') {
+             // Evitar quitar S si la palabra termina en SS (raro en español) o es muy corta
+            if (strlen($word) > 3) {
+                $variants[] = substr($word, 0, -1); // Gatos -> Gato
             }
         }
 
-        foreach ($this->numberVariations as $rule) {
-            if (preg_match($rule['pattern'], $word)) {
-                $variant = preg_replace($rule['pattern'], $rule['replacement'], $word);
-                if ($variant !== $word && !in_array($variant, $variants, true)) {
-                    $variants[] = $variant;
-                }
-            }
-        }
-
-        return $variants;
+        return array_unique($variants); // Eliminar duplicados
     }
 
-    public function getCanonicalWord($playerWord) {
+    // ================= PÚBLICO =================
+
+    public function getCanonicalWord(string $playerWord): ?string {
         $normalized = $this->normalizeWord($playerWord);
 
+        // 1. Búsqueda Exacta (O(1))
         if (isset($this->equivalenceTable[$normalized])) {
             return $this->equivalenceTable[$normalized];
+        }
+
+        // 2. Búsqueda Fuzzy (Levenshtein) - Opcional, solo si no hay match exacto
+        if (self::FUZZY_TOLERANCE > 0 && strlen($normalized) > 3) {
+            foreach ($this->equivalenceTable as $key => $canonical) {
+                if (levenshtein($normalized, (string)$key) <= self::FUZZY_TOLERANCE) {
+                    return $canonical;
+                }
+            }
         }
 
         return null;
     }
 
-    public function areEquivalent($word1, $word2) {
-        $canonical1 = $this->getCanonicalWord($word1);
-        $canonical2 = $this->getCanonicalWord($word2);
-
-        return $canonical1 !== null && $canonical1 === $canonical2;
+    public function areEquivalent(string $word1, string $word2): bool {
+        $c1 = $this->getCanonicalWord($word1) ?? $this->normalizeWord($word1);
+        $c2 = $this->getCanonicalWord($word2) ?? $this->normalizeWord($word2);
+        return $c1 === $c2;
     }
 
-    public function getSynonyms($canonicalWord) {
-        $canonical = $this->normalizeWord($canonicalWord);
-        $synonyms = [];
-
-        foreach ($this->equivalenceTable as $word => $canonical_ref) {
-            if ($canonical_ref === $canonical) {
-                $synonyms[] = $word;
-            }
-        }
-
-        return array_unique($synonyms);
-    }
-
-    public function getEquivalenceTable() {
-        return $this->equivalenceTable;
-    }
-
-    public function getDictionary() {
+    public function getDictionary(): array {
         return $this->dictionary;
     }
-}
 
-function compareWords($playerWord, $otherPlayerWord) {
-    $engine = WordEquivalenceEngine::getInstance();
-    return $engine->areEquivalent($playerWord, $otherPlayerWord);
-}
+    // ================= CACHÉ & UTILS =================
 
-function getCanonicalWord($word) {
-    $engine = WordEquivalenceEngine::getInstance();
-    $canonical = $engine->getCanonicalWord($word);
+    private function loadFromCache(): bool {
+        if (file_exists(self::CACHE_FILE)) {
+            $cacheTime = filemtime(self::CACHE_FILE);
+            $dictTime = file_exists(__DIR__ . '/diccionario.json') ? filemtime(__DIR__ . '/diccionario.json') : 0;
 
-    if ($canonical === null) {
-        return strtoupper(trim($word));
+            if ($cacheTime > $dictTime) {
+                $data = unserialize(file_get_contents(self::CACHE_FILE));
+                if ($data) {
+                    $this->equivalenceTable = $data['table'];
+                    $this->dictionary = $data['dict'];
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
-    return $canonical;
+    private function saveToCache(): void {
+        $data = [
+            'table' => $this->equivalenceTable,
+            'dict' => $this->dictionary
+        ];
+        file_put_contents(self::CACHE_FILE, serialize($data));
+    }
+
+    private function log(string $msg, string $level = 'INFO'): void {
+        // Integración simple con logs existentes o error_log por defecto
+        if (function_exists('logMessage')) {
+            logMessage("[WordEngine] $msg", $level);
+        } else {
+            error_log("[$level] [WordEngine] $msg");
+        }
+    }
 }
 
-logMessage('[✅] word-comparison-engine.php cargado - Motor inteligente de comparación de palabras', 'DEBUG');
+// Helpers globales para mantener compatibilidad
+function compareWords(string $w1, string $w2): bool {
+    return WordEquivalenceEngine::getInstance()->areEquivalent($w1, $w2);
+}
+
+function getCanonicalWord(string $w): string {
+    $engine = WordEquivalenceEngine::getInstance();
+    $canonical = $engine->getCanonicalWord($w);
+    return $canonical ?? mb_strtoupper(trim($w), 'UTF-8');
+}
 ?>
