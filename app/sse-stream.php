@@ -1,24 +1,34 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-error_log("PRUEBA DE LOG: Esto es un mensaje de prueba personalizado.");
-// Server-Sent Events para actualizaciones en tiempo real
-
-require_once __DIR__ . '/config.php';
-
-header('Content-Type: text/event-stream');
-header('Cache-Control: no-cache');
-header('Connection: keep-alive');
-header('X-Accel-Buffering: no');
+// 🔥 CRITICAL: DESHABILITAR BUFFERING ANTES DE CUALQUIER OUTPUT O INCLUDE
+// Debe ser lo PRIMERO en el archivo (incluso antes de error_reporting)
+while (@ob_end_flush());
+if (ob_get_level()) @ob_end_clean();
 
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', '1');
+    @apache_setenv('dont-vary', '1');
 }
-@ini_set('output_buffering', 'off');
-@ini_set('zlib.output_compression', 0);
+
+// Configuración AGRESIVA de unbuffering
+@ini_set('output_buffering', 0);
 @ini_set('implicit_flush', 1);
+@ini_set('zlib.output_compression', 0);
 ob_implicit_flush(1);
-while (ob_get_level()) ob_end_flush();
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+error_log("PRUEBA DE LOG: Esto es un mensaje de prueba personalizado.");
+
+// Server-Sent Events para actualizaciones en tiempo real
+require_once __DIR__ . '/config.php';
+
+// Headers SSE (después de deshabilitar buffering)
+header('Content-Type: text/event-stream');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Connection: keep-alive');
+header('X-Accel-Buffering: no');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 $gameId = sanitizeGameId($_GET['game_id'] ?? null);
 
@@ -51,7 +61,11 @@ $connectionBroken = false;
 // Esto evita race condition donde SSE conecta antes de que archivo JSON exista
 echo ": heartbeat\n\n";
 flush();
+error_log("SSE: Heartbeat inicial enviado para {$gameId}");
 logMessage("SSE heartbeat inicial enviado para {$gameId}", 'DEBUG');
+
+// 🔧 NUEVO: Enviar un evento test para confirmar que llega
+sendSSE('connected', ['game_id' => $gameId, 'timestamp' => time()]);
 
 while (true) {
     if (time() - $startTime > SSE_TIMEOUT) {
