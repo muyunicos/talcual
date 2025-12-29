@@ -5,9 +5,12 @@
 game_states/
 *.lock
 
-# Images
+# Images (production assets, not tracked)
 images/
 favicon.ico
+
+# Dictionary (production fallback)
+# app/diccionario.json is git-tracked as critical game data
 
 # Logs
 debug.log
@@ -19,7 +22,7 @@ analytics.json
 
 # OS files
 .DS_Store
-Thumbs.db
+Thumbss.db
 
 # IDE files
 .vscode/
