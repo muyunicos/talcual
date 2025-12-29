@@ -126,21 +126,35 @@ class WordEquivalenceEngine {
     }
 
     /**
-     * Normalización moderna usando Intl y Multibyte String.
+     * Normalización robusta que funciona sin extensión Intl.
      */
     private function normalizeWord(string $word): string {
-        // 1. Descomponer caracteres Unicode (NFD) para separar acentos
-        if (class_exists('Normalizer')) {
-            $word = Normalizer::normalize($word, Normalizer::FORM_NFD);
-        }
-        
-        // 2. Eliminar marcas diacríticas (acentos)
-        $word = preg_replace('/[\x{0300}-\x{036f}]/u', '', $word);
-        
-        // 3. Convertir a mayúsculas unicode
+        // 1. Convertir a Mayúsculas primero para estandarizar
         $word = mb_strtoupper($word, 'UTF-8');
+
+        // 2. Reemplazo manual de tildes (Método infalible si fallan las librerías)
+        $replacements = [
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U',
+            'À' => 'A', 'È' => 'E', 'Ì' => 'I', 'Ò' => 'O', 'Ù' => 'U',
+            'Ä' => 'A', 'Ë' => 'E', 'Ï' => 'I', 'Ö' => 'O', 'Ü' => 'U',
+            'Â' => 'A', 'Ê' => 'E', 'Î' => 'I', 'Ô' => 'O', 'Û' => 'U',
+            'Ñ' => 'N', 'Ç' => 'C'
+        ];
         
-        // 4. Limpiar espacios extra y caracteres no alfanuméricos básicos (opcional, ajustado para palabras compuestas)
+        $word = strtr($word, $replacements);
+
+        // 3. Intento secundario con iconv si está disponible (para caracteres raros)
+        if (function_exists('iconv')) {
+            $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $word);
+            if ($converted) {
+                $word = $converted;
+            }
+        }
+
+        // 4. Limpieza final: dejar solo letras A-Z y números
+        $word = preg_replace('/[^A-Z0-9 ]/', '', $word);
+        
+        // 5. Quitar espacios dobles
         $word = preg_replace('/\s+/', ' ', trim($word));
         
         return $word;
