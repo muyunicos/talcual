@@ -118,20 +118,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Textura de fondo sutil (Opcional si la imagen ya tiene patrón) */
-body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(46, 0, 78, 0.4); /* Capa violeta sobre la imagen si es necesario */
-    mix-blend-mode: overlay;
-    pointer-events: none;
-    z-index: 0;
-}
-
 /* ========== TIPOGRAFÍAS BASE ========== */
 html {
     font-size: 16px;
