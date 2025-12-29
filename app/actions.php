@@ -22,15 +22,19 @@ function notifyGameChanged($gameId, $isHostOnlyChange = false) {
     $notifyAll = GAME_STATES_DIR . '/GAME_all.json';
     $notifyHost = GAME_STATES_DIR . '/GAME_host.json';
     
+    // 🔍 DEBUG
+    logMessage("🔔 notifyGameChanged llamado para {$gameId}", 'INFO');
+    
     // Todos ven este cambio
-    @file_put_contents($notifyAll, (string)time(), LOCK_EX);
+    $result1 = @file_put_contents($notifyAll, (string)time(), LOCK_EX);
+    logMessage("   - GAME_all.json: " . ($result1 ? "✅ escrito" : "❌ falló"), 'INFO');
     
     // Si es un cambio que solo afecta al host
     if ($isHostOnlyChange) {
-        @file_put_contents($notifyHost, (string)time(), LOCK_EX);
+        $result2 = @file_put_contents($notifyHost, (string)time(), LOCK_EX);
+        logMessage("   - GAME_host.json: " . ($result2 ? "✅ escrito" : "❌ falló"), 'INFO');
     }
 }
-
 function checkRateLimit() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $cacheKey = 'rate_limit:' . md5($ip);
