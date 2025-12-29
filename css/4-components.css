@@ -248,11 +248,12 @@ select:focus {
 /* ========== CÓDIGO DE SALA (STICKER) - UNIFICADO ========== */
 /* Clase base para code stickers - reutilizable en play.html y host.html */
 .code-sticker {
-    background: var(--magenta);
-    color: white;
+    background: var(--amarillo);
+    color: #000;
+    transform: rotate(-3deg);
+    letter-spacing: 3px;
     font-family: var(--font-display);
     font-weight: 900;
-    letter-spacing: 2px;
     box-shadow: var(--sombra-dura);
     border-radius: var(--radius-md);
     display: inline-block;
@@ -261,6 +262,7 @@ select:focus {
     transition: all var(--transition-normal);
     outline: none;
     position: relative;
+    justify-self: self-end;
 }
 
 .code-sticker:hover {
