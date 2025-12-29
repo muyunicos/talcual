@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jugador - TalCual Party</title>
-    <!-- Favicon removido: directorio /images no existe en el repositorio -->
-    <!-- Si necesitas favicon, coloca icon.webp en /images/ o usa CDN -->
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
     
     <!-- CSS Reorganizado - Usando rutas relativas consistentes -->
     <link rel="stylesheet" href="./css/1-global.css">
@@ -17,10 +16,10 @@
     <!-- MODAL UNIRSE AL JUEGO -->
     <div class="modal-overlay" id="modal-join-game">
         <div class="modal-join-game">
-            <div class="modal-title">\ud83d\udcf1 Unirse a Partida</div>
+            <div class="modal-title">📱 Unirse a Partida</div>
             
             <div class="input-group">
-                <label class="input-label">C\u00f3digo de Sala</label>
+                <label class="input-label">Código de Sala</label>
                 <input type="text" id="input-game-code" class="input-field" 
                        placeholder="Ej: CASA" maxlength="6" autocomplete="off">
             </div>
@@ -32,30 +31,19 @@
             </div>
 
             <div class="input-group">
-                <label class="input-label">Elige tu Aura</label>
+                <label class="input-label">✨ Elige tu Aura</label>
                 <div class="aura-selector" id="color-selector">
-                    <!-- Fire - Seleccionado por defecto -->
-                    <div class="aura-circle aura-fire selected" data-color="#FF9966,#FF5E62"></div>
-                    <!-- Ice -->
-                    <div class="aura-circle aura-ice" data-color="#00F260,#0575E6"></div>
-                    <!-- Candy -->
-                    <div class="aura-circle aura-candy" data-color="#F37335,#FDC830"></div>
-                    <!-- Mystic -->
-                    <div class="aura-circle aura-mystic" data-color="#8E2DE2,#4A00E0"></div>
-                    <!-- Electric -->
-                    <div class="aura-circle aura-electric" data-color="#12c2e9,#f64f59"></div>
-                    <!-- Toxic -->
-                    <div class="aura-circle aura-toxic" data-color="#DCE35B,#45B649"></div>
+                    <!-- Generado dinámicamente por aura-system.js -->
                 </div>
             </div>
 
-            <button class="btn-join" id="btn-join">\ud83c\udfae \ufe0f \u00a1Jugar!</button>
+            <button class="btn-join" id="btn-join">🎮 ¡Jugar!</button>
             
             <div id="status-message" class="status-message-modal"></div>
             
             <div class="btn-back">
                 <a href="./index.html" class="btn-back-link">
-                    \u2190 Volver al inicio
+                    ← Volver al inicio
                 </a>
             </div>
         </div>
@@ -65,7 +53,7 @@
     <div class="game-screen" id="game-screen">
         <div class="top-header">
             <div class="header-round" id="header-round">Ronda 0/3</div>
-            <div class="header-timer" id="header-timer">\u23f3 00:00</div>
+            <div class="header-timer" id="header-timer">⏳ 00:00</div>
             <div class="header-code-sticker" id="header-code">----</div>
         </div>
 
@@ -76,7 +64,7 @@
         <div class="status-card" id="status-card">
             <div class="current-word hidden" id="current-word"></div>
             <div class="waiting-message" id="waiting-message">
-                El anfitr\u00edán iniciara\u0301 la ronda pronto
+                El anfitrión iniciará la ronda pronto
             </div>
         </div>
 
@@ -125,8 +113,10 @@
         </div>
     </div>
 
+    <!-- Scripts Modulares (orden importa) -->
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
+    <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/player-manager.js"></script>
 </body>

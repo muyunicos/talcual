@@ -1,6 +1,6 @@
 /**
  * @file player-manager.js
- * @description Gestor mejorado de lógica del jugador
+ * @description Gestor mejorado de lógica del jugador con sistema de auras dinámicas
  */
 
 class PlayerManager {
@@ -19,6 +19,10 @@ class PlayerManager {
         this.lastWordsUpdateTime = 0;
         this.wordsUpdatePending = false;
         
+        // Auras generadas
+        this.availableAuras = [];
+        this.selectedAura = null;
+        
         // Elementos del DOM
         this.elements = {};
     }
@@ -27,7 +31,7 @@ class PlayerManager {
      * Inicializa el gestor del jugador
      */
     initialize() {
-        debug('🎲 Inicializando PlayerManager');
+        debug('🎢 Inicializando PlayerManager');
         this.cacheElements();
         this.attachEventListeners();
         
@@ -107,28 +111,6 @@ class PlayerManager {
             });
         }
         
-        // Color selector
-        const colorOptions = this.elements.colorSelector?.querySelectorAll('.aura-circle');
-        if (colorOptions && colorOptions.length > 0) {
-            let selectedOption = this.elements.colorSelector.querySelector('.aura-circle.selected');
-            if (!selectedOption) {
-                selectedOption = colorOptions[0];
-                selectedOption.classList.add('selected');
-            }
-            
-            this.playerColor = selectedOption.dataset.color || '#FF9966,#FF5E62';
-            
-            colorOptions.forEach(option => {
-                option.addEventListener('click', () => {
-                    colorOptions.forEach(opt => opt.classList.remove('selected'));
-                    option.classList.add('selected');
-                    this.playerColor = option.dataset.color || '#FF9966,#FF5E62';
-                });
-            });
-        } else {
-            this.playerColor = '#FF9966,#FF5E62';
-        }
-        
         // Palabras
         if (this.elements.btnAddWord) {
             this.elements.btnAddWord.addEventListener('click', () => this.addWord());
@@ -169,6 +151,26 @@ class PlayerManager {
     showJoinModal() {
         safeShowElement(this.elements.modalJoinGame);
         safeHideElement(this.elements.gameScreen);
+        
+        // Generar auras aleatorias
+        this.availableAuras = generateRandomAuras();
+        
+        // Renderizar selector de auras
+        if (this.elements.colorSelector) {
+            const randomAura = this.availableAuras[Math.floor(Math.random() * this.availableAuras.length)];
+            renderAuraSelectors(
+                this.elements.colorSelector,
+                this.availableAuras,
+                randomAura.hex,
+                (aura) => {
+                    this.playerColor = aura.hex;
+                    this.selectedAura = aura;
+                }
+            );
+            // Preseleccionar una al azar
+            this.playerColor = randomAura.hex;
+            this.selectedAura = randomAura;
+        }
         
         if (this.elements.inputGameCode) {
             setTimeout(() => this.elements.inputGameCode.focus(), 100);
@@ -216,9 +218,10 @@ class PlayerManager {
      */
     loadGameScreen(state) {
         if (!this.playerColor) {
-            this.playerColor = '#FF9966,#FF5E62';
+            this.playerColor = '#FF0055,#00F0FF';
         }
         
+        // Aplicar gradiente + bg.webp
         applyColorGradient(this.playerColor);
         
         safeHideElement(this.elements.modalJoinGame);
@@ -483,7 +486,7 @@ class PlayerManager {
         const timeSinceLastUpdate = now - this.lastWordsUpdateTime;
         
         if (timeSinceLastUpdate >= COMM_CONFIG.WORDS_UPDATE_THROTTLE) {
-            // Envíar inmediatamente
+            // Envíir inmediatamente
             this.sendWordsUpdate();
         } else {
             // Programar para más tarde
@@ -720,4 +723,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js cargado - Mejorado con throttle y validación', 'color: #10B981; font-weight: bold');
+console.log('%c✅ player-manager.js cargado - Integración de auras dinámicas 🌠', 'color: #FF00FF; font-weight: bold; font-size: 12px');

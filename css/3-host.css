@@ -6,11 +6,9 @@
 /* ========== GRID DE TV HOST ========== */
 .tv-layout {
     display: grid;
-    /* FIX #1: Usar minmax() para hacer el layout responsivo en todos los tamaños */
     grid-template-rows: min-content 1fr min-content;
     grid-template-columns: minmax(200px, 1fr) minmax(400px, 2fr) minmax(200px, 1fr);
     height: 100vh;
-    /* FIX #1: Usar clamp() para gap y padding responsivos */
     gap: clamp(10px, 2%, 20px);
     padding: clamp(10px, 2%, 20px);
     position: relative;
@@ -221,14 +219,6 @@
     line-height: 1.4;
 }
 
-/* ========== STATUS MESSAGE MODAL ========== */
-.status-message-modal {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 1.1em;
-    color: white;
-}
-
 /* ========== TOP PALABRAS DERECHA ========== */
 .top-words-panel {
     background: rgba(0, 0, 0, 0.4);
@@ -297,7 +287,7 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     gap: clamp(15px, 2%, 20px);
     padding: clamp(15px, 2%, 20px);
     background: rgba(0, 0, 0, 0.4);
@@ -321,6 +311,15 @@
     border-radius: 10px;
 }
 
+/* ========== CONTENEDOR TARJETA (Squarcle + Nombre) ========== */
+.player-card-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
 /* ========== TARJETA SQUARCLE JUGADOR ========== */
 .player-squarcle {
     width: clamp(100px, 12vw, 140px);
@@ -335,7 +334,6 @@
     animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* FIX #2: Borde definido para mejor visual */
     border: 4px solid rgba(255, 255, 255, 0.3);
     outline: none;
     flex-shrink: 0;
@@ -351,7 +349,7 @@
     outline-offset: 2px;
 }
 
-/* FIX #2: Estados visuales de la tarjeta */
+/* Estados visuales de la tarjeta */
 .player-squarcle.connected {
     border-color: #00FF00;
     box-shadow: 0 0 15px rgba(0, 255, 0, 0.5), 4px 4px 0px #000;
@@ -400,14 +398,13 @@
     z-index: 1;
 }
 
-/* ========== ETIQUETA NOMBRE JUGADOR ========== */
+/* ========== ETIQUETA NOMBRE JUGADOR (Debajo de la tarjeta) ========== */
 .player-name-label {
     font-size: clamp(0.75em, 1.5vw, 0.9em);
     color: white;
     font-weight: 800;
     text-shadow: 2px 2px 0px #000;
-    margin-top: 3px;
-    max-width: 110px;
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -416,7 +413,7 @@
     z-index: 1;
 }
 
-/* ========== BADGE PUNTOS ========== */
+/* ========== BADGE PUNTOS (Sobre la tarjeta) ========== */
 .player-score-badge {
     position: absolute;
     top: -10px;
@@ -454,6 +451,34 @@
     border-radius: 15px;
     box-shadow: 2px 2px 0px #000;
     z-index: 2;
+}
+
+/* ========== BOTÓN EXPULSAR (Hover) ========== */
+.player-squarcle .btn-kick {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: #FF4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 0.8em;
+    display: none;
+    z-index: 3;
+    box-shadow: 2px 2px 0px #000;
+}
+
+.player-squarcle:hover .btn-kick {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.player-squarcle .btn-kick:hover {
+    transform: scale(1.1);
 }
 
 /* ========== MODALES - HOST ========== */
@@ -497,12 +522,44 @@
     animation: slideIn 0.3s ease-out;
 }
 
-/* ========== CUSTOM CODE INFO ========== */
-.custom-code-info {
-    display: block;
-    text-align: center;
-    margin-top: 10px;
-    opacity: 0.8;
+/* ========== BOTÓN CONTROL ========== */
+.btn-control {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 0.95em;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: var(--sombra-media);
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.btn-start {
+    background: #00FF00;
+    color: #000;
+}
+
+.btn-end {
+    background: var(--magenta);
+    color: white;
+}
+
+.btn-next {
+    background: var(--cian);
+    color: #000;
+}
+
+.btn-control:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-dura);
+}
+
+.btn-control:active {
+    transform: translateY(1px);
 }
 
 /* ========== STATUS CARD ========== */
@@ -534,7 +591,6 @@
 }
 
 /* ========== HOST MEDIA QUERIES ========== */
-/* FIX #3: Ampliado rango de breakpoints para mejor coverage */
 @media (max-width: 1920px) {
     .tv-layout {
         height: 100vh;
@@ -574,7 +630,6 @@
     }
 }
 
-/* FIX #3: Breakpoint crítico para iPad Landscape y tablets (1200px) */
 @media (max-width: 1200px) {
     .tv-layout {
         grid-template-rows: 90px 1fr 160px;
