@@ -5,7 +5,10 @@ require_once __DIR__ . '/settings.php';
 
 // Crear directorio si no existe
 if (!is_dir(GAME_STATES_DIR)) {
-    mkdir(GAME_STATES_DIR, 0755, true);
+    $mkdir_result = @mkdir(GAME_STATES_DIR, 0755, true);
+    if (!$mkdir_result) {
+        error_log('[CRITICAL] No se pudo crear directorio: ' . GAME_STATES_DIR);
+    }
 }
 
 // Logging seguro
@@ -109,7 +112,7 @@ function getActiveCodes() {
     return $codes;
 }
 
-// Generar código de sala automáticamente desde diccionario (MEJORA: usar palabras ≤5 letras)
+// Generar código de sala automáticamente desde diccionario (MEJORA: usar palabras ≤30 letras)
 function generateGameCode() {
     $allWords = getAllWords();
     
@@ -164,7 +167,7 @@ function sanitizeGameId($gameId) {
 function sanitizePlayerId($playerId) {
     if (empty($playerId)) return null;
     
-    // Solo permitir caracteres alfanuméricos y guion bajo
+    // Solo permitir caracteres alfanuméricos y guión bajo
     $clean = preg_replace('/[^a-zA-Z0-9_]/', '', $playerId);
     
     if (strlen($clean) < 5 || strlen($clean) > 50) {
@@ -200,6 +203,21 @@ function saveGameState($gameId, $state) {
         return false;
     }
     
+    // ============ NUEVA VALIDACIÓN: Verificar directorio ============
+    if (!is_dir(GAME_STATES_DIR)) {
+        logMessage('[WARN] game_states no existe. Intentando crear...', 'WARNING');
+        if (!@mkdir(GAME_STATES_DIR, 0755, true)) {
+            logMessage('[ERROR] No se pudo crear directorio: ' . GAME_STATES_DIR, 'ERROR');
+            return false;
+        }
+    }
+    
+    // ============ NUEVA VALIDACIÓN: Verificar permisos ============
+    if (!is_writable(GAME_STATES_DIR)) {
+        logMessage('[ERROR] Directorio NO tiene permisos de escritura: ' . GAME_STATES_DIR . ' | Permisos: ' . substr(sprintf('%o', fileperms(GAME_STATES_DIR)), -4), 'ERROR');
+        return false;
+    }
+    
     // Agregar versión del estado (MEJORA #13)
     $state['_version'] = 1;
     $state['_updated_at'] = time();
@@ -208,9 +226,15 @@ function saveGameState($gameId, $state) {
     $lockFile = $file . '.lock';
     
     // Obtener lock exclusivo
-    $lock = fopen($lockFile, 'c+');
-    if (!$lock || !flock($lock, LOCK_EX)) {
-        logMessage('No se pudo obtener lock para ' . $gameId, 'ERROR');
+    $lock = @fopen($lockFile, 'c+');
+    if (!$lock) {
+        logMessage('[ERROR] No se pudo abrir lockfile: ' . $lockFile . ' (Permisos: ' . substr(sprintf('%o', @fileperms(dirname($lockFile))), -4) . ')', 'ERROR');
+        return false;
+    }
+    
+    if (!@flock($lock, LOCK_EX)) {
+        logMessage('[ERROR] No se pudo obtener lock para ' . $gameId, 'ERROR');
+        fclose($lock);
         return false;
     }
     
@@ -219,20 +243,40 @@ function saveGameState($gameId, $state) {
         $json = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 
         if ($json === false) {
-            logMessage('Error encoding JSON: ' . json_last_error_msg(), 'ERROR');
+            logMessage('[ERROR] Error encoding JSON: ' . json_last_error_msg() . ' | State: ' . var_export(array_keys($state), true), 'ERROR');
+            return false;
+        }
+        
+        // ============ NUEVA VALIDACIÓN: Verificar tamaño ============
+        $jsonSize = strlen($json);
+        if ($jsonSize > 1000000) { // 1MB máximo
+            logMessage('[ERROR] JSON demasiado grande: ' . $jsonSize . ' bytes', 'ERROR');
             return false;
         }
 
-        $result = file_put_contents($file, $json, LOCK_EX);
+        $result = @file_put_contents($file, $json, LOCK_EX);
 
         if ($result === false) {
-            logMessage('Error escribiendo archivo: ' . $file, 'ERROR');
+            logMessage('[ERROR] Error escribiendo archivo: ' . $file . ' | Permisos dir: ' . substr(sprintf('%o', @fileperms(dirname($file))), -4), 'ERROR');
+            return false;
+        }
+        
+        // ============ NUEVA VALIDACIÓN: Verificar que se escribió correctamente ============
+        if (!file_exists($file)) {
+            logMessage('[ERROR] Archivo no existe después de escribir: ' . $file, 'ERROR');
+            return false;
+        }
+        
+        $fileSize = filesize($file);
+        if ($fileSize === 0 || $fileSize === false) {
+            logMessage('[ERROR] Archivo está vacío o no se puede leer: ' . $file . ' | Size: ' . var_export($fileSize, true), 'ERROR');
             return false;
         }
         
         // Registrar en analytics (MEJORA #10)
-        trackGameAction($gameId, 'state_updated', ['players' => count($state['players'] ?? [])]);
+        trackGameAction($gameId, 'state_updated', ['players' => count($state['players'] ?? []), 'status' => $state['status'] ?? 'unknown']);
         
+        logMessage('[SUCCESS] Estado guardado para ' . $gameId . ' | Size: ' . $fileSize . ' bytes', 'DEBUG');
         return true;
         
     } finally {
@@ -246,27 +290,34 @@ function saveGameState($gameId, $state) {
 function loadGameState($gameId) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) {
-        logMessage('Intento de cargar con gameId inválido', 'ERROR');
+        logMessage('[ERROR] Intento de cargar con gameId inválido', 'ERROR');
         return null;
     }
     
     $file = GAME_STATES_DIR . '/' . $gameId . '.json';
 
     if (!file_exists($file)) {
+        logMessage('[DEBUG] Archivo no existe: ' . $file, 'DEBUG');
         return null;
     }
 
     // Verificar que no sea muy viejo
     if (time() - filemtime($file) > MAX_GAME_AGE) {
+        logMessage('[INFO] Archivo antiguo eliminado: ' . $gameId, 'INFO');
         @unlink($file);
         return null;
     }
 
-    $json = file_get_contents($file);
+    $json = @file_get_contents($file);
+    if ($json === false) {
+        logMessage('[ERROR] No se pudo leer archivo: ' . $file . ' | Permisos: ' . substr(sprintf('%o', @fileperms($file)), -4), 'ERROR');
+        return null;
+    }
+    
     $state = json_decode($json, true);
 
     if (!$state) {
-        logMessage('Error decoding JSON: ' . json_last_error_msg(), 'ERROR');
+        logMessage('[ERROR] Error decoding JSON: ' . json_last_error_msg() . ' | File: ' . $file, 'ERROR');
         return null;
     }
 
@@ -289,7 +340,7 @@ function cleanupOldGames() {
             if (time() - filemtime($file) > MAX_GAME_AGE) {
                 if (@unlink($file)) {
                     $deleted++;
-                    logMessage('Juego antiguo eliminado: ' . basename($file), 'INFO');
+                    logMessage('[INFO] Juego antiguo eliminado: ' . basename($file), 'INFO');
                 }
             }
         }
@@ -313,6 +364,7 @@ function getRandomWord() {
     $words = getAllWords();
 
     if (empty($words)) {
+        logMessage('[WARN] No hay palabras disponibles, usando fallback', 'WARNING');
         return 'JUEGO';
     }
 
@@ -384,7 +436,7 @@ function trackGameAction($gameId, $action, $data = []) {
     
     $analytics = [];
     if (file_exists(ANALYTICS_FILE)) {
-        $json = file_get_contents(ANALYTICS_FILE);
+        $json = @file_get_contents(ANALYTICS_FILE);
         $analytics = json_decode($json, true) ?? [];
     }
     
@@ -395,7 +447,7 @@ function trackGameAction($gameId, $action, $data = []) {
         $analytics = array_slice($analytics, -1000);
     }
     
-    file_put_contents(ANALYTICS_FILE, json_encode($analytics, JSON_PRETTY_PRINT));
+    @file_put_contents(ANALYTICS_FILE, json_encode($analytics, JSON_PRETTY_PRINT));
 }
 
 // Validar palabra del jugador (MEJORA #14, #20)
