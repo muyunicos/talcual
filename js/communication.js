@@ -49,20 +49,20 @@ const EVENT_TYPES = {
 
 const COMM_CONFIG = {
   // Timeouts
-  HEARTBEAT_INTERVAL: 30000,      // 30 segundos
-  MESSAGE_TIMEOUT: 30000,          // 30 segundos sin mensajes
-  HEARTBEAT_CHECK_INTERVAL: 5000,  // Verificar cada 5 segundos
+  HEARTBEAT_INTERVAL: 30000,
+  MESSAGE_TIMEOUT: 30000,
+  HEARTBEAT_CHECK_INTERVAL: 5000,
   
   // Reconexión
-  RECONNECT_INITIAL_DELAY: 1000,   // 1 segundo inicial
-  RECONNECT_MAX_DELAY: 30000,      // Máximo 30 segundos
+  RECONNECT_INITIAL_DELAY: 1000,
+  RECONNECT_MAX_DELAY: 30000,
   RECONNECT_BACKOFF_MULTIPLIER: 1.5,
   RECONNECT_MAX_ATTEMPTS: 15,
-  RECONNECT_JITTER_MAX: 1000,      // 0-1s de jitter
+  RECONNECT_JITTER_MAX: 1000,
   
   // Rate limiting
-  WORDS_UPDATE_THROTTLE: 2000,     // Máximo cada 2 segundos
-  STATE_UPDATE_THROTTLE: 500,      // Máximo cada 500ms
+  WORDS_UPDATE_THROTTLE: 2000,
+  STATE_UPDATE_THROTTLE: 500,
   
   // Validación
   MAX_WORD_LENGTH: 50,
@@ -79,8 +79,8 @@ const COMM_CONFIG = {
 
 /**
  * Valida respuesta de API
- * @param {object} response - Respuesta del servidor
- * @returns {boolean} true si tiene estructura correcta
+ * @param {object} response
+ * @returns {boolean}
  */
 function validateAPIResponse(response) {
   return response && typeof response === 'object' && response.success !== undefined;

@@ -1,16 +1,6 @@
 /**
  * @file game-client.js
- * @description Cliente SSE mejorado para comunicación en tiempo real
- * Características:
- * - Validación de eventos centralizados
- * - Reconexiones robustas con exponential backoff
- * - Event emitter para eventos específicos
- * - Heartbeat monitor adaptativo
- * - Métricas de conexión
- * - Timeout HTTP 30s
- * - Fallback COMM global
- * - Auto-cleanup de listeners
- * - Error handling robusto
+ * @description Cliente SSE
  */
 
 class GameClient {
@@ -21,11 +11,11 @@ class GameClient {
     this.eventSource = null;
     this.gameState = null;
     
-    // Callbacks heredados (mantener compatibilidad)
+    // Callbacks heredados
     this.onStateUpdate = null;
     this.onConnectionLost = null;
     
-    // Event listeners (nuevo sistema)
+    // Event listeners
     this.eventListeners = new Map();
     
     // Estado de conexión
@@ -208,7 +198,7 @@ class GameClient {
       this.gameState = newState;
       console.log(`📨 [${this.role}] Estado actualizado (ronda ${newState.round || 0})`);
       
-      // Callback heredado (usando helper seguro)
+      // Callback heredado
       this.safeCallCallback(this.onStateUpdate, newState, 'onStateUpdate');
       
       // Emitir evento

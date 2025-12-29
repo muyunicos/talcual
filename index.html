@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TalCual Party</title>
     <link rel="icon" href="/images/icon.webp" type="image/webp">
-    <!-- CSS Reorganizado -->
     <link rel="stylesheet" href="css/1-global.css">
     <link rel="stylesheet" href="css/4-components.css">
     <link rel="stylesheet" href="css/5-animations.css">
@@ -13,7 +12,7 @@
 <body>
     <div class="landing-container">
         <div class="logo-header">
-            <img src="/images/logo.webp" alt="TalCual Party" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <img src="/images/logo.webp" alt="TalCual Party">
             <h1>TalCual</h1>
         </div>
         <div class="subtitle">¡El juego de palabras más divertido!</div>
@@ -21,11 +20,10 @@
             <a href="host.html" class="btn btn-create">📺 Crear Partida</a>
             <a href="play.html" class="btn btn-join">📱 Unirse</a>
         </div>
-        <div class="version">v0.02 - Muy Únicos</div>
+        <div class="version">v0.03 - Muy Únicos</div>
     </div>
     
     <script>
-        // Redirección automática si hay sesión activa
         window.addEventListener('DOMContentLoaded', () => {
             const gameId = localStorage.getItem('gameId');
             const playerId = localStorage.getItem('playerId');

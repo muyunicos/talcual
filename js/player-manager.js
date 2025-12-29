@@ -1,11 +1,6 @@
 /**
  * @file player-manager.js
  * @description Gestor mejorado de lógica del jugador
- * Cambios:
- * - Throttle en envío de palabras
- * - Validación en servidor integrada
- * - Manejo de errores mejorado
- * - Código más limpio y mantenible
  */
 
 class PlayerManager {

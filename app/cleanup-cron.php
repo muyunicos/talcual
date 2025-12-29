@@ -1,6 +1,5 @@
 <?php
 // Script de limpieza automática (para ejecutar via cron)
-// Uso: php cleanup-cron.php
 
 require_once __DIR__ . '/config.php';
 

@@ -1,8 +1,7 @@
 <?php
-// Configuración Global - TalCual Party
-// MEJORA: Soporte para variables de entorno (.env) con validación mejorada
+// Configuración Global
 
-// Helper para obtener valor de entorno con fallback (DEBE estar antes de usarse)
+// Helper para obtener valor de entorno con fallback
 function env($key, $default = null) {
     $value = getenv($key);
     if ($value === false) {
@@ -16,7 +15,7 @@ function env($key, $default = null) {
     return $value;
 }
 
-// Obtener directorio raíz del proyecto (2 niveles arriba desde app/core/)
+// Obtener directorio raíz del proyecto
 $rootDir = dirname(__DIR__, 2);
 
 // Cargar variables de entorno si existe .env

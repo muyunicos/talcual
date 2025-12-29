@@ -1,7 +1,5 @@
 <?php
 // Server-Sent Events para actualizaciones en tiempo real
-// MEJORAS: Manejo robusto de conexiones, heartbeat optimizado, detección de desconexiones
-// FIX #10: Reducir polling de 1s a 200ms para mejor responsividad
 
 require_once __DIR__ . '/config.php';
 
@@ -9,7 +7,7 @@ require_once __DIR__ . '/config.php';
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
-header('X-Accel-Buffering: no'); // Deshabilitar buffering en Nginx
+header('X-Accel-Buffering: no');
 
 // Deshabilitar output buffering de PHP
 if (function_exists('apache_setenv')) {
@@ -61,7 +59,7 @@ while (true) {
         break;
     }
     
-    // MEJORA: Detectar si el cliente cerró la conexión
+    // Detectar si el cliente cerró la conexión
     if (connection_aborted()) {
         $connectionBroken = true;
         logMessage("SSE conexión cerrada por cliente: {$gameId}", 'DEBUG');
@@ -91,17 +89,13 @@ while (true) {
         }
     }
     
-    // MEJORA: Heartbeat optimizado - solo si no se envió actualización reciente
+    // Heartbeat
     if (time() - $lastHeartbeat >= SSE_HEARTBEAT_INTERVAL) {
         echo ": heartbeat\n\n";
         flush();
         $lastHeartbeat = time();
     }
-    
-    // FIX #10: Sleep dinámico más frecuente en todos los estados
-    // ANTES: sleep(1) en estado waiting = latencia de 1000ms para detectar cambios
-    // DESPUÉS: usleep(200000) en todos = latencia de ~200ms
-    // BENEFICIO: Players aparecen 5x más rápido en pantalla del host
+
     $state = loadGameState($gameId);
     if ($state && $state['status'] === 'playing') {
         usleep(200000); // 0.2 segundos durante juego activo (antes: 0.5s)

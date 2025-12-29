@@ -1,6 +1,5 @@
 <?php
-// Configuración del juego Unánimo Party
-// MEJORAS: #1, #2, #8, #9, #13, #14, #16, #17, #21
+// Configuración del juego
 
 require_once __DIR__ . '/settings.php';
 

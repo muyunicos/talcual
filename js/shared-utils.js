@@ -1,13 +1,6 @@
 /**
  * @file shared-utils.js
  * @description Utilidades compartidas entre host y player
- * Contiene funciones para:
- * - Gestión de tiempo y timers
- * - Almacenamiento local
- * - Validación de datos
- * - Utilidades DOM
- * - Gradientes y estilos
- * - Debug mode
  */
 
 // ============================================================================

@@ -1,10 +1,6 @@
 /**
  * @file host-manager.js
- * @description Gestor mejorado de lógica del anfitrionHost
- * Cambios:
- * - Métodos completos (sin TODO)
- * - Comunicación bidireccional más clara
- * - Código más limpio y documentado
+ * @description Gestor de lógica del anfitrion Host
  */
 
 class HostManager {
