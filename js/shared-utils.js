@@ -336,23 +336,31 @@ function generatePlayerId() {
 }
 
 /**
- * Carga el diccionario de manera sincrónica (usando cache)
- * @returns {Array} Array de palabras del diccionario
+ * Carga el diccionario de manera asincrónica
+ * @returns {Promise<Array>} Array de palabras del diccionario
  */
 async function loadDictionary() {
     if (dictionaryCache) return dictionaryCache;
     
     try {
-        const response = await fetch('../app/diccionario.json');
+        const response = await fetch('/app/diccionario.json');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        dictionaryCache = data.palabras || data.words || [];
+        
+        // Extraer array de palabras (soporta múltiples formatos)
+        dictionaryCache = data.palabras || data.words || data || [];
+        
         debug(`📚 Diccionario cargado: ${dictionaryCache.length} palabras`, 'info');
         return dictionaryCache;
     } catch (error) {
         debug('Error cargando diccionario, usando fallback', error, 'warn');
-        // Fallback: palabras comunes de 4-5 letras
-        return ['CASA', 'MESA', 'LIBRO', 'GATO', 'PERRO', 'AGUA', 'FUEGO', 'VIENTO', 'LLUVIA', 'SOL', 'LUNA', 'ESTRELLA', 'ARBOL', 'FLOR', 'PAJARO', 'PESCADO', 'LECHE', 'PAN', 'VINO', 'CARNE', 'QUESO', 'MANZANA', 'PERA', 'UVA', 'PLATANO'];
+        // Fallback: palabras comunes de 4-6 letras (memorables para códigos)
+        return [
+            'CASA', 'MESA', 'LIBRO', 'GATO', 'PERRO', 'AGUA', 'FUEGO', 'VIENTO', 'LLUVIA', 'SOL',
+            'LUNA', 'ESTRELLA', 'ARBOL', 'FLOR', 'PAJARO', 'PESCADO', 'LECHE', 'PAN', 'VINO', 'CARNE',
+            'QUESO', 'MANZANA', 'PERA', 'UVA', 'PLATANO', 'NARANJA', 'LIMON', 'TOMATE', 'PAPA', 'ARROZ',
+            'FRESA', 'MELÓN', 'SANDÍA', 'PIÑA', 'CIRUELA', 'DURAZNO', 'NUEZ', 'ALMENDRA', 'CACAHUATE'
+        ];
     }
 }
 
@@ -365,36 +373,50 @@ async function loadDictionary() {
  */
 function filterWordsByLength(words, minLength, maxLength) {
     return words.filter(word => {
-        const len = (word.palabra || word).length;
+        // Extraer texto limpio de palabra (soporta objetos {palabra: "..."} o strings)
+        const text = typeof word === 'string' ? word : (word.palabra || word.word || '');
+        const len = text.trim().length;
         return len >= minLength && len <= maxLength;
+    }).map(word => {
+        // Normalizar a string limpio
+        return (typeof word === 'string' ? word : (word.palabra || word.word || '')).trim();
     });
 }
 
 /**
  * Genera código aleatorio para sala usando palabras del diccionario
- * Genera 1-2 palabras de 4-5 letras del diccionario
- * @returns {string} Código generado
+ * Selecciona 1 palabra válida del diccionario (4-6 caracteres)
+ * 
+ * @returns {Promise<string>} Código generado (ej: "CASA", "LIBRO")
  */
 async function generateGameCode() {
-    const dict = await loadDictionary();
-    const validWords = filterWordsByLength(dict, 4, 5);
-    
-    if (validWords.length === 0) {
-        // Fallback si no hay palabras válidas
+    try {
+        const dict = await loadDictionary();
+        
+        // Filtrar palabras válidas (4-6 caracteres)
+        const validWords = filterWordsByLength(dict, 4, 6);
+        
+        if (validWords.length === 0) {
+            debug('⚠️ No hay palabras válidas en diccionario, usando generador aleatorio', 'warn');
+            return generateRandomLetterCode(4);
+        }
+        
+        // Seleccionar 1 palabra aleatoria del diccionario
+        const randomIndex = Math.floor(Math.random() * validWords.length);
+        const code = validWords[randomIndex].toUpperCase().trim();
+        
+        debug(`✅ Código generado: ${code}`, 'info');
+        return code;
+    } catch (error) {
+        debug('Error en generateGameCode, usando fallback', error, 'warn');
         return generateRandomLetterCode(4);
     }
-    
-    // Seleccionar 1 palabra aleatoria del diccionario
-    const randomWord = validWords[Math.floor(Math.random() * validWords.length)];
-    const word = (randomWord.palabra || randomWord).toUpperCase().trim();
-    
-    return word.length <= 6 ? word : word.substring(0, 6);
 }
 
 /**
  * Fallback: Genera código con letras aleatorias
  * @param {number} length - Longitud (default: 4)
- * @returns {string}
+ * @returns {string} Código (ej: "ABCD")
  */
 function generateRandomLetterCode(length = 4) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -402,6 +424,7 @@ function generateRandomLetterCode(length = 4) {
     for (let i = 0; i < length; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
+    debug(`⚠️ Código aleatorio generado: ${code}`, 'warn');
     return code;
 }
 
@@ -426,4 +449,4 @@ function applyColorGradient(colorString) {
     root.style.setProperty('--aura-color-2', colors[1] || colors[0]);
 }
 
-console.log('%c✅ shared-utils.js cargado - Debug centralizado, diccionario async, códigos de palabra', 'color: #10B981; font-weight: bold');
+console.log('%c✅ shared-utils.js - Generación de códigos mejorada, diccionario async optimizado', 'color: #10B981; font-weight: bold');
