@@ -52,21 +52,10 @@
     top: 20px;
     left: 20px;
     z-index: 110;
-    background: rgba(15, 23, 42, 0.8);
-    padding: 10px 15px;
-    border-radius: var(--radius-card);
-    border: 2px solid rgba(139, 92, 246, 0.2);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .logo-floating img {
-    height: 50px;
-    object-fit: contain;
-    width: auto;
+    height: 70px;
 }
 
 /* Codigo Sala Flotante - Amarillo Inclinado */
