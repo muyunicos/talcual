@@ -4,8 +4,10 @@
  */
 
 // Global dictionary cache
-let dictionaryCache = null;
+let dictionaryCache = null; // flattened words
 let dictionaryPromise = null;
+let dictionaryDataCache = null; // raw JSON
+let dictionaryDataPromise = null;
 
 // ============================================================================
 // DEBUGGING
@@ -415,8 +417,46 @@ function extractWordsFromDictionary(data) {
 }
 
 /**
- * Carga el diccionario de manera asincrónica
- * @returns {Promise<Array>} Array de palabras del diccionario
+ * Carga el JSON crudo del diccionario.
+ * @returns {Promise<Object>} Diccionario jerárquico
+ */
+async function loadDictionaryData() {
+    if (dictionaryDataCache) return dictionaryDataCache;
+    if (dictionaryDataPromise) return dictionaryDataPromise;
+
+    dictionaryDataPromise = (async () => {
+        try {
+            const response = await fetch('/app/diccionario.json', { cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+
+            dictionaryDataCache = data && typeof data === 'object' ? data : {};
+            dictionaryDataPromise = null;
+            return dictionaryDataCache;
+        } catch (error) {
+            debug('Error cargando diccionario (data), usando fallback', error, 'warn');
+            dictionaryDataPromise = null;
+            dictionaryDataCache = {};
+            return dictionaryDataCache;
+        }
+    })();
+
+    return dictionaryDataPromise;
+}
+
+/**
+ * Devuelve el listado de categorías del diccionario.
+ * @returns {Promise<Array<string>>}
+ */
+async function loadDictionaryCategories() {
+    const data = await loadDictionaryData();
+    const cats = (data && typeof data === 'object') ? Object.keys(data) : [];
+    return Array.isArray(cats) ? cats : [];
+}
+
+/**
+ * Carga el diccionario aplanado de tips (todas las categorías).
+ * @returns {Promise<Array<string>>}
  */
 async function loadDictionary() {
     if (dictionaryCache) return dictionaryCache;
@@ -424,14 +464,11 @@ async function loadDictionary() {
 
     dictionaryPromise = (async () => {
         try {
-            const response = await fetch('/app/diccionario.json', { cache: 'no-store' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
+            const data = await loadDictionaryData();
 
-            // Nuevo formato: JSON jerárquico por categorías/consignas
             const extracted = extractWordsFromDictionary(data);
 
-            // Fallback a formatos anteriores si el extractor no encontró nada
+            // Fallback a formatos anteriores
             if (extracted.length) {
                 dictionaryCache = extracted;
             } else {
@@ -446,10 +483,8 @@ async function loadDictionary() {
             debug('Error cargando diccionario, usando fallback', error, 'warn');
             dictionaryPromise = null;
 
-            // Fallback: palabras comunes de 3-5 letras (memorables para códigos)
             dictionaryCache = [
-                'CASA', 'MESA', 'LIBRO', 'GATO', 'PERRO', 'AGUA', 'FUEGO', 'VIENTO', 'LLUVIA', 'SOL',
-                'LUNA', 'ARBOL', 'FLOR', 'PAN', 'VINO', 'CARNE', 'QUESO', 'PERA', 'UVA', 'ARROZ'
+                'SOL', 'LUNA', 'CASA', 'MESA', 'GATO', 'PERRO', 'AGUA', 'PAN', 'VINO', 'FLOR'
             ];
 
             return dictionaryCache;
@@ -471,7 +506,6 @@ function filterWordsByLength(words, minLength, maxLength) {
 
     return words
         .map(word => {
-            // Extraer texto limpio de palabra (soporta objetos {palabra: "..."} o strings)
             const text = typeof word === 'string' ? word : (word?.palabra || word?.word || '');
             return normalizeWordForCode(text);
         })
@@ -482,33 +516,54 @@ function filterWordsByLength(words, minLength, maxLength) {
 }
 
 /**
- * Genera código aleatorio para sala usando palabras del diccionario
- * Selecciona 1 palabra válida del diccionario (3-5 caracteres)
- * 
- * @returns {Promise<string>} Código generado (ej: "SOL", "CASA")
+ * Genera código aleatorio para sala usando palabras del diccionario.
+ * Puede limitarse a una categoría.
+ * @param {string|null} categoryName
+ * @param {number} minLength
+ * @param {number} maxLength
+ * @returns {Promise<string>}
  */
-async function generateGameCode() {
+async function generateGameCodeForCategory(categoryName = null, minLength = 3, maxLength = 5) {
     try {
-        const dict = await loadDictionary();
-        
-        // Filtrar palabras válidas (3-5 caracteres)
-        const validWords = filterWordsByLength(dict, 3, 5);
-        
-        if (validWords.length === 0) {
+        let pool = [];
+
+        if (categoryName) {
+            const data = await loadDictionaryData();
+            const categoryNode = data?.[categoryName];
+
+            if (categoryNode) {
+                pool = extractWordsFromDictionary(categoryNode);
+            }
+        }
+
+        if (!pool.length) {
+            pool = await loadDictionary();
+        }
+
+        const validWords = filterWordsByLength(pool, minLength, maxLength);
+
+        if (!validWords.length) {
             debug('⚠️ No hay palabras válidas en diccionario, usando generador aleatorio', null, 'warn');
             return generateRandomLetterCode(4);
         }
-        
-        // Seleccionar 1 palabra aleatoria del diccionario
+
         const randomIndex = Math.floor(Math.random() * validWords.length);
         const code = validWords[randomIndex];
-        
+
         debug(`✅ Código generado: ${code}`, null, 'info');
         return code;
     } catch (error) {
-        debug('Error en generateGameCode, usando fallback', error, 'warn');
+        debug('Error en generateGameCodeForCategory, usando fallback', error, 'warn');
         return generateRandomLetterCode(4);
     }
+}
+
+/**
+ * Compatibilidad: genera un código genérico (sin categoría) 3-5.
+ * @returns {Promise<string>}
+ */
+async function generateGameCode() {
+    return generateGameCodeForCategory(null, 3, 5);
 }
 
 /**

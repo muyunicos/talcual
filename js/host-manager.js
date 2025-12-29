@@ -19,6 +19,10 @@ class HostManager {
         this.copyIndicatorTimeout = null;
         this.dropdownOpen = false;
         this.hamburgerOpen = false;
+
+        // Create game modal helpers
+        this.createModalInitialized = false;
+        this.userEditedCode = false;
     }
     
     initialize() {
@@ -52,6 +56,7 @@ class HostManager {
             modalGameConfig: safeGetElement('modal-game-config'),
             gameScreen: safeGetElement('game-screen'),
             customCodeInput: safeGetElement('custom-code'),
+            categorySelect: safeGetElement('category-select'),
             btnCreateGame: safeGetElement('btn-create-game'),
             statusMessage: safeGetElement('status-message'),
             timerDisplay: safeGetElement('timer-display'),
@@ -93,6 +98,15 @@ class HostManager {
             this.elements.customCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.createGame();
             });
+
+            this.elements.customCodeInput.addEventListener('input', () => {
+                const value = this.elements.customCodeInput?.value?.trim() || '';
+                this.userEditedCode = value.length > 0;
+            });
+        }
+
+        if (this.elements.categorySelect) {
+            this.elements.categorySelect.addEventListener('change', () => this.handleCategoryChange());
         }
 
         if (this.elements.btnConfig) {
@@ -200,6 +214,71 @@ class HostManager {
 
         this.setupGameCodeCopy();
         this.setupConfigInputAdjusters();
+    }
+
+    async initializeCreateGameForm() {
+        if (!this.elements.categorySelect || !this.elements.customCodeInput) return;
+
+        // Populate categories once
+        if (!this.createModalInitialized) {
+            this.createModalInitialized = true;
+
+            let categories = [];
+            try {
+                categories = await loadDictionaryCategories();
+            } catch (e) {
+                categories = [];
+            }
+
+            // Fallback: keep a usable select
+            if (!Array.isArray(categories) || categories.length === 0) {
+                categories = ['GENERAL'];
+            }
+
+            this.elements.categorySelect.innerHTML = '';
+            categories.forEach((cat) => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                this.elements.categorySelect.appendChild(opt);
+            });
+
+            // Default selection
+            const savedCategory = getLocalStorage('selectedCategory');
+            if (savedCategory && categories.includes(savedCategory)) {
+                this.elements.categorySelect.value = savedCategory;
+            } else {
+                this.elements.categorySelect.value = categories[0];
+            }
+        }
+
+        // Prefill game code (only if user didn't type)
+        await this.refreshSuggestedGameCode();
+    }
+
+    async refreshSuggestedGameCode(force = false) {
+        if (!this.elements.customCodeInput) return;
+
+        const current = (this.elements.customCodeInput.value || '').trim();
+        if (!force && this.userEditedCode && current.length > 0) return;
+
+        const selectedCategory = this.elements.categorySelect?.value || null;
+
+        try {
+            const code = await generateGameCodeForCategory(selectedCategory, 3, 5);
+            this.elements.customCodeInput.value = code;
+            this.userEditedCode = false;
+        } catch (e) {
+            // If something fails, keep field empty and let createGame() fallback
+        }
+    }
+
+    handleCategoryChange() {
+        // If user cleared the code or it's still auto-generated, refresh
+        const value = (this.elements.customCodeInput?.value || '').trim();
+        if (!value || !this.userEditedCode) {
+            this.refreshSuggestedGameCode(true);
+        }
     }
 
     handleDocumentClick(e) {
@@ -438,6 +517,9 @@ class HostManager {
     showCreateGameModal() {
         safeShowElement(this.elements.modalCreateGame);
         safeHideElement(this.elements.gameScreen);
+
+        // Async init (categories + suggested code)
+        this.initializeCreateGameForm();
     }
     
     loadGameScreen(state) {
@@ -459,19 +541,21 @@ class HostManager {
     
     async createGame() {
         let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
-        
+        const selectedCategory = this.elements.categorySelect?.value || null;
+
         if (customCode && !isValidGameCode(customCode)) {
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Código inválido';
+                this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3 a 5 letras)';
             }
             return;
         }
         
         if (!customCode) {
-            customCode = await generateGameCode();
+            customCode = await generateGameCodeForCategory(selectedCategory, 3, 5);
         }
         
         this.gameId = customCode;
+        setLocalStorage('selectedCategory', selectedCategory);
         
         if (this.elements.btnCreateGame) {
             this.elements.btnCreateGame.disabled = true;
@@ -489,7 +573,8 @@ class HostManager {
                 game_id: this.gameId,
                 total_rounds: this.gameConfig.totalRounds,
                 round_duration: this.gameConfig.roundDuration,
-                min_players: this.gameConfig.minPlayers
+                min_players: this.gameConfig.minPlayers,
+                category: selectedCategory
             });
             
             if (result.success) {
@@ -521,13 +606,13 @@ class HostManager {
             }
         }
     }
-    
+
     handleStateUpdate(state) {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
         this.updateHostUI();
     }
-    
+
     updateHostUI() {
         if (!this.gameState) return;
         
