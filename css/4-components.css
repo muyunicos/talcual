@@ -30,7 +30,7 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     max-width: 500px;
     width: 90%;
-    max-height: calc(100vh - 40px);
+    max-height: 90vh;
     overflow-y: auto;
     margin: auto;
     color: var(--color-text-light);
@@ -232,38 +232,51 @@
 .status-waiting { }
 .status-disconnected { }
 
-/* AURA SELECTOR */
+/* ========== AURA SELECTOR - FIXED ========== */
 .aura-selector {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-    gap: 8px;
-    margin-top: 10px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 15px;
 }
 
 .aura-option {
-    width: 40px;
-    height: 40px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     border: 3px solid transparent;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     position: relative;
 }
 
 .aura-option:hover {
     transform: scale(1.15);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .aura-option.selected {
-    border-color: var(--color-accent-amber);
-    box-shadow: 0 0 20px currentColor;
+    border: 3px solid white;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 1),
+                inset 0 0 10px rgba(255, 255, 255, 0.5);
+    animation: selectPulse 0.8s ease-in-out;
+}
+
+@keyframes selectPulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px currentColor);
+    }
+    50% {
+        filter: drop-shadow(0 0 16px currentColor);
+    }
 }
 
 /* ========== HAMBURGER MENU ========== */
 
 .btn-hamburger {
     position: fixed;
-    top: 20px;
+    bottom: 20px;
     left: 20px;
     width: 50px;
     height: 50px;
@@ -296,7 +309,7 @@
 
 .hamburger-menu {
     position: fixed;
-    top: 80px;
+    bottom: 80px;
     left: 20px;
     background: rgba(15, 23, 42, 0.95);
     border: 2px solid rgba(34, 197, 94, 0.3);
@@ -407,6 +420,16 @@
         width: 100%;
     }
 
+    .aura-selector {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .aura-option {
+        width: 60px;
+        height: 60px;
+    }
+
     .btn-hamburger {
         width: 45px;
         height: 45px;
@@ -461,10 +484,20 @@
         font-size: 11px;
     }
 
+    .aura-selector {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .aura-option {
+        width: 50px;
+        height: 50px;
+    }
+
     .btn-hamburger {
         width: 40px;
         height: 40px;
-        top: 15px;
+        bottom: 15px;
         left: 15px;
     }
 
@@ -473,7 +506,7 @@
     }
 
     .hamburger-menu {
-        top: 70px;
+        bottom: 65px;
         left: 15px;
         min-width: 180px;
     }
