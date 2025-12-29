@@ -14,6 +14,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+/**
+ * 🔧 FIX #32: Crea archivos de notificación para que SSE sepa que hay cambios
+ * Sin tocar filemtime() del GAME.json directamente
+ */
+function notifyGameChanged($gameId, $isHostOnlyChange = false) {
+    $notifyAll = GAME_STATES_DIR . '/GAME_all.json';
+    $notifyHost = GAME_STATES_DIR . '/GAME_host.json';
+    
+    // Todos ven este cambio
+    @file_put_contents($notifyAll, (string)time(), LOCK_EX);
+    
+    // Si es un cambio que solo afecta al host
+    if ($isHostOnlyChange) {
+        @file_put_contents($notifyHost, (string)time(), LOCK_EX);
+    }
+}
+
 function checkRateLimit() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $cacheKey = 'rate_limit:' . md5($ip);
@@ -97,6 +114,7 @@ switch ($action) {
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'game_created', []);
+            notifyGameChanged($gameId, true);
             $response = [
                 'success' => true,
                 'game_id' => $gameId,
@@ -157,6 +175,7 @@ switch ($action) {
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'player_joined', ['player_name' => $playerName]);
+            notifyGameChanged($gameId);
             $response = [
                 'success' => true,
                 'message' => 'Te uniste al juego',
@@ -229,6 +248,7 @@ switch ($action) {
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'round_started', ['round' => $state['round'], 'word' => $word]);
+            notifyGameChanged($gameId);
             $response = [
                 'success' => true,
                 'message' => 'Ronda iniciada',
@@ -294,6 +314,7 @@ switch ($action) {
         $state['last_update'] = time();
 
         if (saveGameState($gameId, $state)) {
+            notifyGameChanged($gameId);
             $response = [
                 'success' => true,
                 'message' => 'Respuestas guardadas',
@@ -324,6 +345,7 @@ switch ($action) {
             $state['last_update'] = time();
             
             if (saveGameState($gameId, $state)) {
+                notifyGameChanged($gameId);
                 $response = [
                     'success' => true,
                     'message' => 'Timer acortado a 5 segundos',
@@ -433,6 +455,7 @@ switch ($action) {
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'round_ended', ['round' => $state['round']]);
+            notifyGameChanged($gameId);
             $response = [
                 'success' => true,
                 'message' => 'Ronda finalizada',
@@ -472,6 +495,7 @@ switch ($action) {
 
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'game_reset', []);
+            notifyGameChanged($gameId);
             $response = [
                 'success' => true,
                 'message' => 'Juego reiniciado',
@@ -495,6 +519,7 @@ switch ($action) {
 
             if (saveGameState($gameId, $state)) {
                 trackGameAction($gameId, 'player_left', ['player_name' => $playerName]);
+                notifyGameChanged($gameId);
                 $response = [
                     'success' => true,
                     'message' => 'Saliste del juego'
@@ -531,6 +556,7 @@ switch ($action) {
         
         if (saveGameState($gameId, $state)) {
             trackGameAction($gameId, 'player_name_updated', ['player_id' => $playerId, 'old_name' => $oldName, 'new_name' => $newName]);
+            notifyGameChanged($gameId);
             $response = [
                 'success' => true,
                 'message' => 'Nombre actualizado',
