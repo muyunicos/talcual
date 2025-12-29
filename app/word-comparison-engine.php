@@ -3,19 +3,15 @@ declare(strict_types=1);
 
 /**
  * @file word-comparison-engine.php
- * @description Motor inteligente de comparación de palabras V2.
- * Incluye caché, normalización unicode real y mejor manejo de plurales.
+ * @description Motor V3: Soporte de espacios, sinónimos y morfología independiente.
  */
 
 class WordEquivalenceEngine {
     private static ?self $instance = null;
-    private array $dictionary = [];
-    private array $equivalenceTable = [];
+    private array $dictionaryMap = []; // Mapa plano: Palabra -> ID Canónico
     
     // Configuración
-    private const CACHE_FILE = __DIR__ . '/word-engine.cache';
-    private const USE_CACHE = true;
-    private const FUZZY_TOLERANCE = 1; // 0 = exacto, 1 = permite 1 letra de error
+    private const DICTIONARY_FILE = __DIR__ . '/diccionario.json';
 
     public static function getInstance(): self {
         if (self::$instance === null) {
@@ -25,274 +21,171 @@ class WordEquivalenceEngine {
     }
 
     private function __construct() {
-        // Intentar cargar desde caché primero para mejorar performance
-        if (self::USE_CACHE && $this->loadFromCache()) {
-            return;
-        }
-
-        $this->loadAndProcessDictionary();
-        
-        if (self::USE_CACHE) {
-            $this->saveToCache();
-        }
+        $this->loadDictionary();
     }
 
     /**
-     * Carga el diccionario JSON y construye la tabla.
+     * Carga el diccionario SOLO para sinónimos.
+     * Ya no generamos plurales aquí para no inflar la memoria,
+     * los plurales se calculan en vivo si no hay coincidencia.
      */
-    private function loadAndProcessDictionary(): void {
-        $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
-
-        if (!file_exists($file)) {
-            $this->log('Diccionario no encontrado: ' . $file, 'WARNING');
+    private function loadDictionary(): void {
+        if (!file_exists(self::DICTIONARY_FILE)) {
             return;
         }
 
-        $json = file_get_contents($file);
+        $json = file_get_contents(self::DICTIONARY_FILE);
         $data = json_decode($json, true);
 
-        if (!$data) {
-            $this->log('Error decodificando diccionario JSON.', 'ERROR');
-            return;
-        }
+        if (!$data) return;
 
-        $this->dictionary = $data;
-        $this->buildEquivalenceTable($data);
-    }
-
-    /**
-     * Procesa la estructura del diccionario para aplanar las relaciones.
-     */
-    private function buildEquivalenceTable(array $data): void {
-        $this->equivalenceTable = [];
-
-        // Detección automática de formato (Legacy vs Nuevo)
+        // Aplanamos el JSON recursivamente
         $iterator = new RecursiveIteratorIterator(
             new RecursiveArrayIterator($data),
             RecursiveIteratorIterator::SELF_FIRST
         );
 
-        foreach ($iterator as $key => $value) {
-            // Buscamos strings que contengan palabras (hojas del árbol o arrays de strings)
+        foreach ($iterator as $value) {
             if (is_string($value) && !empty($value)) {
-                $this->processWordEntry($value);
-            }
-        }
-        
-        $this->log('Tabla construida con ' . count($this->equivalenceTable) . ' entradas.', 'DEBUG');
-    }
-
-    /**
-     * Genera variaciones para una entrada de diccionario (ej: "Perro|Can")
-     */
-    private function processWordEntry(string $entry): void {
-        $synonyms = explode('|', $entry);
-        $synonyms = array_map('trim', $synonyms);
-        
-        // La primera palabra es la "Canónica" (la verdad absoluta)
-        $canonical = $this->normalizeWord($synonyms[0]);
-
-        foreach ($synonyms as $word) {
-            $normalizedBase = $this->normalizeWord($word);
-            
-            // 1. Mapeo directo
-            $this->addMapping($normalizedBase, $canonical);
-
-            // 2. Variaciones de Género (y sus plurales)
-            $genderVariants = $this->generateGenderVariants($normalizedBase);
-            foreach ($genderVariants as $gVariant) {
-                $this->addMapping($gVariant, $canonical);
+                $parts = explode('|', $value);
+                $canonical = $this->normalize($parts[0]); // El primero es el ID
                 
-                // Plurales del cambio de género (ej: Actor -> Actriz -> Actrices)
-                $gNumberVariants = $this->generateNumberVariants($gVariant);
-                foreach ($gNumberVariants as $gnVariant) {
-                    $this->addMapping($gnVariant, $canonical);
+                foreach ($parts as $word) {
+                    $norm = $this->normalize($word);
+                    $this->dictionaryMap[$norm] = $canonical;
                 }
             }
-
-            // 3. Variaciones de Número directas (Singular <-> Plural)
-            $numberVariants = $this->generateNumberVariants($normalizedBase);
-            foreach ($numberVariants as $nVariant) {
-                $this->addMapping($nVariant, $canonical);
-            }
-        }
-    }
-
-    private function addMapping(string $variant, string $canonical): void {
-        // Solo agregamos si no existe, o si queremos sobreescribir lógica
-        if (!isset($this->equivalenceTable[$variant])) {
-            $this->equivalenceTable[$variant] = $canonical;
         }
     }
 
     /**
-     * Normalización robusta que funciona sin extensión Intl.
+     * NORMALIZACIÓN AGRESIVA (Arregla lo de "dulce de leche")
+     * 1. Mayúsculas
+     * 2. Quita tildes
+     * 3. ELIMINA espacios y símbolos (deja solo letras y números)
      */
-    private function normalizeWord(string $word): string {
-        // 1. Convertir a Mayúsculas primero para estandarizar
+    private function normalize(string $word): string {
+        // 1. Mayúsculas
         $word = mb_strtoupper($word, 'UTF-8');
 
-        // 2. Reemplazo manual de tildes (Método infalible si fallan las librerías)
+        // 2. Reemplazo manual de tildes (Seguro y sin librerías raras)
         $replacements = [
-            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U',
-            'À' => 'A', 'È' => 'E', 'Ì' => 'I', 'Ò' => 'O', 'Ù' => 'U',
-            'Ä' => 'A', 'Ë' => 'E', 'Ï' => 'I', 'Ö' => 'O', 'Ü' => 'U',
-            'Â' => 'A', 'Ê' => 'E', 'Î' => 'I', 'Ô' => 'O', 'Û' => 'U',
-            'Ñ' => 'N', 'Ç' => 'C'
+            'Á'=>'A', 'É'=>'E', 'Í'=>'I', 'Ó'=>'O', 'Ú'=>'U', 'Ü'=>'U', 'Ñ'=>'N'
         ];
-        
         $word = strtr($word, $replacements);
 
-        // 3. Intento secundario con iconv si está disponible (para caracteres raros)
-        if (function_exists('iconv')) {
-            $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $word);
-            if ($converted) {
-                $word = $converted;
-            }
-        }
-
-        // 4. Limpieza final: dejar solo letras A-Z y números
-        $word = preg_replace('/[^A-Z0-9 ]/', '', $word);
-        
-        // 5. Quitar espacios dobles
-        $word = preg_replace('/\s+/', ' ', trim($word));
-        
-        return $word;
+        // 3. Dejar SOLO letras y números (Quita espacios, guiones, puntos)
+        // dulcedeleche y dulce de leche quedan como DULCEDELECHE
+        return preg_replace('/[^A-Z0-9]/', '', $word);
     }
 
     /**
-     * Genera variantes de género basadas en reglas heurísticas del español.
+     * Obtiene la "raíz" de una palabra para comparar Tonto vs Tontas
+     * sin necesidad de diccionario.
      */
-    private function generateGenderVariants(string $word): array {
-        $variants = [];
-        
-        $rules = [
-            '/O$/' => 'A',       // ChicO -> ChicA
-            '/A$/' => 'O',       // ChicA -> ChicO (bidireccional)
-            '/TOR$/' => 'TRIZ',  // AcTOR -> AcTRIZ
-            '/ON$/' => 'ONA',    // CampeON -> CampeONA
-            '/IN$/' => 'INA',    // BailarIN -> BailarINA
-        ];
+    private function getStem(string $word): string {
+        $stem = $word;
 
-        foreach ($rules as $pattern => $replacement) {
-            if (preg_match($pattern, $word)) {
-                $variants[] = preg_replace($pattern, $replacement, $word);
+        // 1. Quitar sufijos de plural (S, ES)
+        if (substr($stem, -2) === 'ES') {
+            // Caso especial: Luces -> Luz
+            if (substr($stem, -3) === 'CES') {
+                $stem = substr($stem, 0, -3) . 'Z';
+            } else {
+                $stem = substr($stem, 0, -2);
+            }
+        } elseif (substr($stem, -1) === 'S') {
+            // Evitar quitar S a palabras que terminan en S natural (BUS, GAS)
+            // Regla simple: solo si la palabra es larga
+            if (strlen($stem) > 3) {
+                $stem = substr($stem, 0, -1);
             }
         }
 
-        return $variants;
+        // 2. Quitar sufijos de género (A, O)
+        // Convertimos Tonta -> Tont, Tonto -> Tont
+        if (substr($stem, -1) === 'A' || substr($stem, -1) === 'O') {
+             $stem = substr($stem, 0, -1);
+        }
+
+        return $stem;
     }
 
     /**
-     * Genera variantes de número (Singular <-> Plural).
-     * Corrige el bug de "CANCIONES" -> "CANCIONE".
+     * FUNCIÓN PRINCIPAL DE COMPARACIÓN
      */
-    private function generateNumberVariants(string $word): array {
-        $variants = [];
-
-        // A. De Singular a Plural
-        if (preg_match('/[AEIOU]$/', $word)) {
-            $variants[] = $word . 'S';
-        } elseif (preg_match('/[DHLMNRSTJ]$/', $word)) { // Consonantes comunes
-            $variants[] = $word . 'ES';
-        } elseif (preg_match('/Z$/', $word)) {
-            $variants[] = substr($word, 0, -1) . 'CES'; // Luz -> Luces
-        }
-
-        // B. De Plural a Singular (Heurística inversa mejorada)
-        if (substr($word, -3) === 'CES') {
-            $variants[] = substr($word, 0, -3) . 'Z'; // Luces -> Luz
-        } elseif (substr($word, -2) === 'ES') {
-            // Cuidado aquí: "Lunes" termina en ES pero es singular. 
-            // Esta lógica es simple, para un juego suele bastar.
-            $variants[] = substr($word, 0, -2); // Canciones -> Cancion
-        } elseif (substr($word, -1) === 'S') {
-             // Evitar quitar S si la palabra termina en SS (raro en español) o es muy corta
-            if (strlen($word) > 3) {
-                $variants[] = substr($word, 0, -1); // Gatos -> Gato
-            }
-        }
-
-        return array_unique($variants); // Eliminar duplicados
-    }
-
-    // ================= PÚBLICO =================
-
-    public function getCanonicalWord(string $playerWord): ?string {
-        $normalized = $this->normalizeWord($playerWord);
-
-        // 1. Búsqueda Exacta (O(1))
-        if (isset($this->equivalenceTable[$normalized])) {
-            return $this->equivalenceTable[$normalized];
-        }
-
-        // 2. Búsqueda Fuzzy (Levenshtein) - Opcional, solo si no hay match exacto
-        if (self::FUZZY_TOLERANCE > 0 && strlen($normalized) > 3) {
-            foreach ($this->equivalenceTable as $key => $canonical) {
-                if (levenshtein($normalized, (string)$key) <= self::FUZZY_TOLERANCE) {
-                    return $canonical;
-                }
-            }
-        }
-
-        return null;
-    }
-
     public function areEquivalent(string $word1, string $word2): bool {
-        $c1 = $this->getCanonicalWord($word1) ?? $this->normalizeWord($word1);
-        $c2 = $this->getCanonicalWord($word2) ?? $this->normalizeWord($word2);
-        return $c1 === $c2;
-    }
+        // Paso 1: Normalización total (quita espacios y acentos)
+        $n1 = $this->normalize($word1);
+        $n2 = $this->normalize($word2);
 
-    public function getDictionary(): array {
-        return $this->dictionary;
-    }
+        // Si son idénticos tras limpiar (dulce de leche == dulcedeleche) -> TRUE
+        if ($n1 === $n2) return true;
 
-    // ================= CACHÉ & UTILS =================
+        // Paso 2: Verificar Diccionario (Sinónimos explícitos)
+        // Si Perro y Can están definidos como sinónimos
+        $id1 = $this->dictionaryMap[$n1] ?? null;
+        $id2 = $this->dictionaryMap[$n2] ?? null;
 
-    private function loadFromCache(): bool {
-        if (file_exists(self::CACHE_FILE)) {
-            $cacheTime = filemtime(self::CACHE_FILE);
-            $dictTime = file_exists(__DIR__ . '/diccionario.json') ? filemtime(__DIR__ . '/diccionario.json') : 0;
-
-            if ($cacheTime > $dictTime) {
-                $data = unserialize(file_get_contents(self::CACHE_FILE));
-                if ($data) {
-                    $this->equivalenceTable = $data['table'];
-                    $this->dictionary = $data['dict'];
-                    return true;
-                }
-            }
+        if ($id1 !== null && $id2 !== null && $id1 === $id2) {
+            return true;
         }
+
+        // Si una está en el diccionario y la otra no, miramos si la segunda es variante de la primera
+        // Ejemplo: Diccionario tiene "PERRO". Usuario mete "PERRITAS".
+        // La "raíz" de PERRITAS es PERRIT. La raíz de PERRO es PERR. (No coincide directo)
+        // Pero si el usuario mete "PERROS", raíz PERR == PERR. -> OK.
+        
+        // Paso 3: Comparación Morfológica (Sin diccionario)
+        // Aplica para: Tonto == Tontas, Rojo == Rojas
+        $root1 = $this->getStem($n1);
+        $root2 = $this->getStem($n2);
+
+        if ($root1 === $root2 && strlen($root1) > 2) { // >2 para evitar falsos positivos cortos
+            return true;
+        }
+
+        // Paso 4: Cruce Híbrido (Raíz vs Diccionario)
+        // Si ingresan "Perras" (Raiz: PERR) y en diccionario está "Perro" (Raiz: PERR)
+        // Esto permite que el diccionario funcione aunque no definas los plurales en el JSON
+        if ($id1 !== null) {
+            // Word1 es de diccionario, ¿Word2 tiene su misma raíz?
+            $dictRoot = $this->getStem($id1); 
+            if ($dictRoot === $root2) return true;
+        }
+        if ($id2 !== null) {
+            $dictRoot = $this->getStem($id2);
+            if ($dictRoot === $root1) return true;
+        }
+
         return false;
     }
 
-    private function saveToCache(): void {
-        $data = [
-            'table' => $this->equivalenceTable,
-            'dict' => $this->dictionary
+    // Helpers para debug
+    public function getDebugInfo(string $word): array {
+        $norm = $this->normalize($word);
+        return [
+            'original' => $word,
+            'normalized' => $norm,
+            'dictionary_id' => $this->dictionaryMap[$norm] ?? 'NO ENCONTRADO',
+            'stem_root' => $this->getStem($norm)
         ];
-        file_put_contents(self::CACHE_FILE, serialize($data));
     }
-
-    private function log(string $msg, string $level = 'INFO'): void {
-        // Integración simple con logs existentes o error_log por defecto
-        if (function_exists('logMessage')) {
-            logMessage("[WordEngine] $msg", $level);
-        } else {
-            error_log("[$level] [WordEngine] $msg");
-        }
+    
+    public function getDictionary(): array {
+        return $this->dictionaryMap;
     }
 }
 
-// Helpers globales para mantener compatibilidad
+// Funciones globales
 function compareWords(string $w1, string $w2): bool {
     return WordEquivalenceEngine::getInstance()->areEquivalent($w1, $w2);
 }
 
-function getCanonicalWord(string $w): string {
-    $engine = WordEquivalenceEngine::getInstance();
-    $canonical = $engine->getCanonicalWord($w);
-    return $canonical ?? mb_strtoupper(trim($w), 'UTF-8');
+// Actualizamos el helper de debug para usar la nueva info
+function getCanonicalWord(string $w) {
+    // Para mantener compatibilidad con tu test.php, devolvemos un string descriptivo
+    $info = WordEquivalenceEngine::getInstance()->getDebugInfo($w);
+    return $info['normalized'] . " (Raíz: " . $info['stem_root'] . ")";
 }
 ?>
