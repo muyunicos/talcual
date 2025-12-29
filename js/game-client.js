@@ -116,7 +116,7 @@ class GameClient {
     const timeoutId = setTimeout(() => controller.abort(), 30000);
     
     try {
-      const response = await fetch('../app/actions.php', {
+      const response = await fetch('app/actions.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
