@@ -6,7 +6,6 @@
     <title>Jugador - TalCual Party</title>
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
     
-    <!-- CSS Reorganizado - Usando rutas relativas consistentes -->
     <link rel="stylesheet" href="./css/1-global.css">
     <link rel="stylesheet" href="./css/4-components.css">
     <link rel="stylesheet" href="./css/2-play.css">
@@ -56,9 +55,10 @@
         </div>
 
         <div class="status-card" id="status-card" role="status" aria-live="polite" aria-atomic="true">
+            <div class="category-label" id="category-label" style="display: none;"></div>
             <div class="current-word hidden" id="current-word"></div>
             <div class="waiting-message" id="waiting-message">
-                El anfitrión iniciará la ronda pronto
+                El anfitrón iniciará la ronda pronto
             </div>
         </div>
 
@@ -66,7 +66,7 @@
             <div class="input-row">
                 <input type="text" id="current-word-input" class="word-input" 
                        placeholder="Escribe..." autocomplete="off">
-                <button class="btn-add" id="btn-add-word" aria-label="Agregar palabra">✍️</button>
+                <button class="btn-add" id="btn-add-word" aria-label="Agregar palabra">Add</button>
             </div>
 
             <div class="words-list hidden" id="words-list-container">
@@ -86,9 +86,9 @@
         <div class="bottom-footer">
             <div class="player-name-section">
                 <div class="player-name-display" id="player-name-display">---</div>
-                <button class="btn-edit-name" id="btn-edit-name">✍️</button>
+                <button class="btn-edit-name" id="btn-edit-name">Edit</button>
             </div>
-            <button class="btn-exit" id="btn-exit" aria-label="Salir del juego">Salir</button>
+            <button class="btn-exit" id="btn-exit" aria-label="Salir del juego">Exit</button>
         </div>
     </div>
 
