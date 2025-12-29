@@ -83,29 +83,35 @@ class WordEquivalenceEngine {
      * Obtiene la "raíz" de una palabra para comparar Tonto vs Tontas
      * sin necesidad de diccionario.
      */
+   /**
+     * Obtiene la raíz gramatical agresiva.
+     * Estrategia: "Esqueleto Consonántico"
+     */
     private function getStem(string $word): string {
         $stem = $word;
 
-        // 1. Quitar sufijos de plural (S, ES)
-        if (substr($stem, -2) === 'ES') {
-            // Caso especial: Luces -> Luz
-            if (substr($stem, -3) === 'CES') {
-                $stem = substr($stem, 0, -3) . 'Z';
-            } else {
-                $stem = substr($stem, 0, -2);
-            }
-        } elseif (substr($stem, -1) === 'S') {
-            // Evitar quitar S a palabras que terminan en S natural (BUS, GAS)
-            // Regla simple: solo si la palabra es larga
+        // 1. Caso especial: -CES -> -Z (Luces -> Luz, Lápices -> Lápiz)
+        // Hacemos esto antes de quitar la S genérica
+        if (substr($stem, -3) === 'CES') {
+            $stem = substr($stem, 0, -3) . 'Z';
+        }
+        
+        // 2. Quitar la 'S' final (Plurales generales)
+        // Parques -> Parque, Nenes -> Nene, Casas -> Casa
+        elseif (substr($stem, -1) === 'S') {
+            // Protección: No quitar S a palabras muy cortas (ej: "GAS", "DOS", "TOS")
             if (strlen($stem) > 3) {
                 $stem = substr($stem, 0, -1);
             }
         }
 
-        // 2. Quitar sufijos de género (A, O)
-        // Convertimos Tonta -> Tont, Tonto -> Tont
-        if (substr($stem, -1) === 'A' || substr($stem, -1) === 'O') {
-             $stem = substr($stem, 0, -1);
+        // 3. Eliminación de Vocal Final (A, O, E)
+        // Esto unifica Género (Nene/Nena) y residuos de plurales (Camiones -> Camione -> Camion)
+        if (strlen($stem) > 2) { // Protección para no romper "FE", "TE", "LA"
+            $lastChar = substr($stem, -1);
+            if ($lastChar === 'A' || $lastChar === 'O' || $lastChar === 'E') {
+                $stem = substr($stem, 0, -1);
+            }
         }
 
         return $stem;
