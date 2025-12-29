@@ -95,7 +95,7 @@
 
             <!-- CENTRO - Estado/Palabra/Categoría -->
             <div class="center-panel">
-                <div class="status-message" id="status-message">Esperando jugadores...</div>
+                <div class="status-message" id="status-message" role="status" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
                 <div class="round-info" id="round-info" style="display: none;">
                     Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span>
                 </div>
@@ -129,12 +129,19 @@
 
         <!-- CONTROLES -->
         <div class="controls-panel" id="controls-panel">
+            <div class="controls-group">
+                <button class="btn-control btn-start" id="btn-start-round" style="display: none;">▶️ Iniciar Ronda</button>
+                <button class="btn-control btn-end" id="btn-end-round" style="display: none;">⏹️ Finalizar Ronda</button>
+                <button class="btn-control btn-next" id="btn-next-round" style="display: none;">⏭️ Siguiente</button>
+                <button class="btn-control btn-finish" id="btn-finish-game" style="display: none;">🏁 Terminar</button>
+                <button class="btn-control btn-new" id="btn-new-game" style="display: none;">🔄 Nueva</button>
+            </div>
             <button class="btn-control btn-config" id="btn-config" title="Configurar partida">⚙️ Config</button>
-            <button class="btn-control btn-start" id="btn-start-round" style="display: none;">▶️ Iniciar Ronda</button>
-            <button class="btn-control btn-end" id="btn-end-round" style="display: none;">⏹️ Finalizar Ronda</button>
-            <button class="btn-control btn-next" id="btn-next-round" style="display: none;">⏭️ Siguiente</button>
-            <button class="btn-control btn-finish" id="btn-finish-game" style="display: none;">🏁 Terminar</button>
-            <button class="btn-control btn-new" id="btn-new-game" style="display: none;">🔄 Nueva</button>
+            <div class="config-dropdown-host" id="config-dropdown-host" style="display: none;">
+                <button class="config-option" id="option-config-settings">⚙️ Configuración</button>
+                <button class="config-option" id="option-restart-round">🔄 Reiniciar Ronda</button>
+                <button class="config-option" id="option-end-game">🏁 Terminar Partida</button>
+            </div>
         </div>
     </div>
 
