@@ -44,7 +44,8 @@
 
     <!-- PANTALLA DE JUEGO -->
     <div class="game-screen" id="game-screen">
-        <div class="top-header">
+        <div class="player-layout">
+            <div class="top-header">
             <div class="header-round" id="header-round" aria-live="polite" aria-label="Ronda actual">Ronda 0/3</div>
             <div class="header-timer" id="header-timer" aria-live="polite" aria-label="Tiempo restante">⏳ 00:00</div>
             <div class="code-sticker code-sticker--small" id="header-code" aria-label="Código de sala">----</div>
@@ -83,18 +84,9 @@
 
         <div class="results-section" id="results-section"></div>
 
-        <!-- FOOTER CON OPCIONES -->
-        <div class="bottom-footer">
-            <div class="footer-left">
-                <div class="player-name-display" id="player-name-display">---</div>
-                <button class="btn-config-menu" id="btn-config-menu" title="Menú de opciones" aria-label="Abrir menú">...</button>
-                <div class="config-dropdown" id="config-dropdown" style="display: none;">
-                    <button class="config-option" id="option-edit-name">Cambiar nombre</button>
-                    <button class="config-option" id="option-exit">Salir</button>
-                </div>
-            </div>
-        </div>
     </div>
+        </div>
+        
 
     <div class="countdown-overlay" id="countdown-overlay">
         <div class="countdown-number" id="countdown-number"></div>
@@ -117,7 +109,7 @@
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
     </button>
-
+    <div class="player-name-display" id="player-name-display">---</div>
     <!-- MENÚ HAMBURGUESA PLAYER -->
     <nav class="hamburger-menu" id="hamburger-menu-player" style="display: none;" aria-label="Menú de navegación">
         <div class="hamburger-header">Menú</div>

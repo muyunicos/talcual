@@ -1,4 +1,6 @@
-
+.player-layout {
+    
+}
 /* TOP HEADER */
 .top-header {
     display: flex;
@@ -272,6 +274,9 @@
 
 .player-name-display {
     font-size: 14px;
+    position: fixed;
+    left: 85px;
+    bottom: 16px;
     font-weight: 600;
     color: var(--color-text-muted);
 }
