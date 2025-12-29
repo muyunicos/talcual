@@ -57,6 +57,38 @@
     letter-spacing: 2px;
     box-shadow: 4px 4px 0px rgba(0,0,0,0.4);
     font-family: var(--font-display);
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, outline-color 0.15s ease;
+}
+
+.game-code-sticker:hover {
+    transform: translateY(-1px);
+}
+
+.game-code-sticker:active {
+    transform: translateY(0);
+}
+
+.game-code-sticker.copied {
+    outline: 3px solid #2ecc71;
+    box-shadow: 0 0 0 6px rgba(46, 204, 113, 0.25), 4px 4px 0px rgba(0,0,0,0.4);
+}
+
+.game-code-sticker.copied::after {
+    content: 'Copiado';
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background: #2ecc71;
+    color: #000;
+    font-family: var(--font-primary);
+    font-size: 0.75em;
+    font-weight: 900;
+    padding: 4px 10px;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0px #000;
 }
 
 /* ========== RANKING IZQUIERDA ========== */

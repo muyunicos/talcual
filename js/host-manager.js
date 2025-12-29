@@ -16,6 +16,7 @@ class HostManager {
         this.periodicSyncInterval = null;
         this.lastSyncTime = 0;
         this.elements = {};
+        this.copyIndicatorTimeout = null;
     }
     
     initialize() {
@@ -84,6 +85,80 @@ class HostManager {
         if (this.elements.btnNewGame) {
             this.elements.btnNewGame.addEventListener('click', () => this.createNewGame());
         }
+
+        this.setupGameCodeCopy();
+    }
+
+    setupGameCodeCopy() {
+        const sticker = this.elements.gameCodeTv;
+        if (!sticker) return;
+
+        sticker.title = 'Click para copiar el código';
+        sticker.setAttribute('role', 'button');
+        sticker.setAttribute('tabindex', '0');
+
+        const copyHandler = () => this.copyGameCodeToClipboard();
+
+        sticker.addEventListener('click', copyHandler);
+        sticker.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                copyHandler();
+            }
+        });
+    }
+
+    async copyGameCodeToClipboard() {
+        const sticker = this.elements.gameCodeTv;
+        const code = (sticker?.textContent || '').trim();
+
+        if (!code || code === '------') return;
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(code);
+            } else {
+                this.fallbackCopyText(code);
+            }
+            this.showGameCodeCopiedIndicator();
+        } catch (error) {
+            this.fallbackCopyText(code);
+            this.showGameCodeCopiedIndicator();
+        }
+    }
+
+    fallbackCopyText(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.top = '-1000px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+
+        try {
+            document.execCommand('copy');
+        } finally {
+            document.body.removeChild(ta);
+        }
+    }
+
+    showGameCodeCopiedIndicator() {
+        const sticker = this.elements.gameCodeTv;
+        if (!sticker) return;
+
+        sticker.classList.remove('copied');
+        void sticker.offsetWidth;
+        sticker.classList.add('copied');
+
+        if (this.copyIndicatorTimeout) {
+            clearTimeout(this.copyIndicatorTimeout);
+        }
+
+        this.copyIndicatorTimeout = setTimeout(() => {
+            sticker.classList.remove('copied');
+        }, 900);
     }
     
     handleKeyPress(event) {
