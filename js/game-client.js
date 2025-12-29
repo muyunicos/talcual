@@ -143,7 +143,12 @@ class GameClient {
    * Conecta a SSE
    */
   connect() {
-    const sseUrl = `/app/sse-stream.php?game_id=${encodeURIComponent(this.gameId)}`;
+    // FIX #38: Enviar player_id en la URL de SSE para que el servidor sepa a quién notificar
+    let sseUrl = `/app/sse-stream.php?game_id=${encodeURIComponent(this.gameId)}`;
+    if (this.playerId) {
+      sseUrl += `&player_id=${encodeURIComponent(this.playerId)}`;
+    }
+    
     console.log(`🔌 [${this.role}] Conectando a SSE: ${sseUrl}`);
     
     try {
@@ -235,7 +240,7 @@ class GameClient {
       
       this.gameState = newState;
       const playerCount = newState.players ? Object.keys(newState.players).length : 0;
-      console.log(`📨 [${this.role}] Estado actualizado (ronda ${newState.round || 0}, ${playerCount} jugadores)`);
+      console.log(`📨 [${this.role}] Estado actualizado (ronda ${newState.round || 0}, ${playerCount} jugadores, palabra: ${newState.current_word || 'N/A'})`);
       
       this.safeCallCallback(this.onStateUpdate, newState, 'onStateUpdate');
       this.emit('state:update', newState);
@@ -381,7 +386,7 @@ class GameClient {
         // emitir inmediatamente sin esperar SSE
         if (criticalActions.includes(action) && result.state) {
           const playerCount = result.state.players ? Object.keys(result.state.players).length : 0;
-          console.log(`⚡ [${this.role}] Emitiendo evento crítico inmediatamente: ${action} (${playerCount} jugadores)`);
+          console.log(`⚡ [${this.role}] Emitiendo evento crítico inmediatamente: ${action} (${playerCount} jugadores, palabra: ${result.state.current_word || 'N/A'})`);
           
           this.gameState = result.state;
           this.lastMessageHash = JSON.stringify(result.state);
@@ -486,4 +491,4 @@ function showNotification(message, type = 'info') {
   console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
-console.log('%c✅ GameClient - Sistema robusto de comunicación SSE con mejora #28 (emisión crítica inmediata)', 'color: #10B981; font-weight: bold');
+console.log('%c✅ GameClient - FIX #38: Enviar player_id en SSE para notificación correcta', 'color: #10B981; font-weight: bold');
