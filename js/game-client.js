@@ -234,7 +234,8 @@ class GameClient {
       this.lastMessageHash = stateHash;
       
       this.gameState = newState;
-      console.log(`📨 [${this.role}] Estado actualizado (ronda ${newState.round || 0})`);
+      const playerCount = newState.players ? Object.keys(newState.players).length : 0;
+      console.log(`📨 [${this.role}] Estado actualizado (ronda ${newState.round || 0}, ${playerCount} jugadores)`);
       
       this.safeCallCallback(this.onStateUpdate, newState, 'onStateUpdate');
       this.emit('state:update', newState);
@@ -379,7 +380,8 @@ class GameClient {
         // ✅ MEJORA #28: Si es acción crítica y la respuesta contiene estado,
         // emitir inmediatamente sin esperar SSE
         if (criticalActions.includes(action) && result.state) {
-          console.log(`⚡ [${this.role}] Emitiendo evento crítico inmediatamente: ${action}`);
+          const playerCount = result.state.players ? Object.keys(result.state.players).length : 0;
+          console.log(`⚡ [${this.role}] Emitiendo evento crítico inmediatamente: ${action} (${playerCount} jugadores)`);
           
           this.gameState = result.state;
           this.lastMessageHash = JSON.stringify(result.state);
