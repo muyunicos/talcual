@@ -383,7 +383,7 @@ select:focus {
     animation: modalSlideIn 0.3s ease-out;
 }
 
-/* ========== MODALES ========== */
+/* ========== MODALES - CORREGIDO #6 ========== */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -423,7 +423,18 @@ select:focus {
     width: 90%;
     box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
     position: relative;
-    animation: modalSlideIn 0.3s ease-out;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 @keyframes modalSlideIn {
@@ -491,6 +502,47 @@ select:focus {
 .modal-btn-cancel {
     background: var(--magenta);
     color: white;
+}
+
+/* ========== AURA SELECTOR - CORREGIDO #7 ========== */
+.aura-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.aura-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    margin: 0 auto;
+}
+
+.aura-circle:hover {
+    transform: scale(1.15);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.aura-circle.selected {
+    border: 3px solid white;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 1),
+                inset 0 0 10px rgba(255, 255, 255, 0.5);
+    animation: selectPulse 0.8s ease-in-out;
+}
+
+@keyframes selectPulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 8px currentColor);
+    }
+    50% {
+        filter: drop-shadow(0 0 16px currentColor);
+    }
 }
 
 /* ========== TARJETA BLANCA ========== */
@@ -627,6 +679,11 @@ select:focus {
         font-size: 1em;
         padding: 6px 12px;
     }
+
+    .aura-circle {
+        width: 60px;
+        height: 60px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -643,5 +700,10 @@ select:focus {
     .word-input {
         font-size: 0.95em;
         padding: 12px;
+    }
+
+    .aura-circle {
+        width: 50px;
+        height: 50px;
     }
 }
