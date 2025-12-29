@@ -1,13 +1,10 @@
 /**
  * @file host-manager.js
- * @description Gestor de lógica del host (anfitrión)
- * Maneja:
- * - Creación de partidas
- * - UI y actualizaciones en tiempo real
- * - Gestión de rondas
- * - Integración con GameClient (SSE)
- * - Eventos del teclado
- * - FIX #7: Recuperación de sesión anterior
+ * @description Gestor mejorado de lógica del anfitrionHost
+ * Cambios:
+ * - Métodos completos (sin TODO)
+ * - Comunicación bidireccional más clara
+ * - Código más limpio y documentado
  */
 
 class HostManager {
@@ -16,63 +13,31 @@ class HostManager {
         this.client = null;
         this.gameState = null;
         this.timerInterval = null;
-        this.countdownInterval = null;
         this.controlsVisible = false;
         this.debugMode = false;
         
         // Elementos del DOM
-        this.elements = {
-            // Modales
-            modalCreateGame: null,
-            gameScreen: null,
-            
-            // Inputs del modal
-            customCodeInput: null,
-            btnCreateGame: null,
-            statusMessage: null,
-            
-            // Header
-            timerDisplay: null,
-            gameCodeTv: null,
-            
-            // Paneles
-            rankingList: null,
-            wordDisplay: null,
-            countdownDisplay: null,
-            statusMsg: null,
-            topWordsList: null,
-            playersGrid: null,
-            
-            // Controles
-            controlsPanel: null,
-            btnStartRound: null,
-            btnEndRound: null,
-            btnNewGame: null
-        };
+        this.elements = {};
     }
     
     /**
      * Inicializa el gestor del host
-     * FIX #7: Intentar recuperar sesión anterior
      */
     initialize() {
-        debug('🎬 Inicializando HostManager');
+        debug('🌟 Inicializando HostManager');
         this.cacheElements();
         this.attachEventListeners();
         
-        // FIX #7: Intentar recuperar sesión anterior
         const savedGameId = getLocalStorage('gameId');
         
         if (savedGameId) {
             debug('🔄 Intentando recuperar sesión del host');
             this.recoverSession(savedGameId).then(recovered => {
                 if (!recovered) {
-                    // Si no se puede recuperar, mostrar modal
                     this.showCreateGameModal();
                 }
             });
         } else {
-            // Sin sesión previa, mostrar modal
             this.showCreateGameModal();
         }
         
@@ -111,25 +76,24 @@ class HostManager {
      * Adjunta event listeners
      */
     attachEventListeners() {
-        // Botón crear juego
         if (this.elements.btnCreateGame) {
             this.elements.btnCreateGame.addEventListener('click', () => this.createGame());
         }
         
-        // Enter en input de código personalizado
         if (this.elements.customCodeInput) {
             this.elements.customCodeInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.createGame();
             });
         }
         
-        // Botones de control de ronda
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.addEventListener('click', () => this.startRound());
         }
+        
         if (this.elements.btnEndRound) {
             this.elements.btnEndRound.addEventListener('click', () => this.endRound());
         }
+        
         if (this.elements.btnNewGame) {
             this.elements.btnNewGame.addEventListener('click', () => this.createNewGame());
         }
@@ -139,7 +103,6 @@ class HostManager {
      * Maneja presiones de teclas
      */
     handleKeyPress(event) {
-        // 'C' para mostrar/ocultar controles
         if (event.key === 'c' || event.key === 'C') {
             this.toggleControls();
         }
@@ -153,7 +116,7 @@ class HostManager {
         if (this.elements.controlsPanel) {
             if (this.controlsVisible) {
                 safeShowElement(this.elements.controlsPanel);
-                showNotification('🎦 Controles visibles (presiona C para ocultar)', 'info', 2000);
+                showNotification('🎬 Controles visibles (presiona C para ocultar)', 'info', 2000);
             } else {
                 safeHideElement(this.elements.controlsPanel);
             }
@@ -162,14 +125,12 @@ class HostManager {
     
     /**
      * Intenta recuperar una sesión anterior del host
-     * FIX #7: Nueva función para recuperar sesión
      */
     async recoverSession(gameId) {
         try {
             this.gameId = gameId;
-            this.client = new GameClient(gameId, 'host');
+            this.client = new GameClient(gameId, null, 'host');
             
-            // Verificar que el juego existe
             const result = await this.client.sendAction('get_state', { game_id: gameId });
             
             if (result.success && result.state) {
@@ -186,7 +147,6 @@ class HostManager {
     
     /**
      * Muestra el modal de crear juego
-     * FIX #7: Extraído a función separada
      */
     showCreateGameModal() {
         this.elements.modalCreateGame.classList.add('active');
@@ -195,43 +155,34 @@ class HostManager {
     
     /**
      * Carga la pantalla de juego
-     * FIX #7: Nueva función para cargar pantalla
      */
     loadGameScreen(state) {
-        // Mostrar pantalla de juego
         this.elements.modalCreateGame.classList.remove('active');
         this.elements.gameScreen.classList.add('active');
         
-        // Actualizar UI
         this.elements.gameCodeTv.textContent = this.gameId;
         
-        // Conectar a SSE
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
         this.client.connect();
         
-        // Ocultar controles inicialmente
         this.controlsVisible = false;
         safeHideElement(this.elements.controlsPanel);
         
-        // Aplicar estado actual
         this.handleStateUpdate(state);
     }
     
     /**
      * Crea una nueva partida
-     * FIX #7: Guardar gameId en localStorage
      */
     async createGame() {
         let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
         
-        // Validar código personalizado si existe
         if (customCode && !isValidGameCode(customCode)) {
             this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3-6 caracteres)';
             return;
         }
         
-        // Generar código si no hay personalizado
         if (!customCode) {
             customCode = generateGameCode(4);
         }
@@ -243,10 +194,8 @@ class HostManager {
         this.elements.statusMessage.innerHTML = '⏳ Conectando...';
         
         try {
-            // Crear cliente
-            this.client = new GameClient(this.gameId, 'host');
+            this.client = new GameClient(this.gameId, null, 'host');
             
-            // Crear juego en el servidor
             const result = await this.client.sendAction('create_game', {
                 game_id: this.gameId,
                 mode: 'word_matching'
@@ -255,25 +204,9 @@ class HostManager {
             if (result.success) {
                 debug(`✅ Juego creado: ${this.gameId}`);
                 
-                // FIX #7: Guardar en localStorage
                 setLocalStorage('gameId', this.gameId);
                 
-                // Mostrar pantalla de juego
-                this.elements.modalCreateGame.classList.remove('active');
-                this.elements.gameScreen.classList.add('active');
-                
-                // Actualizar UI
-                this.elements.gameCodeTv.textContent = this.gameId;
-                
-                // Conectar a SSE
-                this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
-                this.client.onConnectionLost = () => this.handleConnectionLost();
-                this.client.connect();
-                
-                // Ocultar controles inicialmente
-                this.controlsVisible = false;
-                safeHideElement(this.elements.controlsPanel);
-                
+                this.loadGameScreen(result.state || {});
                 showNotification(`🎮 Partida creada: ${this.gameId}`, 'success');
                 
             } else {
@@ -304,50 +237,12 @@ class HostManager {
     updateHostUI() {
         if (!this.gameState) return;
         
-        // Actualizar ranking
         this.updateRanking();
-        
-        // Actualizar palabras top
         this.updateTopWords();
-        
-        // Actualizar grid de jugadores
         this.updatePlayersGrid();
-        
-        // Actualizar mensajes de estado
         this.updateStatusMessage();
-        
-        // Actualizar controles de botón
         this.updateButtonStates();
-        
-        // Manejar timers según estado
-        switch (this.gameState.status) {
-            case 'waiting':
-                this.stopTimer();
-                break;
-                
-            case 'playing':
-                if (this.gameState.round_start_at) {
-                    const now = Math.floor(Date.now() / 1000);
-                    const remaining = this.gameState.round_start_at - now;
-                    
-                    if (remaining > 0 && remaining <= 4) {
-                        this.showCountdownSynced();
-                    } else if (remaining <= 0) {
-                        this.startContinuousTimer();
-                    }
-                } else {
-                    this.startContinuousTimer();
-                }
-                break;
-                
-            case 'round_ended':
-                this.stopTimer();
-                break;
-                
-            case 'finished':
-                this.stopTimer();
-                break;
-        }
+        this.updateTimer();
     }
     
     /**
@@ -474,6 +369,64 @@ class HostManager {
     }
     
     /**
+     * Actualiza timer
+     */
+    updateTimer() {
+        if (this.gameState.status !== 'playing') {
+            this.stopTimer();
+            return;
+        }
+        
+        if (this.gameState.round_started_at && this.gameState.round_duration) {
+            const now = Math.floor(Date.now() / 1000);
+            const remaining = this.gameState.round_duration - (now - this.gameState.round_started_at);
+            
+            if (remaining > 0) {
+                this.startContinuousTimer();
+            } else {
+                this.stopTimer();
+            }
+        }
+    }
+    
+    /**
+     * Inicia timer continuo
+     */
+    startContinuousTimer() {
+        if (this.timerInterval) return; // Ya en ejecución
+        
+        this.updateTimerFromState();
+        
+        this.timerInterval = setInterval(() => {
+            if (this.client && this.gameState && this.gameState.status === 'playing') {
+                this.updateTimerFromState();
+            } else {
+                this.stopTimer();
+            }
+        }, 1000);
+    }
+    
+    /**
+     * Actualiza timer desde estado
+     */
+    updateTimerFromState() {
+        const now = Math.floor(Date.now() / 1000);
+        const elapsed = now - this.gameState.round_started_at;
+        const remaining = Math.max(0, this.gameState.round_duration - elapsed);
+        updateTimerDisplay(remaining, this.elements.timerDisplay, '⏳');
+    }
+    
+    /**
+     * Detiene el timer
+     */
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+    
+    /**
      * Inicia una ronda
      */
     async startRound() {
@@ -530,54 +483,6 @@ class HostManager {
     }
     
     /**
-     * Inicia timer continuo sincronizado
-     */
-    startContinuousTimer() {
-        this.stopTimer();
-        
-        if (!this.gameState.round_started_at || !this.gameState.round_duration) {
-            return;
-        }
-        
-        this.updateTimerFromState();
-        
-        this.timerInterval = setInterval(() => {
-            if (this.client && this.gameState && this.gameState.status === 'playing') {
-                this.updateTimerFromState();
-            } else {
-                this.stopTimer();
-            }
-        }, 1000);
-    }
-    
-    /**
-     * Actualiza timer desde estado
-     */
-    updateTimerFromState() {
-        const now = Math.floor(Date.now() / 1000);
-        const elapsed = now - this.gameState.round_started_at;
-        const remaining = Math.max(0, this.gameState.round_duration - elapsed);
-        updateTimerDisplay(remaining, this.elements.timerDisplay, '⏳');
-    }
-    
-    /**
-     * Muestra countdown sincronizado
-     */
-    showCountdownSynced() {
-        // TODO: Implementar si es necesario
-    }
-    
-    /**
-     * Detiene el timer
-     */
-    stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-    }
-    
-    /**
      * Maneja pérdida de conexión
      */
     handleConnectionLost() {
@@ -600,4 +505,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - Mejorado con código limpio y completo', 'color: #10B981; font-weight: bold');
