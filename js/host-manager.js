@@ -331,7 +331,7 @@ class HostManager {
         }
         
         if (!customCode) {
-            customCode = generateGameCode(4);
+            customCode = await generateGameCode();
         }
         
         this.gameId = customCode;
@@ -858,4 +858,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js - Control de rondas, configuración, eliminación de jugadores, resultados', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js - Diccionario async, control de rondas, configuración, eliminación de jugadores', 'color: #10B981; font-weight: bold');
