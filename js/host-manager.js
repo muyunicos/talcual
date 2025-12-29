@@ -16,6 +16,10 @@ class HostManager {
         this.updatePending = false;
         this.updateTimeout = null;
         
+        // MEJORA #27: Sincronización periódica (fallback SSE)
+        this.periodicSyncInterval = null;
+        this.lastSyncTime = 0;
+        
         // Elementos del DOM
         this.elements = {};
     }
@@ -169,7 +173,50 @@ class HostManager {
         this.controlsVisible = false;
         safeHideElement(this.elements.controlsPanel);
         
+        // ✅ MEJORA #27: Iniciar sincronización periódica (fallback SSE)
+        this.setupPeriodicSync();
+        
         this.handleStateUpdate(state);
+    }
+    
+    /**
+     * ✅ MEJORA #27: Sincronización periódica cada 500ms
+     * Fallback automático si SSE falla o se retrasa
+     */
+    setupPeriodicSync() {
+        if (this.periodicSyncInterval) {
+            clearInterval(this.periodicSyncInterval);
+        }
+        
+        debug('🔄 Iniciando sincronización periódica (500ms)', 'info');
+        
+        this.periodicSyncInterval = setInterval(async () => {
+            try {
+                // Evitar spam: máximo 1 sincronización por segundo
+                const now = Date.now();
+                if (now - this.lastSyncTime < 1000) {
+                    return;
+                }
+                this.lastSyncTime = now;
+                
+                // Forzar refresco del estado
+                const result = await this.client.sendAction('get_state', { game_id: this.gameId });
+                
+                if (result.success && result.state) {
+                    // Comparar timestamps: solo actualizar si hay cambio
+                    const oldTimestamp = this.gameState?.last_update || 0;
+                    const newTimestamp = result.state?.last_update || 0;
+                    
+                    if (newTimestamp > oldTimestamp) {
+                        debug('🔄 Sincronización periódica: Estado actualizado', 'debug');
+                        this.handleStateUpdate(result.state);
+                    }
+                }
+            } catch (error) {
+                // Fallback silencioso - SSE probablemente funciona
+                debug('ℹ️ Sincronización periódica falló (SSE probablemente activo)', 'debug');
+            }
+        }, 500);
     }
     
     /**
@@ -523,4 +570,4 @@ if (document.readyState === 'loading') {
     hostManager.initialize();
 }
 
-console.log('%c✅ host-manager.js cargado - Mejorado con debounce y top_words fix', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js cargado - Mejorado con periodic sync y debounce', 'color: #10B981; font-weight: bold');
