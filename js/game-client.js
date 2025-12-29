@@ -7,6 +7,10 @@
  * - Event emitter para eventos específicos
  * - Heartbeat monitor adaptativo
  * - Métricas de conexión
+ * - Timeout HTTP 30s
+ * - Fallback COMM global
+ * - Auto-cleanup de listeners
+ * - Error handling robusto
  */
 
 class GameClient {
@@ -80,6 +84,21 @@ class GameClient {
           console.error(`[${this.role}] Error en listener para ${eventType}:`, err);
         }
       });
+    }
+  }
+
+  /**
+   * Helper seguro para llamar callbacks
+   * @param {Function} callback - Función a ejecutar
+   * @param {*} data - Datos a pasar
+   * @param {string} callbackName - Nombre para logging
+   */
+  safeCallCallback(callback, data, callbackName) {
+    if (!callback || typeof callback !== 'function') return;
+    try {
+      callback(data);
+    } catch (err) {
+      console.error(`❌ [${this.role}] Error en ${callbackName}:`, err);
     }
   }
 
@@ -189,14 +208,8 @@ class GameClient {
       this.gameState = newState;
       console.log(`📨 [${this.role}] Estado actualizado (ronda ${newState.round || 0})`);
       
-      // Callback heredado
-      if (this.onStateUpdate && typeof this.onStateUpdate === 'function') {
-        try {
-          this.onStateUpdate(newState);
-        } catch (err) {
-          console.error(`❌ [${this.role}] Error en callback onStateUpdate:`, err);
-        }
-      }
+      // Callback heredado (usando helper seguro)
+      this.safeCallCallback(this.onStateUpdate, newState, 'onStateUpdate');
       
       // Emitir evento
       this.emit('state:update', newState);
@@ -241,20 +254,42 @@ class GameClient {
    * Maneja reconexiones con backoff exponencial
    */
   handleReconnect() {
-    if (this.reconnectAttempts >= COMM_CONFIG.RECONNECT_MAX_ATTEMPTS) {
+    // Fallback si COMM no existe
+    const commConfig = window.COMM?.COMM_CONFIG || {
+      RECONNECT_MAX_ATTEMPTS: 15,
+      RECONNECT_INITIAL_DELAY: 1000,
+      RECONNECT_MAX_DELAY: 30000,
+      RECONNECT_BACKOFF_MULTIPLIER: 1.5,
+      RECONNECT_JITTER_MAX: 1000
+    };
+    
+    if (this.reconnectAttempts >= commConfig.RECONNECT_MAX_ATTEMPTS) {
       console.error(`❌ [${this.role}] Máximo de reconexiones alcanzado`);
       this.emit('connection:failed', { attempts: this.reconnectAttempts });
       
-      if (this.onConnectionLost && typeof this.onConnectionLost === 'function') {
-        this.onConnectionLost();
-      }
+      this.safeCallCallback(this.onConnectionLost, null, 'onConnectionLost');
       return;
     }
     
     this.reconnectAttempts++;
-    const delay = COMM.calculateReconnectDelay(this.reconnectAttempts);
     
-    console.log(`🔄 [${this.role}] Reconectando en ${Math.floor(delay)}ms (intento ${this.reconnectAttempts}/${COMM_CONFIG.RECONNECT_MAX_ATTEMPTS})`);
+    // Fallback si COMM.calculateReconnectDelay no existe
+    let delay;
+    if (window.COMM?.calculateReconnectDelay) {
+      delay = COMM.calculateReconnectDelay(this.reconnectAttempts);
+    } else {
+      // Fallback simple
+      const exponentialDelay = Math.min(
+        commConfig.RECONNECT_INITIAL_DELAY * Math.pow(
+          commConfig.RECONNECT_BACKOFF_MULTIPLIER,
+          this.reconnectAttempts - 1
+        ),
+        commConfig.RECONNECT_MAX_DELAY
+      );
+      delay = exponentialDelay + Math.random() * commConfig.RECONNECT_JITTER_MAX;
+    }
+    
+    console.log(`🔄 [${this.role}] Reconectando en ${Math.floor(delay)}ms (intento ${this.reconnectAttempts}/${commConfig.RECONNECT_MAX_ATTEMPTS})`);
     this.metrics.reconnectsCount++;
     this.emit('reconnecting', { attempt: this.reconnectAttempts, delay });
     
@@ -273,6 +308,9 @@ class GameClient {
       this.heartbeatCheckInterval = null;
     }
     
+    // Auto-cleanup de listeners (evitar memory leak)
+    this.eventListeners.clear();
+    
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
@@ -282,7 +320,7 @@ class GameClient {
   }
 
   /**
-   * Envía acción al servidor
+   * Envía acción al servidor con timeout
    */
   async sendAction(action, data = {}) {
     console.log(`📤 [${this.role}] Enviando acción: ${action}`);
@@ -303,11 +341,18 @@ class GameClient {
         payload.player_id = this.playerId;
       }
       
+      // Timeout 30s en HTTP
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
       const response = await fetch('/app/actions.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -316,15 +361,24 @@ class GameClient {
       const result = await response.json();
       
       // Validar respuesta
-      if (!COMM.validateAPIResponse(result)) {
-        console.warn(`⚠️ [${this.role}] Respuesta inválida para ${action}`);
+      if (!COMM_CONFIG && result) {
+        // Fallback si COMM_CONFIG no existe
+        if (!result || typeof result !== 'object' || result.success === undefined) {
+          console.warn(`⚠️ [${this.role}] Respuesta inválida para ${action}`);
+        }
+      } else if (result && typeof result === 'object' && result.success !== undefined) {
+        // Validación normal
+        console.log(`✅ [${this.role}] Respuesta para ${action}:`, result.success ? '✓' : '✗');
       }
-      
-      console.log(`✅ [${this.role}] Respuesta para ${action}:`, result.success ? '✓' : '✗');
       
       return result;
     } catch (error) {
-      console.error(`❌ [${this.role}] Error enviando ${action}:`, error);
+      // Distinguir entre timeout y otros errores
+      if (error.name === 'AbortError') {
+        console.error(`❌ [${this.role}] Timeout (30s) enviando ${action}`);
+      } else {
+        console.error(`❌ [${this.role}] Error enviando ${action}:`, error);
+      }
       this.metrics.errorsCount++;
       return { success: false, message: 'Error de red: ' + error.message };
     }
@@ -359,9 +413,7 @@ class GameClient {
         this.lastMessageHash = JSON.stringify(result.state);
         this.lastMessageTime = Date.now();
         
-        if (this.onStateUpdate && typeof this.onStateUpdate === 'function') {
-          this.onStateUpdate(result.state);
-        }
+        this.safeCallCallback(this.onStateUpdate, result.state, 'onStateUpdate (forceRefresh)');
         
         this.emit('state:refreshed', result.state);
       }
@@ -392,14 +444,19 @@ class GameClient {
       ? Date.now() - this.metrics.connectionStartTime
       : 0;
     
+    // Fallback si COMM no existe
+    const connectionHealth = window.COMM?.getConnectionHealth
+      ? COMM.getConnectionHealth({
+          lastMessageTime: this.lastMessageTime,
+          messageCount: this.metrics.messagesReceived,
+          errorCount: this.metrics.errorsCount
+        })
+      : 'unknown';
+    
     return {
       ...this.metrics,
       uptime,
-      health: COMM.getConnectionHealth({
-        lastMessageTime: this.lastMessageTime,
-        messageCount: this.metrics.messagesReceived,
-        errorCount: this.metrics.errorsCount
-      })
+      health: connectionHealth
     };
   }
 }
