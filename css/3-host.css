@@ -1,6 +1,6 @@
 /* ============================================
    3-HOST.CSS - PANTALLA TV (HOST.HTML)
-   Estilos Exclusivos de la Pantalla Anfitríón
+   Estilos Exclusivos de la Pantalla Anfitrión
    ============================================ */
 
 /* ========== GRID DE TV HOST ========== */
@@ -242,7 +242,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('bg.webp');
+    background-image: url('../images/bg.webp');
     background-repeat: repeat;
     background-size: 100px;
     opacity: 0.15;
@@ -316,7 +316,7 @@
     z-index: 2;
 }
 
-/* ========== MODALES - HOST ========== */
+/* ========== MODALES - HOST (BASE EN 4-COMPONENTS) ========== */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -333,18 +333,6 @@
 
 .modal-overlay.active {
     display: flex;
-}
-
-.modal-create-game {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    border-radius: 25px;
-    padding: 40px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-    position: relative;
-    animation: modalSlideIn 0.3s ease-out;
 }
 
 /* ========== PANEL CONTROLES ========== */
@@ -476,12 +464,6 @@
 
     .timer-display {
         font-size: 2em;
-    }
-
-    .game-code-sticker {
-        font-size: 1.2em;
-        padding: 8px 15px;
-        justify-self: center;
     }
 
     .word-display {
