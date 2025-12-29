@@ -44,6 +44,21 @@ class GameClient {
   }
 
   /**
+   * Obtiene configuración de comunicación con fallback
+   */
+  getCommConfig() {
+    return window.COMM?.COMM_CONFIG || {
+      MESSAGE_TIMEOUT: 30000,
+      HEARTBEAT_CHECK_INTERVAL: 5000,
+      RECONNECT_MAX_ATTEMPTS: 15,
+      RECONNECT_INITIAL_DELAY: 1000,
+      RECONNECT_MAX_DELAY: 30000,
+      RECONNECT_BACKOFF_MULTIPLIER: 1.5,
+      RECONNECT_JITTER_MAX: 1000
+    };
+  }
+
+  /**
    * Suscribirse a eventos específicos
    * @param {string} eventType - Tipo de evento (de COMM.EVENT_TYPES)
    * @param {Function} callback - Callback al recibir evento
@@ -54,7 +69,6 @@ class GameClient {
     }
     this.eventListeners.get(eventType).push(callback);
     return () => {
-      // Return unsubscribe function
       const callbacks = this.eventListeners.get(eventType);
       const idx = callbacks.indexOf(callback);
       if (idx > -1) callbacks.splice(idx, 1);
@@ -93,6 +107,39 @@ class GameClient {
   }
 
   /**
+   * Helper para hacer requests HTTP con timeout
+   * @param {Object} payload - Datos a enviar
+   * @returns {Promise<Object>} Respuesta JSON
+   */
+  async _makeRequest(payload) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
+    try {
+      const response = await fetch('/app/actions.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Timeout: 30s');
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Conecta a SSE
    */
   connect() {
@@ -103,17 +150,9 @@ class GameClient {
       this.eventSource = new EventSource(sseUrl);
       this.metrics.connectionStartTime = Date.now();
       
-      this.eventSource.onopen = () => {
-        this.onConnectionOpen();
-      };
-      
-      this.eventSource.onmessage = (event) => {
-        this.onSSEMessage(event);
-      };
-      
-      this.eventSource.onerror = () => {
-        this.onSSEError();
-      };
+      this.eventSource.onopen = () => this.onConnectionOpen();
+      this.eventSource.onmessage = (event) => this.onSSEMessage(event);
+      this.eventSource.onerror = () => this.onSSEError();
       
     } catch (error) {
       console.error(`❌ [${this.role}] Error creando EventSource:`, error);
@@ -145,19 +184,12 @@ class GameClient {
     this.metrics.messagesReceived++;
     
     try {
-      // Validación básica
-      if (!event || !event.data) {
-        return;
-      }
+      if (!event || !event.data) return;
       
       const dataTrimmed = event.data.trim();
       
-      // Ignorar heartbeats y comentarios SSE
-      if (!dataTrimmed || dataTrimmed.startsWith(':')) {
-        return;
-      }
+      if (!dataTrimmed || dataTrimmed.startsWith(':')) return;
       
-      // Parsear JSON
       let newState;
       try {
         newState = JSON.parse(dataTrimmed);
@@ -176,7 +208,6 @@ class GameClient {
         return;
       }
       
-      // Validación de estructura
       if (!newState || typeof newState !== 'object') {
         this.consecutiveEmptyMessages++;
         if (this.consecutiveEmptyMessages > 10) {
@@ -187,21 +218,14 @@ class GameClient {
         return;
       }
       
-      // Evitar actualizaciones duplicadas
       const stateHash = JSON.stringify(newState);
-      if (stateHash === this.lastMessageHash) {
-        return;
-      }
+      if (stateHash === this.lastMessageHash) return;
       this.lastMessageHash = stateHash;
       
-      // Aplicar estado
       this.gameState = newState;
       console.log(`📨 [${this.role}] Estado actualizado (ronda ${newState.round || 0})`);
       
-      // Callback heredado
       this.safeCallCallback(this.onStateUpdate, newState, 'onStateUpdate');
-      
-      // Emitir evento
       this.emit('state:update', newState);
       
     } catch (error) {
@@ -230,45 +254,36 @@ class GameClient {
       clearInterval(this.heartbeatCheckInterval);
     }
     
+    const commConfig = this.getCommConfig();
     this.heartbeatCheckInterval = setInterval(() => {
       const timeSinceLastMessage = Date.now() - this.lastMessageTime;
       
-      if (timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT && this.isConnected) {
+      if (timeSinceLastMessage > commConfig.MESSAGE_TIMEOUT && this.isConnected) {
         console.warn(`⚠️ [${this.role}] No hay mensajes en ${timeSinceLastMessage}ms`);
         this.handleReconnect();
       }
-    }, COMM_CONFIG.HEARTBEAT_CHECK_INTERVAL);
+    }, commConfig.HEARTBEAT_CHECK_INTERVAL);
   }
 
   /**
    * Maneja reconexiones con backoff exponencial
    */
   handleReconnect() {
-    // Fallback si COMM no existe
-    const commConfig = window.COMM?.COMM_CONFIG || {
-      RECONNECT_MAX_ATTEMPTS: 15,
-      RECONNECT_INITIAL_DELAY: 1000,
-      RECONNECT_MAX_DELAY: 30000,
-      RECONNECT_BACKOFF_MULTIPLIER: 1.5,
-      RECONNECT_JITTER_MAX: 1000
-    };
+    const commConfig = this.getCommConfig();
     
     if (this.reconnectAttempts >= commConfig.RECONNECT_MAX_ATTEMPTS) {
       console.error(`❌ [${this.role}] Máximo de reconexiones alcanzado`);
       this.emit('connection:failed', { attempts: this.reconnectAttempts });
-      
       this.safeCallCallback(this.onConnectionLost, null, 'onConnectionLost');
       return;
     }
     
     this.reconnectAttempts++;
     
-    // Fallback si COMM.calculateReconnectDelay no existe
     let delay;
     if (window.COMM?.calculateReconnectDelay) {
       delay = COMM.calculateReconnectDelay(this.reconnectAttempts);
     } else {
-      // Fallback simple
       const exponentialDelay = Math.min(
         commConfig.RECONNECT_INITIAL_DELAY * Math.pow(
           commConfig.RECONNECT_BACKOFF_MULTIPLIER,
@@ -298,7 +313,6 @@ class GameClient {
       this.heartbeatCheckInterval = null;
     }
     
-    // Auto-cleanup de listeners (evitar memory leak)
     this.eventListeners.clear();
     
     if (this.eventSource) {
@@ -310,7 +324,7 @@ class GameClient {
   }
 
   /**
-   * Envía acción al servidor con timeout
+   * Envía acción al servidor
    */
   async sendAction(action, data = {}) {
     console.log(`📤 [${this.role}] Enviando acción: ${action}`);
@@ -331,44 +345,15 @@ class GameClient {
         payload.player_id = this.playerId;
       }
       
-      // Timeout 30s en HTTP
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const result = await this._makeRequest(payload);
       
-      const response = await fetch('/app/actions.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      // Validar respuesta
-      if (!COMM_CONFIG && result) {
-        // Fallback si COMM_CONFIG no existe
-        if (!result || typeof result !== 'object' || result.success === undefined) {
-          console.warn(`⚠️ [${this.role}] Respuesta inválida para ${action}`);
-        }
-      } else if (result && typeof result === 'object' && result.success !== undefined) {
-        // Validación normal
+      if (result && typeof result === 'object' && result.success !== undefined) {
         console.log(`✅ [${this.role}] Respuesta para ${action}:`, result.success ? '✓' : '✗');
       }
       
       return result;
     } catch (error) {
-      // Distinguir entre timeout y otros errores
-      if (error.name === 'AbortError') {
-        console.error(`❌ [${this.role}] Timeout (30s) enviando ${action}`);
-      } else {
-        console.error(`❌ [${this.role}] Error enviando ${action}:`, error);
-      }
+      console.error(`❌ [${this.role}] Error enviando ${action}:`, error);
       this.metrics.errorsCount++;
       return { success: false, message: 'Error de red: ' + error.message };
     }
@@ -390,13 +375,7 @@ class GameClient {
         payload.player_id = this.playerId;
       }
       
-      const response = await fetch('/app/actions.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      const result = await response.json();
+      const result = await this._makeRequest(payload);
       
       if (result.success && result.state) {
         this.gameState = result.state;
@@ -404,7 +383,6 @@ class GameClient {
         this.lastMessageTime = Date.now();
         
         this.safeCallCallback(this.onStateUpdate, result.state, 'onStateUpdate (forceRefresh)');
-        
         this.emit('state:refreshed', result.state);
       }
     } catch (error) {
@@ -434,7 +412,6 @@ class GameClient {
       ? Date.now() - this.metrics.connectionStartTime
       : 0;
     
-    // Fallback si COMM no existe
     const connectionHealth = window.COMM?.getConnectionHealth
       ? COMM.getConnectionHealth({
           lastMessageTime: this.lastMessageTime,
@@ -450,10 +427,6 @@ class GameClient {
     };
   }
 }
-
-// ============================================================================
-// UTILIDADES
-// ============================================================================
 
 /**
  * Obtiene tiempo restante

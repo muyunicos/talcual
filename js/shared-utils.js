@@ -60,27 +60,6 @@ function createTimer(callback, interval = 1000) {
     return setInterval(callback, interval);
 }
 
-/**
- * Crea un countdown sincronizado
- * @param {number} targetTimestamp - Timestamp destino
- * @param {Function} callback - Callback cada segundo
- * @param {Function} onComplete - Callback cuando termina
- * @returns {number} ID del intervalo
- */
-function createCountdown(targetTimestamp, callback, onComplete) {
-    return setInterval(() => {
-        const now = Math.floor(Date.now() / 1000);
-        const remaining = targetTimestamp - now;
-        
-        if (callback) callback(remaining);
-        
-        if (remaining <= 0) {
-            clearInterval(timerID);
-            if (onComplete) onComplete();
-        }
-    }, 100);
-}
-
 // ============================================================================
 // ALMACENAMIENTO LOCAL
 // ============================================================================
@@ -95,7 +74,7 @@ function setLocalStorage(key, value) {
         const data = typeof value === 'string' ? value : JSON.stringify(value);
         localStorage.setItem(key, data);
     } catch (error) {
-        debug('Error guardando localStorage:', error, 'warn');
+        console.warn('Error guardando localStorage:', error);
     }
 }
 
@@ -117,13 +96,13 @@ function getLocalStorage(key, defaultValue = null) {
             return value; // Si no es JSON, devolver string
         }
     } catch (error) {
-        debug('Error leyendo localStorage:', error, 'warn');
+        console.warn('Error leyendo localStorage:', error);
         return defaultValue;
     }
 }
 
 /**
- * Limpia la sesión del juego del localStorage
+ * Limpia las claves del juego del localStorage
  */
 function clearGameSession() {
     const keys = ['gameId', 'playerId', 'playerName', 'playerColor'];
@@ -154,6 +133,7 @@ function isValidPlayerName(name) {
 
 /**
  * Sanitiza texto para mostrar en HTML
+ * CRÍTICO: Protege referencias a /images/ y otros assets
  * @param {string} text - Texto a sanitizar
  * @returns {string} Texto sanitizado
  */
@@ -185,7 +165,7 @@ function isValidColor(color) {
 function safeGetElement(id, orDefault = null) {
     const el = document.getElementById(id);
     if (!el && orDefault === null) {
-        debug(`Elemento no encontrado: ${id}`, 'warn');
+        console.warn(`Elemento no encontrado: ${id}`);
     }
     return el || orDefault;
 }
@@ -264,25 +244,51 @@ function safeGetAttribute(element, attr, orDefault = null) {
 }
 
 // ============================================================================
-// GRADIENTES Y ESTILOS
+// NOTIFICACIONES
 // ============================================================================
 
 /**
- * Aplica gradiente de color al fondo
- * @param {string} colorGradient - Colores separados por coma ("#FF9966,#FF5E62")
+ * Muestra notificación en pantalla
+ * @param {string} message - Mensaje
+ * @param {string} type - Tipo: 'success', 'error', 'warning', 'info'
+ * @param {number} duration - Duración en ms (0 = indefinido)
  */
-function applyColorGradient(colorGradient) {
-    const colors = colorGradient.split(',').map(c => c.trim());
-    if (colors.length >= 2) {
-        document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+function showNotification(message, type = 'info', duration = 3000) {
+    const colors = {
+        success: '#10B981',
+        error: '#EF4444',
+        warning: '#F59E0B',
+        info: '#3B82F6'
+    };
+    
+    const backgroundColor = colors[type] || colors.info;
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: ${backgroundColor};
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    if (duration > 0) {
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, duration);
     }
-}
-
-/**
- * Limpia gradiente de fondo
- */
-function clearColorGradient() {
-    document.body.style.background = '';
+    
+    return notification;
 }
 
 // ============================================================================
@@ -311,110 +317,4 @@ function generateGameCode(length = 4) {
     return code;
 }
 
-// ============================================================================
-// NOTIFICACIONES
-// ============================================================================
-
-/**
- * Muestra notificación en pantalla
- * @param {string} message - Mensaje
- * @param {string} type - Tipo: 'success', 'error', 'warning', 'info'
- * @param {number} duration - Duración en ms (0 = indefinido)
- */
-function showNotification(message, type = 'info', duration = 3000) {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 16px;
-        border-radius: 8px;
-        background: ${getNotificationColor(type)};
-        color: white;
-        font-weight: 500;
-        z-index: 10000;
-        animation: slideIn 0.3s ease-out;
-    `;
-    
-    document.body.appendChild(notification);
-    
-    if (duration > 0) {
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease-out';
-            setTimeout(() => notification.remove(), 300);
-        }, duration);
-    }
-    
-    return notification;
-}
-
-function getNotificationColor(type) {
-    const colors = {
-        success: '#10B981',
-        error: '#EF4444',
-        warning: '#F59E0B',
-        info: '#3B82F6'
-    };
-    return colors[type] || colors.info;
-}
-
-// ============================================================================
-// DEBUG MODE
-// ============================================================================
-
-let DEBUG_MODE = false;
-
-/**
- * Activa/desactiva modo debug
- * @param {boolean} enabled - Activar o no
- */
-function setDebugMode(enabled) {
-    DEBUG_MODE = enabled;
-    if (enabled) {
-        console.log('%c🔍 DEBUG MODE ACTIVADO', 'color: #00FF00; font-size: 14px; font-weight: bold');
-    }
-}
-
-/**
- * Log de debug
- * @param {string} message - Mensaje
- * @param {*} data - Datos opcionales
- * @param {string} level - Nivel: 'log', 'warn', 'error'
- */
-function debug(message, data = null, level = 'log') {
-    if (!DEBUG_MODE) return;
-    
-    const styles = {
-        log: 'color: #3B82F6',
-        warn: 'color: #F59E0B',
-        error: 'color: #EF4444'
-    };
-    
-    const style = styles[level] || styles.log;
-    console.log(`%c[DEBUG] ${message}`, style, data || '');
-}
-
-/**
- * Alias para console.log con DEBUG_MODE check
- */
-function logDebug(message, data) {
-    debug(message, data, 'log');
-}
-
-/**
- * Alias para console.warn con DEBUG_MODE check
- */
-function warnDebug(message, data) {
-    debug(message, data, 'warn');
-}
-
-/**
- * Alias para console.error con DEBUG_MODE check
- */
-function errorDebug(message, data) {
-    debug(message, data, 'error');
-}
-
-console.log('%c✅ shared-utils.js cargado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ shared-utils.js cargado - Optimizado sin dead code', 'color: #10B981; font-weight: bold');
