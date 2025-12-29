@@ -31,7 +31,7 @@ class PlayerManager {
      * Inicializa el gestor del jugador
      */
     initialize() {
-        debug('🎢 Inicializando PlayerManager');
+        debug('🌢 Inicializando PlayerManager');
         this.cacheElements();
         this.attachEventListeners();
         
@@ -44,7 +44,7 @@ class PlayerManager {
             debug('🔄 Recuperando sesión');
             this.recoverSession(savedGameId, savedPlayerId, savedPlayerName, savedPlayerColor);
         } else {
-            debug('📱 Mostrando modal de unión');
+            debug('💱 Mostrando modal de unión');
             this.showJoinModal();
         }
         
@@ -169,7 +169,7 @@ class PlayerManager {
             );
             // Preseleccionar una al azar
             this.playerColor = randomAura.hex;
-            this.selectedAura = randomAura;
+            this.selectedAura = aura;
         }
         
         if (this.elements.inputGameCode) {
@@ -327,9 +327,11 @@ class PlayerManager {
             this.elements.playerScore.textContent = (me.score || 0) + ' pts';
         }
         
+        // FIX: Mostrar ronda correctamente
         if (this.elements.headerRound) {
+            const round = state.round || 0;
             const total = state.total_rounds || 3;
-            this.elements.headerRound.textContent = `Ronda ${state.round || 0}/${total}`;
+            this.elements.headerRound.textContent = `Ronda ${round}/${total}`;
         }
         
         switch (state.status) {
@@ -355,7 +357,7 @@ class PlayerManager {
         safeHideElement(this.elements.currentWord);
         safeShowElement(this.elements.waitingMessage);
         if (this.elements.waitingMessage) {
-            this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
+            this.elements.waitingMessage.textContent = 'El anfitríon iniciará la ronda pronto';
         }
         safeHideElement(this.elements.wordsInputSection);
         safeHideElement(this.elements.resultsSection);
@@ -366,46 +368,72 @@ class PlayerManager {
      * Muestra estado de juego
      */
     showPlayingState(state) {
+        debug('🎮 Estado PLAYING detectado', 'debug');
+        
         safeHideElement(this.elements.countdownOverlay);
         safeHideElement(this.elements.resultsSection);
+        safeHideElement(this.elements.waitingMessage);
         
-        if (state.current_word) {
-            if (this.elements.currentWord) {
-                this.elements.currentWord.textContent = state.current_word;
-                safeShowElement(this.elements.currentWord);
+        // FIX: Asegurar que el estado contiene current_word
+        debug('Estado recibido:', JSON.stringify(state), 'debug');
+        
+        if (!state.current_word) {
+            debug('❌ PROBLEMA: No hay current_word en el estado!', 'error');
+            if (this.elements.waitingMessage) {
+                this.elements.waitingMessage.textContent = '🔄 Cargando palabra...';
+                safeShowElement(this.elements.waitingMessage);
             }
+            return;
+        }
+        
+        // Mostrar palabra
+        if (this.elements.currentWord) {
+            this.elements.currentWord.textContent = state.current_word;
+            safeShowElement(this.elements.currentWord);
+            debug(`💡 Palabra mostrada: ${state.current_word}`, 'debug');
+        }
+        
+        const me = state.players?.[this.playerId];
+        const isReady = me?.status === 'ready';
+        
+        debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, 'debug');
+        
+        if (isReady) {
+            // Ya envié mis palabras
+            debug('📝 Ya enviaste tus palabras', 'debug');
+            if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
+            if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
+            if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
+            if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✅ Enviado';
+            
+            if (this.elements.waitingMessage) {
+                this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                safeShowElement(this.elements.waitingMessage);
+            }
+            safeHideElement(this.elements.wordsInputSection);
+        } else {
+            // Puedo escribir palabras
+            debug('🔑 Puedes escribir palabras', 'debug');
+            if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
+            if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
+            if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
+            if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✏️ PASO';
+            
             safeHideElement(this.elements.waitingMessage);
+            safeShowElement(this.elements.wordsInputSection);
             
-            const me = state.players?.[this.playerId];
-            const isReady = me?.status === 'ready';
-            
-            if (isReady) {
-                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
-                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
-                if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
-                if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✅ Enviado';
-                
-                if (this.elements.waitingMessage) {
-                    this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
-                    safeShowElement(this.elements.waitingMessage);
-                }
-                safeHideElement(this.elements.wordsInputSection);
+            // Limpiar palabras si es la primera vez
+            if (!me?.answers || me.answers.length === 0) {
+                this.myWords = [];
+                this.updateWordsList();
             } else {
-                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
-                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
-                if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
-                if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '⏭️ PASO';
-                
-                safeHideElement(this.elements.waitingMessage);
-                safeShowElement(this.elements.wordsInputSection);
-                
-                if (!me?.answers || me.answers.length === 0) {
-                    this.myWords = [];
-                    this.updateWordsList();
-                }
+                // Cargar palabras existentes
+                this.myWords = me.answers || [];
+                this.updateWordsList();
             }
         }
         
+        // Iniciar timer
         if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
@@ -486,7 +514,7 @@ class PlayerManager {
         const timeSinceLastUpdate = now - this.lastWordsUpdateTime;
         
         if (timeSinceLastUpdate >= COMM_CONFIG.WORDS_UPDATE_THROTTLE) {
-            // Envíir inmediatamente
+            // Envír inmediatamente
             this.sendWordsUpdate();
         } else {
             // Programar para más tarde
@@ -548,13 +576,13 @@ class PlayerManager {
             } else {
                 showNotification('Error al enviar', 'error');
                 this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = '⏭️ PASO';
+                this.elements.btnSubmit.textContent = '✏️ PASO';
             }
         } catch (error) {
             debug('Error:', error, 'error');
             showNotification('Error de conexión', 'error');
             this.elements.btnSubmit.disabled = false;
-            this.elements.btnSubmit.textContent = '⏭️ PASO';
+            this.elements.btnSubmit.textContent = '✏️ PASO';
         }
     }
     
@@ -723,4 +751,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js cargado - Integración de auras dinámicas 🌠', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js cargado - FIX #37: Mostrar palabra y campos en estado playing', 'color: #FF00FF; font-weight: bold; font-size: 12px');
