@@ -343,7 +343,7 @@ async function loadDictionary() {
     if (dictionaryCache) return dictionaryCache;
     
     try {
-        const response = await fetch('../App/dictionary.json');
+        const response = await fetch('../app/dictionary.json');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         dictionaryCache = data.palabras || data.words || [];
