@@ -1,6 +1,7 @@
 /* ============================================
    4-COMPONENTS.CSS - COMPONENTES REUTILIZABLES
    Botones, Inputs, Tarjetas, Modales
+   Optimizado: Sin duplicación con 2-play.css y 3-host.css
    ============================================ */
 
 /* ========== BOTÓN GENERAL ========== */
@@ -80,94 +81,6 @@ button:not(.no-style):disabled {
     color: #000;
 }
 
-/* ========== BOTÓN JOIN ========== */
-.btn-join {
-    width: 100%;
-    padding: 20px;
-    background: var(--magenta);
-    color: white;
-    border: none;
-    border-radius: 50px;
-    font-family: var(--font-display);
-    font-size: 1.5em;
-    cursor: pointer;
-    transition: all 0.1s;
-    box-shadow: 5px 5px 0px #000;
-    text-transform: uppercase;
-}
-
-.btn-join:hover {
-    transform: translate(2px, 2px);
-    box-shadow: 3px 3px 0px #000;
-}
-
-.btn-join:active {
-    transform: translate(5px, 5px);
-    box-shadow: none;
-}
-
-.btn-join:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* ========== BOTÓN SUBMIT ========== */
-.btn-submit {
-    width: 100%;
-    padding: 22px;
-    background: var(--magenta);
-    color: white;
-    border: none;
-    border-radius: 50px;
-    font-family: var(--font-display);
-    font-size: 1.5em;
-    cursor: pointer;
-    transition: all 0.1s;
-    box-shadow: 5px 5px 0px #000;
-    text-transform: uppercase;
-}
-
-.btn-submit:hover {
-    transform: translate(2px, 2px);
-    box-shadow: 3px 3px 0px #000;
-}
-
-.btn-submit:active {
-    transform: translate(5px, 5px);
-    box-shadow: none;
-}
-
-.btn-submit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* ========== BOTÓN AÑADIR ========== */
-.btn-add {
-    padding: 18px 25px;
-    background: var(--cian);
-    color: #000;
-    border: 4px solid #000;
-    border-radius: 15px;
-    font-size: 1.8em;
-    font-weight: 900;
-    cursor: pointer;
-    transition: all 0.1s;
-    box-shadow: 3px 3px 0px #000;
-}
-
-.btn-add:hover {
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0px #000;
-}
-
-.btn-add:active {
-    transform: translate(3px, 3px);
-    box-shadow: none;
-}
-
 /* ========== BOTÓN CONTROL ========== */
 .btn-control {
     display: block;
@@ -215,7 +128,7 @@ button:not(.no-style):disabled {
     color: #000;
 }
 
-/* ========== INPUTS ========== */
+/* ========== INPUTS GENERALES ========== */
 input[type="text"],
 input[type="number"],
 select {
@@ -240,8 +153,9 @@ select:focus {
 }
 
 /* ========== INPUT FIELD (COMPARTIDO) ========== */
-.input-field,
-.word-input {
+.input-field {
+    width: 100%;
+    padding: 18px;
     border: 4px solid #000;
     border-radius: 15px;
     background: rgba(255,255,255,0.9);
@@ -251,33 +165,49 @@ select:focus {
     text-align: center;
     text-transform: uppercase;
     box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+    font-size: 1.3em;
+    outline: none;
+    transition: all 0.2s ease;
 }
 
-.input-field::placeholder,
-.word-input::placeholder {
+.input-field::placeholder {
     color: rgba(0,0,0,0.4);
 }
 
-.input-field:focus,
-.word-input:focus {
+.input-field:focus {
     outline: none;
     border-color: var(--cian);
     transform: translate(1px, 1px);
     box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
 }
 
-/* ========== INPUT FIELD (ESPECIFICO) ========== */
-.input-field {
-    width: 100%;
-    padding: 18px;
-    font-size: 1.3em;
-}
-
-/* ========== WORD INPUT (ESPECIFICO) ========== */
+/* ========== WORD INPUT (COMPARTIDO) ========== */
 .word-input {
     flex: 1;
     padding: 18px;
+    border: 4px solid #000;
+    border-radius: 15px;
+    background: white;
+    color: #000;
+    font-family: var(--font-primary);
+    font-weight: 800;
+    text-align: center;
+    text-transform: uppercase;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
     font-size: 1.2em;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.word-input::placeholder {
+    color: rgba(0,0,0,0.4);
+}
+
+.word-input:focus {
+    outline: none;
+    border-color: var(--cian);
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
 }
 
 .input-label {
@@ -290,6 +220,8 @@ select:focus {
 
 .input-group {
     margin-bottom: 25px;
+    display: flex;
+    flex-direction: column;
 }
 
 .input-jackbox {
@@ -314,78 +246,79 @@ select:focus {
 }
 
 /* ========== CÓDIGO DE SALA (STICKER) - UNIFICADO ========== */
+/* Clase base para code stickers - reutilizable en play.html y host.html */
 .code-sticker {
-    background: var(--amarillo);
-    color: #000;
+    background: var(--magenta);
+    color: white;
     font-family: var(--font-display);
     font-weight: 900;
-    transform: rotate(-3deg);
-    display: inline-block;
-    letter-spacing: 3px;
-}
-
-/* Grande - usado en TV (host.html) */
-.code-sticker--large {
-    font-size: 2em;
-    padding: 10px 25px;
-    border-radius: 15px;
+    letter-spacing: 2px;
     box-shadow: 4px 4px 0px #000;
+    border-radius: 15px;
+    display: inline-block;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    outline: none;
+    position: relative;
 }
 
-/* Pequeño - usado en móvil (play.html) */
+.code-sticker:hover {
+    transform: translateY(-1px);
+}
+
+.code-sticker:active {
+    transform: translateY(0);
+}
+
+/* Variante grande para TV (host.html) */
+.code-sticker--large {
+    font-size: clamp(1em, 2vw, 1.3em);
+    padding: clamp(8px, 1.5%, 12px) clamp(15px, 2%, 25px);
+}
+
+/* Variante pequeña para móvil (play.html) */
 .code-sticker--small {
     font-size: 1.2em;
-    padding: 8px 15px;
+    padding: 8px 16px;
     border-radius: 12px;
     box-shadow: 3px 3px 0px #000;
-    letter-spacing: 2px;
 }
 
-/* Mantener compatibilidad hacia atrás */
-.game-code-sticker {
-    background: var(--amarillo);
+/* Estados especiales */
+.code-sticker.copied {
+    outline: 3px solid #2ecc71;
+    box-shadow: 0 0 0 6px rgba(46, 204, 113, 0.25), 4px 4px 0px rgba(0,0,0,0.4);
+}
+
+.code-sticker.copied::after {
+    content: 'Copiado';
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background: #2ecc71;
     color: #000;
-    font-family: var(--font-display);
-    font-size: 2em;
+    font-family: var(--font-primary);
+    font-size: 0.75em;
     font-weight: 900;
-    padding: 10px 25px;
-    border-radius: 15px;
-    transform: rotate(-3deg);
-    box-shadow: 4px 4px 0px #000;
-    display: inline-block;
-    letter-spacing: 3px;
-    justify-self: end;
+    padding: 4px 10px;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0px #000;
+}
+
+/* Compatibilidad hacia atrás - Aliases para clases existentes */
+.game-code-sticker {
+    @extends .code-sticker;
+    @extends .code-sticker--large;
 }
 
 .header-code-sticker {
-    background: var(--amarillo);
-    color: #000;
-    font-family: var(--font-display);
-    font-size: 1.2em;
-    padding: 8px 15px;
-    border-radius: 12px;
-    transform: rotate(-3deg);
-    box-shadow: 3px 3px 0px #000;
-    letter-spacing: 2px;
-    justify-self: end;
+    @extends .code-sticker;
+    @extends .code-sticker--small;
 }
 
 /* ========== MODAL DIALOG BASE ========== */
-.modal-dialog {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    border-radius: 25px;
-    padding: 40px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-    position: relative;
-    animation: modalSlideIn 0.3s ease-out;
-}
-
-/* ========== MODALES - CORREGIDO #6 ========== */
 .modal-overlay {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -393,14 +326,17 @@ select:focus {
     height: 100%;
     background: rgba(0,0,0,0.9);
     z-index: 200;
+    display: none;
     justify-content: center;
     align-items: center;
+    backdrop-filter: blur(10px);
 }
 
 .modal-overlay.active {
     display: flex;
 }
 
+/* Modal content base */
 .modal-content {
     background: rgba(255,255,255,0.95);
     border-radius: 25px;
@@ -409,140 +345,133 @@ select:focus {
     width: 90%;
     box-shadow: 6px 6px 0px #000;
     position: relative;
-    animation: modalSlideIn 0.3s ease-out;
+    animation: slideUp 0.3s ease-out;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
-/* Estilos para modales específicos - ahora heredan base */
+/* Variante para modales con fondo violeta/blur */
 .modal-join-game,
 .modal-create-game {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(46, 0, 78, 0.95);
     backdrop-filter: blur(20px);
     border-radius: 25px;
-    padding: 40px;
-    max-width: 500px;
+    padding: 30px 25px;
+    max-width: 400px;
     width: 90%;
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-    position: relative;
-    animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-@keyframes modalSlideIn {
-    from {
-        transform: translateY(-50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), 4px 4px 0px #000;
+    border: 3px solid var(--cian);
+    animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .modal-title {
     font-family: var(--font-display);
-    font-size: 2em;
-    margin-bottom: 20px;
+    font-size: 1.8em;
+    color: var(--cian);
     text-align: center;
-    color: #2E004E;
-    text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+    text-shadow: var(--sombra-dura);
+    letter-spacing: 1px;
 }
 
 .modal-input {
     width: 100%;
-    padding: 18px;
-    border: 4px solid #000;
-    border-radius: 15px;
-    background: white;
-    color: #000;
+    padding: 12px 16px;
+    margin: 15px 0;
+    border-radius: 12px;
+    border: 3px solid var(--cian);
+    background: rgba(255, 255, 255, 0.95);
     font-family: var(--font-primary);
-    font-weight: 800;
-    font-size: 1.3em;
-    text-align: center;
-    margin-bottom: 20px;
-    box-shadow: 3px 3px 0px rgba(0,0,0,0.2);
+    font-weight: 700;
+    font-size: 1em;
+    color: #000;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.modal-input:focus {
+    border-color: var(--magenta);
+    box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
 }
 
 .modal-buttons {
     display: flex;
-    gap: 12px;
+    gap: 10px;
+    margin-top: 20px;
 }
 
 .modal-btn {
     flex: 1;
-    padding: 18px;
+    padding: 10px 15px;
     border: none;
-    border-radius: 50px;
-    font-family: var(--font-display);
-    font-size: 1.2em;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-weight: 700;
     cursor: pointer;
-    box-shadow: 3px 3px 0px #000;
-    transition: all 0.1s;
-}
-
-.modal-btn:hover {
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0px #000;
+    transition: all 0.2s ease;
+    box-shadow: var(--sombra-media);
 }
 
 .modal-btn-save {
-    background: var(--cian);
+    background: var(--amarillo);
     color: #000;
 }
 
+.modal-btn-save:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-dura);
+}
+
 .modal-btn-cancel {
-    background: var(--magenta);
+    background: rgba(255, 255, 255, 0.3);
     color: white;
 }
 
-/* ========== AURA SELECTOR - CORREGIDO #7 ========== */
+.modal-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* ========== AURA SELECTOR ========== */
 .aura-selector {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin: 1.5rem 0;
+    gap: 12px;
+    margin: 15px 10px;
+    justify-items: center;
 }
 
 .aura-circle {
-    width: 70px;
-    height: 70px;
+    width: 60%;
+    aspect-ratio: 1 / 1;
     border-radius: 50%;
-    border: 3px solid transparent;
+    border: 4px solid rgba(255, 255, 255, 0.4);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 0 rgba(255, 255, 255, 0);
     position: relative;
-    margin: 0 auto;
+    overflow: hidden;
+    animation: popIn 0.4s ease-out;
 }
 
 .aura-circle:hover {
-    transform: scale(1.15);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 4px 4px 0px rgba(0, 0, 0, 0.3);
 }
 
 .aura-circle.selected {
-    border: 3px solid white;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 1),
-                inset 0 0 10px rgba(255, 255, 255, 0.5);
-    animation: selectPulse 0.8s ease-in-out;
+    border: 4px solid #ffe900;
+    transform: scale(1.1);
 }
 
-@keyframes selectPulse {
-    0%, 100% {
-        filter: drop-shadow(0 0 8px currentColor);
-    }
-    50% {
-        filter: drop-shadow(0 0 16px currentColor);
-    }
+.aura-circle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), transparent 60%);
+    pointer-events: none;
 }
 
 /* ========== TARJETA BLANCA ========== */
@@ -627,6 +556,32 @@ select:focus {
     margin: 30px auto;
 }
 
+/* ========== ANIMACIONES BASE ========== */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes popIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -639,8 +594,10 @@ select:focus {
         padding: 10px 20px;
     }
 
-    .modal-content {
-        padding: 25px;
+    .modal-content,
+    .modal-join-game,
+    .modal-create-game {
+        padding: 20px 15px;
         max-width: 90%;
     }
 
@@ -650,39 +607,29 @@ select:focus {
     }
 
     .modal-input {
-        padding: 15px;
-        font-size: 1.1em;
-        margin-bottom: 15px;
+        padding: 12px 12px;
+        font-size: 1em;
+        margin-bottom: 12px;
     }
 
     .modal-btn {
-        padding: 15px;
-        font-size: 1em;
-    }
-
-    .code-sticker--large {
-        font-size: 1.5em;
-        padding: 8px 20px;
-    }
-
-    .code-sticker--small {
-        font-size: 1em;
-        padding: 6px 12px;
-    }
-
-    .game-code-sticker {
-        font-size: 1.5em;
-        padding: 8px 20px;
-    }
-
-    .header-code-sticker {
-        font-size: 1em;
-        padding: 6px 12px;
+        padding: 12px;
+        font-size: 0.95em;
     }
 
     .aura-circle {
         width: 60px;
         height: 60px;
+    }
+
+    .input-field {
+        padding: 14px;
+        font-size: 1.1em;
+    }
+
+    .word-input {
+        padding: 14px;
+        font-size: 1em;
     }
 }
 
@@ -705,5 +652,15 @@ select:focus {
     .aura-circle {
         width: 50px;
         height: 50px;
+    }
+
+    .code-sticker--large {
+        font-size: 1em;
+        padding: 6px 12px;
+    }
+
+    .code-sticker--small {
+        font-size: 0.9em;
+        padding: 5px 10px;
     }
 }

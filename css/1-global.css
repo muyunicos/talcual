@@ -195,5 +195,3 @@ table tr:last-child td {
 .flex { display: flex; }
 .flex-column { display: flex; flex-direction: column; }
 .flex-center { display: flex; justify-content: center; align-items: center; }
-
-/* ... (Otras utilidades se mantienen o se agregan según necesidad) ... */
