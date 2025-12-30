@@ -10,6 +10,7 @@ class PlayerManager {
         this.maxWords = 6;
         this.timerInterval = null;
         this.countdownTimeout = null;
+        this.countdownRAFId = null;
 
         this.lastWordsUpdateTime = 0;
         this.wordsUpdatePending = false;
@@ -37,10 +38,10 @@ class PlayerManager {
         const savedPlayerColor = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_COLOR) : getLocalStorage('playerColor');
 
         if (savedGameId && savedPlayerId && savedPlayerName && savedPlayerColor) {
-            debug('🔄 Recuperando sesión');
+            debug('🔄 Recuperando sesion');
             this.recoverSession(savedGameId, savedPlayerId, savedPlayerName, savedPlayerColor);
         } else {
-            debug('💱 Mostrando modal de unión');
+            debug('💱 Mostrando modal de union');
             this.showJoinModal();
         }
 
@@ -53,7 +54,7 @@ class PlayerManager {
         this.wordEngineInitPromise = (async () => {
             try {
                 if (typeof WordEquivalenceEngine !== 'function') {
-                    console.warn('⚠️ WordEquivalenceEngine no está disponible. Verificar inclusión de js/word-comparison.js');
+                    console.warn('⚠️ WordEquivalenceEngine no esta disponible. Verificar inclusion de js/word-comparison.js');
                     this.wordEngineReady = false;
                     return;
                 }
@@ -268,18 +269,18 @@ class PlayerManager {
                 const state = result.state;
 
                 if (state.players && state.players[playerId]) {
-                    debug('✅ Sesión recuperada');
+                    debug('✅ Sesion recuperada');
                     this.loadGameScreen(state);
                     return;
                 }
             }
 
-            debug('⚠️ No se pudo recuperar sesión');
+            debug('⚠️ No se pudo recuperar sesion');
             clearGameSession();
             this.showJoinModal();
 
         } catch (error) {
-            debug('Error recuperando sesión:', error, 'error');
+            debug('Error recuperando sesion:', error, 'error');
             clearGameSession();
             this.showJoinModal();
         }
@@ -318,14 +319,14 @@ class PlayerManager {
 
         if (!isValidGameCode(code)) {
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Código inválido';
+                this.elements.statusMessage.innerHTML = '⚠️ Codigo invalido';
             }
             return;
         }
 
         if (!isValidPlayerName(name)) {
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Nombre inválido (2-20 caracteres)';
+                this.elements.statusMessage.innerHTML = '⚠️ Nombre invalido (2-20 caracteres)';
             }
             return;
         }
@@ -376,9 +377,9 @@ class PlayerManager {
                 }
             }
         } catch (error) {
-            debug('Error uniéndose:', error, 'error');
+            debug('Error uniendose:', error, 'error');
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '❌ Error de conexión';
+                this.elements.statusMessage.innerHTML = '❌ Error de conexion';
             }
             if (this.elements.btnJoin) {
                 this.elements.btnJoin.disabled = false;
@@ -432,7 +433,7 @@ class PlayerManager {
         safeHideElement(this.elements.categoryLabel);
         safeShowElement(this.elements.waitingMessage);
         if (this.elements.waitingMessage) {
-            this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
+            this.elements.waitingMessage.textContent = 'El anfitrion iniciara la ronda pronto';
         }
         safeHideElement(this.elements.wordsInputSection);
         safeHideElement(this.elements.resultsSection);
@@ -440,69 +441,47 @@ class PlayerManager {
         this.stopTimer();
     }
 
-    async showCountdown(state) {
-        debug('⏱️ Iniciando countdown', 'debug');
-        
-        safeHideElement(this.elements.waitingMessage);
+    runPreciseCountdown(roundStartsAt) {
+        if (this.countdownRAFId) {
+            cancelAnimationFrame(this.countdownRAFId);
+        }
+
         safeShowElement(this.elements.countdownOverlay);
-        
         if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
         if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
         if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
 
-        const countdownDuration = 4000;
-        const elapsedSinceStart = Date.now() - state.round_started_at;
-        const countdownRemaining = Math.max(0, countdownDuration - elapsedSinceStart);
-        
-        for (let i = 3; i >= 1; i--) {
-            const numberShowTime = countdownDuration - (i * 1000);
-            const waitTime = Math.max(0, numberShowTime - elapsedSinceStart);
-            
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    if (this.elements.countdownNumber) {
-                        this.elements.countdownNumber.textContent = i.toString();
-                        this.elements.countdownNumber.style.animation = 'none';
-                        void this.elements.countdownNumber.offsetWidth;
-                        this.elements.countdownNumber.style.animation = '';
-                    }
-                    resolve();
-                }, waitTime);
-            });
-        }
-        
-        const remainingCountdown = Math.max(0, countdownDuration - (Date.now() - state.round_started_at));
-        await new Promise(resolve => setTimeout(resolve, remainingCountdown + 100));
-        
-        safeHideElement(this.elements.countdownOverlay);
-        
-        if (this.elements.currentWord) {
-            this.elements.currentWord.textContent = state.current_word;
-            this.elements.currentWord.classList.remove('hidden');
-            safeShowElement(this.elements.currentWord);
-            debug(`💡 Palabra mostrada: ${state.current_word}`, 'debug');
-        }
-        
-        if (this.elements.categoryLabel && state.current_category) {
-            this.elements.categoryLabel.textContent = `Categoría: ${state.current_category}`;
-            safeShowElement(this.elements.categoryLabel);
-        } else {
-            safeHideElement(this.elements.categoryLabel);
-        }
-        
-        const me = state.players?.[this.playerId];
-        const isReady = me?.status === 'ready';
-        
-        if (!isReady) {
-            if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
-            if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
-            if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
-            if (this.elements.currentWordInput) this.elements.currentWordInput.focus();
-        }
-        
-        if (state.round_started_at && state.round_duration) {
-            this.startContinuousTimer(state);
-        }
+        const update = () => {
+            const nowServer = timeSync.getServerTime();
+            const elapsed = nowServer - roundStartsAt;
+            const remaining = Math.max(0, 4000 - elapsed);
+            const seconds = Math.ceil(remaining / 1000);
+
+            if (this.elements.countdownNumber) {
+                const displayValue = Math.max(0, seconds - 1);
+                if (this.elements.countdownNumber.textContent !== displayValue.toString()) {
+                    this.elements.countdownNumber.textContent = displayValue.toString();
+                }
+            }
+
+            if (remaining > 0) {
+                this.countdownRAFId = requestAnimationFrame(update);
+            } else {
+                safeHideElement(this.elements.countdownOverlay);
+                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
+                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
+                if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
+                if (this.elements.currentWordInput) this.elements.currentWordInput.focus();
+            }
+        };
+
+        this.countdownRAFId = requestAnimationFrame(update);
+    }
+
+    async showCountdown(state) {
+        debug('⏱️ Iniciando countdown', 'debug');
+        safeHideElement(this.elements.waitingMessage);
+        this.runPreciseCountdown(state.round_starts_at);
     }
 
     showPlayingState(state) {
@@ -523,12 +502,13 @@ class PlayerManager {
             return;
         }
 
-        if (state.round_started_at) {
-            const elapsedSinceStart = Date.now() - state.round_started_at;
+        if (state.round_starts_at) {
+            const nowServer = timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
+            const elapsedSinceStart = nowServer - state.round_starts_at;
             const countdownDuration = 4000;
             
             if (elapsedSinceStart < countdownDuration) {
-                debug(`⏱️ Countdown aún en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
+                debug(`⏱️ Countdown aun en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
                 this.showCountdown(state);
                 return;
             }
@@ -541,7 +521,7 @@ class PlayerManager {
         }
 
         if (this.elements.categoryLabel && state.current_category) {
-            this.elements.categoryLabel.textContent = `Categoría: ${state.current_category}`;
+            this.elements.categoryLabel.textContent = `Categoria: ${state.current_category}`;
             safeShowElement(this.elements.categoryLabel);
         } else {
             safeHideElement(this.elements.categoryLabel);
@@ -560,7 +540,7 @@ class PlayerManager {
             if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✅ Enviado';
 
             if (this.elements.waitingMessage) {
-                this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                this.elements.waitingMessage.textContent = 'Esperando a los demas jugadores...';
                 safeShowElement(this.elements.waitingMessage);
             }
             safeHideElement(this.elements.wordsInputSection);
@@ -596,12 +576,12 @@ class PlayerManager {
         if (!word) return;
 
         if (word.length > COMM_CONFIG.MAX_WORD_LENGTH) {
-            showNotification(`Palabra demasiado larga (máx ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
+            showNotification(`Palabra demasiado larga (maximo ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
             return;
         }
 
         if (this.myWords.length >= this.maxWords) {
-            showNotification(`Máximo ${this.maxWords} palabras`, 'warning');
+            showNotification(`Maximo ${this.maxWords} palabras`, 'warning');
             return;
         }
 
@@ -712,7 +692,7 @@ class PlayerManager {
                 this.elements.btnSubmit.textContent = '✅ Enviado';
 
                 if (this.elements.waitingMessage) {
-                    this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
+                    this.elements.waitingMessage.textContent = 'Esperando a los demas jugadores...';
                     safeShowElement(this.elements.waitingMessage);
                 }
                 safeHideElement(this.elements.wordsInputSection);
@@ -723,7 +703,7 @@ class PlayerManager {
             }
         } catch (error) {
             debug('Error:', error, 'error');
-            showNotification('Error de conexión', 'error');
+            showNotification('Error de conexion', 'error');
             this.elements.btnSubmit.disabled = false;
             this.elements.btnSubmit.textContent = '✍️ PASO';
         }
@@ -754,7 +734,7 @@ class PlayerManager {
                     <div class="result-item ${hasMatch ? 'match' : 'no-match'}">
                         <div class="result-word">${icon} ${sanitizeText(word)}</div>
                         <div class="result-points">+${result.points} puntos</div>
-                        ${hasMatch ? `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>` : ''}
+                        ${hasMatch ? `<div class="result-players">Coincidio con: ${(result.matched_with || []).join(', ')}</div>` : ''}
                     </div>
                 `;
                 roundScore += result.points;
@@ -805,6 +785,10 @@ class PlayerManager {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
         }
+        if (this.countdownRAFId) {
+            cancelAnimationFrame(this.countdownRAFId);
+            this.countdownRAFId = null;
+        }
     }
 
     async autoSubmitWords() {
@@ -833,7 +817,7 @@ class PlayerManager {
         const newName = this.elements.modalNameInput?.value?.trim();
 
         if (!isValidPlayerName(newName)) {
-            showNotification('Nombre inválido (2-20 caracteres)', 'warning');
+            showNotification('Nombre invalido (2-20 caracteres)', 'warning');
             return;
         }
 
@@ -882,4 +866,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Sincronización mejorada con calibrateWithServerTime()', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Countdown preciso con requestAnimationFrame + RTT sync', 'color: #FF00FF; font-weight: bold; font-size: 12px');
