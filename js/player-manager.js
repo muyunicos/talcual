@@ -432,6 +432,12 @@ class PlayerManager {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
 
+        // CAMBIO #2: Calibración automática de timeSync
+        if (state.round_started_at && state.round_duration && !timeSync.isCalibrated) {
+            timeSync.calibrate(state.round_started_at, state.round_duration);
+            console.log('%c⏱️ SYNC CALIBRADO', 'color: #3B82F6; font-weight: bold', `Offset: ${timeSync.offset}ms`);
+        }
+
         const me = state.players?.[this.playerId];
         if (me && this.elements.playerScore) {
             this.elements.playerScore.textContent = (me.score || 0) + ' pts';
@@ -836,4 +842,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Bloqueo de equivalentes (sinónimos/raíces) en lista propia', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Calibración automática de timeSync + feedback', 'color: #FF00FF; font-weight: bold; font-size: 12px');
