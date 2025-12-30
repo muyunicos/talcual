@@ -22,11 +22,6 @@ const AURA_BASE_COLORS = [
     '#FF0088'
 ];
 
-/**
- * Genera 6 auras aleatorias seleccionando pares de colores de los 12 base
- * Cada aura es un objeto con dos colores para el gradiente
- * @returns {Array} Array de 6 auras con estructura {color1, color2, hex}
- */
 function generateRandomAuras() {
     const auras = [];
     const usedIndices = new Set();
@@ -184,7 +179,6 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
                 savePlayerColor(aura.hex);
             }
         });
-        
         container.appendChild(circle);
     });
 }
