@@ -9,6 +9,83 @@
     <link rel="stylesheet" href="./css/4-components.css">
     <link rel="stylesheet" href="./css/3-host.css">
     <link rel="stylesheet" href="./css/5-animations.css">
+    <style>
+        /* Animaciones para modal mejorado */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                backdrop-filter: blur(0px);
+            }
+            to {
+                opacity: 1;
+                backdrop-filter: blur(4px);
+            }
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+        }
+        
+        /* Estilo para mensaje de estado */
+        .status-message-modal {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: none;
+        }
+        
+        .status-message-modal.status-loading {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .status-message-modal.status-success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .status-message-modal.status-error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .status-message-modal.status-info {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+    </style>
 </head>
 <body>
     <!-- MODAL CREAR JUEGO -->
@@ -105,7 +182,7 @@
         <!-- ÁREA CENTRAL (Center Stage) -->
         <div class="center-stage" id="center-stage">
             <div class="status-message">Esperando jugadores...</div>
-            <button class="btn-empezar" id="btn-start-game" style="display: none;">" Empezar Juego!</button>
+            <button class="btn-empezar" id="btn-start-game" style="display: none;">¡ Empezar Juego!</button>
         </div>
 
         <!-- PANEL LATERAL FLOTANTE (Ranking / Top Palabras) -->
@@ -173,7 +250,7 @@
     <script src="./js/shared-utils.js"></script>
     <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
-    <script src="./js/create-game-modal.js"></script>
+    <script src="./js/enhanced-create-game-modal.js"></script>
     <script src="./js/floating-side-panel.js"></script>
     <script src="./js/host-hamburger-menu.js"></script>
     <script src="./js/host-manager.js"></script>
