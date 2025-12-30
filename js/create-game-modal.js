@@ -110,7 +110,7 @@ class CreateGameModal {
             setTimeout(() => {
                 el.style.display = '';
                 el.style.opacity = '0';
-                el.style.animation = 'fadeInUp 0.5s ease-out forwards';
+                el.style.animation = 'fadeIn 0.5s ease-out forwards';
             }, delay);
         });
     }
