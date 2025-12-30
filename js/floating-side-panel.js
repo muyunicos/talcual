@@ -1,15 +1,9 @@
-/**
- * Floating Side Panel Handler
- * Hace el panel lateral fijo, colapsible y posicionado en esquina inferior derecha
- */
-
 class FloatingSidePanelHandler {
     constructor() {
         this.sidepanel = document.getElementById('floating-side-panel');
         this.isOpen = true;
         
         if (!this.sidepanel) {
-            console.warn('⚠️ FloatingSidePanelHandler: panel no encontrado');
             return;
         }
         
@@ -17,9 +11,6 @@ class FloatingSidePanelHandler {
     }
     
     init() {
-        console.log('📊 FloatingSidePanelHandler inicializando...');
-        
-        // Aplicar estilos de posicionamiento
         this.sidepanel.style.cssText = `
             position: fixed !important;
             bottom: 20px !important;
@@ -35,14 +26,10 @@ class FloatingSidePanelHandler {
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
         `;
         
-        // Crear botón de toggle en la esquina
         this.createToggleButton();
-        
-        console.log('✅ FloatingSidePanelHandler listo');
     }
     
     createToggleButton() {
-        // Si ya existe, no crear otro
         if (document.getElementById('sidepanel-toggle-btn')) return;
         
         const btn = document.createElement('button');
@@ -56,7 +43,7 @@ class FloatingSidePanelHandler {
             right: 20px !important;
             width: 280px !important;
             padding: 12px !important;
-            background: var(--color-primary, #2186 8D) !important;
+            background: var(--color-primary, #21868D) !important;
             color: var(--color-btn-primary-text, #FCFCF9) !important;
             border: none !important;
             border-radius: 8px 8px 0 0 !important;
@@ -70,7 +57,6 @@ class FloatingSidePanelHandler {
             transition: all 0.3s ease !important;
         `;
         
-        // Contenido del botón
         btn.innerHTML = `
             <span>📈 Ranking / Top Palabras</span>
             <span id="toggle-arrow" style="font-size: 1.2rem; margin-left: 8px;">▼</span>
@@ -78,7 +64,6 @@ class FloatingSidePanelHandler {
         
         btn.addEventListener('click', () => this.togglePanel());
         
-        // Insertar antes del panel
         this.sidepanel.parentElement.insertBefore(btn, this.sidepanel);
         
         this.toggleBtn = btn;
@@ -97,22 +82,19 @@ class FloatingSidePanelHandler {
         this.isOpen = false;
         this.sidepanel.style.display = 'none';
         if (this.toggleArrow) {
-            this.toggleArrow.textContent = '▲'; // Arriba
+            this.toggleArrow.textContent = '▲';
         }
-        console.log('📊 Panel cerrado');
     }
     
     openPanel() {
         this.isOpen = true;
         this.sidepanel.style.display = 'flex';
         if (this.toggleArrow) {
-            this.toggleArrow.textContent = '▼'; // Abajo
+            this.toggleArrow.textContent = '▼';
         }
-        console.log('📊 Panel abierto');
     }
 }
 
-// ===== INIT =====
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.floatingSidePanelHandler = new FloatingSidePanelHandler();
@@ -120,5 +102,3 @@ if (document.readyState === 'loading') {
 } else {
     window.floatingSidePanelHandler = new FloatingSidePanelHandler();
 }
-
-console.log('%c✅ FloatingSidePanelHandler listo', 'color: #10B981; font-weight: bold');
