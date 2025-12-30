@@ -6,13 +6,6 @@ class CreateGameModal {
         this.customCodeInput = document.getElementById('custom-code');
         this.statusMessage = document.getElementById('status-message');
 
-        this.gameElements = {
-            codeSticker: document.getElementById('code-sticker-floating'),
-            tvHeader: document.querySelector('.tv-header'),
-            sidepanel: document.getElementById('floating-side-panel'),
-            playersContainer: document.getElementById('players-container')
-        };
-
         this.dictionary = null;
         this.categories = [];
 
@@ -22,7 +15,6 @@ class CreateGameModal {
     async init() {
         await this.loadDictionary();
 
-        this.hideGameElements();
         this.populateCategorySelect(this.categories);
 
         this.btnCreate.addEventListener('click', () => this.handleCreateClick());
@@ -94,27 +86,6 @@ class CreateGameModal {
         this.customCodeInput.value = code;
     }
 
-    hideGameElements() {
-        Object.values(this.gameElements).forEach((el) => (el.style.display = 'none'));
-    }
-
-    showGameElements() {
-        const elementsToShow = [
-            { el: this.gameElements.codeSticker, delay: 0 },
-            { el: this.gameElements.tvHeader, delay: 150 },
-            { el: this.gameElements.playersContainer, delay: 300 },
-            { el: this.gameElements.sidepanel, delay: 450 }
-        ];
-
-        elementsToShow.forEach(({ el, delay }) => {
-            setTimeout(() => {
-                el.style.display = '';
-                el.style.opacity = '0';
-                el.style.animation = 'fadeIn 0.5s ease-out forwards';
-            }, delay);
-        });
-    }
-
     async handleCreateClick() {
         this.btnCreate.disabled = true;
 
@@ -152,16 +123,19 @@ class CreateGameModal {
 
         await new Promise((r) => setTimeout(r, 500));
 
-        // 🔧 FIX REAL: Actualizar clases CSS para mostrar .game-screen
-        // Problema: .game-screen está oculto por CSS (html.no-session { display: none })
-        // Solución: Cambiar clases para que CSS permita mostrar el contenedor de juego
-        const root = document.documentElement;
-        root.classList.remove('no-session');
-        root.classList.add('has-session');
-        console.log('🔧 CSS actualizado: ha-session agregada, pantalla de juego desbloqueada');
-
-        this.modalElement.style.display = 'none';
-        this.showGameElements();
+        // FASE 2: Usar determineUIState() centralizado
+        // Esta función maneja toda la lógica de mostrar/ocultar UI basándose en sesión
+        // Garantiza que la pantalla de juego se muestre correctamente
+        if (typeof determineUIState === 'function') {
+            determineUIState();
+            console.log('✅ determineUIState() ejecutado - UI renderizada');
+        } else {
+            console.warn('⚠️  determineUIState() no disponible, fallback a ocultacion manual');
+            this.modalElement.style.display = 'none';
+            // Mostrar elementos del juego
+            const gameScreen = document.getElementById('game-screen');
+            if (gameScreen) gameScreen.style.display = '';
+        }
 
         setTimeout(() => {
             initHostManager();
@@ -186,3 +160,5 @@ if (document.readyState === 'loading') {
 } else {
     new CreateGameModal();
 }
+
+console.log('%c✅ create-game-modal.js - Usa determineUIState() centralizado', 'color: #10B981; font-weight: bold');
