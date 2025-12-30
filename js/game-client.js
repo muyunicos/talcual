@@ -159,12 +159,22 @@ class GameClient {
       if (!event || !event.data) return;
       
       const dataTrimmed = event.data.trim();
-      
       if (!dataTrimmed || dataTrimmed.startsWith(':')) return;
       
       let newState;
       try {
         newState = JSON.parse(dataTrimmed);
+        
+        if (!newState || typeof newState !== 'object') {
+          this.consecutiveEmptyMessages++;
+          if (this.consecutiveEmptyMessages > 10) {
+            console.error(`[ERROR] [${this.role}] Multiple invalid states - reconnecting...`);
+            this.handleReconnect();
+            this.consecutiveEmptyMessages = 0;
+          }
+          return;
+        }
+        
         this.parseErrorCount = 0;
         this.consecutiveEmptyMessages = 0;
       } catch (parseError) {
@@ -176,16 +186,6 @@ class GameClient {
           console.error(`[ERROR] [${this.role}] Multiple parse errors - reconnecting...`);
           this.handleReconnect();
           this.parseErrorCount = 0;
-        }
-        return;
-      }
-      
-      if (!newState || typeof newState !== 'object') {
-        this.consecutiveEmptyMessages++;
-        if (this.consecutiveEmptyMessages > 10) {
-          console.error(`[ERROR] [${this.role}] Invalid consecutive states - reconnecting...`);
-          this.handleReconnect();
-          this.consecutiveEmptyMessages = 0;
         }
         return;
       }
