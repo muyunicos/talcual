@@ -94,57 +94,58 @@
             <div class="code-sticker-value" id="code-sticker-value">----</div>
         </div>
 
-        <div class="tv-layout">
-            <!-- HEADER CON TEMPORIZADOR CENTRADO Y RONDA -->
-            <div class="tv-header">
-                <div class="timer-container">
-                    <div class="round-info" id="round-info" style="display: none;">
-                        Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span>
+        <!-- HEADER CON TEMPORIZADOR CENTRADO -->
+        <div class="tv-header">
+            <div class="timer-container">
+                <div class="round-info" id="round-info">Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span></div>
+                <div class="timer-display" id="timer-display">00:00</div>
+            </div>
+        </div>
+
+        <!-- ÁREA CENTRAL (Center Stage) -->
+        <div class="center-stage" id="center-stage">
+            <div class="status-message">Esperando jugadores...</div>
+            <button class="btn-empezar" id="btn-start-game">¡Empezar Juego!</button>
+        </div>
+
+        <!-- PANEL LATERAL FLOTANTE (Ranking / Top Palabras) -->
+        <div class="floating-side-panel" id="floating-side-panel">
+            <!-- Categoría sticker (encima del panel) -->
+            <div class="category-sticker" id="category-sticker">Categoría</div>
+
+            <!-- Tabs -->
+            <div class="panel-tabs">
+                <div class="panel-tab active" data-tab="ranking">🏆 Ranking</div>
+                <div class="panel-tab" data-tab="topwords">📈 Top Palabras</div>
+            </div>
+
+            <!-- Contenedor de vistas (fade transition) -->
+            <div class="panel-content">
+                <!-- Vista Ranking -->
+                <div class="panel-view active" data-view="ranking">
+                    <div class="panel-list" id="ranking-list">
+                        <div class="panel-item"><div class="name">Sin jugadores aún</div></div>
                     </div>
-                    <div class="timer-display" id="timer-display">00:00</div>
-                    
+                </div>
+
+                <!-- Vista Top Palabras -->
+                <div class="panel-view" data-view="topwords">
+                    <div class="panel-list" id="top-words-list">
+                        <div class="panel-item"><div class="name">Sin palabras aún</div></div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- RANKING IZQUIERDA -->
-            <div class="ranking-panel">
-                <div class="ranking-title">🏆 RANKING</div>
-                <div id="ranking-list"></div>
-            </div>
-
-            <!-- CENTRO - Estado/Palabra/Categoría -->
-            <div class="center-panel">
-                <div class="category-display" id="category-display" style="display: none;">
-                    <span class="label">Categoría:</span>
-                    <span class="value" id="category-value"></span>
-                </div>
-                <div class="status-message" id="status-message" role="status" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
-                
-                <div class="word-display" id="word-display" style="display: none;">
-                    <span class="word" id="word-value"></span>
-                </div>
-                <div class="countdown-display" id="countdown-display" style="display: none;">
-                    <span id="countdown-value">3</span>
-                </div>
-                <div class="start-button-container">
-                    <button class="btn-empezar" id="btn-start-round" style="display: none;">¡Empezar!</button>
-                </div>
-            </div>
-
-            <!-- TOP PALABRAS DERECHA -->
-            <div class="top-words-panel">
-                <div class="top-words-title">📈 TOP PALABRAS</div>
-                <div id="top-words-list"></div>
-            </div>
-
-           
-
-            <!-- JUGADORES ABAJO -->
+        <!-- CONTENEDOR DE JUGADORES (Bottom center) -->
+        <div class="players-container" id="players-container">
             <div class="players-grid" id="players-grid"></div>
+        </div>
 
-            <!-- RESULTADOS -->
-            <div class="results-panel" id="results-panel" style="display: none;">
-                <div class="results-title">Resultados de la Ronda</div>
+        <!-- RESULTS OVERLAY (fullscreen modal con fade) -->
+        <div class="results-overlay" id="results-overlay">
+            <div class="results-panel">
+                <div class="results-title">Resultados</div>
                 <div id="results-content"></div>
             </div>
         </div>
