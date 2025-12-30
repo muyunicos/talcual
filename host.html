@@ -171,6 +171,23 @@
     </style>
 </head>
 <body>
+    <!-- BOTÓN HAMBURGUESA (DELANTE DE MODALES) -->
+    <button class="btn-hamburger boot-el" id="btn-hamburger-host" aria-label="Abrir menú">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+    </button>
+
+    <!-- MENÓ HAMBURGUESA HOST -->
+    <nav class="hamburger-menu boot-el session-only" id="hamburger-menu-host" style="display: none;" aria-label="Menú de navegación">
+        <div class="hamburger-header">Menú</div>
+        <button class="hamburger-option" id="hamburger-restart-round">🔄 Reiniciar Ronda</button>
+        <button class="hamburger-option" id="hamburger-new-game">🎮 Nuevo Juego</button>
+        <button class="hamburger-option" id="hamburger-settings">⚠️ Opciones</button>
+        <button class="hamburger-option hamburger-danger" id="hamburger-terminate">🚫 Terminar</button>
+        <a href="./index.html" class="hamburger-option hamburger-home">🌠 Inicio</a>
+    </nav>
+
     <!-- MODAL CREAR JUEGO -->
     <div class="modal-overlay boot-el nosession-only" id="modal-create-game">
         <div class="modal-content">
@@ -199,8 +216,8 @@
         </div>
     </div>
 
-    <!-- MODAL CONFIGURACIÓN DE JUEGO -->
-    <div class="modal-overlay boot-el session-only" id="modal-game-config">
+    <!-- MODAL CONFIGURACIÓN DE JUEGO (ARRANCA CERRADO) -->
+    <div class="modal-overlay boot-el" id="modal-game-config" style="display: none;">
         <div class="modal-content modal-content--config">
             <div class="modal-title">⚠️ Configurar Partida</div>
 
@@ -305,23 +322,6 @@
             </div>
         </div>
     </div>
-
-    <!-- BOTÓN HAMBURGUESA (SIEMPRE VISIBLE) -->
-    <button class="btn-hamburger boot-el" id="btn-hamburger-host" aria-label="Abrir menú">
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
-    </button>
-
-    <!-- MENÓ HAMBURGUESA HOST -->
-    <nav class="hamburger-menu boot-el session-only" id="hamburger-menu-host" style="display: none;" aria-label="Menú de navegación">
-        <div class="hamburger-header">Menú</div>
-        <button class="hamburger-option" id="hamburger-restart-round">🔄 Reiniciar Ronda</button>
-        <button class="hamburger-option" id="hamburger-new-game">🎮 Nuevo Juego</button>
-        <button class="hamburger-option" id="hamburger-settings">⚠️ Opciones</button>
-        <button class="hamburger-option hamburger-danger" id="hamburger-terminate">🚫 Terminar</button>
-        <a href="./index.html" class="hamburger-option hamburger-home">🌠 Inicio</a>
-    </nav>
 
     <!-- Scripts -->
     <script src="./js/communication.js"></script>
