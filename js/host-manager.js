@@ -1,38 +1,41 @@
 /**
- * Host Manager - Reconectado a arquitectura real (GameClient + /app/actions.php)
- * Gestiona: timer, categoría tab, fade ranking/top, panel draggable
+ * Host Manager - Integración completa con menú hamburguesa
+ * Gestiona: timer, categoría, ranking/top words, panel tabs, menú hamburguesa
  * 
- * MEJORAS v5:
- * - FIX: Usa GameClient en lugar de /api/host/events.php inexistente
- * - FIX: Llama updatePlayersGrid() en handleGameState()
- * - FIX: Modales centrados con flexbox
- * - FIX: Escucha evento 'connected' para renderizar estado inicial (FIX #52)
- * - Controla visibilidad del botón "Empezar Juego" según mín jugadores
- * - Anima entrada de elementos cuando aparecen jugadores
+ * MEJORAS v6 (29 Dic 2025):
+ * - Integrada funcionalidad de menú hamburguesa
+ * - Opciones funcionando: Reiniciar Ronda, Nuevo Juego, Opciones, Terminar
+ * - Categoría persistente en localStorage
+ * - Menú draggable/resizable preparado para futuras mejoras
  */
 
 class HostManager {
     constructor(gameCode) {
         this.gameCode = gameCode;
-        this.client = null;  // GameClient instance (FIX)
+        this.client = null;
         this.currentRound = 0;
         this.totalRounds = 3;
         this.remainingTime = 0;
         this.timerInterval = null;
         this.activeTab = 'ranking';
-        this.minPlayers = 2; // Por defecto
+        this.minPlayers = 2;
         this.currentPlayers = [];
         this.gameState = {};
+        
+        // Menú hamburguesa
+        this.btnHamburger = document.getElementById('btn-hamburger-host');
+        this.hamburgerMenu = document.getElementById('hamburger-menu-host');
+        this.isMenuOpen = false;
 
         console.log('🎮 HostManager iniciando con código:', this.gameCode);
         
         this.initUI();
         this.attachEventListeners();
-        this.connectGameClient();  // FIX: Usar GameClient
+        this.initHamburgerMenu(); // FIX: Menú hamburguesa
+        this.connectGameClient();
     }
 
     initUI() {
-        // Código sala - display
         const codeValueEl = document.getElementById('code-sticker-value');
         if (codeValueEl) {
             codeValueEl.textContent = this.gameCode;
@@ -41,7 +44,6 @@ class HostManager {
             console.warn('⚠️ Elemento #code-sticker-value no encontrado');
         }
 
-        // Copy to clipboard
         const codeSticker = document.querySelector('.code-sticker-floating');
         if (codeSticker) {
             codeSticker.addEventListener('click', () => {
@@ -49,16 +51,12 @@ class HostManager {
                     console.log('📋 Código copiado al clipboard:', this.gameCode);
                 }).catch(err => {
                     console.error('❌ Error copiando código:', err);
-                    const codeValueEl = document.getElementById('code-sticker-value');
-                    codeValueEl?.select?.();
                 });
             });
         }
 
-        // Tabs del panel lateral
         this.initPanelTabs();
         
-        // Ocultar modal de crear partida
         const modalCreate = document.getElementById('modal-create-game');
         if (modalCreate) {
             modalCreate.style.display = 'none';
@@ -121,11 +119,129 @@ class HostManager {
         }
     }
 
-    /**
-     * FIX #38: Usar GameClient en lugar de EventSource directo
-     * FIX #52: Agregar listener 'connected' para renderizar estado inicial
-     * Conecta a /app/sse-stream.php con player_id=null para host
-     */
+    // FIX #54: Menú hamburguesa integrado
+    initHamburgerMenu() {
+        if (!this.btnHamburger || !this.hamburgerMenu) {
+            console.warn('⚠️ Menú hamburguesa no encontrado');
+            return;
+        }
+
+        console.log('🍔 Inicializando menú hamburguesa...');
+
+        // Toggle
+        this.btnHamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleHamburgerMenu();
+        });
+
+        // Cerrar al click afuera
+        document.addEventListener('click', (e) => {
+            if (this.isMenuOpen && 
+                !this.hamburgerMenu.contains(e.target) && 
+                !this.btnHamburger.contains(e.target)) {
+                this.closeHamburgerMenu();
+            }
+        });
+
+        // Opciones
+        const btnRestartRound = document.getElementById('hamburger-restart-round');
+        const btnNewGame = document.getElementById('hamburger-new-game');
+        const btnSettings = document.getElementById('hamburger-settings');
+        const btnTerminate = document.getElementById('hamburger-terminate');
+
+        if (btnRestartRound) {
+            btnRestartRound.addEventListener('click', () => this.handleRestartRound());
+        }
+
+        if (btnNewGame) {
+            btnNewGame.addEventListener('click', () => this.handleNewGame());
+        }
+
+        if (btnSettings) {
+            btnSettings.addEventListener('click', () => this.handleSettings());
+        }
+
+        if (btnTerminate) {
+            btnTerminate.addEventListener('click', () => this.handleTerminate());
+        }
+
+        console.log('✅ Menú hamburguesa inicializado');
+    }
+
+    toggleHamburgerMenu() {
+        if (this.isMenuOpen) {
+            this.closeHamburgerMenu();
+        } else {
+            this.openHamburgerMenu();
+        }
+    }
+
+    openHamburgerMenu() {
+        this.isMenuOpen = true;
+        this.hamburgerMenu.style.display = 'flex';
+        this.hamburgerMenu.style.animation = 'slideDown 0.3s ease-out';
+        console.log('📂 Menú abierto');
+    }
+
+    closeHamburgerMenu() {
+        this.isMenuOpen = false;
+        this.hamburgerMenu.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => {
+            if (!this.isMenuOpen) {
+                this.hamburgerMenu.style.display = 'none';
+            }
+        }, 300);
+        console.log('📂 Menú cerrado');
+    }
+
+    handleRestartRound() {
+        console.log('🔄 Reiniciando ronda...');
+        this.closeHamburgerMenu();
+        
+        if (confirm('¿Reiniciar la ronda actual?')) {
+            this.startGame(); // Reinicia ronda
+        }
+    }
+
+    handleNewGame() {
+        console.log('🎮 Nueva partida...');
+        this.closeHamburgerMenu();
+        
+        if (confirm('¿Crear una nueva partida? Se perderá el progreso actual.')) {
+            localStorage.removeItem('hostGameCode');
+            localStorage.removeItem('gameId');
+            localStorage.removeItem('isHost');
+            localStorage.removeItem('gameCategory');
+            location.reload();
+        }
+    }
+
+    handleSettings() {
+        console.log('⚙️ Abriendo opciones avanzadas...');
+        this.closeHamburgerMenu();
+        
+        const modalConfig = document.getElementById('modal-game-config');
+        if (modalConfig) {
+            modalConfig.style.display = 'flex';
+            console.log('✅ Modal de configuración abierto');
+        } else {
+            alert('Modal de configuración no disponible');
+        }
+    }
+
+    handleTerminate() {
+        console.log('🚫 Terminando partida...');
+        this.closeHamburgerMenu();
+        
+        if (confirm('¿Estás seguro de que quieres terminar la partida?')) {
+            localStorage.removeItem('hostGameCode');
+            localStorage.removeItem('gameId');
+            localStorage.removeItem('isHost');
+            localStorage.removeItem('gameCategory');
+            location.href = './index.html';
+        }
+    }
+
     connectGameClient() {
         if (!window.COMM) {
             console.error('❌ communication.js no cargado');
@@ -134,48 +250,36 @@ class HostManager {
 
         console.log('🔌 Conectando GameClient para HOST...');
         
-        // Crear cliente sin player_id (es el host)
         this.client = new GameClient(this.gameCode, null, 'host');
         
-        // FIX #52: Escuchar evento 'connected' para renderizar estado inicial
         this.client.on('connected', () => {
             console.log('✅ Host conectado a SSE - renderizando estado inicial');
-            // Renderizar estado vacío inicial mientras no haya jugadores
             this.updatePlayersGrid([]);
             this.updateRanking([]);
             this.updateTopWords([]);
         });
         
-        // Escuchar cambios de estado
         this.client.onStateUpdate = (state) => this.handleGameState(state);
         
-        // Escuchar conexión perdida
         this.client.onConnectionLost = () => {
             console.error('❌ Conexión perdida');
             alert('Se perdió la conexión con el servidor');
         };
         
-        // Conectar
         this.client.connect();
         console.log('✅ GameClient conectado');
     }
 
-    /**
-     * FIX #1: Renderizar squarcles de jugadores
-     * Ahora se llama desde handleGameState()
-     */
     handleGameState(state) {
         this.gameState = state;
         
-        // FIX #1: Guardar y renderizar jugadores
         if (state.players) {
             this.currentPlayers = Array.isArray(state.players) 
                 ? state.players 
                 : Object.values(state.players);
         }
-        this.updatePlayersGrid(this.currentPlayers);  // ← FIX: Ahora se llama
+        this.updatePlayersGrid(this.currentPlayers);
         
-        // Actualizar otros elementos
         this.updateRanking(this.currentPlayers);
         this.updateTopWords(state.topWords || []);
         this.checkStartButtonVisibility();
@@ -202,10 +306,6 @@ class HostManager {
         }
     }
 
-    /**
-     * FIX #1: Renderiza squarcles en #players-grid
-     * Ahora con colores degradados desde state.players[i].color
-     */
     updatePlayersGrid(players) {
         const grid = document.getElementById('players-grid');
         if (!grid) {
@@ -224,10 +324,9 @@ class HostManager {
             const squarcle = document.createElement('div');
             squarcle.className = 'player-squarcle';
             squarcle.dataset.playerId = player.id || player.playerId;
-            squarcle.style.animationDelay = `${index * 0.1}s`; // Stagger animation
+            squarcle.style.animationDelay = `${index * 0.1}s`;
             squarcle.style.animation = 'popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
 
-            // Aplicar color degradado si existe
             if (player.color) {
                 squarcle.style.background = player.color;
             } else {
@@ -235,20 +334,19 @@ class HostManager {
             }
 
             const initial = document.createElement('div');
-            initial.className = 'squarcle-initial';
+            initial.className = 'player-initial';
             initial.textContent = (player.name || '?').charAt(0).toUpperCase();
 
             const label = document.createElement('div');
-            label.className = 'squarcle-name';
+            label.className = 'player-name-label';
             label.textContent = player.name || 'Anónimo';
 
             squarcle.appendChild(initial);
             squarcle.appendChild(label);
             
-            // Indicador de estado (opcional)
             if (player.status === 'ready') {
                 const statusBadge = document.createElement('div');
-                statusBadge.className = 'squarcle-status ready';
+                statusBadge.className = 'player-status-icon';
                 statusBadge.textContent = '✓';
                 squarcle.appendChild(statusBadge);
             }
@@ -302,12 +400,10 @@ class HostManager {
         const canStart = playerCount >= this.minPlayers;
         
         if (canStart && btnStart.style.display === 'none') {
-            // Mostrar con animación
             btnStart.style.display = 'block';
             btnStart.style.animation = 'popIn 0.5s ease-out';
             console.log(`✅ Botón visible (${playerCount}/${this.minPlayers} jugadores)`);
         } else if (!canStart && btnStart.style.display !== 'none') {
-            // Ocultar
             btnStart.style.display = 'none';
             console.log(`⏳ Esperando ${this.minPlayers - playerCount} jugador(es) más`);
         }
@@ -447,39 +543,33 @@ class HostManager {
     }
 }
 
-// ===== INIT =====
-let hostManager = null; // Global para que sea accesible desde otros scripts
+let hostManager = null;
 
 function initHostManager() {
     const urlParams = new URLSearchParams(window.location.search);
     let gameCode = urlParams.get('code');
 
-    // Fallback: localStorage
     if (!gameCode) {
         gameCode = localStorage.getItem('hostGameCode');
     }
 
-    // SIN código: el enhanced-create-game-modal maneja esto
     if (!gameCode) {
         console.log('⚠️ Sin código de partida - esperando al modal de crear');
         return;
     }
 
-    // CON código: inicializar Manager
     console.log('🎮 Iniciando Host Manager con código:', gameCode);
     hostManager = new HostManager(gameCode);
 
-    // Cleanup
     window.addEventListener('beforeunload', () => {
         if (hostManager) hostManager.destroy();
     });
 }
 
-// Init cuando DOM esté listo
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initHostManager);
 } else {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - FIX #52: Listener connected para renderizar estado inicial', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js v6 - Menú hamburguesa integrado', 'color: #10B981; font-weight: bold');
