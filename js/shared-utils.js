@@ -39,49 +39,71 @@ function debug(message, data = null, type = 'info') {
 }
 
 // ============================================================================
-// GESTIÓN DE TIEMPO
+// GESTIÓN DE TIEMPO - CON SINCRONIZACIÓN
 // ============================================================================
 
 /**
- * Obtiene el tiempo restante entre un timestamp y una duración
- * @param {number} startTimestamp - Timestamp de inicio (segundos)
- * @param {number} duration - Duración en segundos
- * @returns {number} Segundos restantes
+ * Obtiene el tiempo restante usando timeSync sincronizado
+ * CAMBIO #3: Usa TimeSyncManager para sincronización client-servidor
+ * 
+ * @param {number} startTimestamp - Timestamp de inicio ronda (ms, servidor)
+ * @param {number} duration - Duración en ms
+ * @returns {number} Milisegundos restantes (sincronizado)
  */
 function getRemainingTime(startTimestamp, duration) {
-    const now = Math.floor(Date.now() / 1000);
-    const elapsed = now - startTimestamp;
-    return Math.max(0, duration - elapsed);
+    // Si timeSync está disponible y calibrado, usar tiempo sincronizado
+    if (typeof timeSync !== 'undefined' && timeSync && timeSync.isCalibrated) {
+        return timeSync.getRemainingTime(startTimestamp, duration);
+    }
+    
+    // Fallback: cálculo local (menos preciso, pero funciona)
+    const now = Date.now();
+    const endTime = startTimestamp + duration;
+    return Math.max(0, endTime - now);
 }
 
 /**
- * Formatea segundos a MM:SS
- * @param {number} seconds - Número de segundos
+ * Formatea milisegundos a MM:SS
+ * @param {number} ms - Milisegundos
  * @returns {string} Formato MM:SS
  */
-function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+function formatTime(ms) {
+    const totalSeconds = Math.ceil(ms / 1000); // Redondear hacia arriba
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 /**
- * Actualiza display de timer en el DOM
- * @param {number} seconds - Segundos restantes
+ * Actualiza display de timer en el DOM con feedback visual
+ * CAMBIO #3: Agrega clases CSS para feedback visual
+ * 
+ * @param {number} ms - Milisegundos restantes
  * @param {HTMLElement} element - Elemento donde mostrar
  * @param {string} prefix - Prefijo (ej: '⏳')
- * @param {number} warningThreshold - Mostrar warning desde X segundos
+ * @param {number} warningThreshold - Mostrar warning desde X ms
  */
-function updateTimerDisplay(seconds, element, prefix = '⏳', warningThreshold = 10) {
+function updateTimerDisplay(ms, element, prefix = '⏳', warningThreshold = 5000) {
     if (!element) return;
     
-    const formatted = formatTime(seconds);
+    const formatted = formatTime(ms);
     element.textContent = prefix ? `${prefix} ${formatted}` : formatted;
     
-    if (seconds <= warningThreshold) {
-        element.classList.add('warning');
-    } else {
-        element.classList.remove('warning');
+    // CAMBIO #3: Agregar feedback visual
+    // Rojo parpadeante cuando < 5s
+    if (ms <= warningThreshold && ms > 0) {
+        element.classList.add('timer-warning');
+        element.classList.remove('timer-expired');
+    } 
+    // Gris cuando se agota (0ms)
+    else if (ms <= 0) {
+        element.classList.add('timer-expired');
+        element.classList.remove('timer-warning');
+    } 
+    // Normal en resto
+    else {
+        element.classList.remove('timer-warning');
+        element.classList.remove('timer-expired');
     }
 }
 
@@ -621,4 +643,4 @@ function applyColorGradient(colorString) {
     root.style.setProperty('--aura-color-2', colors[1] || colors[0]);
 }
 
-console.log('%c✅ shared-utils.js - Generación de códigos mejorada, diccionario async optimizado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ shared-utils.js - Sincronización de tiempo + feedback visual mejorada', 'color: #10B981; font-weight: bold');
