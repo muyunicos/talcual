@@ -152,6 +152,14 @@ class CreateGameModal {
 
         await new Promise((r) => setTimeout(r, 500));
 
+        // 🔧 FIX REAL: Actualizar clases CSS para mostrar .game-screen
+        // Problema: .game-screen está oculto por CSS (html.no-session { display: none })
+        // Solución: Cambiar clases para que CSS permita mostrar el contenedor de juego
+        const root = document.documentElement;
+        root.classList.remove('no-session');
+        root.classList.add('has-session');
+        console.log('🔧 CSS actualizado: ha-session agregada, pantalla de juego desbloqueada');
+
         this.modalElement.style.display = 'none';
         this.showGameElements();
 
