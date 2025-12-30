@@ -129,23 +129,19 @@
 .code-sticker-floating.copied::after {
     content: '¡Copiado!';
     position: absolute;
-    bottom: 100%;
-    left: 50%;
+    top: 85%;
     margin-bottom: 8px;
-    
     background: #4CAF50;
     color: white;
     font-size: 12px;
     font-weight: 800;
-    padding: 6px 14px;
+    padding: 3px 13px;
     border-radius: var(--radius-md);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    
     white-space: nowrap;
     pointer-events: none;
-    
-    animation: fadeInUpCentered 0.3s ease-out;
+    text-transform: uppercase;
 }
+
 
 /* Animación pulse para el sticker cuando se copia */
 @keyframes copiedPulse {
