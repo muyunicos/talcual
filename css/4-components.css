@@ -337,15 +337,15 @@
     z-index: 99;
     overflow-y: auto;
     backdrop-filter: blur(10px);
-    display: none;
+    display: none !important;  /* CERRADO POR DEFECTO */
     flex-direction: column;
     padding: 0 !important;
     margin: 0 !important;
 }
 
-/* Clase para ABRIR el menu */
+/* Clase para ABRIR el menu - CON !important PARA PISAR EL STYLE INLINE */
 .hamburger-menu.menu-open {
-    display: flex;
+    display: flex !important;
     animation: slideDown 0.3s ease-out;
 }
 
