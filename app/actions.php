@@ -511,41 +511,42 @@ try {
             }
             break;
 
-        case 'shorten_round':
-            if (!$gameId) {
-                $response = ['success' => false, 'message' => 'game_id requerido'];
-                break;
-            }
-
-            $state = loadGameState($gameId);
-
-            if (!$state || $state['status'] !== 'playing') {
-                $response = ['success' => false, 'message' => 'No hay ronda activa'];
-                break;
-            }
-
-            $elapsed = time() - $state['round_started_at'];
-
-            if ($elapsed < $state['round_duration'] - 5) {
-                $state['round_duration'] = $elapsed + 5;
-                $state['last_update'] = time();
-
-                if (saveGameState($gameId, $state)) {
-                    notifyGameChanged($gameId);
-                    $response = [
-                        'success' => true,
-                        'message' => 'Timer acortado',
-                        'state' => $state
-                    ];
-                }
-            } else {
-                $response = [
-                    'success' => true,
-                    'message' => 'Timer ya en ultimos 5 segundos',
-                    'state' => $state
-                ];
-            }
-            break;
+        // COMENTADO #5: shorten_round ya no necesario, timer sincronizado con timeSync
+        // case 'shorten_round':
+        //     if (!$gameId) {
+        //         $response = ['success' => false, 'message' => 'game_id requerido'];
+        //         break;
+        //     }
+        //
+        //     $state = loadGameState($gameId);
+        //
+        //     if (!$state || $state['status'] !== 'playing') {
+        //         $response = ['success' => false, 'message' => 'No hay ronda activa'];
+        //         break;
+        //     }
+        //
+        //     $elapsed = time() - $state['round_started_at'];
+        //
+        //     if ($elapsed < $state['round_duration'] - 5) {
+        //         $state['round_duration'] = $elapsed + 5;
+        //         $state['last_update'] = time();
+        //
+        //         if (saveGameState($gameId, $state)) {
+        //             notifyGameChanged($gameId);
+        //             $response = [
+        //                 'success' => true,
+        //                 'message' => 'Timer acortado',
+        //                 'state' => $state
+        //             ];
+        //         }
+        //     } else {
+        //         $response = [
+        //             'success' => true,
+        //             'message' => 'Timer ya en ultimos 5 segundos',
+        //             'state' => $state
+        //         ];
+        //     }
+        //     break;
 
         case 'end_round':
             if (!$gameId) {

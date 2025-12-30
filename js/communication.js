@@ -149,6 +149,113 @@ function getConnectionHealth(connectionMetrics) {
 }
 
 // ============================================================================
+// TIMESYNCMANAGER - SINCRONIZACIÓN DE TIEMPO
+// ============================================================================
+
+/**
+ * Gestor de sincronización de tiempo cliente-servidor
+ * Resuelve desincronización de relojes entre dispositivos
+ * 
+ * Problema: Cada cliente usa su reloj local, causando diferencias de ±5-10s
+ * Solución: Calibrar offset respecto a servidor en cada ronda
+ * 
+ * @class TimeSyncManager
+ */
+class TimeSyncManager {
+  constructor() {
+    this.serverStartTime = null;      // Timestamp servidor cuando empezó ronda
+    this.clientStartTime = null;      // Timestamp cliente cuando se recibió
+    this.offset = 0;                  // Diferencia: serverTime - clientTime
+    this.isCalibrated = false;        // ¿Se calibró ya?
+    this.calibrationError = 0;        // Error estimado en ms
+    this.roundDuration = 0;           // Duración de la ronda en ms
+  }
+
+  /**
+   * Calibra el offset del reloj usando timestamp del servidor
+   * Se ejecuta una vez por ronda cuando recibe round_started_at
+   * 
+   * @param {number} serverTimestamp - Timestamp servidor (ms)
+   * @param {number} roundDuration - Duración de ronda (ms)
+   */
+  calibrate(serverTimestamp, roundDuration = 0) {
+    this.serverStartTime = serverTimestamp;
+    this.clientStartTime = Date.now();
+    this.offset = this.serverStartTime - this.clientStartTime;
+    this.isCalibrated = true;
+    this.calibrationError = 50; // Error estimado ±50ms por latencia
+    this.roundDuration = roundDuration;
+    
+    console.log(
+      `%c⏱️ TIMER CALIBRADO`,
+      'color: #3B82F6; font-weight: bold',
+      `| Offset: ${this.offset}ms | Error: ±${this.calibrationError}ms | Duración: ${roundDuration}ms`
+    );
+  }
+
+  /**
+   * Obtiene "ahora" sincronizado con servidor
+   * @returns {number} Timestamp sincronizado (ms)
+   */
+  getServerTime() {
+    return Date.now() + this.offset;
+  }
+
+  /**
+   * Calcula tiempo RESTANTE sincronizado
+   * CRÍTICO: Se usa en updateTimerDisplay() cada 100ms
+   * 
+   * @param {number} roundStartedAt - Timestamp inicio ronda (servidor)
+   * @param {number} roundDuration - Duración total (ms)
+   * @returns {number} Tiempo restante (ms, min 0)
+   */
+  getRemainingTime(roundStartedAt, roundDuration) {
+    if (!this.isCalibrated) {
+      // Fallback si no se calibró (debería ser raro)
+      return Math.max(0, roundStartedAt + roundDuration - Date.now());
+    }
+
+    // Calcular tiempo restante usando reloj sincronizado
+    const now = this.getServerTime();
+    const roundEndTime = roundStartedAt + roundDuration;
+    const remaining = roundEndTime - now;
+    
+    return Math.max(0, remaining);
+  }
+
+  /**
+   * Reinicia calibración para nueva ronda
+   */
+  reset() {
+    this.serverStartTime = null;
+    this.clientStartTime = null;
+    this.offset = 0;
+    this.isCalibrated = false;
+    this.calibrationError = 0;
+    this.roundDuration = 0;
+    console.log('%c⏱️ Timer reset para nueva ronda', 'color: #6B7280');
+  }
+
+  /**
+   * Información de debugging
+   * @returns {object}
+   */
+  getDebugInfo() {
+    return {
+      isCalibrated: this.isCalibrated,
+      offset: this.offset,
+      calibrationError: this.calibrationError,
+      serverStartTime: this.serverStartTime,
+      clientStartTime: this.clientStartTime,
+      currentOffset: Date.now() + this.offset - Date.now()
+    };
+  }
+}
+
+// Instancia global para todos los scripts
+const timeSync = new TimeSyncManager();
+
+// ============================================================================
 // EXPORT
 // ============================================================================
 
@@ -158,7 +265,9 @@ if (typeof window !== 'undefined') {
     COMM_CONFIG,
     validateAPIResponse,
     calculateReconnectDelay,
-    getConnectionHealth
+    getConnectionHealth,
+    TimeSyncManager,
+    timeSync
   };
 }
 
@@ -168,8 +277,10 @@ if (typeof module !== 'undefined' && module.exports) {
     COMM_CONFIG,
     validateAPIResponse,
     calculateReconnectDelay,
-    getConnectionHealth
+    getConnectionHealth,
+    TimeSyncManager,
+    timeSync
   };
 }
 
-console.log('%c✅ communication.js cargado - Sistema centralizado de eventos con exponential backoff', 'color: #10B981; font-weight: bold');
+console.log('%c✅ communication.js cargado - Sistema centralizado de eventos + TimeSyncManager', 'color: #10B981; font-weight: bold');
