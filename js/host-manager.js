@@ -1,11 +1,11 @@
 /**
- * Host Manager - Floating Panels Architecture (Fixed)
+ * Host Manager - Floating Panels Architecture (Fixed v2)
  * Gestiona: timer, categoría tab, fade ranking/top, panel draggable
  * 
  * MEJORAS:
- * - Fallback para código de sala (localStorage si no viene en URL)
- * - Better error handling y console logging
- * - Sincronización correcta con HTML flotante
+ * - Sin redirect forzado si no hay código (modal es visible)
+ * - Espera a que modal cree partida y guarde código
+ * - Luego init del Manager automáticamente
  */
 
 class HostManager {
@@ -41,10 +41,9 @@ class HostManager {
             codeSticker.addEventListener('click', () => {
                 navigator.clipboard.writeText(this.gameCode).then(() => {
                     console.log('📋 Código copiado al clipboard:', this.gameCode);
-                    // TODO: toast feedback
                 }).catch(err => {
                     console.error('❌ Error copiando código:', err);
-                    // Fallback: seleccionar texto
+                    const codeValueEl = document.getElementById('code-sticker-value');
                     codeValueEl?.select?.();
                 });
             });
@@ -71,7 +70,6 @@ class HostManager {
             });
         });
 
-        // Set inicial
         this.switchTab(this.activeTab);
         console.log('✅ Panel tabs inicializado');
     }
@@ -79,7 +77,6 @@ class HostManager {
     switchTab(tabName) {
         this.activeTab = tabName;
 
-        // Update tabs UI
         const tabs = document.querySelectorAll('.panel-tab');
         tabs.forEach(t => {
             if (t.dataset.tab === tabName) {
@@ -89,7 +86,6 @@ class HostManager {
             }
         });
 
-        // Update views (fade)
         const views = document.querySelectorAll('.panel-view');
         views.forEach(v => {
             if (v.dataset.view === tabName) {
@@ -101,7 +97,6 @@ class HostManager {
     }
 
     attachEventListeners() {
-        // Botón empezar
         const btnStart = document.getElementById('btn-start-game');
         if (btnStart) {
             btnStart.addEventListener('click', () => {
@@ -111,8 +106,6 @@ class HostManager {
         } else {
             console.warn('⚠️ Botón #btn-start-game no encontrado');
         }
-
-        // TODO: hamburguesa, config, etc.
     }
 
     connectSSE() {
@@ -193,29 +186,21 @@ class HostManager {
     }
 
     handleGameState(state) {
-        // Update players grid
         this.updatePlayers(state.players || []);
-
-        // Update ranking
         this.updateRanking(state.players || []);
-
-        // Update top words
         this.updateTopWords(state.topWords || []);
 
-        // Update category sticker
         const categorySticker = document.getElementById('category-sticker');
         if (categorySticker && state.category) {
             categorySticker.textContent = state.category;
         }
 
-        // Update round info
         if (state.currentRound !== undefined) {
             this.currentRound = state.currentRound;
             this.totalRounds = state.totalRounds || 3;
             this.updateRoundInfo();
         }
 
-        // Update timer
         if (state.remainingTime !== undefined) {
             this.remainingTime = state.remainingTime;
             this.updateTimer();
@@ -276,7 +261,6 @@ class HostManager {
             squarcle.className = 'player-squarcle';
             squarcle.dataset.playerId = player.id;
 
-            // Color gradient
             if (player.color) {
                 squarcle.style.background = player.color;
             }
@@ -301,7 +285,6 @@ class HostManager {
         }
 
         const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
-
         list.innerHTML = '';
 
         if (sorted.length === 0) {
@@ -365,7 +348,6 @@ class HostManager {
         `).join('');
 
         overlay.classList.add('active');
-
         setTimeout(() => {
             overlay.classList.remove('active');
         }, 5000);
@@ -394,7 +376,6 @@ class HostManager {
 
     addPlayer(player) {
         console.log('👤 Jugador agregado:', player);
-        // SSE game_state lo actualiza
     }
 
     removePlayer(playerId) {
@@ -455,31 +436,35 @@ class HostManager {
 }
 
 // ===== INIT =====
+let hostManager = null; // Global para que sea accesible desde otros scripts
+
 function initHostManager() {
     const urlParams = new URLSearchParams(window.location.search);
     let gameCode = urlParams.get('code');
 
-    // Fallback: buscar en localStorage (por si no viene en URL)
+    // Fallback: localStorage
     if (!gameCode) {
         gameCode = localStorage.getItem('hostGameCode');
-        console.warn('⚠️ No hay código en URL. Usando localStorage:', gameCode);
     }
 
+    // SIN código: mostrar modal de crear partida
     if (!gameCode) {
-        console.error('❌ No se encontró código de sala');
-        alert('❌ No se especificó código de sala.\n\nPor favor, crea una partida en la página principal.');
-        setTimeout(() => {
-            window.location.href = './index.html';
-        }, 2000);
-        return;
+        console.log('⚠️ Sin código de partida - mostrando modal de crear');
+        const modalCreate = document.getElementById('modal-create-game');
+        if (modalCreate) {
+            modalCreate.style.display = 'flex';
+            console.log('✅ Modal de crear partida mostrado');
+        }
+        return; // NO inicializar Manager aún
     }
 
+    // CON código: inicializar Manager
     console.log('🎮 Iniciando Host Manager con código:', gameCode);
-    const hostManager = new HostManager(gameCode);
+    hostManager = new HostManager(gameCode);
 
     // Cleanup
     window.addEventListener('beforeunload', () => {
-        hostManager.destroy();
+        if (hostManager) hostManager.destroy();
     });
 }
 
