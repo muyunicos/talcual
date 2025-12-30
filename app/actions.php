@@ -186,6 +186,12 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
     return ['category' => $category, 'prompt' => $prompt, 'used_prompts' => $newUsedPrompts];
 }
 
+function addServerNowToState(&$state) {
+    if (!isset($state['server_now']) || $state['server_now'] === null) {
+        $state['server_now'] = intval(microtime(true) * 1000);
+    }
+}
+
 try {
     checkRateLimit();
 
@@ -240,7 +246,7 @@ try {
                 'used_prompts' => [],
                 'round_duration' => $roundDuration * 1000,
                 'round_started_at' => null,
-                'server_now' => null,
+                'server_now' => intval(microtime(true) * 1000),
                 'round_starts_at' => null,
                 'round_ends_at' => null,
                 'min_players' => $minPlayers,
@@ -256,6 +262,7 @@ try {
                 $response = [
                     'success' => true,
                     'game_id' => $gameId,
+                    'server_now' => $state['server_now'],
                     'state' => $state
                 ];
             } else {
@@ -293,6 +300,7 @@ try {
                 $response = [
                     'success' => true,
                     'message' => 'Ya estas en el juego',
+                    'server_now' => intval(microtime(true) * 1000),
                     'state' => $state
                 ];
                 break;
@@ -310,6 +318,7 @@ try {
             ];
 
             $state['last_update'] = time();
+            addServerNowToState($state);
 
             if (saveGameState($gameId, $state)) {
                 trackGameAction($gameId, 'player_joined', ['player_name' => $playerName]);
@@ -317,6 +326,7 @@ try {
                 $response = [
                     'success' => true,
                     'message' => 'Te uniste al juego',
+                    'server_now' => $state['server_now'],
                     'state' => $state
                 ];
             } else {
@@ -407,6 +417,7 @@ try {
                     $response = [
                         'success' => true,
                         'message' => 'Ronda iniciada',
+                        'server_now' => $state['server_now'],
                         'state' => $state
                     ];
                 } else {
@@ -477,6 +488,7 @@ try {
             }
 
             $state['last_update'] = time();
+            addServerNowToState($state);
 
             if (saveGameState($gameId, $state)) {
                 notifyGameChanged($gameId);
@@ -485,6 +497,7 @@ try {
                     'message' => 'Respuestas guardadas',
                     'valid_answers' => count($validAnswers),
                     'errors' => $errors,
+                    'server_now' => $state['server_now'],
                     'state' => $state
                 ];
             }
@@ -578,7 +591,7 @@ try {
             $state['current_word'] = null;
             $state['current_category'] = null;
             $state['round_started_at'] = null;
-            $state['server_now'] = null;
+            $state['server_now'] = intval(microtime(true) * 1000);
             $state['round_starts_at'] = null;
             $state['round_ends_at'] = null;
             $state['round_top_words'] = [];
@@ -590,6 +603,7 @@ try {
                 $response = [
                     'success' => true,
                     'message' => 'Juego reiniciado',
+                    'server_now' => $state['server_now'],
                     'state' => $state
                 ];
             }
@@ -642,6 +656,7 @@ try {
 
             $state['players'][$playerId]['name'] = $newName;
             $state['last_update'] = time();
+            addServerNowToState($state);
 
             if (saveGameState($gameId, $state)) {
                 trackGameAction($gameId, 'player_name_updated', []);
@@ -649,6 +664,7 @@ try {
                 $response = [
                     'success' => true,
                     'message' => 'Nombre actualizado',
+                    'server_now' => $state['server_now'],
                     'state' => $state
                 ];
             } else {
@@ -665,8 +681,10 @@ try {
             $state = loadGameState($gameId);
 
             if ($state) {
+                addServerNowToState($state);
                 $response = [
                     'success' => true,
+                    'server_now' => $state['server_now'],
                     'state' => $state
                 ];
             } else {
@@ -679,6 +697,7 @@ try {
 
             $response = [
                 'success' => true,
+                'server_now' => intval(microtime(true) * 1000),
                 'words' => array_values($words)
             ];
             break;
@@ -691,6 +710,7 @@ try {
 
             $response = [
                 'success' => true,
+                'server_now' => intval(microtime(true) * 1000),
                 'stats' => [
                     'dictionary' => getDictionaryStats(),
                     'active_games' => count(getActiveCodes()),
