@@ -28,10 +28,26 @@ class CreateGameModal {
     }
 
     async loadDictionary() {
-        const url = new URL('./app/diccionario.json', window.location.href);
-        const response = await fetch(url.toString(), { cache: 'no-store' });
-        this.dictionary = await response.json();
-        this.categories = Object.keys(this.dictionary).sort((a, b) => a.localeCompare(b, 'es'));
+        try {
+            const url = new URL('./app/diccionario.json', window.location.href);
+            const response = await fetch(url.toString(), { cache: 'no-store' });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Failed to load dictionary`);
+            }
+            
+            this.dictionary = await response.json();
+            
+            if (!this.dictionary || Object.keys(this.dictionary).length === 0) {
+                throw new Error('Dictionary is empty or invalid');
+            }
+            
+            this.categories = Object.keys(this.dictionary).sort((a, b) => a.localeCompare(b, 'es'));
+        } catch (error) {
+            console.error('[ERROR] Loading dictionary:', error);
+            this.showMessage('Error cargando diccionario', 'error');
+            this.btnCreate.disabled = true;
+        }
     }
 
     populateCategorySelect(categories) {
@@ -45,6 +61,8 @@ class CreateGameModal {
     }
 
     selectRandomCategory() {
+        if (this.categories.length === 0) return;
+        
         const randomIndex = Math.floor(Math.random() * this.categories.length);
         this.categorySelect.value = this.categories[randomIndex];
         this.updateCodeWithCategoryWord();
@@ -82,56 +100,82 @@ class CreateGameModal {
 
     updateCodeWithCategoryWord() {
         const selectedCategory = this.categorySelect.value;
-        const code = this.getRandomWord(selectedCategory).slice(0, 5);
-        this.customCodeInput.value = code;
+        const randomWord = this.getRandomWord(selectedCategory);
+        
+        if (randomWord) {
+            this.customCodeInput.value = randomWord.slice(0, 5);
+        }
     }
 
     async handleCreateClick() {
         this.btnCreate.disabled = true;
+        this.showMessage('Creando partida...', 'info');
+        
+        try {
+            const category = this.categorySelect.value;
+            const customCode = this.customCodeInput.value.trim().toUpperCase() || null;
 
-        this.showMessage('🔄 Creando partida...', 'info');
+            const payload = {
+                action: 'create_game',
+                game_id: customCode,
+                category,
+                total_rounds: 3,
+                round_duration: 60,
+                min_players: 2
+            };
 
-        const category = this.categorySelect.value;
-        const customCode = this.customCodeInput.value.trim().toUpperCase() || null;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (!result || !result.game_id) {
+                throw new Error('Invalid response: missing game_id');
+            }
 
-        const payload = {
-            action: 'create_game',
-            game_id: customCode,
-            category,
-            total_rounds: 3,
-            round_duration: 60,
-            min_players: 2
-        };
+            const gameId = result.game_id;
 
-        const url = new URL('./app/actions.php', window.location.href);
-        const response = await fetch(url.toString(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+            StorageManager.set(StorageKeys.HOST_GAME_CODE, gameId);
+            StorageManager.set(StorageKeys.GAME_ID, gameId);
+            StorageManager.set(StorageKeys.IS_HOST, 'true');
+            StorageManager.set(StorageKeys.GAME_CATEGORY, category);
 
-        const result = await response.json();
+            this.showMessage('Partida creada. Inicializando...', 'success');
 
-        const gameId = result.game_id;
+            await new Promise((r) => setTimeout(r, 500));
 
-        StorageManager.set(StorageKeys.HOST_GAME_CODE, gameId);
-        StorageManager.set(StorageKeys.GAME_ID, gameId);
-        StorageManager.set(StorageKeys.IS_HOST, 'true');
-        StorageManager.set(StorageKeys.GAME_CATEGORY, category);
+            if (typeof determineUIState === 'function') {
+                determineUIState();
+            }
 
-        this.showMessage('✅ Partida creada. Inicializando...', 'success');
-
-        await new Promise((r) => setTimeout(r, 500));
-
-        if (typeof determineUIState === 'function') {
-            determineUIState();
+            setTimeout(() => {
+                initHostManager();
+            }, 100);
+        } catch (error) {
+            console.error('[ERROR] Creating game:', error);
+            
+            if (error.name === 'AbortError') {
+                this.showMessage('Timeout: La solicitud tard demasiado', 'error');
+            } else {
+                this.showMessage('Error creando partida', 'error');
+            }
+        } finally {
+            this.btnCreate.disabled = false;
         }
-
-        setTimeout(() => {
-            initHostManager();
-        }, 100);
-
-        this.btnCreate.disabled = false;
     }
 
     showMessage(text, type = 'info') {
