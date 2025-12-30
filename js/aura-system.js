@@ -75,8 +75,8 @@ function getRandomAura() {
 }
 
 /**
- * Guarda el color del jugador en localStorage
- * Usa la clave estandarizada AURA_STORAGE_KEY
+ * Guarda el color del jugador en StorageManager
+ * FASE 1: Migrado a StorageManager para centralización
  * @param {string} colorStr - Formato "#COLOR1,#COLOR2"
  */
 function savePlayerColor(colorStr) {
@@ -86,23 +86,42 @@ function savePlayerColor(colorStr) {
     }
     
     try {
-        localStorage.setItem(AURA_STORAGE_KEY, colorStr);
-        console.log(`💾 Color guardado (${AURA_STORAGE_KEY}):`, colorStr);
+        // FASE 1: Usar StorageManager si está disponible
+        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
+            StorageManager.set(StorageKeys.PLAYER_COLOR, colorStr);
+            console.log(`💾 Color guardado (StorageManager):`, colorStr);
+        } else {
+            // Fallback defensivo a localStorage
+            localStorage.setItem(AURA_STORAGE_KEY, colorStr);
+            console.log(`💾 Color guardado (localStorage fallback):`, colorStr);
+        }
     } catch (error) {
         console.error('Error guardando color:', error);
     }
 }
 
 /**
- * Carga el color del jugador desde localStorage
- * Usa la clave estandarizada AURA_STORAGE_KEY
+ * Carga el color del jugador desde StorageManager
+ * FASE 1: Migrado a StorageManager para centralización
  * @returns {string|null} Formato "#COLOR1,#COLOR2" o null
  */
 function loadPlayerColor() {
     try {
-        const color = localStorage.getItem(AURA_STORAGE_KEY);
+        let color = null;
+        
+        // FASE 1: Intentar desde StorageManager primero
+        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
+            color = StorageManager.get(StorageKeys.PLAYER_COLOR);
+            if (color && isValidAura(color)) {
+                console.log(`📕 Color cargado (StorageManager):`, color);
+                return color;
+            }
+        }
+        
+        // Fallback: localStorage
+        color = localStorage.getItem(AURA_STORAGE_KEY);
         if (color && isValidAura(color)) {
-            console.log(`📕 Color cargado (${AURA_STORAGE_KEY}):`, color);
+            console.log(`📕 Color cargado (localStorage fallback):`, color);
             return color;
         }
     } catch (error) {
@@ -114,11 +133,19 @@ function loadPlayerColor() {
 
 /**
  * Limpia el color guardado del jugador
+ * FASE 1: Migrado a StorageManager para centralización
  */
 function clearPlayerColor() {
     try {
-        localStorage.removeItem(AURA_STORAGE_KEY);
-        console.log(`🗑️ Color eliminado (${AURA_STORAGE_KEY})`);
+        // FASE 1: Usar StorageManager si está disponible
+        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
+            StorageManager.remove(StorageKeys.PLAYER_COLOR);
+            console.log(`🗑️ Color eliminado (StorageManager)`);
+        } else {
+            // Fallback defensivo a localStorage
+            localStorage.removeItem(AURA_STORAGE_KEY);
+            console.log(`🗑️ Color eliminado (localStorage fallback)`);
+        }
     } catch (error) {
         console.error('Error limpiando color:', error);
     }
@@ -251,7 +278,7 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
             });
             circle.classList.add('selected');
             
-            // Guardar color cuando se selecciona (CORREGIDO #4)
+            // Guardar color cuando se selecciona (CORREGIDO #4 - FASE 1)
             if (onSelect) {
                 onSelect(aura);
                 savePlayerColor(aura.hex);
@@ -262,4 +289,4 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
     });
 }
 
-console.log('%c✅ aura-system.js - Sistema de auras dinámicas cargado ✨', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ aura-system.js - Sistema de auras dinámicas + StorageManager ✨', 'color: #FF00FF; font-weight: bold; font-size: 12px');
