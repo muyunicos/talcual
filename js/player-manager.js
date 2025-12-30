@@ -391,9 +391,13 @@ class PlayerManager {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
 
-        if (state.round_started_at && state.round_duration && !timeSync.isCalibrated) {
-            timeSync.calibrate(state.round_started_at, state.round_duration);
-            console.log('%c⏱️ SYNC CALIBRADO', 'color: #3B82F6; font-weight: bold', `Offset: ${timeSync.offset}ms`);
+        if (state.server_now && state.round_starts_at && !timeSync.isCalibrated) {
+            timeSync.calibrateWithServerTime(
+                state.server_now,
+                state.round_starts_at,
+                state.round_ends_at,
+                state.round_duration
+            );
         }
 
         const me = state.players?.[this.playerId];
@@ -878,4 +882,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Countdown 3,2,1 implementado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Sincronización mejorada con calibrateWithServerTime()', 'color: #FF00FF; font-weight: bold; font-size: 12px');
