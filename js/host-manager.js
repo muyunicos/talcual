@@ -3,20 +3,21 @@
  * Gestiona: timer, categoría, ranking/top words, panel tabs, menú hamburguesa
  * 
  * MEJORAS v9 (30 Dic 2025):
- * - REFACTOR: determineUIState() SOLO actualiza clases, no style.display
- * - Elimina redundancia: confía en CSS !important para visibilidad
- * - Jerarquía z-index centralizada en CSS 3-host.css
- * - Elimina conflicto entre dos mecanismos (inline style vs CSS !important)
+ * - Integrada funcionalidad de menú hamburguesa
+ * - Opciones funcionando: Reiniciar Ronda, Nuevo Juego, Opciones, Terminar
+ * - Categoría persistente en localStorage
+ * - FASE 2: Función centralizada determineUIState() para visibilidad
+ * - FASE 3: Consolidación UI - Solo clases CSS, eliminados inline styles conflictivos
  */
 
 /**
  * Determina qué UI mostrar basándose en el estado de sesión
  * Se ejecuta al cargar y después de cada cambio de estado crítico
  * 
- * FASE 2 REFACTORED: Función centralizada que SOLO actualiza clases
- * - Si hay sesión: agrega has-session, remueve no-session
- * - Si no hay sesión: agrega no-session, remueve has-session
- * - CSS se encarga de mostrar/ocultar elementos con !important
+ * FASE 3: Simplificado - Solo maneja clases del <html>
+ * - El CSS con .session-only/.nosession-only + !important maneja todo
+ * - Sin inline styles que compitan con CSS
+ * - Sin manipulación manual de display: none/flex/block
  */
 function determineUIState() {
     const hasSession = StorageManager.isHostSessionActive();
@@ -24,9 +25,10 @@ function determineUIState() {
     
     console.log(`📋 determineUIState() - Session: ${hasSession}, Code: ${gameCode || 'none'}`);
 
-    // CLAVE: sincronizar clases del <html>
-    // CSS usa estas clases para controlar visibilidad de .session-only/.nosession-only
+    // Único trabajo: sincronizar las clases del <html>
+    // host.html usa .no-session/.has-session + CSS !important para controlar visibilidad
     const root = document.documentElement;
+    
     if (hasSession && gameCode) {
         root.classList.add('has-session');
         root.classList.remove('no-session');
@@ -78,14 +80,13 @@ class HostManager {
 
     /**
      * FASE 1: Valida que exista una sesión activa de host
-     * Si no existe sesión, muestra modal de crear nueva partida
+     * Si no existe sesión, retorna false y deja que CSS muestre el modal
      * @returns {boolean} true si hay sesión activa, false si no
      */
     checkActiveSession() {
         const hasSession = StorageManager.isHostSessionActive();
         if (!hasSession) {
-            console.warn('⚠️ Sin sesión activa - mostrando modal');
-            // Modal se oculta/muestra por CSS, no por JS
+            console.warn('⚠️ Sin sesión activa - CSS mostrará modal automáticamente');
         }
         return hasSession;
     }
@@ -651,4 +652,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v9 - REFACTOR: determineUIState() sólo actualiza clases', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js v9 - FASE 3: Solo clases CSS, sin inline styles conflictivos', 'color: #10B981; font-weight: bold');
