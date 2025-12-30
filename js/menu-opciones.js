@@ -12,6 +12,7 @@ class MenuOpcionesHandler {
         this.btn = document.querySelector(buttonSelector);
         this.menu = document.querySelector(menuSelector);
         this.isOpen = false;
+        this.closingTimeout = null;
 
         if (!this.btn || !this.menu) {
             console.warn(`⚠️ MenuOpcionesHandler: No se encontró botón o menú para ${buttonSelector}`);
@@ -23,7 +24,7 @@ class MenuOpcionesHandler {
 
     init() {
         // Asegurar que arranca cerrado
-        this.menu.style.display = 'none';
+        this.menu.classList.remove('menu-open');
         this.isOpen = false;
 
         // Toggle al click del botón
@@ -62,21 +63,29 @@ class MenuOpcionesHandler {
 
     open() {
         if (this.isOpen) return;
+        
+        // Limpiar timeout anterior si existe
+        if (this.closingTimeout) {
+            clearTimeout(this.closingTimeout);
+            this.closingTimeout = null;
+        }
+        
         this.isOpen = true;
-        this.menu.style.display = 'flex';
-        this.menu.style.animation = 'slideDown 0.3s ease-out';
+        this.menu.classList.add('menu-open');
         console.log(`📂 Menú abierto`);
     }
 
     close() {
         if (!this.isOpen) return;
+        
         this.isOpen = false;
-        this.menu.style.animation = 'slideOut 0.3s ease-out';
-        setTimeout(() => {
-            if (!this.isOpen) {
-                this.menu.style.display = 'none';
-            }
-        }, 300);
+        this.menu.classList.remove('menu-open');
+        
+        // Limpiar timeout anterior si existe
+        if (this.closingTimeout) {
+            clearTimeout(this.closingTimeout);
+        }
+        
         console.log(`📂 Menú cerrado`);
     }
 }
