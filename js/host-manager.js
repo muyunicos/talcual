@@ -40,6 +40,7 @@ class HostManager {
         this.initUI();
         this.attachEventListeners();
         this.attachMenuEventListeners();
+        this.attachConfigModalListeners();
         this.connectGameClient();
     }
 
@@ -110,6 +111,106 @@ class HostManager {
         document.getElementById('hamburger-terminate')?.addEventListener('click', () => this.handleTerminate());
     }
 
+    attachConfigModalListeners() {
+        const modalConfig = document.getElementById('modal-game-config');
+        const btnCancel = document.getElementById('btn-config-cancel');
+        const btnSave = document.getElementById('btn-config-save');
+        
+        if (!modalConfig || !btnCancel || !btnSave) return;
+
+        // Botón Cancelar
+        btnCancel.addEventListener('click', () => this.closeConfigModal());
+
+        // Botón Guardar
+        btnSave.addEventListener('click', () => this.saveGameConfig());
+
+        // Botones de ajuste para Rondas
+        document.getElementById('btn-decrease-rounds')?.addEventListener('click', () => {
+            const input = document.getElementById('config-total-rounds');
+            if (input && parseInt(input.value) > 1) {
+                input.value = parseInt(input.value) - 1;
+            }
+        });
+
+        document.getElementById('btn-increase-rounds')?.addEventListener('click', () => {
+            const input = document.getElementById('config-total-rounds');
+            if (input && parseInt(input.value) < 10) {
+                input.value = parseInt(input.value) + 1;
+            }
+        });
+
+        // Botones de ajuste para Duración
+        document.getElementById('btn-decrease-duration')?.addEventListener('click', () => {
+            const input = document.getElementById('config-round-duration');
+            if (input && parseInt(input.value) > 30) {
+                input.value = parseInt(input.value) - 10;
+            }
+        });
+
+        document.getElementById('btn-increase-duration')?.addEventListener('click', () => {
+            const input = document.getElementById('config-round-duration');
+            if (input && parseInt(input.value) < 300) {
+                input.value = parseInt(input.value) + 10;
+            }
+        });
+
+        // Botones de ajuste para Mínimo de Jugadores
+        document.getElementById('btn-decrease-min-players')?.addEventListener('click', () => {
+            const input = document.getElementById('config-min-players');
+            if (input && parseInt(input.value) > 1) {
+                input.value = parseInt(input.value) - 1;
+            }
+        });
+
+        document.getElementById('btn-increase-min-players')?.addEventListener('click', () => {
+            const input = document.getElementById('config-min-players');
+            if (input && parseInt(input.value) < 6) {
+                input.value = parseInt(input.value) + 1;
+            }
+        });
+
+        // Cerrar modal si se hace click fuera
+        modalConfig.addEventListener('click', (e) => {
+            if (e.target === modalConfig) {
+                this.closeConfigModal();
+            }
+        });
+    }
+
+    closeConfigModal() {
+        const modalConfig = document.getElementById('modal-game-config');
+        if (modalConfig) {
+            modalConfig.style.display = 'none';
+        }
+    }
+
+    async saveGameConfig() {
+        const totalRounds = parseInt(document.getElementById('config-total-rounds')?.value || 3);
+        const roundDuration = parseInt(document.getElementById('config-round-duration')?.value || 60);
+        const minPlayers = parseInt(document.getElementById('config-min-players')?.value || 2);
+
+        this.totalRounds = totalRounds;
+        this.minPlayers = minPlayers;
+
+        try {
+            if (this.client) {
+                await this.client.sendAction('update_game_config', {
+                    game_id: this.gameCode,
+                    total_rounds: totalRounds,
+                    round_duration: roundDuration,
+                    min_players: minPlayers
+                });
+            }
+            
+            this.updateRoundInfo();
+            this.closeConfigModal();
+            console.log('✅ Configuración guardada');
+        } catch (error) {
+            console.error('Error guardando configuración:', error);
+            alert('Error al guardar configuración');
+        }
+    }
+
     handleRestartRound() {
         if (confirm('¿Reiniciar la ronda actual?')) {
             this.startGame();
@@ -133,6 +234,15 @@ class HostManager {
     handleSettings() {
         const modalConfig = document.getElementById('modal-game-config');
         if (modalConfig) {
+            // Cargar valores actuales en el modal
+            const inputRounds = document.getElementById('config-total-rounds');
+            const inputDuration = document.getElementById('config-round-duration');
+            const inputMinPlayers = document.getElementById('config-min-players');
+            
+            if (inputRounds) inputRounds.value = this.totalRounds;
+            if (inputDuration) inputDuration.value = 60; // Valor por defecto
+            if (inputMinPlayers) inputMinPlayers.value = this.minPlayers;
+            
             modalConfig.style.display = 'flex';
         } else {
             alert('Modal de configuración no disponible');
