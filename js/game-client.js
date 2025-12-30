@@ -396,8 +396,14 @@ class GameClient {
   }
 }
 
+// FIX #1: Corregir getRemainingTime - Usar MILISEGUNDOS consistentemente
 function getRemainingTime(startTimestamp, duration) {
-  const now = Math.floor(Date.now() / 1000);
+  if (typeof timeSync !== 'undefined' && timeSync && timeSync.isCalibrated) {
+    return timeSync.getRemainingTime(startTimestamp, duration);
+  }
+  
+  // Fallback: Ambos en ms
+  const now = Date.now();
   const elapsed = now - startTimestamp;
   return Math.max(0, duration - elapsed);
 }
