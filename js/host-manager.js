@@ -32,12 +32,17 @@ function determineUIState() {
     if (hasSession && gameCode) {
         root.classList.add('has-session');
         root.classList.remove('no-session');
-        console.log('🎮 determineUIState: Sesión activa - UI mostrada por CSS');
+        console.log('🎮 determineUIState: Modo CON sesión (has-session)');
     } else {
         root.classList.add('no-session');
         root.classList.remove('has-session');
-        console.log('➕ determineUIState: Sin sesión - Modal visible por CSS');
+        console.log('➕ determineUIState: Modo SIN sesión (no-session)');
     }
+    
+    // IMPORTANTE: NO manipulamos style.display directamente
+    // Las reglas CSS lo hacen automáticamente con !important:
+    // html.no-session .session-only { display: none !important; }
+    // html.has-session .nosession-only { display: none !important; }
 }
 
 // Ejecutar determineUIState cuando el DOM esté listo
@@ -107,6 +112,15 @@ class HostManager {
             codeSticker.addEventListener('click', () => {
                 navigator.clipboard.writeText(this.gameCode).then(() => {
                     console.log('📋 Código copiado al clipboard:', this.gameCode);
+                    
+                    // Agregar clase para feedback visual
+                    codeSticker.classList.add('copied');
+                    
+                    // Remover clase después de la animación
+                    setTimeout(() => {
+                        codeSticker.classList.remove('copied');
+                    }, 600);
+                    
                 }).catch(err => {
                     console.error('❌ Error copiando código:', err);
                 });
