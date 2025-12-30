@@ -22,32 +22,22 @@
             <a href="play.html" class="btn-join">📱 Unirse</a>
         </div>
         
-        <div class="version">v0.03 - Muy Únicos</div>
+        <div class="version">v0.04 - Muy Únicos</div>
     </div>
-    
     <script src="js/shared-utils.js"></script>
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            // FASE 1: centralizar claves y acceso a localStorage
             const hasStorageManager = (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined');
-
             const gameId = hasStorageManager ? StorageManager.get(StorageKeys.GAME_ID) : localStorage.getItem('gameId');
             const playerId = hasStorageManager ? StorageManager.get(StorageKeys.PLAYER_ID) : localStorage.getItem('playerId');
             const isHostValue = hasStorageManager ? StorageManager.get(StorageKeys.IS_HOST) : localStorage.getItem('isHost');
             const isHost = isHostValue === 'true';
-            
-            if (gameId) {
-                console.log('🔄 Sesión detectada:', gameId);
-                
+            if (gameId) {                
                 if (isHost) {
-                    console.log('➡️ Redirigiendo a host.html');
                     window.location.href = 'host.html';
                 } else if (playerId) {
-                    console.log('➡️ Redirigiendo a play.html');
                     window.location.href = 'play.html';
                 }
-            } else {
-                console.log('🏠 Sin sesión activa, mostrando landing');
             }
         });
     </script>
