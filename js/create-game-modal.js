@@ -172,7 +172,7 @@ class CreateGameModal {
             
         } catch (error) {
             console.error('❌ Error:', error);
-            this.showMessage(°❌ ` + error.message, 'error');
+            this.showMessage('❌ ' + error.message, 'error');
             
         } finally {
             this.isCreating = false;
