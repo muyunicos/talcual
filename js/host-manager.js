@@ -1,1021 +1,193 @@
 /**
- * @file host-manager.js
- * @description Gestor de lógica del anfitrión con configuración y control de flujo
+ * Host Manager - Floating Panels Architecture
+ * Gestiona: timer, categoría tab, fade ranking/top, panel draggable (TODO: integrate interact.js)
  */
 
 class HostManager {
-    constructor() {
-        this.gameId = null;
-        this.client = null;
-        this.gameState = null;
+    constructor(gameCode) {
+        this.gameCode = gameCode;
+        this.eventSource = null;
+        this.currentRound = 0;
+        this.totalRounds = 3;
+        this.remainingTime = 0;
         this.timerInterval = null;
-        this.countdownInterval = null;
-        this.gameConfig = {
-            totalRounds: 3,
-            roundDuration: 60,
-            minPlayers: 2
-        };
-        this.elements = {};
-        this.copyIndicatorTimeout = null;
-        this.dropdownOpen = false;
-        this.hamburgerOpen = false;
 
-        // Create game modal helpers
-        this.createModalInitialized = false;
-        this.userEditedCode = false;
+        this.activeTab = 'ranking'; // 'ranking' | 'topwords'
 
-        // Host-only: override de status mientras calcula
-        this.hostStatusOverride = null;
-
-        // Motor de comparación (host)
-        this.wordEngine = null;
-        this.wordEngineReady = false;
-        this.wordEngineInitPromise = null;
+        this.initUI();
+        this.attachEventListeners();
+        this.connectSSE();
     }
 
-    initialize() {
-        debug('🌟 Inicializando HostManager');
-        this.cacheElements();
-        this.attachEventListeners();
-
-        // Precargar motor de palabras lo antes posible
-        this.initWordEngine();
-
-        const savedGameId = getLocalStorage('gameId');
-
-        if (savedGameId) {
-            debug('🔄 Intentando recuperar sesión del host');
-            this.recoverSession(savedGameId).then(recovered => {
-                if (!recovered) {
-                    // 🔧 FIX: Mostrar SIEMPRE modal de crear, NUNCA config
-                    this.showCreateGameModal();
-                }
-            });
-        } else {
-            // 🔧 FIX: Mostrar modal de crear partida (NO config)
-            this.showCreateGameModal();
+    initUI() {
+        // Código sala
+        const codeValueEl = document.getElementById('code-sticker-value');
+        if (codeValueEl) {
+            codeValueEl.textContent = this.gameCode;
         }
 
-        document.addEventListener('keypress', (e) => this.handleKeyPress(e));
-        document.addEventListener('click', (e) => this.handleDocumentClick(e));
-        debug('✅ HostManager inicializado');
+        // Copy to clipboard
+        const codeSticker = document.querySelector('.code-sticker-floating');
+        if (codeSticker) {
+            codeSticker.addEventListener('click', () => {
+                navigator.clipboard.writeText(this.gameCode).then(() => {
+                    console.log('Código copiado:', this.gameCode);
+                    // TODO: mostrar toast/feedback visual
+                });
+            });
+        }
+
+        // Tabs panel lateral
+        this.initPanelTabs();
+
+        // TODO: init draggable/resizable con interact.js o custom
     }
 
-    initWordEngine() {
-        if (this.wordEngineInitPromise) return this.wordEngineInitPromise;
+    initPanelTabs() {
+        const tabs = document.querySelectorAll('.panel-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab; // 'ranking' | 'topwords'
+                this.switchTab(targetTab);
+            });
+        });
 
-        this.wordEngineInitPromise = (async () => {
-            try {
-                if (typeof WordEquivalenceEngine !== 'function') {
-                    console.warn('⚠️ WordEquivalenceEngine no está disponible. Verificar inclusión de js/word-comparison.js');
-                    this.wordEngineReady = false;
-                    return;
-                }
+        // Set inicial
+        this.switchTab(this.activeTab);
+    }
 
-                this.wordEngine = new WordEquivalenceEngine();
-                await this.wordEngine.init('/js/sinonimos.json');
-                this.wordEngineReady = true;
-            } catch (e) {
-                console.error('❌ Error inicializando word engine:', e);
-                this.wordEngineReady = false;
+    switchTab(tabName) {
+        this.activeTab = tabName;
+
+        // Update tabs
+        const tabs = document.querySelectorAll('.panel-tab');
+        tabs.forEach(t => {
+            if (t.dataset.tab === tabName) {
+                t.classList.add('active');
+            } else {
+                t.classList.remove('active');
             }
-        })();
+        });
 
-        return this.wordEngineInitPromise;
-    }
-
-    cacheElements() {
-        this.elements = {
-            modalCreateGame: safeGetElement('modal-create-game'),
-            modalGameConfig: safeGetElement('modal-game-config'),
-            gameScreen: safeGetElement('game-screen'),
-            customCodeInput: safeGetElement('custom-code'),
-            categorySelect: safeGetElement('category-select'),
-            btnCreateGame: safeGetElement('btn-create-game'),
-            statusMessage: safeGetElement('status-message'),
-            timerDisplay: safeGetElement('timer-display'),
-
-            // Legacy (prev UI)
-            gameCodeTv: safeGetElement('game-code-tv'),
-
-            // Current UI (host.html)
-            codeStickerFloating: safeGetElement('code-sticker-floating'),
-            codeStickerValue: safeGetElement('code-sticker-value'),
-
-            rankingList: safeGetElement('ranking-list'),
-            wordDisplay: safeGetElement('word-display'),
-            countdownDisplay: safeGetElement('countdown-display'),
-            roundInfo: safeGetElement('round-info'),
-            categoryDisplay: safeGetElement('category-display'),
-            topWordsList: safeGetElement('top-words-list'),
-            playersGrid: safeGetElement('players-grid'),
-            resultsPanel: safeGetElement('results-panel'),
-            resultsContent: safeGetElement('results-content'),
-            controlsPanel: safeGetElement('controls-panel'),
-            btnConfig: safeGetElement('btn-config'),
-            configDropdown: safeGetElement('config-dropdown-host'),
-            btnStartRound: safeGetElement('btn-start-round'),
-            btnEndRound: safeGetElement('btn-end-round'),
-            btnNextRound: safeGetElement('btn-next-round'),
-            btnFinishGame: safeGetElement('btn-finish-game'),
-            btnNewGame: safeGetElement('btn-new-game'),
-            configTotalRounds: safeGetElement('config-total-rounds'),
-            configRoundDuration: safeGetElement('config-round-duration'),
-            configMinPlayers: safeGetElement('config-min-players'),
-            btnConfigCancel: safeGetElement('btn-config-cancel'),
-            btnConfigSave: safeGetElement('btn-config-save'),
-            // 🔧 NEW: Hamburger menu elements
-            hamburgerBtn: safeGetElement('btn-hamburger-host'),
-            hamburgerMenu: safeGetElement('hamburger-menu-host')
-        };
-    }
-
-    getGameCodeClickTarget() {
-        return this.elements.codeStickerFloating
-            || this.elements.codeStickerValue
-            || this.elements.gameCodeTv;
-    }
-
-    getGameCodeText() {
-        const code = (this.elements.codeStickerValue?.textContent
-            || this.elements.gameCodeTv?.textContent
-            || this.gameId
-            || '').toString().trim();
-
-        if (!code || code === '------' || code === '----') return '';
-        return code;
-    }
-
-    setGameCodeText(code) {
-        if (!code) return;
-        if (this.elements.gameCodeTv) this.elements.gameCodeTv.textContent = code;
-        if (this.elements.codeStickerValue) this.elements.codeStickerValue.textContent = code;
+        // Update views (fade)
+        const views = document.querySelectorAll('.panel-view');
+        views.forEach(v => {
+            if (v.dataset.view === tabName) {
+                v.classList.add('active');
+            } else {
+                v.classList.remove('active');
+            }
+        });
     }
 
     attachEventListeners() {
-        if (this.elements.btnCreateGame) {
-            this.elements.btnCreateGame.addEventListener('click', () => this.createGame());
-        }
-
-        if (this.elements.customCodeInput) {
-            this.elements.customCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.createGame();
-            });
-
-            this.elements.customCodeInput.addEventListener('input', () => {
-                const value = this.elements.customCodeInput?.value?.trim() || '';
-                this.userEditedCode = value.length > 0;
-            });
-        }
-
-        if (this.elements.categorySelect) {
-            this.elements.categorySelect.addEventListener('change', () => this.handleCategoryChange());
-        }
-
-        if (this.elements.btnConfig) {
-            this.elements.btnConfig.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleConfigDropdown();
-            });
-        }
-
-        // 🔧 NEW: Hamburger menu listeners
-        if (this.elements.hamburgerBtn) {
-            this.elements.hamburgerBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleHamburgerMenu();
-            });
-        }
-
-        // Config dropdown options
-        const optionSettings = safeGetElement('option-config-settings');
-        const optionRestartRound = safeGetElement('option-restart-round');
-        const optionEndGame = safeGetElement('option-end-game');
-
-        if (optionSettings) {
-            optionSettings.addEventListener('click', () => {
-                this.hideConfigDropdown();
-                this.showConfigModal();
-            });
-        }
-
-        if (optionRestartRound) {
-            optionRestartRound.addEventListener('click', () => {
-                this.hideConfigDropdown();
-                this.restartRound();
-            });
-        }
-
-        if (optionEndGame) {
-            optionEndGame.addEventListener('click', () => {
-                this.hideConfigDropdown();
-                this.finishGame();
-            });
-        }
-
-        // 🔧 NEW: Hamburger menu options
-        const hamburgerRestart = safeGetElement('hamburger-restart-round');
-        const hamburgerNewGame = safeGetElement('hamburger-new-game');
-        const hamburgerSettings = safeGetElement('hamburger-settings');
-        const hamburgerTerminate = safeGetElement('hamburger-terminate');
-
-        if (hamburgerRestart) {
-            hamburgerRestart.addEventListener('click', () => {
-                this.closeHamburgerMenu();
-                this.restartRound();
-            });
-        }
-
-        if (hamburgerNewGame) {
-            hamburgerNewGame.addEventListener('click', () => {
-                this.closeHamburgerMenu();
-                this.createNewGame();
-            });
-        }
-
-        if (hamburgerSettings) {
-            hamburgerSettings.addEventListener('click', () => {
-                this.closeHamburgerMenu();
-                this.showConfigModal();
-            });
-        }
-
-        if (hamburgerTerminate) {
-            hamburgerTerminate.addEventListener('click', () => {
-                this.closeHamburgerMenu();
-                this.finishGame();
-            });
-        }
-
-        if (this.elements.btnConfigCancel) {
-            this.elements.btnConfigCancel.addEventListener('click', () => this.hideConfigModal());
-        }
-
-        if (this.elements.btnConfigSave) {
-            this.elements.btnConfigSave.addEventListener('click', () => this.saveGameConfig());
-        }
-
-        if (this.elements.btnStartRound) {
-            this.elements.btnStartRound.addEventListener('click', () => this.startRound());
-        }
-
-        if (this.elements.btnEndRound) {
-            this.elements.btnEndRound.addEventListener('click', () => this.endRound());
-        }
-
-        if (this.elements.btnNextRound) {
-            this.elements.btnNextRound.addEventListener('click', () => this.nextRound());
-        }
-
-        if (this.elements.btnFinishGame) {
-            this.elements.btnFinishGame.addEventListener('click', () => this.finishGame());
-        }
-
-        if (this.elements.btnNewGame) {
-            this.elements.btnNewGame.addEventListener('click', () => this.createNewGame());
-        }
-
-        this.setupGameCodeCopy();
-        this.setupConfigInputAdjusters();
-    }
-
-    async initializeCreateGameForm() {
-        if (!this.elements.categorySelect || !this.elements.customCodeInput) return;
-
-        // Populate categories once
-        if (!this.createModalInitialized) {
-            this.createModalInitialized = true;
-
-            let categories = [];
-            try {
-                categories = await loadDictionaryCategories();
-            } catch (e) {
-                categories = [];
-            }
-
-            // Fallback: keep a usable select
-            if (!Array.isArray(categories) || categories.length === 0) {
-                categories = ['GENERAL'];
-            }
-
-            this.elements.categorySelect.innerHTML = '';
-            categories.forEach((cat) => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                this.elements.categorySelect.appendChild(opt);
-            });
-
-            // Default selection
-            const savedCategory = getLocalStorage('selectedCategory');
-            if (savedCategory && categories.includes(savedCategory)) {
-                this.elements.categorySelect.value = savedCategory;
-            } else {
-                this.elements.categorySelect.value = categories[0];
-            }
-        }
-
-        // Prefill game code (only if user didn't type)
-        await this.refreshSuggestedGameCode();
-    }
-
-    async refreshSuggestedGameCode(force = false) {
-        if (!this.elements.customCodeInput) return;
-
-        const current = (this.elements.customCodeInput.value || '').trim();
-        if (!force && this.userEditedCode && current.length > 0) return;
-
-        const selectedCategory = this.elements.categorySelect?.value || null;
-
-        try {
-            const code = await generateGameCodeForCategory(selectedCategory, 3, 5);
-            this.elements.customCodeInput.value = code;
-            this.userEditedCode = false;
-        } catch (e) {
-            // If something fails, keep field empty and let createGame() fallback
+        // Botón empezar
+        const btnStart = document.getElementById('btn-start-game');
+        if (btnStart) {
+            btnStart.addEventListener('click', () => this.startGame());
         }
     }
 
-    handleCategoryChange() {
-        // If user cleared the code or it's still auto-generated, refresh
-        const value = (this.elements.customCodeInput?.value || '').trim();
-        if (!value || !this.userEditedCode) {
-            this.refreshSuggestedGameCode(true);
-        }
-    }
+    connectSSE() {
+        this.eventSource = new EventSource(`/api/host/events.php?code=${this.gameCode}`);
 
-    handleDocumentClick(e) {
-        // Close dropdowns if clicking outside
-        if (this.dropdownOpen && this.elements.configDropdown && this.elements.btnConfig) {
-            if (!this.elements.configDropdown.contains(e.target) && e.target !== this.elements.btnConfig) {
-                this.hideConfigDropdown();
-            }
-        }
-
-        // 🔧 NEW: Close hamburger if clicking outside
-        if (this.hamburgerOpen && this.elements.hamburgerMenu && this.elements.hamburgerBtn) {
-            if (!this.elements.hamburgerMenu.contains(e.target) && e.target !== this.elements.hamburgerBtn) {
-                this.closeHamburgerMenu();
-            }
-        }
-    }
-
-    // 🔧 NEW: Hamburger menu methods
-    toggleHamburgerMenu() {
-        if (this.hamburgerOpen) {
-            this.closeHamburgerMenu();
-        } else {
-            this.openHamburgerMenu();
-        }
-    }
-
-    openHamburgerMenu() {
-        if (!this.elements.hamburgerMenu) return;
-        safeShowElement(this.elements.hamburgerMenu);
-        this.hamburgerOpen = true;
-    }
-
-    closeHamburgerMenu() {
-        if (!this.elements.hamburgerMenu) return;
-        safeHideElement(this.elements.hamburgerMenu);
-        this.hamburgerOpen = false;
-    }
-
-    toggleConfigDropdown() {
-        if (this.dropdownOpen) {
-            this.hideConfigDropdown();
-        } else {
-            this.showConfigDropdown();
-        }
-    }
-
-    showConfigDropdown() {
-        if (!this.elements.configDropdown) return;
-        safeShowElement(this.elements.configDropdown);
-        this.dropdownOpen = true;
-    }
-
-    hideConfigDropdown() {
-        if (!this.elements.configDropdown) return;
-        safeHideElement(this.elements.configDropdown);
-        this.dropdownOpen = false;
-    }
-
-    setupConfigInputAdjusters() {
-        const adjusters = [
-            { btnDec: 'btn-decrease-rounds', btnInc: 'btn-increase-rounds', input: 'config-total-rounds', min: 1, max: 10 },
-            { btnDec: 'btn-decrease-duration', btnInc: 'btn-increase-duration', input: 'config-round-duration', min: 30, max: 300, step: 10 },
-            { btnDec: 'btn-decrease-min-players', btnInc: 'btn-increase-min-players', input: 'config-min-players', min: 1, max: 6 }
-        ];
-
-        adjusters.forEach(adjuster => {
-            const input = safeGetElement(adjuster.input);
-            const btnDec = safeGetElement(adjuster.btnDec);
-            const btnInc = safeGetElement(adjuster.btnInc);
-
-            if (btnDec) {
-                btnDec.addEventListener('click', () => {
-                    let val = parseInt(input?.value || adjuster.min) - (adjuster.step || 1);
-                    val = Math.max(adjuster.min, val);
-                    if (input) input.value = val;
-                });
-            }
-
-            if (btnInc) {
-                btnInc.addEventListener('click', () => {
-                    let val = parseInt(input?.value || adjuster.min) + (adjuster.step || 1);
-                    val = Math.min(adjuster.max, val);
-                    if (input) input.value = val;
-                });
-            }
-        });
-    }
-
-    setupGameCodeCopy() {
-        const sticker = this.getGameCodeClickTarget();
-        if (!sticker) return;
-
-        // Evitar duplicar listeners si se llama más de una vez
-        if (sticker.dataset.copyBound === '1') return;
-        sticker.dataset.copyBound = '1';
-
-        sticker.title = 'Click para copiar el código';
-        sticker.setAttribute('role', 'button');
-        sticker.setAttribute('tabindex', '0');
-
-        const copyHandler = () => this.copyGameCodeToClipboard();
-
-        sticker.addEventListener('click', copyHandler);
-        sticker.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                copyHandler();
-            }
-        });
-    }
-
-    async copyGameCodeToClipboard() {
-        const code = this.getGameCodeText();
-        if (!code) return;
-
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(code);
-            } else {
-                this.fallbackCopyText(code);
-            }
-            this.showGameCodeCopiedIndicator();
-        } catch (error) {
-            this.fallbackCopyText(code);
-            this.showGameCodeCopiedIndicator();
-        }
-    }
-
-    fallbackCopyText(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.top = '-1000px';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-
-        try {
-            document.execCommand('copy');
-        } finally {
-            document.body.removeChild(ta);
-        }
-    }
-
-    showGameCodeCopiedIndicator() {
-        const targets = [
-            this.elements.codeStickerFloating,
-            this.elements.codeStickerValue,
-            this.elements.gameCodeTv
-        ].filter(Boolean);
-
-        if (targets.length === 0) return;
-
-        targets.forEach((el) => {
-            el.classList.remove('copied');
-            void el.offsetWidth;
-            el.classList.add('copied');
+        this.eventSource.addEventListener('game_state', (e) => {
+            const state = JSON.parse(e.data);
+            this.handleGameState(state);
         });
 
-        if (this.copyIndicatorTimeout) {
-            clearTimeout(this.copyIndicatorTimeout);
-        }
+        this.eventSource.addEventListener('player_joined', (e) => {
+            const player = JSON.parse(e.data);
+            this.addPlayer(player);
+        });
 
-        this.copyIndicatorTimeout = setTimeout(() => {
-            targets.forEach((el) => el.classList.remove('copied'));
-        }, 900);
+        this.eventSource.addEventListener('player_left', (e) => {
+            const data = JSON.parse(e.data);
+            this.removePlayer(data.playerId);
+        });
+
+        this.eventSource.addEventListener('round_start', (e) => {
+            const data = JSON.parse(e.data);
+            this.handleRoundStart(data);
+        });
+
+        this.eventSource.addEventListener('round_end', (e) => {
+            const data = JSON.parse(e.data);
+            this.handleRoundEnd(data);
+        });
+
+        this.eventSource.addEventListener('game_end', (e) => {
+            const data = JSON.parse(e.data);
+            this.handleGameEnd(data);
+        });
+
+        this.eventSource.onerror = (err) => {
+            console.error('SSE error:', err);
+            // TODO: retry logic
+        };
     }
 
-    showConfigModal() {
-        if (this.gameState?.status !== 'waiting') {
-            showNotification('No puedes configurar durante una ronda activa', 'warning');
-            return;
+    handleGameState(state) {
+        console.log('Game state:', state);
+
+        // Update players
+        this.updatePlayers(state.players || []);
+
+        // Update ranking
+        this.updateRanking(state.players || []);
+
+        // Update top words
+        this.updateTopWords(state.topWords || []);
+
+        // Update category sticker
+        const categorySticker = document.querySelector('.category-sticker');
+        if (categorySticker && state.category) {
+            categorySticker.textContent = state.category;
         }
 
-        if (this.elements.configTotalRounds) {
-            this.elements.configTotalRounds.value = this.gameConfig.totalRounds;
-        }
-        if (this.elements.configRoundDuration) {
-            this.elements.configRoundDuration.value = this.gameConfig.roundDuration;
-        }
-        if (this.elements.configMinPlayers) {
-            this.elements.configMinPlayers.value = this.gameConfig.minPlayers;
+        // Update round info
+        if (state.currentRound !== undefined) {
+            this.currentRound = state.currentRound;
+            this.totalRounds = state.totalRounds || 3;
+            this.updateRoundInfo();
         }
 
-        safeShowElement(this.elements.modalGameConfig);
-    }
-
-    hideConfigModal() {
-        safeHideElement(this.elements.modalGameConfig);
-    }
-
-    saveGameConfig() {
-        const totalRounds = parseInt(this.elements.configTotalRounds?.value || 3);
-        const roundDuration = parseInt(this.elements.configRoundDuration?.value || 60);
-        const minPlayers = parseInt(this.elements.configMinPlayers?.value || 2);
-
-        if (totalRounds < 1 || totalRounds > 10) {
-            showNotification('Rondas debe estar entre 1 y 10', 'error');
-            return;
-        }
-        if (roundDuration < 30 || roundDuration > 300) {
-            showNotification('Duración debe estar entre 30 y 300 segundos', 'error');
-            return;
-        }
-        if (minPlayers < 1 || minPlayers > 6) {
-            showNotification('Mínimo de jugadores debe estar entre 1 y 6', 'error');
-            return;
+        // Update timer
+        if (state.remainingTime !== undefined) {
+            this.remainingTime = state.remainingTime;
+            this.updateTimer();
         }
 
-        this.gameConfig = { totalRounds, roundDuration, minPlayers };
-        this.hideConfigModal();
-        showNotification('✅ Configuración guardada', 'success');
-        debug(`Config: ${totalRounds} rondas, ${roundDuration}s, mín ${minPlayers} jugadores`);
-    }
-
-    handleKeyPress(event) {
-        if (event.key === 'Enter') {
-            if (this.elements.btnStartRound && !this.elements.btnStartRound.disabled) {
-                this.startRound();
-            }
-        }
-    }
-
-    async recoverSession(gameId) {
-        try {
-            this.gameId = gameId;
-            this.client = new GameClient(gameId, null, 'host');
-
-            const result = await this.client.sendAction('get_state', { game_id: gameId });
-
-            if (result.success && result.state) {
-                debug('✅ Sesión del host recuperada');
-                this.loadGameScreen(result.state);
-                return true;
-            }
-        } catch (error) {
-            debug('Error recuperando sesión:', error, 'error');
-        }
-
-        return false;
-    }
-
-    showCreateGameModal() {
-        safeShowElement(this.elements.modalCreateGame);
-        safeHideElement(this.elements.gameScreen);
-
-        // Async init (categories + suggested code)
-        this.initializeCreateGameForm();
-    }
-
-    loadGameScreen(state) {
-        safeHideElement(this.elements.modalCreateGame);
-        safeShowElement(this.elements.gameScreen);
-
-        this.setGameCodeText(this.gameId);
-
-        // 🔧 FIX: asegurar que el listener de copiado quede atado al sticker visible
-        this.elements.codeStickerFloating = safeGetElement('code-sticker-floating');
-        this.elements.codeStickerValue = safeGetElement('code-sticker-value');
-        this.setupGameCodeCopy();
-
-        this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
-        this.client.onConnectionLost = () => this.handleConnectionLost();
-
-        this.client.connect();
-        safeShowElement(this.elements.controlsPanel);
-
-        this.handleStateUpdate(state);
-    }
-
-    async createGame() {
-        let customCode = this.elements.customCodeInput?.value?.trim().toUpperCase();
-        const selectedCategory = this.elements.categorySelect?.value || null;
-
-        if (customCode && !isValidGameCode(customCode)) {
-            if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Código inválido (3 a 5 letras)';
-            }
-            return;
-        }
-
-        if (!customCode) {
-            customCode = await generateGameCodeForCategory(selectedCategory, 3, 5);
-        }
-
-        this.gameId = customCode;
-        setLocalStorage('selectedCategory', selectedCategory);
-
-        if (this.elements.btnCreateGame) {
-            this.elements.btnCreateGame.disabled = true;
-            this.elements.btnCreateGame.textContent = 'Conectando...';
-        }
-
-        if (this.elements.statusMessage) {
-            this.elements.statusMessage.innerHTML = '⏳ Conectando...';
-        }
-
-        try {
-            this.client = new GameClient(this.gameId, null, 'host');
-
-            const result = await this.client.sendAction('create_game', {
-                game_id: this.gameId,
-                total_rounds: this.gameConfig.totalRounds,
-                round_duration: this.gameConfig.roundDuration,
-                min_players: this.gameConfig.minPlayers,
-                category: selectedCategory
-            });
-
-            if (result.success) {
-                debug(`✅ Juego creado: ${this.gameId}`);
-
-                setLocalStorage('gameId', this.gameId);
-                setLocalStorage('gameConfig', JSON.stringify(this.gameConfig));
-
-                this.loadGameScreen(result.state || {});
-                showNotification(`🎮 Partida: ${this.gameId}`, 'success');
-
-            } else {
-                if (this.elements.statusMessage) {
-                    this.elements.statusMessage.innerHTML = '❌ Error: ' + (result.message || 'Desconocido');
-                }
-                if (this.elements.btnCreateGame) {
-                    this.elements.btnCreateGame.disabled = false;
-                    this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
-                }
-            }
-        } catch (error) {
-            debug('Error creando juego:', error, 'error');
-            if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '❌ Error de conexión';
-            }
-            if (this.elements.btnCreateGame) {
-                this.elements.btnCreateGame.disabled = false;
-                this.elements.btnCreateGame.textContent = '🎮 Crear Partida';
-            }
-        }
-    }
-
-    handleStateUpdate(state) {
-        this.gameState = state;
-        debug('📈 Estado actualizado:', state.status);
-        this.updateHostUI();
-    }
-
-    updateHostUI() {
-        if (!this.gameState) return;
-
-        debug('🖥️ Actualizando UI del host', 'debug');
-        this.updateRanking();
-        this.updateTopWords();
-        this.updatePlayersGrid();
-        this.updateStatusMessage();
-        this.updateRoundInfo();
-        this.updateCategoryDisplay();
-        this.updateWordDisplay();
-        this.updateButtonStates();
-        this.updateTimer();
-
-        // Keep code text synced (in case DOM got rebuilt or recovered state)
-        this.setGameCodeText(this.gameId);
+        // Update center stage
+        this.updateCenterStage(state);
     }
 
     updateRoundInfo() {
-        const roundInfo = this.elements.roundInfo;
-        if (!roundInfo) return;
-
-        if (this.gameState.status === 'waiting') {
-            safeHideElement(roundInfo);
-        } else {
-            const roundDisplay = document.getElementById('round-display');
-            const totalRoundsDisplay = document.getElementById('total-rounds-display');
-
-            if (roundDisplay) roundDisplay.textContent = this.gameState.round || 0;
-            if (totalRoundsDisplay) totalRoundsDisplay.textContent = this.gameConfig.totalRounds;
-
-            safeShowElement(roundInfo);
-        }
-    }
-
-    updateCategoryDisplay() {
-        const categoryDisplay = this.elements.categoryDisplay;
-        if (!categoryDisplay) return;
-
-        if (this.gameState.status === 'playing' && this.gameState.current_category) {
-            const categoryValue = document.getElementById('category-value');
-            if (categoryValue) {
-                categoryValue.textContent = sanitizeText(this.gameState.current_category);
-            }
-            safeShowElement(categoryDisplay);
-        } else {
-            safeHideElement(categoryDisplay);
-        }
-    }
-
-    updateWordDisplay() {
-        const wordDisplay = this.elements.wordDisplay;
-        if (!wordDisplay) return;
-
-        if (this.gameState.status === 'playing' && this.gameState.current_word) {
-            const wordValue = document.getElementById('word-value');
-            if (wordValue) {
-                wordValue.textContent = sanitizeText(this.gameState.current_word);
-            }
-            safeShowElement(wordDisplay);
-        } else {
-            safeHideElement(wordDisplay);
-        }
-    }
-
-    updateRanking() {
-        if (!this.gameState.players) return;
-
-        const ranking = Object.values(this.gameState.players)
-            .sort((a, b) => (b.score || 0) - (a.score || 0))
-            .slice(0, 5);
-
-        let html = '';
-        ranking.forEach((player, idx) => {
-            const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][idx];
-            html += `
-                <div class="ranking-item">
-                    <span class="ranking-position">${medal}</span>
-                    <span class="ranking-name">${sanitizeText(player.name)}</span>
-                    <span class="ranking-score">${player.score || 0}</span>
-                </div>
-            `;
-        });
-
-        if (this.elements.rankingList) {
-            this.elements.rankingList.innerHTML = html || '<div style="opacity: 0.5; text-align: center; padding: 20px;">Esperando jugadores...</div>';
-        }
-    }
-
-    updateTopWords() {
-        if (!this.gameState.round_top_words) return;
-
-        let html = '';
-        this.gameState.round_top_words.forEach((item) => {
-            html += `
-                <div class="top-word-item">
-                    <span class="word">${sanitizeText(item.word)}</span>
-                    <span class="count">${item.count}x</span>
-                </div>
-            `;
-        });
-
-        if (this.elements.topWordsList) {
-            this.elements.topWordsList.innerHTML = html || '<div style="opacity: 0.5; text-align: center; padding: 20px;">Sin palabras aún</div>';
-        }
-    }
-
-    updatePlayersGrid() {
-        const grid = this.elements.playersGrid;
-        if (!grid) return;
-
-        if (!this.gameState.players) {
-            grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
-            return;
-        }
-
-        const players = Object.values(this.gameState.players);
-
-        if (players.length === 0) {
-            grid.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.5; grid-column: 1 / -1;">Esperando jugadores...</div>';
-            return;
-        }
-
-        let html = '';
-
-        players.forEach(player => {
-            try {
-                const colors = player.color?.split(',') || ['#808080', '#404040'];
-                const color1 = colors[0]?.trim() || '#808080';
-                const color2 = colors[1]?.trim() || '#404040';
-                const gradient = `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
-
-                const statusClass = this.getStatusClass(player);
-                const statusEmoji = this.getStatusEmoji(player);
-                const glowColor = color1;
-                const glowShadow = `0 0 24px ${glowColor}88, 0 0 48px ${glowColor}44, inset 0 0 24px ${glowColor}22`;
-                const initial = (player.name || 'J')[0].toUpperCase();
-
-                html += `
-                    <div class="player-squarcle status-${statusClass}"
-                         data-player-id="${player.id}"
-                         style="background: ${gradient}; box-shadow: ${glowShadow};">
-                        <div class="player-initial">${initial}</div>
-                        <div class="player-status-icon">${statusEmoji}</div>
-                        <div class="player-name-label">${sanitizeText(player.name)}</div>
-                        ${this.gameState.status === 'waiting' ? `<button class="btn-remove-player" data-player-id="${player.id}" title="Eliminar jugador">✕</button>` : ''}
-                    </div>
-                `;
-            } catch (error) {
-                debug(`Error renderizando squarcle para ${player.name}:`, error, 'error');
-            }
-        });
-
-        grid.innerHTML = html;
-
-        grid.querySelectorAll('.btn-remove-player').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const playerId = btn.dataset.playerId;
-                this.removePlayer(playerId);
-            });
-        });
-
-        debug(`✅ ${players.length} jugadores renderizados`, 'debug');
-    }
-
-    async removePlayer(playerId) {
-        const player = this.gameState.players?.[playerId];
-        if (!player) return;
-
-        if (!confirm(`¿Eliminar a ${player.name}?`)) {
-            return;
-        }
-
-        try {
-            const result = await this.client.sendAction('leave_game', {
-                game_id: this.gameId,
-                player_id: playerId
-            });
-
-            if (result.success) {
-                showNotification(`${player.name} eliminado`, 'info');
-            }
-        } catch (error) {
-            debug('Error eliminando jugador:', error, 'error');
-            showNotification('Error al eliminar jugador', 'error');
-        }
-    }
-
-    getStatusClass(player) {
-        if (player.disconnected) return 'disconnected';
-        if (player.status === 'ready') return 'ready';
-        if (player.status === 'answered') return 'answered';
-        if (player.status === 'waiting') return 'waiting';
-        return 'connected';
-    }
-
-    getStatusEmoji(player) {
-        if (player.disconnected) return '❌';
-        if (player.status === 'ready') return '✅';
-        if (player.status === 'answered') return '📝';
-        if (player.status === 'waiting') return '⏳';
-        if (player.status === 'connected') return '👥';
-        return '👤';
-    }
-
-    updateStatusMessage() {
-        if (this.hostStatusOverride && this.elements.statusMessage) {
-            this.elements.statusMessage.innerHTML = this.hostStatusOverride;
-            return;
-        }
-
-        let message = 'Cargando...';
-
-        switch (this.gameState.status) {
-            case 'waiting':
-                const activePlayers = Object.values(this.gameState.players || {})
-                    .filter(p => !p.disconnected).length;
-
-                if (activePlayers === 0) {
-                    message = '👥 ESPERANDO JUGADORES';
-                } else if (activePlayers < this.gameConfig.minPlayers) {
-                    const needed = this.gameConfig.minPlayers - activePlayers;
-                    message = `👥 ${activePlayers} conectado${activePlayers === 1 ? '' : 's'}<br>Falta${needed === 1 ? '' : 'n'} ${needed} para comenzar`;
-                } else {
-                    message = `🏃 ¡${activePlayers} listo${activePlayers === 1 ? '' : 's'}!<br>Presiona ENTER para comenzar`;
-                }
-                break;
-            case 'playing':
-                message = `📚 ESCRIBIENDO...<br>Categoría: ${sanitizeText(this.gameState.current_category || 'N/A')}`;
-                break;
-            case 'round_ended':
-                message = '✅ RESULTADOS LISTOS';
-                break;
-            case 'finished':
-                const winner = Object.values(this.gameState.players || {})
-                    .sort((a, b) => (b.score || 0) - (a.score || 0))[0];
-                const winnerName = winner ? sanitizeText(winner.name) : 'Todos';
-                message = `🎉 ¡${winnerName} GANÓ!<br>Puntuación final: ${winner?.score || 0}`;
-                break;
-        }
-
-        if (this.elements.statusMessage) {
-            this.elements.statusMessage.innerHTML = message;
-        }
-    }
-
-    updateButtonStates() {
-        const isWaiting = this.gameState.status === 'waiting';
-        const isPlaying = this.gameState.status === 'playing';
-        const isRoundEnded = this.gameState.status === 'round_ended';
-        const isFinished = this.gameState.status === 'finished';
-
-        const activePlayers = Object.values(this.gameState.players || {})
-            .filter(p => !p.disconnected);
-        const activeCount = activePlayers.length;
-        const canStartRound = isWaiting && activeCount >= this.gameConfig.minPlayers;
-        const isLastRound = this.gameState.round >= this.gameConfig.totalRounds;
-
-        if (this.elements.btnStartRound) {
-            this.elements.btnStartRound.disabled = !canStartRound;
-            this.elements.btnStartRound.style.display = isWaiting ? 'block' : 'none';
-        }
-
-        if (this.elements.btnEndRound) {
-            this.elements.btnEndRound.disabled = !isPlaying;
-            this.elements.btnEndRound.style.display = isPlaying ? 'block' : 'none';
-        }
-
-        if (this.elements.btnNextRound) {
-            this.elements.btnNextRound.disabled = !isRoundEnded || isLastRound;
-            this.elements.btnNextRound.style.display = (isRoundEnded && !isLastRound) ? 'block' : 'none';
-        }
-
-        if (this.elements.btnFinishGame) {
-            this.elements.btnFinishGame.disabled = !isRoundEnded;
-            this.elements.btnFinishGame.style.display = (isRoundEnded && isLastRound) ? 'block' : 'none';
-        }
-
-        if (this.elements.btnNewGame) {
-            this.elements.btnNewGame.style.display = isFinished ? 'block' : 'none';
-        }
-
-        if (this.elements.btnConfig) {
-            this.elements.btnConfig.disabled = !isWaiting;
+        const roundInfoEl = document.querySelector('.round-info');
+        if (roundInfoEl) {
+            roundInfoEl.textContent = `Ronda ${this.currentRound}/${this.totalRounds}`;
         }
     }
 
     updateTimer() {
-        if (this.gameState.status !== 'playing') {
-            this.stopTimer();
-            if (this.elements.timerDisplay) {
-                this.elements.timerDisplay.textContent = '00:00';
-            }
-            return;
-        }
-
-        if (this.gameState.round_started_at && this.gameState.round_duration) {
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = this.gameState.round_duration - (now - this.gameState.round_started_at);
-
-            if (remaining > 0) {
-                this.startContinuousTimer();
-            } else {
-                this.stopTimer();
-            }
+        const timerEl = document.querySelector('.timer-display');
+        if (timerEl) {
+            const minutes = Math.floor(this.remainingTime / 60);
+            const seconds = this.remainingTime % 60;
+            timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
     }
 
-    startContinuousTimer() {
-        if (this.timerInterval) return;
-
-        this.updateTimerFromState();
-
+    startTimer() {
+        this.stopTimer();
         this.timerInterval = setInterval(() => {
-            if (this.client && this.gameState && this.gameState.status === 'playing') {
-                this.updateTimerFromState();
+            if (this.remainingTime > 0) {
+                this.remainingTime--;
+                this.updateTimer();
             } else {
                 this.stopTimer();
             }
         }, 1000);
-    }
-
-    updateTimerFromState() {
-        const now = Math.floor(Date.now() / 1000);
-        const elapsed = now - this.gameState.round_started_at;
-        const remaining = Math.max(0, this.gameState.round_duration - elapsed);
-        updateTimerDisplay(remaining, this.elements.timerDisplay);
     }
 
     stopTimer() {
@@ -1025,281 +197,249 @@ class HostManager {
         }
     }
 
-    async startRound() {
-        try {
-            if (this.elements.btnStartRound) {
-                this.elements.btnStartRound.disabled = true;
-                this.elements.btnStartRound.textContent = 'Iniciando...';
-            }
+    updateCenterStage(state) {
+        const centerStage = document.querySelector('.center-stage');
+        if (!centerStage) return;
 
-            const result = await this.client.sendAction('start_round', {
-                game_id: this.gameId,
-                duration: this.gameConfig.roundDuration,
-                total_rounds: this.gameConfig.totalRounds
-            });
+        // Clear
+        centerStage.innerHTML = '';
 
-            if (!result.success) {
-                showNotification('Error iniciando: ' + (result.message || 'desconocido'), 'error');
-                if (this.elements.btnStartRound) {
-                    this.elements.btnStartRound.disabled = false;
-                    this.elements.btnStartRound.textContent = '▶️ Iniciar (ENTER)';
+        switch (state.phase) {
+            case 'waiting':
+                centerStage.innerHTML = `
+                    <div class="status-message">Esperando jugadores...</div>
+                    <button id="btn-start-game" class="btn-empezar">Empezar Juego</button>
+                `;
+                // Re-attach
+                const btnStart = document.getElementById('btn-start-game');
+                if (btnStart) {
+                    btnStart.addEventListener('click', () => this.startGame());
                 }
-            }
-        } catch (error) {
-            debug('Error iniciando ronda:', error, 'error');
-            showNotification('Error de conexión', 'error');
-            if (this.elements.btnStartRound) {
-                this.elements.btnStartRound.disabled = false;
-                this.elements.btnStartRound.textContent = '▶️ Iniciar (ENTER)';
-            }
+                break;
+
+            case 'countdown':
+                centerStage.innerHTML = `
+                    <div class="countdown-display">${state.countdown || 3}</div>
+                `;
+                break;
+
+            case 'playing':
+                centerStage.innerHTML = `
+                    <div class="category-display">
+                        <span class="label">Categoría:</span>
+                        <span class="value">${state.category || ''}</span>
+                    </div>
+                    <div class="word-display">
+                        <div class="label">Consigna</div>
+                        <div class="word">${state.prompt || ''}</div>
+                    </div>
+                `;
+                break;
+
+            case 'round_ended':
+                // Mostrar results overlay
+                this.showResults(state.results || []);
+                break;
+
+            case 'game_ended':
+                // Mostrar final results
+                this.showFinalResults(state.finalResults || []);
+                break;
+
+            default:
+                centerStage.innerHTML = `<div class="status-message">Cargando...</div>`;
         }
     }
 
-    buildHostResultsFromState(state) {
-        const players = state?.players || {};
-        const engine = this.wordEngine;
+    updatePlayers(players) {
+        const playersGrid = document.querySelector('.players-grid');
+        if (!playersGrid) return;
 
-        const wordCounts = {}; // canonical -> { players: [name...] }
-        const playerCanonicals = {}; // playerId -> [canonical...]
+        playersGrid.innerHTML = '';
 
-        Object.keys(players).forEach((pId) => {
-            const player = players[pId];
-            if (!player || player.disconnected) return;
+        players.forEach(player => {
+            const squarcle = document.createElement('div');
+            squarcle.className = 'player-squarcle';
+            squarcle.dataset.playerId = player.id;
 
-            const answers = Array.isArray(player.answers) ? player.answers : [];
-            const seen = new Set();
+            squarcle.innerHTML = `
+                <div class="squarcle-initial">${player.name.charAt(0).toUpperCase()}</div>
+                <div class="squarcle-name">${player.name}</div>
+                ${player.ready ? '<div class="squarcle-status ready">✓</div>' : ''}
+            `;
 
-            answers.forEach((w) => {
-                const raw = (w || '').toString().trim();
-                if (!raw) return;
-
-                const canonical = (engine && this.wordEngineReady)
-                    ? engine.getCanonical(raw)
-                    : raw.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-                if (!canonical) return;
-                if (seen.has(canonical)) return;
-                seen.add(canonical);
-
-                if (!playerCanonicals[pId]) playerCanonicals[pId] = [];
-                playerCanonicals[pId].push(canonical);
-
-                if (!wordCounts[canonical]) wordCounts[canonical] = { players: [] };
-                if (!wordCounts[canonical].players.includes(player.name)) {
-                    wordCounts[canonical].players.push(player.name);
-                }
-            });
+            playersGrid.appendChild(squarcle);
         });
-
-        // Resultados por jugador
-        const outPlayers = {};
-
-        Object.keys(players).forEach((pId) => {
-            const player = players[pId];
-            if (!player) return;
-
-            const roundResults = {};
-            let roundScore = 0;
-
-            const canonList = playerCanonicals[pId] || [];
-            canonList.forEach((canonical) => {
-                const count = (wordCounts[canonical]?.players || []).length;
-                const points = count > 1 ? count : 0;
-                const matchedWith = (wordCounts[canonical]?.players || []).filter(n => n !== player.name);
-
-                roundResults[canonical] = {
-                    points,
-                    count,
-                    matched_with: matchedWith
-                };
-
-                roundScore += points;
-            });
-
-            outPlayers[pId] = {
-                score_delta: roundScore,
-                round_results: roundResults
-            };
-        });
-
-        // Top words
-        let topWords = [];
-        Object.keys(wordCounts).forEach((canonical) => {
-            const playersList = wordCounts[canonical].players || [];
-            if (playersList.length > 1) {
-                topWords.push({
-                    word: canonical,
-                    count: playersList.length,
-                    players: playersList
-                });
-            }
-        });
-
-        topWords.sort((a, b) => b.count - a.count);
-        topWords = topWords.slice(0, 10);
-
-        return {
-            players: outPlayers,
-            round_top_words: topWords
-        };
     }
 
-    async endRound() {
-        try {
-            if (this.elements.btnEndRound) {
-                this.elements.btnEndRound.disabled = true;
-                this.elements.btnEndRound.textContent = 'Finalizando...';
-            }
+    updateRanking(players) {
+        const rankingList = document.getElementById('ranking-list');
+        if (!rankingList) return;
 
-            this.hostStatusOverride = '⏳ CALCULANDO LOS RESULTADOS...';
-            this.updateStatusMessage();
+        // Sort by score
+        const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
 
-            await this.initWordEngine();
+        rankingList.innerHTML = '';
 
-            const hostResults = this.buildHostResultsFromState(this.gameState);
-
-            const result = await this.client.sendAction('end_round', {
-                game_id: this.gameId,
-                host_results: hostResults
-            });
-
-            // Dejar que el estado (round_ended) pinte el mensaje normal
-            this.hostStatusOverride = null;
-            this.updateStatusMessage();
-
-            if (!result.success) {
-                showNotification('Error finalizando ronda', 'error');
-                if (this.elements.btnEndRound) {
-                    this.elements.btnEndRound.disabled = false;
-                    this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
-                }
-                return;
-            }
-
-            // Mensaje breve de confirmación
-            this.hostStatusOverride = '✅ RESULTADOS LISTOS!';
-            this.updateStatusMessage();
-            setTimeout(() => {
-                this.hostStatusOverride = null;
-                this.updateStatusMessage();
-            }, 900);
-
-        } catch (error) {
-            this.hostStatusOverride = null;
-            this.updateStatusMessage();
-            debug('Error finalizando ronda:', error, 'error');
-            showNotification('Error de conexión', 'error');
-            if (this.elements.btnEndRound) {
-                this.elements.btnEndRound.disabled = false;
-                this.elements.btnEndRound.textContent = '⏹️ Finalizar Ronda';
-            }
-        }
+        sorted.forEach((player, index) => {
+            const item = document.createElement('div');
+            item.className = 'panel-item';
+            item.innerHTML = `
+                <div class="position">${index + 1}</div>
+                <div class="name">${player.name}</div>
+                <div class="value">${player.score || 0}</div>
+            `;
+            rankingList.appendChild(item);
+        });
     }
 
-    async restartRound() {
-        if (!confirm('¿Reiniciar la ronda actual?')) {
+    updateTopWords(topWords) {
+        const topWordsList = document.getElementById('top-words-list');
+        if (!topWordsList) return;
+
+        topWordsList.innerHTML = '';
+
+        if (!topWords || topWords.length === 0) {
+            topWordsList.innerHTML = '<div class="panel-item"><div class="name">Sin palabras aún</div></div>';
             return;
         }
 
-        try {
-            const result = await this.client.sendAction('start_round', {
-                game_id: this.gameId,
-                duration: this.gameConfig.roundDuration,
-                total_rounds: this.gameConfig.totalRounds
-            });
+        topWords.forEach(wordData => {
+            const item = document.createElement('div');
+            item.className = 'panel-item';
+            item.innerHTML = `
+                <div class="name">${wordData.word}</div>
+                <div class="value">${wordData.count}</div>
+            `;
+            topWordsList.appendChild(item);
+        });
+    }
 
-            if (result.success) {
-                showNotification('✅ Ronda reiniciada', 'success');
-            } else {
-                showNotification('Error reiniciando ronda', 'error');
-            }
-        } catch (error) {
-            debug('Error reiniciando ronda:', error, 'error');
-            showNotification('Error de conexión', 'error');
+    showResults(results) {
+        const overlay = document.querySelector('.results-overlay');
+        if (!overlay) return;
+
+        const panel = overlay.querySelector('.results-panel');
+        if (!panel) return;
+
+        panel.innerHTML = `
+            <div class="results-title">Resultados Ronda ${this.currentRound}</div>
+            <div class="panel-list">
+                ${results.map((r, i) => `
+                    <div class="panel-item">
+                        <div class="position">${i + 1}</div>
+                        <div class="name">${r.playerName}</div>
+                        <div class="value">+${r.roundScore || 0}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        overlay.classList.add('active');
+
+        // Auto-hide después de X segundos
+        setTimeout(() => {
+            overlay.classList.remove('active');
+        }, 5000);
+    }
+
+    showFinalResults(finalResults) {
+        const overlay = document.querySelector('.results-overlay');
+        if (!overlay) return;
+
+        const panel = overlay.querySelector('.results-panel');
+        if (!panel) return;
+
+        panel.innerHTML = `
+            <div class="results-title">🏆 Resultados Finales</div>
+            <div class="panel-list">
+                ${finalResults.map((r, i) => `
+                    <div class="panel-item">
+                        <div class="position">${i + 1}</div>
+                        <div class="name">${r.playerName}</div>
+                        <div class="value">${r.totalScore || 0}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        overlay.classList.add('active');
+
+        // No auto-hide en final results
+    }
+
+    addPlayer(player) {
+        console.log('Player joined:', player);
+        // Re-fetch state (SSE game_state event lo actualiza)
+    }
+
+    removePlayer(playerId) {
+        console.log('Player left:', playerId);
+        const squarcle = document.querySelector(`[data-player-id="${playerId}"]`);
+        if (squarcle) {
+            squarcle.remove();
         }
     }
 
-    async nextRound() {
-        try {
-            if (this.elements.btnNextRound) {
-                this.elements.btnNextRound.disabled = true;
-                this.elements.btnNextRound.textContent = 'Preparando...';
-            }
+    handleRoundStart(data) {
+        console.log('Round start:', data);
+        this.currentRound = data.round;
+        this.remainingTime = data.timeLimit || 60;
+        this.updateRoundInfo();
+        this.startTimer();
+    }
 
-            const result = await this.client.sendAction('start_round', {
-                game_id: this.gameId,
-                duration: this.gameConfig.roundDuration,
-                total_rounds: this.gameConfig.totalRounds
+    handleRoundEnd(data) {
+        console.log('Round end:', data);
+        this.stopTimer();
+        this.showResults(data.results || []);
+    }
+
+    handleGameEnd(data) {
+        console.log('Game end:', data);
+        this.stopTimer();
+        this.showFinalResults(data.finalResults || []);
+    }
+
+    async startGame() {
+        try {
+            const response = await fetch('/api/host/start_game.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: this.gameCode })
             });
 
+            const result = await response.json();
             if (!result.success) {
-                showNotification('Error iniciando siguiente ronda', 'error');
-                if (this.elements.btnNextRound) {
-                    this.elements.btnNextRound.disabled = false;
-                    this.elements.btnNextRound.textContent = '📝 Siguiente';
-                }
+                console.error('Error starting game:', result.error);
+                alert(result.error || 'Error al iniciar el juego');
             }
         } catch (error) {
-            debug('Error iniciando siguiente ronda:', error, 'error');
-            showNotification('Error de conexión', 'error');
-            if (this.elements.btnNextRound) {
-                this.elements.btnNextRound.disabled = false;
-                this.elements.btnNextRound.textContent = '📝 Siguiente';
-            }
+            console.error('Error starting game:', error);
+            alert('Error al iniciar el juego');
         }
     }
 
-    async finishGame() {
-        try {
-            if (this.elements.btnFinishGame) {
-                this.elements.btnFinishGame.disabled = true;
-                this.elements.btnFinishGame.textContent = 'Terminando...';
-            }
-
-            const result = await this.client.sendAction('reset_game', {
-                game_id: this.gameId
-            });
-
-            if (!result.success) {
-                showNotification('Error terminando partida', 'error');
-                if (this.elements.btnFinishGame) {
-                    this.elements.btnFinishGame.disabled = false;
-                    this.elements.btnFinishGame.textContent = '🏁 Terminar';
-                }
-            }
-        } catch (error) {
-            debug('Error terminando partida:', error, 'error');
-            showNotification('Error de conexión', 'error');
-            if (this.elements.btnFinishGame) {
-                this.elements.btnFinishGame.disabled = false;
-                this.elements.btnFinishGame.textContent = '🏁 Terminar';
-            }
+    destroy() {
+        this.stopTimer();
+        if (this.eventSource) {
+            this.eventSource.close();
         }
-    }
-
-    createNewGame() {
-        if (confirm('¿Iniciar una nueva partida?')) {
-            clearGameSession();
-            location.reload();
-        }
-    }
-
-    handleConnectionLost() {
-        alert('Desconectado del servidor');
-        location.reload();
     }
 }
 
-let hostManager = null;
+// Init
+const urlParams = new URLSearchParams(window.location.search);
+const gameCode = urlParams.get('code');
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        hostManager = new HostManager();
-        hostManager.initialize();
-    });
+if (!gameCode) {
+    alert('No se especificó código de sala');
+    window.location.href = '/index.html';
 } else {
-    hostManager = new HostManager();
-    hostManager.initialize();
-}
+    const hostManager = new HostManager(gameCode);
 
-console.log('%c✅ host-manager.js - Host calcula resultados y envía host_results', 'color: #10B981; font-weight: bold');
+    // Cleanup on unload
+    window.addEventListener('beforeunload', () => {
+        hostManager.destroy();
+    });
+}
