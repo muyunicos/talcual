@@ -1,6 +1,7 @@
 /**
  * Host Manager - Gestión de partida en host
- * Maneja: timer, categoría, ranking, panel tabs, menú hamburguesa
+ * Maneja: timer, categoría, ranking, panel tabs
+ * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  */
 
 function determineUIState() {
@@ -36,13 +37,9 @@ class HostManager {
         this.currentPlayers = [];
         this.gameState = {};
         
-        this.btnHamburger = document.getElementById('btn-hamburger-host');
-        this.hamburgerMenu = document.getElementById('hamburger-menu-host');
-        this.isMenuOpen = false;
-        
         this.initUI();
         this.attachEventListeners();
-        this.initHamburgerMenu();
+        this.attachMenuEventListeners();
         this.connectGameClient();
     }
 
@@ -106,63 +103,20 @@ class HostManager {
         }
     }
 
-    initHamburgerMenu() {
-        if (!this.btnHamburger || !this.hamburgerMenu) {
-            return;
-        }
-
-        this.btnHamburger.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleHamburgerMenu();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (this.isMenuOpen && 
-                !this.hamburgerMenu.contains(e.target) && 
-                !this.btnHamburger.contains(e.target)) {
-                this.closeHamburgerMenu();
-            }
-        });
-
+    attachMenuEventListeners() {
         document.getElementById('hamburger-restart-round')?.addEventListener('click', () => this.handleRestartRound());
         document.getElementById('hamburger-new-game')?.addEventListener('click', () => this.handleNewGame());
         document.getElementById('hamburger-settings')?.addEventListener('click', () => this.handleSettings());
         document.getElementById('hamburger-terminate')?.addEventListener('click', () => this.handleTerminate());
     }
 
-    toggleHamburgerMenu() {
-        if (this.isMenuOpen) {
-            this.closeHamburgerMenu();
-        } else {
-            this.openHamburgerMenu();
-        }
-    }
-
-    openHamburgerMenu() {
-        this.isMenuOpen = true;
-        this.hamburgerMenu.style.display = 'flex';
-        this.hamburgerMenu.style.animation = 'slideDown 0.3s ease-out';
-    }
-
-    closeHamburgerMenu() {
-        this.isMenuOpen = false;
-        this.hamburgerMenu.style.animation = 'slideOut 0.3s ease-out';
-        setTimeout(() => {
-            if (!this.isMenuOpen) {
-                this.hamburgerMenu.style.display = 'none';
-            }
-        }, 300);
-    }
-
     handleRestartRound() {
-        this.closeHamburgerMenu();
         if (confirm('¿Reiniciar la ronda actual?')) {
             this.startGame();
         }
     }
 
     handleNewGame() {
-        this.closeHamburgerMenu();
         if (confirm('¿Crear una nueva partida? Se perderá el progreso actual.')) {
             if (typeof StorageManager !== 'undefined') {
                 StorageManager.clearHostSession();
@@ -177,7 +131,6 @@ class HostManager {
     }
 
     handleSettings() {
-        this.closeHamburgerMenu();
         const modalConfig = document.getElementById('modal-game-config');
         if (modalConfig) {
             modalConfig.style.display = 'flex';
@@ -187,7 +140,6 @@ class HostManager {
     }
 
     handleTerminate() {
-        this.closeHamburgerMenu();
         if (confirm('¿Estás seguro de que quieres terminar la partida?')) {
             if (typeof StorageManager !== 'undefined') {
                 StorageManager.clearHostSession();
