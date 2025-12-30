@@ -23,6 +23,22 @@
     animation: popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
+/* ========== ANIMACIÓN FADE IN ========== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(4px);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
 /* ========== ANIMACIÓN FADE IN UP ========== */
 @keyframes fadeInUp {
     from {
@@ -39,7 +55,71 @@
     animation: fadeInUp 0.5s ease-out;
 }
 
-/* ========== ANIMACIÓN PULSE ========== */
+/* ========== ANIMACIÓN SLIDE DOWN ========== */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-down {
+    animation: slideDown 0.2s ease-out;
+}
+
+/* ========== ANIMACIÓN SLIDE IN (LATERAL) ========== */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* ========== ANIMACIÓN SLIDE OUT ========== */
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+}
+
+.slide-out {
+    animation: slideOut 0.3s ease-out;
+}
+
+/* ========== ANIMACIÓN SLIDE UP ========== */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* ========== ANIMACIÓN PULSE (GENÉRICA) ========== */
 @keyframes pulse {
     0%, 100% {
         transform: scale(1);
@@ -53,7 +133,7 @@
     animation: pulse 1s infinite;
 }
 
-/* ========== ANIMACIÓN COUNTDOWN PULSE (NUEVO) ========== */
+/* ========== ANIMACIÓN COUNTDOWN PULSE ========== */
 @keyframes pulse-countdown {
     0%, 100% {
         transform: scale(1);
@@ -65,8 +145,23 @@
     }
 }
 
-.countdown-display {
+.countdown-display,
+.countdown-pulse {
     animation: pulse-countdown 1s infinite;
+}
+
+/* ========== ANIMACIÓN COUNTDOWN BOUNCE ========== */
+@keyframes countdownBounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+.countdown-bounce {
+    animation: countdownBounce 1s ease-in-out;
 }
 
 /* ========== ANIMACIÓN GLOW ========== */
@@ -81,39 +176,6 @@
 
 .glow {
     animation: glow 2s ease-in-out infinite alternate;
-}
-
-/* ========== ANIMACIÓN COUNTDOWN PULSE (Efecto rotación) ========== */
-@keyframes countdownPulse {
-    0% {
-        transform: scale(0.5) rotate(-20deg);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1.2) rotate(10deg);
-    }
-    100% {
-        transform: scale(1) rotate(0deg);
-        opacity: 1;
-    }
-}
-
-.countdown-pulse {
-    animation: countdownPulse 1s ease-in-out;
-}
-
-/* ========== ANIMACIÓN COUNTDOWN BOUNCE (Para elementos) ========== */
-@keyframes countdownBounce {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.2);
-    }
-}
-
-.countdown-bounce {
-    animation: countdownBounce 1s ease-in-out;
 }
 
 /* ========== ANIMACIÓN SHAKE ========== */
@@ -147,22 +209,6 @@
     animation: bounce 0.6s;
 }
 
-/* ========== ANIMACIÓN FADE IN ========== */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.fade-in {
-    animation: fadeIn 0.5s ease-out;
-}
-
 /* ========== ANIMACIÓN READY PULSE ========== */
 @keyframes readyPulse {
     0%, 100% {
@@ -173,25 +219,12 @@
     }
 }
 
-.ready-pulse {
+.ready-pulse,
+.ready-bounce {
     animation: readyPulse 1s infinite;
 }
 
-/* Alias para compatibilidad hacia atrás */
-@keyframes readyBounce {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-}
-
-.ready-bounce {
-    animation: readyBounce 1s infinite;
-}
-
-/* ========== ANIMACIÓN SELECT PULSE ========== */
+/* ========== ANIMACIÓN SELECT PULSE (CONSOLIDADA) ========== */
 @keyframes selectedPulse {
     0%, 100% {
         transform: scale(1.2) rotate(0deg);
@@ -201,8 +234,23 @@
     }
 }
 
-.selected-pulse {
+.selected-pulse,
+.aura-option.selected,
+.select-pulse {
     animation: selectedPulse 1s infinite;
+}
+
+/* Alternative select pulse with box-shadow */
+@keyframes selectPulseShadow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
 }
 
 /* ========== ANIMACIÓN SPIN (LOADING) ========== */
@@ -217,70 +265,6 @@
 
 .spin {
     animation: spin 1s linear infinite;
-}
-
-/* ========== ANIMACIÓN SLIDE UP ========== */
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.slide-up {
-    animation: slideUp 0.3s ease-out;
-}
-
-/* ========== ANIMACIÓN SLIDE DOWN ========== */
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.slide-down {
-    animation: slideDown 0.2s ease-out;
-}
-
-/* ========== ANIMACIÓN SLIDE IN (LATERAL) ========== */
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-.slide-in {
-    animation: slideIn 0.3s ease-out;
-}
-
-/* ========== ANIMACIÓN SLIDE OUT ========== */
-@keyframes slideOut {
-    from {
-        opacity: 1;
-        transform: translateX(0);
-    }
-    to {
-        opacity: 0;
-        transform: translateX(20px);
-    }
-}
-
-.slide-out {
-    animation: slideOut 0.3s ease-out;
 }
 
 /* ========== TRANSICIÓN DE FONDO ========== */
@@ -358,23 +342,6 @@
     border-radius: 50%;
     transform: translate(-50%, -50%);
     animation: ripple 0.6s ease-out;
-}
-
-/* ========== SELECT PULSE ALTERNATIVA ========== */
-@keyframes selectPulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-    }
-}
-
-.select-pulse {
-    animation: selectPulse 0.8s ease-in-out;
 }
 
 /* ========== TRANSICIONES GENERALES ========== */
