@@ -1,8 +1,10 @@
 /**
- * Host Create Game Modal Handler - Enhanced v3
+ * Host Create Game Modal Handler - Enhanced v4
  * Maneja la creación de partidas desde el modal en host.html
  * 
- * MEJORAS v3 (29 Dic 2025 - 23:21):
+ * MEJORAS v4 (30 Dic 2025 - 02:30):
+ * - Soporte para estructura de diccionario ANIDADA (categorías -> subcategorías -> palabras)
+ * - Extrae TODAS las palabras de subcategorías automáticamente
  * - Filtrado de palabras 3-5 letras (completas)
  * - Al abrir modal: categoría seleccionada al azar automáticamente
  * - Código sala muestra palabra aleatoria de categoría elegida (3-5 letras)
@@ -99,13 +101,14 @@ class CreateGameModal {
     extractCategories(data) {
         const categories = [];
         
-        if (data.categorias && typeof data.categorias === 'object') {
-            categories.push(...Object.keys(data.categorias));
-            return categories;
-        }
-        
+        // Buscar categorías en el nivel principal
         for (const [key, value] of Object.entries(data)) {
-            if (Array.isArray(value) && key !== 'categorias') {
+            // Si es un objeto (no array), probablemente sea una categoría con subcategorías
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                categories.push(key);
+            }
+            // Si es un array, también es una categoría
+            else if (Array.isArray(value)) {
                 categories.push(key);
             }
         }
@@ -113,30 +116,70 @@ class CreateGameModal {
         return categories.sort();
     }
     
+    /**
+     * FIX v4: Extraer palabras de estructura ANIDADA
+     * Soporta: categoría -> subcategoría -> palabras
+     * Ejemplo: "AMOR Y CITAS ❤️" -> {"Un lugar...": [...], "Algo...": [...]}
+     */
     extractWordsForCategory(category) {
         if (!this.dictionary) return [];
         
         const words = [];
         
-        // Legacy format
-        if (this.dictionary.categorias && this.dictionary.categorias[category]) {
-            return this.dictionary.categorias[category];
+        // Obtener el contenido de la categoría
+        const categoryData = this.dictionary[category];
+        
+        if (!categoryData) {
+            console.warn(`⚠️ Categoría no encontrada: ${category}`);
+            return [];
         }
         
-        // New format
-        if (this.dictionary[category]) {
-            const items = this.dictionary[category];
-            if (Array.isArray(items)) {
-                items.forEach(item => {
-                    if (typeof item === 'object') {
-                        Object.keys(item).forEach(word => {
-                            if (word && word !== '') words.push(word);
-                        });
-                    }
-                });
+        // Caso 1: Array directo de palabras
+        if (Array.isArray(categoryData)) {
+            categoryData.forEach(item => {
+                if (typeof item === 'string') {
+                    words.push(item);
+                } else if (typeof item === 'object') {
+                    // Si es objeto dentro de array, extraer las claves como palabras
+                    Object.keys(item).forEach(key => {
+                        if (key && key.trim() !== '') {
+                            words.push(key);
+                        }
+                    });
+                }
+            });
+        }
+        // Caso 2: Objeto con subcategorías (estructura anidada)
+        else if (typeof categoryData === 'object') {
+            // Iterar sobre cada subcategoría
+            for (const [subcategoryKey, subcategoryItems] of Object.entries(categoryData)) {
+                // Si la subcategoría es un array
+                if (Array.isArray(subcategoryItems)) {
+                    subcategoryItems.forEach(item => {
+                        if (typeof item === 'string') {
+                            words.push(item);
+                        } else if (typeof item === 'object') {
+                            // Extraer claves del objeto como palabras
+                            Object.keys(item).forEach(key => {
+                                if (key && key.trim() !== '') {
+                                    words.push(key);
+                                }
+                            });
+                        }
+                    });
+                }
+                // Si la subcategoría es un objeto directo
+                else if (typeof subcategoryItems === 'object') {
+                    Object.keys(subcategoryItems).forEach(key => {
+                        if (key && key.trim() !== '') {
+                            words.push(key);
+                        }
+                    });
+                }
             }
         }
         
+        console.log(`📚 ${words.length} palabras extraídas de ${category}`);
         return words;
     }
     
@@ -147,11 +190,22 @@ class CreateGameModal {
     getValidWordsForCategory(category) {
         const allWords = this.extractWordsForCategory(category || this.categories[0]);
         
-        // Filtrar: 3-5 letras, sin espacios, sin caracteres especiales
-        return allWords.filter(word => {
+        if (allWords.length === 0) {
+            console.warn(`⚠️ No hay palabras para ${category}`);
+            return [];
+        }
+        
+        // Filtrar: 3-5 letras, sin espacios, solo letras y números
+        const filtered = allWords.filter(word => {
             const cleanWord = word.trim().toUpperCase();
-            return cleanWord.length >= 3 && cleanWord.length <= 5 && /^[A-ZÁÉÍÓÚÑ]+$/.test(cleanWord);
+            // 3-5 letras, solo caracteres alfabéticos (incluye acentos)
+            const isValidLength = cleanWord.length >= 3 && cleanWord.length <= 5;
+            const isValidChars = /^[A-ZÁÉÍÓÚÑ\s]+$/.test(cleanWord);
+            return isValidLength && isValidChars && cleanWord !== '';
         });
+        
+        console.log(`✅ ${filtered.length} palabras válidas (3-5 letras) de ${category}`);
+        return filtered;
     }
     
     /**
@@ -161,7 +215,7 @@ class CreateGameModal {
         const validWords = this.getValidWordsForCategory(category || this.categories[0]);
         
         if (validWords.length === 0) {
-            console.warn('⚠️ No hay palabras válidas para', category, 'usando JUEGO');
+            console.warn(`⚠️ No hay palabras válidas para ${category}, usando JUEGO`);
             return 'JUEGO';
         }
         
@@ -337,4 +391,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ CreateGameModal Enhanced v3 - Filtrado 3-5 letras, categoría persistente', 'color: #10B981; font-weight: bold');
+console.log('%c✅ CreateGameModal Enhanced v4 - Soporte anidado, filtrado 3-5 letras, categoría persistente', 'color: #10B981; font-weight: bold');
