@@ -1,11 +1,11 @@
 /**
- * Host Create Game Modal Handler - Enhanced v2
+ * Host Create Game Modal Handler - Enhanced v3
  * Maneja la creación de partidas desde el modal en host.html
  * 
- * MEJORAS v2 (29 Dic 2025):
+ * MEJORAS v3 (29 Dic 2025 - 23:21):
+ * - Filtrado de palabras 3-5 letras (completas)
  * - Al abrir modal: categoría seleccionada al azar automáticamente
- * - Eliminada vista previa de categoría/palabra
- * - Código sala muestra palabra aleatoria de categoría elegida
+ * - Código sala muestra palabra aleatoria de categoría elegida (3-5 letras)
  * - Si se borra: muestra "se generará automáticamente"
  * - Categoría elegida persistente durante todas las rondas
  * - Consignas no se repiten (descartadas hasta agotar, luego reset)
@@ -140,10 +140,34 @@ class CreateGameModal {
         return words;
     }
     
+    /**
+     * FIX: Filtrar palabras de 3-5 letras completas
+     * Evita palabras incompletas o muy cortas/largas
+     */
+    getValidWordsForCategory(category) {
+        const allWords = this.extractWordsForCategory(category || this.categories[0]);
+        
+        // Filtrar: 3-5 letras, sin espacios, sin caracteres especiales
+        return allWords.filter(word => {
+            const cleanWord = word.trim().toUpperCase();
+            return cleanWord.length >= 3 && cleanWord.length <= 5 && /^[A-ZÁÉÍÓÚÑ]+$/.test(cleanWord);
+        });
+    }
+    
+    /**
+     * FIX: Obtener palabra aleatoria válida (3-5 letras)
+     */
     getRandomWord(category) {
-        const words = this.extractWordsForCategory(category || this.categories[0]);
-        if (words.length === 0) return 'JUEGO';
-        return words[Math.floor(Math.random() * words.length)];
+        const validWords = this.getValidWordsForCategory(category || this.categories[0]);
+        
+        if (validWords.length === 0) {
+            console.warn('⚠️ No hay palabras válidas para', category, 'usando JUEGO');
+            return 'JUEGO';
+        }
+        
+        const randomWord = validWords[Math.floor(Math.random() * validWords.length)];
+        console.log(`🎲 Palabra válida seleccionada para ${category}: ${randomWord}`);
+        return randomWord;
     }
     
     populateCategorySelect(categories) {
@@ -172,16 +196,18 @@ class CreateGameModal {
         this.updateCodeWithCategoryWord();
     }
     
-    // FIX: Actualizar código con palabra de categoría
+    // FIX: Actualizar código con palabra de categoría (3-5 letras)
     updateCodeWithCategoryWord() {
         const selectedCategory = this.categorySelect.value;
         if (!selectedCategory) return;
         
         const randomWord = this.getRandomWord(selectedCategory);
-        this.customCodeInput.value = randomWord.toUpperCase().substring(0, 5); // Máx 5 letras
+        const code = randomWord.toUpperCase().substring(0, 5); // Máx 5 letras
+        
+        this.customCodeInput.value = code;
         this.customCodeInput.placeholder = 'se generará automáticamente';
         
-        console.log(`📝 Código actualizado con palabra de ${selectedCategory}: ${randomWord}`);
+        console.log(`📝 Código actualizado: ${code} (de categoría ${selectedCategory})`);
     }
     
     hideGameElements() {
@@ -311,4 +337,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ CreateGameModal Enhanced v2 - Categoría automática, código como palabra', 'color: #10B981; font-weight: bold');
+console.log('%c✅ CreateGameModal Enhanced v3 - Filtrado 3-5 letras, categoría persistente', 'color: #10B981; font-weight: bold');
