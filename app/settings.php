@@ -38,6 +38,7 @@ define('RATE_LIMIT_WINDOW', 60);
 define('MAX_CODE_LENGTH', $getenv('MAX_CODE_LENGTH', 5));
 define('DEFAULT_TOTAL_ROUNDS', $getenv('DEFAULT_TOTAL_ROUNDS', 3));
 define('DEFAULT_ROUND_DURATION', $getenv('DEFAULT_ROUND_DURATION', 60));
+define('INITIAL_TIMER', $getenv('INITIAL_TIMER', 5));
 define('MIN_PLAYERS', $getenv('MIN_PLAYERS', 2));
 define('MAX_PLAYERS', $getenv('MAX_PLAYERS', 20));
 define('MAX_WORDS_PER_PLAYER', $getenv('MAX_WORDS_PER_PLAYER', 6));
