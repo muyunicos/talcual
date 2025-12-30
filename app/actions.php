@@ -78,10 +78,6 @@ function checkRateLimit() {
     }
 }
 
-/**
- * Carga diccionario desde app/diccionario.json.
- * @returns array
- */
 function loadRawDictionaryJson() {
     $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
 
@@ -95,15 +91,6 @@ function loadRawDictionaryJson() {
     return is_array($data) ? $data : [];
 }
 
-/**
- * Devuelve pool de consignas (prompts) para una categoría.
- * Soporta 2 formatos:
- * 1) Legacy: { "categorias": { "GENERAL": ["CASA", ...] } }
- * 2) Nuevo: { "CATEGORIA": [ { "CONSIGNA": ["Palabra1|Sinonimo", ...] }, ... ] }
- *
- * @param string|null $preferredCategory
- * @returns array{category:?string,prompts:array}
- */
 function getPromptPoolFromDictionary($preferredCategory = null) {
     $data = loadRawDictionaryJson();
 
@@ -111,7 +98,6 @@ function getPromptPoolFromDictionary($preferredCategory = null) {
         return ['category' => null, 'prompts' => ['JUEGO']];
     }
 
-    // ===== Legacy format =====
     if (isset($data['categorias']) && is_array($data['categorias'])) {
         $cats = array_keys($data['categorias']);
         if (empty($cats)) {
@@ -134,7 +120,6 @@ function getPromptPoolFromDictionary($preferredCategory = null) {
         return ['category' => $cat, 'prompts' => $prompts];
     }
 
-    // ===== New format =====
     $cats = array_values(array_filter(array_keys($data), function ($k) use ($data) {
         return is_array($data[$k]);
     }));
@@ -167,14 +152,6 @@ function getPromptPoolFromDictionary($preferredCategory = null) {
     return ['category' => $cat, 'prompts' => $prompts];
 }
 
-/**
- * Selecciona consigna sin repetir durante la sesión (por categoría).
- * Si no quedan más consignas, resetea el historial para esa categoría.
- *
- * @param array $state
- * @param string|null $preferredCategory
- * @returns array{category:?string,prompt:string,used_prompts:array}
- */
 function pickNonRepeatingPrompt($state, $preferredCategory = null) {
     $poolInfo = getPromptPoolFromDictionary($preferredCategory);
     $category = $poolInfo['category'];
@@ -188,7 +165,6 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
 
     $available = array_values(array_diff($prompts, $used));
 
-    // Si ya se usaron todas, resetear para esa categoría
     if (empty($available)) {
         $used = [];
         $available = $prompts;
@@ -196,10 +172,8 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
 
     $prompt = !empty($available) ? (string)$available[array_rand($available)] : 'JUEGO';
 
-    // Persistir en used_prompts
     $used[] = $prompt;
 
-    // Cap de seguridad
     if (count($used) > 500) {
         $used = array_slice($used, -500);
     }
@@ -264,9 +238,8 @@ try {
                 'current_category' => null,
                 'selected_category' => $selectedCategory,
                 'used_prompts' => [],
-                'round_duration' => $roundDuration,
+                'round_duration' => $roundDuration * 1000,
                 'round_started_at' => null,
-                'round_start_at' => null,
                 'min_players' => $minPlayers,
                 'round_details' => [],
                 'round_top_words' => [],
@@ -373,7 +346,6 @@ try {
                     break;
                 }
 
-                // "word" ahora representa la CONSIGNA (opcional). Si viene vacía, se elige una sin repetir desde diccionario.
                 $prompt = trim((string)($input['word'] ?? ''));
 
                 $categoryFromRequest = isset($input['category']) ? trim((string)$input['category']) : null;
@@ -389,28 +361,27 @@ try {
                     $state['used_prompts'] = $picked['used_prompts'] ?? ($state['used_prompts'] ?? []);
                 }
 
-                $duration = intval($input['duration'] ?? $state['round_duration'] ?? DEFAULT_ROUND_DURATION);
+                $duration = intval($input['duration'] ?? $state['round_duration'] ?? DEFAULT_ROUND_DURATION * 1000);
                 $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS);
 
-                if ($duration < 30 || $duration > 300) {
-                    $duration = $state['round_duration'] ?? DEFAULT_ROUND_DURATION;
+                if ($duration < 30000 || $duration > 300000) {
+                    $duration = ($state['round_duration'] ?? DEFAULT_ROUND_DURATION * 1000);
                 }
 
                 if ($totalRounds < 1 || $totalRounds > 10) {
                     $totalRounds = $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS;
                 }
 
-                $countdownDuration = 4;
-                $round_start_at = time() + $countdownDuration;
+                $countdownDuration = 4000;
+                $round_started_at = (time() * 1000) + $countdownDuration;
 
                 $state['round']++;
                 $state['status'] = 'playing';
-                $state['current_word'] = $prompt; // CONSIGNA
+                $state['current_word'] = $prompt;
                 $state['current_category'] = $preferredCategory;
                 $state['round_duration'] = $duration;
                 $state['total_rounds'] = $totalRounds;
-                $state['round_start_at'] = $round_start_at;
-                $state['round_started_at'] = $round_start_at;
+                $state['round_started_at'] = $round_started_at;
                 $state['last_update'] = time();
 
                 foreach ($state['players'] as $pId => $player) {
@@ -511,43 +482,6 @@ try {
             }
             break;
 
-        // COMENTADO #5: shorten_round ya no necesario, timer sincronizado con timeSync
-        // case 'shorten_round':
-        //     if (!$gameId) {
-        //         $response = ['success' => false, 'message' => 'game_id requerido'];
-        //         break;
-        //     }
-        //
-        //     $state = loadGameState($gameId);
-        //
-        //     if (!$state || $state['status'] !== 'playing') {
-        //         $response = ['success' => false, 'message' => 'No hay ronda activa'];
-        //         break;
-        //     }
-        //
-        //     $elapsed = time() - $state['round_started_at'];
-        //
-        //     if ($elapsed < $state['round_duration'] - 5) {
-        //         $state['round_duration'] = $elapsed + 5;
-        //         $state['last_update'] = time();
-        //
-        //         if (saveGameState($gameId, $state)) {
-        //             notifyGameChanged($gameId);
-        //             $response = [
-        //                 'success' => true,
-        //                 'message' => 'Timer acortado',
-        //                 'state' => $state
-        //             ];
-        //         }
-        //     } else {
-        //         $response = [
-        //             'success' => true,
-        //             'message' => 'Timer ya en ultimos 5 segundos',
-        //             'state' => $state
-        //         ];
-        //     }
-        //     break;
-
         case 'end_round':
             if (!$gameId) {
                 $response = ['success' => false, 'message' => 'game_id requerido'];
@@ -561,14 +495,12 @@ try {
                 break;
             }
 
-            // Requiere resultados del host
             $hostResults = $input['host_results'] ?? null;
             if (!is_array($hostResults) || !isset($hostResults['players']) || !is_array($hostResults['players'])) {
                 $response = ['success' => false, 'message' => 'host_results requerido'];
                 break;
             }
 
-            // Aplicar resultados del host al estado
             foreach ($state['players'] as $pId => $player) {
                 $pRes = $hostResults['players'][$pId] ?? null;
                 $roundResults = (is_array($pRes) && isset($pRes['round_results']) && is_array($pRes['round_results'])) ? $pRes['round_results'] : [];
@@ -594,7 +526,7 @@ try {
                 $state['status'] = 'round_ended';
             }
 
-            $state['round_start_at'] = null;
+            $state['round_started_at'] = null;
 
             if (saveGameState($gameId, $state)) {
                 trackGameAction($gameId, 'round_ended', []);
@@ -635,7 +567,6 @@ try {
             $state['current_word'] = null;
             $state['current_category'] = null;
             $state['round_started_at'] = null;
-            $state['round_start_at'] = null;
             $state['round_top_words'] = [];
             $state['last_update'] = time();
 

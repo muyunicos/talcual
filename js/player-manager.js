@@ -1,9 +1,3 @@
-/**
- * @file player-manager.js
- * @description Gestor mejorado de lógica del jugador con countdown sincronizado y auto-submit
- * (Menú hamburguesa ahora manejado por menu-opciones.js)
- */
-
 class PlayerManager {
     constructor() {
         this.gameId = null;
@@ -25,7 +19,6 @@ class PlayerManager {
 
         this.elements = {};
 
-        // Motor de comparación (player) - evita equivalentes repetidos
         this.wordEngine = null;
         this.wordEngineReady = false;
         this.wordEngineInitPromise = null;
@@ -36,10 +29,8 @@ class PlayerManager {
         this.cacheElements();
         this.attachEventListeners();
 
-        // Precargar motor de palabras lo antes posible
         this.initWordEngine();
 
-        // FASE 1: usar claves centralizadas
         const savedGameId = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.GAME_ID) : getLocalStorage('gameId');
         const savedPlayerId = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_ID) : getLocalStorage('playerId');
         const savedPlayerName = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_NAME) : getLocalStorage('playerName');
@@ -87,7 +78,6 @@ class PlayerManager {
             return this.wordEngine.getCanonical(raw);
         }
 
-        // Fallback (sin diccionario): normalización básica
         return raw
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
@@ -166,7 +156,6 @@ class PlayerManager {
             this.elements.btnSubmit.addEventListener('click', () => this.submitWords());
         }
 
-        // Config menu dropdown
         if (this.elements.btnConfigMenu) {
             this.elements.btnConfigMenu.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -188,7 +177,6 @@ class PlayerManager {
             });
         }
 
-        // Hamburger menu options (menu open/close handled by menu-opciones.js)
         const hamburgerCustomize = safeGetElement('hamburger-customize');
         const hamburgerAbandon = safeGetElement('hamburger-abandon');
 
@@ -212,7 +200,6 @@ class PlayerManager {
             this.elements.modalBtnSave.addEventListener('click', () => this.saveNewName());
         }
 
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.footer-left') && !e.target.closest('.btn-config-menu')) {
                 this.hideConfigDropdown();
@@ -347,7 +334,6 @@ class PlayerManager {
         this.playerName = name;
         this.playerId = generatePlayerId();
 
-        // FASE 1: usar claves centralizadas
         if (typeof StorageKeys !== 'undefined') {
             setLocalStorage(StorageKeys.GAME_ID, this.gameId);
             setLocalStorage(StorageKeys.PLAYER_ID, this.playerId);
@@ -405,7 +391,6 @@ class PlayerManager {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
 
-        // CAMBIO #2: Calibración automática de timeSync
         if (state.round_started_at && state.round_duration && !timeSync.isCalibrated) {
             timeSync.calibrate(state.round_started_at, state.round_duration);
             console.log('%c⏱️ SYNC CALIBRADO', 'color: #3B82F6; font-weight: bold', `Offset: ${timeSync.offset}ms`);
@@ -451,7 +436,6 @@ class PlayerManager {
         this.stopTimer();
     }
 
-    // FIX #2: Agregar showCountdown para animación 3,2,1
     async showCountdown(state) {
         debug('⏱️ Iniciando countdown', 'debug');
         
@@ -462,14 +446,11 @@ class PlayerManager {
         if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
         if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
 
-        // Calcular cuándo empezó el countdown
-        const countdownDuration = 4000; // 4 segundos desde el servidor
+        const countdownDuration = 4000;
         const elapsedSinceStart = Date.now() - state.round_started_at;
         const countdownRemaining = Math.max(0, countdownDuration - elapsedSinceStart);
         
-        // Mostrar números: 3, 2, 1
         for (let i = 3; i >= 1; i--) {
-            // Calcular cuándo mostrar este número
             const numberShowTime = countdownDuration - (i * 1000);
             const waitTime = Math.max(0, numberShowTime - elapsedSinceStart);
             
@@ -478,7 +459,6 @@ class PlayerManager {
                     if (this.elements.countdownNumber) {
                         this.elements.countdownNumber.textContent = i.toString();
                         this.elements.countdownNumber.style.animation = 'none';
-                        // Trigger reflow para reiniciar animación
                         void this.elements.countdownNumber.offsetWidth;
                         this.elements.countdownNumber.style.animation = '';
                     }
@@ -487,11 +467,9 @@ class PlayerManager {
             });
         }
         
-        // Esperar a que termine el countdown
         const remainingCountdown = Math.max(0, countdownDuration - (Date.now() - state.round_started_at));
         await new Promise(resolve => setTimeout(resolve, remainingCountdown + 100));
         
-        // FIX #2a: Mostrar la consigna DESPUÉS del countdown
         safeHideElement(this.elements.countdownOverlay);
         
         if (this.elements.currentWord) {
@@ -508,7 +486,6 @@ class PlayerManager {
             safeHideElement(this.elements.categoryLabel);
         }
         
-        // FIX #2b: Habilitar inputs DESPUÉS del countdown
         const me = state.players?.[this.playerId];
         const isReady = me?.status === 'ready';
         
@@ -519,7 +496,6 @@ class PlayerManager {
             if (this.elements.currentWordInput) this.elements.currentWordInput.focus();
         }
         
-        // FIX #2c: Iniciar timer DESPUÉS del countdown
         if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
@@ -531,7 +507,6 @@ class PlayerManager {
         safeHideElement(this.elements.resultsSection);
         safeHideElement(this.elements.waitingMessage);
 
-        // FIX: Si .hidden tiene display:none (o !important), safeShowElement no alcanza.
         if (this.elements.currentWord) this.elements.currentWord.classList.remove('hidden');
         if (this.elements.wordsInputSection) this.elements.wordsInputSection.classList.remove('hidden');
 
@@ -544,10 +519,9 @@ class PlayerManager {
             return;
         }
 
-        // FIX #2d: Ejecutar countdown si aún no pasaron los 4 segundos
         if (state.round_started_at) {
             const elapsedSinceStart = Date.now() - state.round_started_at;
-            const countdownDuration = 4000; // 4 segundos
+            const countdownDuration = 4000;
             
             if (elapsedSinceStart < countdownDuration) {
                 debug(`⏱️ Countdown aún en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
@@ -556,7 +530,6 @@ class PlayerManager {
             }
         }
 
-        // Si ya pasó el countdown, mostrar palabra inmediatamente
         if (this.elements.currentWord) {
             this.elements.currentWord.textContent = state.current_word;
             safeShowElement(this.elements.currentWord);
@@ -628,7 +601,6 @@ class PlayerManager {
             return;
         }
 
-        // Asegurar motor listo (si existe)
         await this.initWordEngine();
 
         const normalized = word.toUpperCase();
@@ -637,7 +609,6 @@ class PlayerManager {
             return;
         }
 
-        // Bloquear equivalentes (sinónimos/raíces) contra MI lista
         const newCanonical = this.getCanonicalForCompare(word);
         if (newCanonical) {
             for (let i = 0; i < this.myWords.length; i++) {
@@ -867,7 +838,6 @@ class PlayerManager {
             this.elements.playerNameDisplay.textContent = newName;
         }
 
-        // FASE 1: usar claves centralizadas
         if (typeof StorageKeys !== 'undefined') {
             setLocalStorage(StorageKeys.PLAYER_NAME, newName);
         } else {
