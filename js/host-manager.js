@@ -1,17 +1,19 @@
 /**
- * Host Manager - Floating Panels Architecture (Fixed v3)
+ * Host Manager - Reconectado a arquitectura real (GameClient + /app/actions.php)
  * Gestiona: timer, categoría tab, fade ranking/top, panel draggable
  * 
- * MEJORAS v3:
+ * MEJORAS v4:
+ * - FIX: Usa GameClient en lugar de /api/host/events.php inexistente
+ * - FIX: Llama updatePlayersGrid() en handleGameState()
+ * - FIX: Modales centrados con flexbox
  * - Controla visibilidad del botón "Empezar Juego" según mín jugadores
  * - Anima entrada de elementos cuando aparecen jugadores
- * - Integración con enhanced-create-game-modal
  */
 
 class HostManager {
     constructor(gameCode) {
         this.gameCode = gameCode;
-        this.eventSource = null;
+        this.client = null;  // GameClient instance (FIX)
         this.currentRound = 0;
         this.totalRounds = 3;
         this.remainingTime = 0;
@@ -19,12 +21,13 @@ class HostManager {
         this.activeTab = 'ranking';
         this.minPlayers = 2; // Por defecto
         this.currentPlayers = [];
+        this.gameState = {};
 
         console.log('🎮 HostManager iniciando con código:', this.gameCode);
         
         this.initUI();
         this.attachEventListeners();
-        this.connectSSE();
+        this.connectGameClient();  // FIX: Usar GameClient
     }
 
     initUI() {
@@ -117,86 +120,51 @@ class HostManager {
         }
     }
 
-    connectSSE() {
-        const eventUrl = `/api/host/events.php?code=${encodeURIComponent(this.gameCode)}`;
-        console.log('🔌 Conectando SSE a:', eventUrl);
+    /**
+     * FIX #38: Usar GameClient en lugar de EventSource directo
+     * Conecta a /app/sse-stream.php con player_id=null para host
+     */
+    connectGameClient() {
+        if (!window.COMM) {
+            console.error('❌ communication.js no cargado');
+            return;
+        }
 
-        this.eventSource = new EventSource(eventUrl);
-
-        this.eventSource.addEventListener('game_state', (e) => {
-            try {
-                const state = JSON.parse(e.data);
-                console.log('📨 game_state:', state);
-                this.handleGameState(state);
-            } catch (err) {
-                console.error('❌ Error parsing game_state:', err);
-            }
-        });
-
-        this.eventSource.addEventListener('player_joined', (e) => {
-            try {
-                const player = JSON.parse(e.data);
-                console.log('👤 player_joined:', player);
-                this.addPlayer(player);
-            } catch (err) {
-                console.error('❌ Error parsing player_joined:', err);
-            }
-        });
-
-        this.eventSource.addEventListener('player_left', (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                console.log('👤 player_left:', data);
-                this.removePlayer(data.playerId);
-            } catch (err) {
-                console.error('❌ Error parsing player_left:', err);
-            }
-        });
-
-        this.eventSource.addEventListener('round_start', (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                console.log('⏱️ round_start:', data);
-                this.handleRoundStart(data);
-            } catch (err) {
-                console.error('❌ Error parsing round_start:', err);
-            }
-        });
-
-        this.eventSource.addEventListener('round_end', (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                console.log('⏹️ round_end:', data);
-                this.handleRoundEnd(data);
-            } catch (err) {
-                console.error('❌ Error parsing round_end:', err);
-            }
-        });
-
-        this.eventSource.addEventListener('game_end', (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                console.log('🏁 game_end:', data);
-                this.handleGameEnd(data);
-            } catch (err) {
-                console.error('❌ Error parsing game_end:', err);
-            }
-        });
-
-        this.eventSource.onerror = (err) => {
-            console.error('❌ SSE error:', err);
-            if (this.eventSource.readyState === EventSource.CLOSED) {
-                console.warn('⚠️ SSE desconectado. Reintentando en 3s...');
-                setTimeout(() => this.connectSSE(), 3000);
-            }
+        console.log('🔌 Conectando GameClient para HOST...');
+        
+        // Crear cliente sin player_id (es el host)
+        this.client = new GameClient(this.gameCode, null, 'host');
+        
+        // Escuchar cambios de estado
+        this.client.onStateUpdate = (state) => this.handleGameState(state);
+        
+        // Escuchar conexión perdida
+        this.client.onConnectionLost = () => {
+            console.error('❌ Conexión perdida');
+            alert('Se perdió la conexión con el servidor');
         };
-
-        console.log('✅ SSE conectado');
+        
+        // Conectar
+        this.client.connect();
+        console.log('✅ GameClient conectado');
     }
 
+    /**
+     * FIX #1: Renderizar squarcles de jugadores
+     * Ahora se llama desde handleGameState()
+     */
     handleGameState(state) {
-        this.currentPlayers = state.players || [];
-        this.updatePlayers(this.currentPlayers);
+        this.gameState = state;
+        
+        // FIX #1: Guardar y renderizar jugadores
+        if (state.players) {
+            this.currentPlayers = Array.isArray(state.players) 
+                ? state.players 
+                : Object.values(state.players);
+        }
+        this.updatePlayersGrid(this.currentPlayers);  // ← FIX: Ahora se llama
+        
+        // Actualizar otros elementos
         this.updateRanking(this.currentPlayers);
         this.updateTopWords(state.topWords || []);
         this.checkStartButtonVisibility();
@@ -206,21 +174,78 @@ class HostManager {
             categorySticker.textContent = state.category;
         }
 
-        if (state.currentRound !== undefined) {
-            this.currentRound = state.currentRound;
-            this.totalRounds = state.totalRounds || 3;
+        if (state.round !== undefined) {
+            this.currentRound = state.round;
+            this.totalRounds = state.total_rounds || 3;
             this.updateRoundInfo();
         }
 
-        if (state.remainingTime !== undefined) {
-            this.remainingTime = state.remainingTime;
+        if (state.remaining_time !== undefined) {
+            this.remainingTime = state.remaining_time;
             this.updateTimer();
         }
         
-        if (state.minPlayers !== undefined) {
-            this.minPlayers = state.minPlayers;
+        if (state.min_players !== undefined) {
+            this.minPlayers = state.min_players;
             console.log('⚙️ Mínimo de jugadores:', this.minPlayers);
         }
+    }
+
+    /**
+     * FIX #1: Renderiza squarcles en #players-grid
+     * Ahora con colores degradados desde state.players[i].color
+     */
+    updatePlayersGrid(players) {
+        const grid = document.getElementById('players-grid');
+        if (!grid) {
+            console.warn('⚠️ #players-grid no encontrado');
+            return;
+        }
+
+        grid.innerHTML = '';
+
+        if (!players || players.length === 0) {
+            grid.innerHTML = '<div style="text-align: center; color: #999; padding: 20px; grid-column: 1 / -1;">Sin jugadores conectados</div>';
+            return;
+        }
+
+        players.forEach((player, index) => {
+            const squarcle = document.createElement('div');
+            squarcle.className = 'player-squarcle';
+            squarcle.dataset.playerId = player.id || player.playerId;
+            squarcle.style.animationDelay = `${index * 0.1}s`; // Stagger animation
+            squarcle.style.animation = 'popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
+
+            // Aplicar color degradado si existe
+            if (player.color) {
+                squarcle.style.background = player.color;
+            } else {
+                squarcle.style.background = 'linear-gradient(135deg, #808080 0%, #404040 100%)';
+            }
+
+            const initial = document.createElement('div');
+            initial.className = 'squarcle-initial';
+            initial.textContent = (player.name || '?').charAt(0).toUpperCase();
+
+            const label = document.createElement('div');
+            label.className = 'squarcle-name';
+            label.textContent = player.name || 'Anónimo';
+
+            squarcle.appendChild(initial);
+            squarcle.appendChild(label);
+            
+            // Indicador de estado (opcional)
+            if (player.status === 'ready') {
+                const statusBadge = document.createElement('div');
+                statusBadge.className = 'squarcle-status ready';
+                statusBadge.textContent = '✓';
+                squarcle.appendChild(statusBadge);
+            }
+
+            grid.appendChild(squarcle);
+        });
+
+        console.log(`✅ ${players.length} jugadores renderizados`);
     }
 
     updateRoundInfo() {
@@ -275,43 +300,6 @@ class HostManager {
             btnStart.style.display = 'none';
             console.log(`⏳ Esperando ${this.minPlayers - playerCount} jugador(es) más`);
         }
-    }
-
-    updatePlayers(players) {
-        const grid = document.getElementById('players-grid');
-        if (!grid) {
-            console.warn('⚠️ #players-grid no encontrado');
-            return;
-        }
-
-        grid.innerHTML = '';
-
-        if (!players || players.length === 0) {
-            grid.innerHTML = '<div style="text-align: center; color: #999; padding: 20px; grid-column: 1 / -1;">Sin jugadores conectados</div>';
-            return;
-        }
-
-        players.forEach((player, index) => {
-            const squarcle = document.createElement('div');
-            squarcle.className = 'player-squarcle';
-            squarcle.dataset.playerId = player.id;
-            squarcle.style.animationDelay = `${index * 0.1}s`; // Stagger animation
-            squarcle.style.animation = 'popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
-
-            if (player.color) {
-                squarcle.style.background = player.color;
-            }
-
-            squarcle.innerHTML = `
-                <div class="squarcle-initial">${(player.name || '?').charAt(0).toUpperCase()}</div>
-                <div class="squarcle-name">${player.name || 'Anónimo'}</div>
-                ${player.ready ? '<div class="squarcle-status ready">✓</div>' : ''}
-            `;
-
-            grid.appendChild(squarcle);
-        });
-
-        console.log(`✅ ${players.length} jugadores renderizados`);
     }
 
     updateRanking(players) {
@@ -415,58 +403,23 @@ class HostManager {
         overlay.classList.add('active');
     }
 
-    addPlayer(player) {
-        console.log('👤 Jugador agregado:', player);
-        this.currentPlayers.push(player);
-        this.checkStartButtonVisibility();
-    }
-
-    removePlayer(playerId) {
-        console.log('👤 Jugador removido:', playerId);
-        this.currentPlayers = this.currentPlayers.filter(p => p.id !== playerId);
-        const squarcle = document.querySelector(`[data-player-id="${playerId}"]`);
-        if (squarcle) {
-            squarcle.style.animation = 'fadeOut 0.3s ease-out';
-            setTimeout(() => squarcle.remove(), 300);
-        }
-        this.checkStartButtonVisibility();
-    }
-
-    handleRoundStart(data) {
-        console.log('⏱️ Ronda iniciada:', data);
-        this.currentRound = data.round || 1;
-        this.remainingTime = data.timeLimit || 60;
-        this.updateRoundInfo();
-        this.startTimer();
-    }
-
-    handleRoundEnd(data) {
-        console.log('⏹️ Ronda finalizada:', data);
-        this.stopTimer();
-        this.showResults(data.results || []);
-    }
-
-    handleGameEnd(data) {
-        console.log('🏁 Juego finalizado:', data);
-        this.stopTimer();
-        this.showFinalResults(data.finalResults || []);
-    }
-
     async startGame() {
         console.log('▶️ Iniciando juego...');
+        if (!this.client) {
+            console.error('❌ Cliente no inicializado');
+            return;
+        }
+
         try {
-            const response = await fetch('/api/host/start_game.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: this.gameCode })
+            const result = await this.client.sendAction('start_round', {
+                game_id: this.gameCode
             });
 
-            const result = await response.json();
-            if (!result.success) {
-                console.error('❌ Error:', result.error);
-                alert(result.error || 'Error al iniciar el juego');
+            if (result.success) {
+                console.log('✅ Ronda iniciada');
             } else {
-                console.log('✅ Juego iniciado');
+                console.error('❌ Error:', result.message);
+                alert(result.message || 'Error al iniciar la ronda');
             }
         } catch (error) {
             console.error('❌ Error en startGame():', error);
@@ -476,9 +429,9 @@ class HostManager {
 
     destroy() {
         this.stopTimer();
-        if (this.eventSource) {
-            this.eventSource.close();
-            console.log('🔌 SSE desconectado');
+        if (this.client) {
+            this.client.disconnect();
+            console.log('🔌 GameClient desconectado');
         }
     }
 }
@@ -517,3 +470,5 @@ if (document.readyState === 'loading') {
 } else {
     initHostManager();
 }
+
+console.log('%c✅ host-manager.js - FIX #38: Reconectado a GameClient + updatePlayersGrid() llamado', 'color: #FF9500; font-weight: bold');
