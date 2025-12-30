@@ -121,49 +121,119 @@ function createTimer(callback, interval = 1000) {
 // ALMACENAMIENTO LOCAL
 // ============================================================================
 
-/**
- * Guarda dato en localStorage de forma segura
- * @param {string} key - Clave
- * @param {*} value - Valor (se convierte a JSON si es objeto)
- */
-function setLocalStorage(key, value) {
-    try {
-        const data = typeof value === 'string' ? value : JSON.stringify(value);
-        localStorage.setItem(key, data);
-    } catch (error) {
-        console.warn('Error guardando localStorage:', error);
+// NOTA: FASE 1 - Centralización de claves/operaciones en un único lugar.
+// Mantener wrappers legacy (setLocalStorage/getLocalStorage/clearGameSession)
+// para evitar romper código existente.
+
+class StorageKeys {
+    static HOST_GAME_CODE = 'hostGameCode';
+    static GAME_ID = 'gameId';
+    static IS_HOST = 'isHost';
+    static GAME_CATEGORY = 'gameCategory';
+
+    static PLAYER_ID = 'playerId';
+    static PLAYER_NAME = 'playerName';
+    static PLAYER_COLOR = 'playerColor';
+}
+
+class StorageManager {
+    static set(key, value) {
+        try {
+            const data = typeof value === 'string' ? value : JSON.stringify(value);
+            localStorage.setItem(key, data);
+            // Usar debug centralizado (no console.log)
+            debug(`💾 Storage set: ${key}`, value, 'info');
+        } catch (error) {
+            debug(`❌ Storage error (set): ${key}`, error, 'error');
+        }
+    }
+
+    static get(key, defaultValue = null) {
+        try {
+            const value = localStorage.getItem(key);
+            if (!value) return defaultValue;
+
+            // IMPORTANTE: no parsear boolean/number ("true" -> true) para no
+            // romper comparaciones existentes (ej: isHost === 'true').
+            const firstChar = value[0];
+            if (firstChar === '{' || firstChar === '[') {
+                try {
+                    return JSON.parse(value);
+                } catch {
+                    return value;
+                }
+            }
+
+            return value;
+        } catch (error) {
+            debug(`❌ Storage error (get): ${key}`, error, 'error');
+            return defaultValue;
+        }
+    }
+
+    static remove(key) {
+        try {
+            localStorage.removeItem(key);
+            debug(`🗑️ Storage removed: ${key}`, null, 'info');
+        } catch (error) {
+            debug(`❌ Storage error (remove): ${key}`, error, 'error');
+        }
+    }
+
+    static isHostSessionActive() {
+        const code = this.get(StorageKeys.HOST_GAME_CODE);
+        const isHost = this.get(StorageKeys.IS_HOST);
+        return !!(code && isHost === 'true');
+    }
+
+    static clearHostSession() {
+        const keys = [
+            StorageKeys.HOST_GAME_CODE,
+            StorageKeys.GAME_ID,
+            StorageKeys.IS_HOST,
+            StorageKeys.GAME_CATEGORY
+        ];
+        keys.forEach(k => this.remove(k));
+        debug('🧹 Host session cleared', null, 'info');
+    }
+
+    static clearPlayerSession() {
+        const keys = [
+            StorageKeys.GAME_ID,
+            StorageKeys.PLAYER_ID,
+            StorageKeys.PLAYER_NAME,
+            StorageKeys.PLAYER_COLOR
+        ];
+        keys.forEach(k => this.remove(k));
+        debug('🧹 Player session cleared', null, 'info');
     }
 }
 
 /**
- * Obtiene dato de localStorage de forma segura
+ * Guarda dato en localStorage de forma segura (LEGACY)
+ * @param {string} key - Clave
+ * @param {*} value - Valor (se convierte a JSON si es objeto)
+ */
+function setLocalStorage(key, value) {
+    StorageManager.set(key, value);
+}
+
+/**
+ * Obtiene dato de localStorage de forma segura (LEGACY)
  * @param {string} key - Clave
  * @param {*} defaultValue - Valor por defecto
  * @returns {*} Valor guardado o default
  */
 function getLocalStorage(key, defaultValue = null) {
-    try {
-        const value = localStorage.getItem(key);
-        if (!value) return defaultValue;
-        
-        // Intentar parsear como JSON
-        try {
-            return JSON.parse(value);
-        } catch {
-            return value; // Si no es JSON, devolver string
-        }
-    } catch (error) {
-        console.warn('Error leyendo localStorage:', error);
-        return defaultValue;
-    }
+    return StorageManager.get(key, defaultValue);
 }
 
 /**
- * Limpia las claves del juego del localStorage
+ * Limpia las claves del juego del localStorage (LEGACY)
+ * Mantiene el comportamiento anterior (player session).
  */
 function clearGameSession() {
-    const keys = ['gameId', 'playerId', 'playerName', 'playerColor'];
-    keys.forEach(key => localStorage.removeItem(key));
+    StorageManager.clearPlayerSession();
 }
 
 // ============================================================================
