@@ -1,11 +1,11 @@
 /**
- * Host Manager - Floating Panels Architecture (Fixed v2)
+ * Host Manager - Floating Panels Architecture (Fixed v3)
  * Gestiona: timer, categoría tab, fade ranking/top, panel draggable
  * 
- * MEJORAS:
- * - Sin redirect forzado si no hay código (modal es visible)
- * - Espera a que modal cree partida y guarde código
- * - Luego init del Manager automáticamente
+ * MEJORAS v3:
+ * - Controla visibilidad del botón "Empezar Juego" según mín jugadores
+ * - Anima entrada de elementos cuando aparecen jugadores
+ * - Integración con enhanced-create-game-modal
  */
 
 class HostManager {
@@ -17,6 +17,8 @@ class HostManager {
         this.remainingTime = 0;
         this.timerInterval = null;
         this.activeTab = 'ranking';
+        this.minPlayers = 2; // Por defecto
+        this.currentPlayers = [];
 
         console.log('🎮 HostManager iniciando con código:', this.gameCode);
         
@@ -51,6 +53,13 @@ class HostManager {
 
         // Tabs del panel lateral
         this.initPanelTabs();
+        
+        // Ocultar modal de crear partida
+        const modalCreate = document.getElementById('modal-create-game');
+        if (modalCreate) {
+            modalCreate.style.display = 'none';
+            console.log('✅ Modal de crear ocultado');
+        }
 
         console.log('✅ UI inicializado');
     }
@@ -186,9 +195,11 @@ class HostManager {
     }
 
     handleGameState(state) {
-        this.updatePlayers(state.players || []);
-        this.updateRanking(state.players || []);
+        this.currentPlayers = state.players || [];
+        this.updatePlayers(this.currentPlayers);
+        this.updateRanking(this.currentPlayers);
         this.updateTopWords(state.topWords || []);
+        this.checkStartButtonVisibility();
 
         const categorySticker = document.getElementById('category-sticker');
         if (categorySticker && state.category) {
@@ -204,6 +215,11 @@ class HostManager {
         if (state.remainingTime !== undefined) {
             this.remainingTime = state.remainingTime;
             this.updateTimer();
+        }
+        
+        if (state.minPlayers !== undefined) {
+            this.minPlayers = state.minPlayers;
+            console.log('⚙️ Mínimo de jugadores:', this.minPlayers);
         }
     }
 
@@ -242,6 +258,25 @@ class HostManager {
         }
     }
 
+    checkStartButtonVisibility() {
+        const btnStart = document.getElementById('btn-start-game');
+        if (!btnStart) return;
+        
+        const playerCount = this.currentPlayers.length;
+        const canStart = playerCount >= this.minPlayers;
+        
+        if (canStart && btnStart.style.display === 'none') {
+            // Mostrar con animación
+            btnStart.style.display = 'block';
+            btnStart.style.animation = 'popIn 0.5s ease-out';
+            console.log(`✅ Botón visible (${playerCount}/${this.minPlayers} jugadores)`);
+        } else if (!canStart && btnStart.style.display !== 'none') {
+            // Ocultar
+            btnStart.style.display = 'none';
+            console.log(`⏳ Esperando ${this.minPlayers - playerCount} jugador(es) más`);
+        }
+    }
+
     updatePlayers(players) {
         const grid = document.getElementById('players-grid');
         if (!grid) {
@@ -256,10 +291,12 @@ class HostManager {
             return;
         }
 
-        players.forEach(player => {
+        players.forEach((player, index) => {
             const squarcle = document.createElement('div');
             squarcle.className = 'player-squarcle';
             squarcle.dataset.playerId = player.id;
+            squarcle.style.animationDelay = `${index * 0.1}s`; // Stagger animation
+            squarcle.style.animation = 'popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
 
             if (player.color) {
                 squarcle.style.background = player.color;
@@ -295,6 +332,8 @@ class HostManager {
         sorted.forEach((player, index) => {
             const item = document.createElement('div');
             item.className = 'panel-item';
+            item.style.animation = `fadeIn 0.3s ease-out`;
+            item.style.animationDelay = `${index * 0.05}s`;
             item.innerHTML = `
                 <div class="position">${index + 1}</div>
                 <div class="name">${player.name || 'Anónimo'}</div>
@@ -318,9 +357,11 @@ class HostManager {
             return;
         }
 
-        topWords.forEach(wordData => {
+        topWords.forEach((wordData, index) => {
             const item = document.createElement('div');
             item.className = 'panel-item';
+            item.style.animation = `fadeIn 0.3s ease-out`;
+            item.style.animationDelay = `${index * 0.05}s`;
             item.innerHTML = `
                 <div class="name">${wordData.word || 'N/A'}</div>
                 <div class="value">${wordData.count || 0}</div>
@@ -376,12 +417,19 @@ class HostManager {
 
     addPlayer(player) {
         console.log('👤 Jugador agregado:', player);
+        this.currentPlayers.push(player);
+        this.checkStartButtonVisibility();
     }
 
     removePlayer(playerId) {
         console.log('👤 Jugador removido:', playerId);
+        this.currentPlayers = this.currentPlayers.filter(p => p.id !== playerId);
         const squarcle = document.querySelector(`[data-player-id="${playerId}"]`);
-        if (squarcle) squarcle.remove();
+        if (squarcle) {
+            squarcle.style.animation = 'fadeOut 0.3s ease-out';
+            setTimeout(() => squarcle.remove(), 300);
+        }
+        this.checkStartButtonVisibility();
     }
 
     handleRoundStart(data) {
@@ -447,15 +495,10 @@ function initHostManager() {
         gameCode = localStorage.getItem('hostGameCode');
     }
 
-    // SIN código: mostrar modal de crear partida
+    // SIN código: el enhanced-create-game-modal maneja esto
     if (!gameCode) {
-        console.log('⚠️ Sin código de partida - mostrando modal de crear');
-        const modalCreate = document.getElementById('modal-create-game');
-        if (modalCreate) {
-            modalCreate.style.display = 'flex';
-            console.log('✅ Modal de crear partida mostrado');
-        }
-        return; // NO inicializar Manager aún
+        console.log('⚠️ Sin código de partida - esperando al modal de crear');
+        return;
     }
 
     // CON código: inicializar Manager
