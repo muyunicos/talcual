@@ -1,1 +1,0 @@
-# 🧪 TESTING CHECKLIST - Validación de Correcciones
