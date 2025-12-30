@@ -12,6 +12,16 @@
   Objetivo: diseño fluido, sin scrolls anidados, más "Jackbox".
 */
 
+/* === GAME SCREEN (CONTENEDOR PRINCIPAL) === */
+.game-screen {
+    position: relative;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
 /* === HOST CONTAINER === */
 .tv-layout {
     /* Variables locales (sin tocar :root) */

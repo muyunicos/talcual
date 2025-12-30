@@ -2,22 +2,21 @@
  * Host Manager - Integración completa con menú hamburguesa
  * Gestiona: timer, categoría, ranking/top words, panel tabs, menú hamburguesa
  * 
- * MEJORAS v7 (30 Dic 2025):
- * - Integrada funcionalidad de menú hamburguesa
- * - Opciones funcionando: Reiniciar Ronda, Nuevo Juego, Opciones, Terminar
- * - Categoría persistente en localStorage
- * - Menú draggable/resizable preparado para futuras mejoras
- * - FASE 1: Validación de sesión al inicializar
- * - FASE 2: Función centralizada determineUIState() para visibilidad
+ * MEJORAS v9 (30 Dic 2025):
+ * - REFACTOR: determineUIState() SOLO actualiza clases, no style.display
+ * - Elimina redundancia: confía en CSS !important para visibilidad
+ * - Jerarquía z-index centralizada en CSS 3-host.css
+ * - Elimina conflicto entre dos mecanismos (inline style vs CSS !important)
  */
 
 /**
  * Determina qué UI mostrar basándose en el estado de sesión
  * Se ejecuta al cargar y después de cada cambio de estado crítico
  * 
- * FASE 2: Función centralizada para evitar inconsistencias
- * - Si hay sesión: mostrar pantalla de juego
- * - Si no hay sesión: mostrar modal de crear
+ * FASE 2 REFACTORED: Función centralizada que SOLO actualiza clases
+ * - Si hay sesión: agrega has-session, remueve no-session
+ * - Si no hay sesión: agrega no-session, remueve has-session
+ * - CSS se encarga de mostrar/ocultar elementos con !important
  */
 function determineUIState() {
     const hasSession = StorageManager.isHostSessionActive();
@@ -25,77 +24,23 @@ function determineUIState() {
     
     console.log(`📋 determineUIState() - Session: ${hasSession}, Code: ${gameCode || 'none'}`);
 
-    // CRÍTICO: sincronizar las clases del <html>.
-    // host.html usa .no-session/.has-session para ocultar/mostrar .session-only/.nosession-only
-    // y esas reglas tienen !important; si no se actualizan, la UI puede quedar "en blanco".
+    // CLAVE: sincronizar clases del <html>
+    // CSS usa estas clases para controlar visibilidad de .session-only/.nosession-only
     const root = document.documentElement;
     if (hasSession && gameCode) {
         root.classList.add('has-session');
         root.classList.remove('no-session');
+        console.log('🎮 determineUIState: Modo CON sesión (has-session)');
     } else {
         root.classList.add('no-session');
         root.classList.remove('has-session');
+        console.log('➕ determineUIState: Modo SIN sesión (no-session)');
     }
     
-    const modalCreate = document.getElementById('modal-create-game');
-    const gameScreen = document.getElementById('game-screen');
-    const btnHamburger = document.getElementById('btn-hamburger-host');
-    
-    if (hasSession && gameCode) {
-        // CASO 1: Hay sesión activa → Mostrar pantalla de juego
-        console.log('🎮 determineUIState: Mostrando pantalla de juego');
-        
-        if (modalCreate) {
-            modalCreate.style.display = 'none';
-            console.log('✅ Modal de crear ocultado');
-        }
-        
-        if (gameScreen) {
-            gameScreen.style.display = '';
-            console.log('✅ Pantalla de juego mostrada');
-        }
-        
-        if (btnHamburger) {
-            btnHamburger.style.display = '';
-            console.log('✅ Botón hamburguesa mostrado');
-        }
-        
-        // Mostrar elementos del juego (remover display: none del hideGameElements)
-        const gameElements = {
-            codeSticker: document.getElementById('code-sticker-floating'),
-            tvHeader: document.querySelector('.tv-header'),
-            sidepanel: document.getElementById('floating-side-panel'),
-            playersContainer: document.getElementById('players-container')
-        };
-        
-        Object.entries(gameElements).forEach(([name, el]) => {
-            if (el) {
-                el.style.display = '';
-                console.log(`  ✅ ${name} mostrado`);
-            } else {
-                console.warn(`  ⚠️ ${name} no encontrado`);
-            }
-        });
-        
-    } else {
-        // CASO 2: Sin sesión → Mostrar modal de crear
-        console.log('➕ determineUIState: Mostrando modal de crear partida');
-        
-        if (gameScreen) {
-            gameScreen.style.display = 'none';
-            console.log('✅ Pantalla de juego ocultada');
-        }
-        
-        if (modalCreate) {
-            modalCreate.style.display = 'flex';
-            console.log('✅ Modal de crear mostrado');
-        }
-        
-        if (btnHamburger) {
-            btnHamburger.style.display = 'none';
-            console.log('✅ Botón hamburguesa ocultado');
-        }
-    }
+    // IMPORTANTE: NO manipulamos style.display directamente
+    // Las reglas CSS lo hacen automáticamente con !important:
+    // html.no-session .session-only { display: none !important; }
+    // html.has-session .nosession-only { display: none !important; }
 }
 
 // Ejecutar determineUIState cuando el DOM esté listo
@@ -140,11 +85,7 @@ class HostManager {
         const hasSession = StorageManager.isHostSessionActive();
         if (!hasSession) {
             console.warn('⚠️ Sin sesión activa - mostrando modal');
-            const modal = document.getElementById('modal-create-game');
-            if (modal) {
-                modal.style.display = 'flex';
-                console.log('✅ Modal de crear partida mostrado');
-            }
+            // Modal se oculta/muestra por CSS, no por JS
         }
         return hasSession;
     }
@@ -168,31 +109,24 @@ class HostManager {
         const codeSticker = document.querySelector('.code-sticker-floating');
         if (codeSticker) {
             codeSticker.addEventListener('click', () => {
-            navigator.clipboard.writeText(this.gameCode).then(() => {
-                console.log('📋 Código copiado al clipboard:', this.gameCode);
-                
-                // Agregar clase para feedback visual
-                codeSticker.classList.add('copied');
-                
-                // Remover clase después de la animación
-                setTimeout(() => {
-                    codeSticker.classList.remove('copied');
-                }, 600);
-                
-            }).catch(err => {
-                console.error('❌ Error copiando código:', err);
+                navigator.clipboard.writeText(this.gameCode).then(() => {
+                    console.log('📋 Código copiado al clipboard:', this.gameCode);
+                    
+                    // Agregar clase para feedback visual
+                    codeSticker.classList.add('copied');
+                    
+                    // Remover clase después de la animación
+                    setTimeout(() => {
+                        codeSticker.classList.remove('copied');
+                    }, 600);
+                    
+                }).catch(err => {
+                    console.error('❌ Error copiando código:', err);
+                });
             });
-        });
         }
-
 
         this.initPanelTabs();
-        
-        const modalCreate = document.getElementById('modal-create-game');
-        if (modalCreate) {
-            modalCreate.style.display = 'none';
-            console.log('✅ Modal de crear ocultado');
-        }
 
         console.log('✅ UI inicializado');
     }
@@ -717,4 +651,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v8 - FASE 2: determineUIState() centralizado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js v9 - REFACTOR: determineUIState() sólo actualiza clases', 'color: #10B981; font-weight: bold');
