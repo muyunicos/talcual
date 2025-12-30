@@ -8,7 +8,90 @@
  * - Categoría persistente en localStorage
  * - Menú draggable/resizable preparado para futuras mejoras
  * - FASE 1: Validación de sesión al inicializar
+ * - FASE 2: Función centralizada determineUIState() para visibilidad
  */
+
+/**
+ * Determina qué UI mostrar basándose en el estado de sesión
+ * Se ejecuta al cargar y después de cada cambio de estado crítico
+ * 
+ * FASE 2: Función centralizada para evitar inconsistencias
+ * - Si hay sesión: mostrar pantalla de juego
+ * - Si no hay sesión: mostrar modal de crear
+ */
+function determineUIState() {
+    const hasSession = StorageManager.isHostSessionActive();
+    const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
+    
+    console.log(`📋 determineUIState() - Session: ${hasSession}, Code: ${gameCode || 'none'}`);
+    
+    const modalCreate = document.getElementById('modal-create-game');
+    const gameScreen = document.getElementById('game-screen');
+    const btnHamburger = document.getElementById('btn-hamburger-host');
+    
+    if (hasSession && gameCode) {
+        // CASO 1: Hay sesión activa → Mostrar pantalla de juego
+        console.log('🎮 determineUIState: Mostrando pantalla de juego');
+        
+        if (modalCreate) {
+            modalCreate.style.display = 'none';
+            console.log('✅ Modal de crear ocultado');
+        }
+        
+        if (gameScreen) {
+            gameScreen.style.display = '';
+            console.log('✅ Pantalla de juego mostrada');
+        }
+        
+        if (btnHamburger) {
+            btnHamburger.style.display = '';
+            console.log('✅ Botón hamburguesa mostrado');
+        }
+        
+        // Mostrar elementos del juego (remover display: none del hideGameElements)
+        const gameElements = {
+            codeSticker: document.getElementById('code-sticker-floating'),
+            tvHeader: document.querySelector('.tv-header'),
+            sidepanel: document.getElementById('floating-side-panel'),
+            playersContainer: document.getElementById('players-container')
+        };
+        
+        Object.entries(gameElements).forEach(([name, el]) => {
+            if (el) {
+                el.style.display = '';
+                console.log(`  ✅ ${name} mostrado`);
+            } else {
+                console.warn(`  ⚠️ ${name} no encontrado`);
+            }
+        });
+        
+    } else {
+        // CASO 2: Sin sesión → Mostrar modal de crear
+        console.log('➕ determineUIState: Mostrando modal de crear partida');
+        
+        if (gameScreen) {
+            gameScreen.style.display = 'none';
+            console.log('✅ Pantalla de juego ocultada');
+        }
+        
+        if (modalCreate) {
+            modalCreate.style.display = 'flex';
+            console.log('✅ Modal de crear mostrado');
+        }
+        
+        if (btnHamburger) {
+            btnHamburger.style.display = 'none';
+            console.log('✅ Botón hamburguesa ocultado');
+        }
+    }
+}
+
+// Ejecutar determineUIState cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', determineUIState);
+} else {
+    determineUIState();
+}
 
 class HostManager {
     constructor(gameCode) {
@@ -32,7 +115,7 @@ class HostManager {
         
         this.initUI();
         this.attachEventListeners();
-        this.initHamburgerMenu(); // FIX: Menú hamburguesa
+        this.initHamburgerMenu();
         this.connectGameClient();
     }
 
@@ -225,7 +308,7 @@ class HostManager {
         this.closeHamburgerMenu();
         
         if (confirm('¿Reiniciar la ronda actual?')) {
-            this.startGame(); // Reinicia ronda
+            this.startGame();
         }
     }
 
@@ -234,11 +317,9 @@ class HostManager {
         this.closeHamburgerMenu();
         
         if (confirm('¿Crear una nueva partida? Se perderá el progreso actual.')) {
-            // FASE 1: centralizado
             if (typeof StorageManager !== 'undefined') {
                 StorageManager.clearHostSession();
             } else {
-                // Fallback defensivo
                 localStorage.removeItem('hostGameCode');
                 localStorage.removeItem('gameId');
                 localStorage.removeItem('isHost');
@@ -267,11 +348,9 @@ class HostManager {
         this.closeHamburgerMenu();
         
         if (confirm('¿Estás seguro de que quieres terminar la partida?')) {
-            // FASE 1: centralizado
             if (typeof StorageManager !== 'undefined') {
                 StorageManager.clearHostSession();
             } else {
-                // Fallback defensivo
                 localStorage.removeItem('hostGameCode');
                 localStorage.removeItem('gameId');
                 localStorage.removeItem('isHost');
@@ -590,7 +669,6 @@ function initHostManager() {
     let gameCode = urlParams.get('code');
 
     if (!gameCode) {
-        // FASE 1: centralizado
         if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
             gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
         } else {
@@ -617,4 +695,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v7 - Menú hamburguesa + sesión check', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js v8 - FASE 2: determineUIState() centralizado', 'color: #10B981; font-weight: bold');
