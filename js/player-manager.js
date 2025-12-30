@@ -39,10 +39,11 @@ class PlayerManager {
         // Precargar motor de palabras lo antes posible
         this.initWordEngine();
 
-        const savedGameId = getLocalStorage('gameId');
-        const savedPlayerId = getLocalStorage('playerId');
-        const savedPlayerName = getLocalStorage('playerName');
-        const savedPlayerColor = getLocalStorage('playerColor');
+        // FASE 1: usar claves centralizadas
+        const savedGameId = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.GAME_ID) : getLocalStorage('gameId');
+        const savedPlayerId = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_ID) : getLocalStorage('playerId');
+        const savedPlayerName = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_NAME) : getLocalStorage('playerName');
+        const savedPlayerColor = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_COLOR) : getLocalStorage('playerColor');
 
         if (savedGameId && savedPlayerId && savedPlayerName && savedPlayerColor) {
             debug('🔄 Recuperando sesión');
@@ -382,10 +383,18 @@ class PlayerManager {
         this.playerName = name;
         this.playerId = generatePlayerId();
 
-        setLocalStorage('gameId', this.gameId);
-        setLocalStorage('playerId', this.playerId);
-        setLocalStorage('playerName', this.playerName);
-        setLocalStorage('playerColor', this.playerColor);
+        // FASE 1: usar claves centralizadas
+        if (typeof StorageKeys !== 'undefined') {
+            setLocalStorage(StorageKeys.GAME_ID, this.gameId);
+            setLocalStorage(StorageKeys.PLAYER_ID, this.playerId);
+            setLocalStorage(StorageKeys.PLAYER_NAME, this.playerName);
+            setLocalStorage(StorageKeys.PLAYER_COLOR, this.playerColor);
+        } else {
+            setLocalStorage('gameId', this.gameId);
+            setLocalStorage('playerId', this.playerId);
+            setLocalStorage('playerName', this.playerName);
+            setLocalStorage('playerColor', this.playerColor);
+        }
 
         if (this.elements.btnJoin) {
             this.elements.btnJoin.disabled = true;
@@ -806,7 +815,13 @@ class PlayerManager {
         if (this.elements.playerNameDisplay) {
             this.elements.playerNameDisplay.textContent = newName;
         }
-        setLocalStorage('playerName', newName);
+
+        // FASE 1: usar claves centralizadas
+        if (typeof StorageKeys !== 'undefined') {
+            setLocalStorage(StorageKeys.PLAYER_NAME, newName);
+        } else {
+            setLocalStorage('playerName', newName);
+        }
 
         if (this.client) {
             try {

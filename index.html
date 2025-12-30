@@ -25,11 +25,16 @@
         <div class="version">v0.03 - Muy Únicos</div>
     </div>
     
+    <script src="js/shared-utils.js"></script>
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const gameId = localStorage.getItem('gameId');
-            const playerId = localStorage.getItem('playerId');
-            const isHost = localStorage.getItem('isHost') === 'true';
+            // FASE 1: centralizar claves y acceso a localStorage
+            const hasStorageManager = (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined');
+
+            const gameId = hasStorageManager ? StorageManager.get(StorageKeys.GAME_ID) : localStorage.getItem('gameId');
+            const playerId = hasStorageManager ? StorageManager.get(StorageKeys.PLAYER_ID) : localStorage.getItem('playerId');
+            const isHostValue = hasStorageManager ? StorageManager.get(StorageKeys.IS_HOST) : localStorage.getItem('isHost');
+            const isHost = isHostValue === 'true';
             
             if (gameId) {
                 console.log('🔄 Sesión detectada:', gameId);
