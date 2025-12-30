@@ -2,10 +2,11 @@
  * Host Manager - Reconectado a arquitectura real (GameClient + /app/actions.php)
  * Gestiona: timer, categoría tab, fade ranking/top, panel draggable
  * 
- * MEJORAS v4:
+ * MEJORAS v5:
  * - FIX: Usa GameClient en lugar de /api/host/events.php inexistente
  * - FIX: Llama updatePlayersGrid() en handleGameState()
  * - FIX: Modales centrados con flexbox
+ * - FIX: Escucha evento 'connected' para renderizar estado inicial (FIX #52)
  * - Controla visibilidad del botón "Empezar Juego" según mín jugadores
  * - Anima entrada de elementos cuando aparecen jugadores
  */
@@ -122,6 +123,7 @@ class HostManager {
 
     /**
      * FIX #38: Usar GameClient en lugar de EventSource directo
+     * FIX #52: Agregar listener 'connected' para renderizar estado inicial
      * Conecta a /app/sse-stream.php con player_id=null para host
      */
     connectGameClient() {
@@ -134,6 +136,15 @@ class HostManager {
         
         // Crear cliente sin player_id (es el host)
         this.client = new GameClient(this.gameCode, null, 'host');
+        
+        // FIX #52: Escuchar evento 'connected' para renderizar estado inicial
+        this.client.on('connected', () => {
+            console.log('✅ Host conectado a SSE - renderizando estado inicial');
+            // Renderizar estado vacío inicial mientras no haya jugadores
+            this.updatePlayersGrid([]);
+            this.updateRanking([]);
+            this.updateTopWords([]);
+        });
         
         // Escuchar cambios de estado
         this.client.onStateUpdate = (state) => this.handleGameState(state);
@@ -471,4 +482,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - FIX #38: Reconectado a GameClient + updatePlayersGrid() llamado', 'color: #FF9500; font-weight: bold');
+console.log('%c✅ host-manager.js - FIX #52: Listener connected para renderizar estado inicial', 'color: #10B981; font-weight: bold');
