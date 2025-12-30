@@ -51,7 +51,7 @@ class CreateGameModal {
     }
 
     extractWordsForCategory(category) {
-        const categoryData = this.dictionary[category]; // Array de objetos: { CONSIGNA: [tips...] }
+        const categoryData = this.dictionary[category];
         const words = [];
 
         for (const consignaObj of categoryData) {
@@ -123,18 +123,8 @@ class CreateGameModal {
 
         await new Promise((r) => setTimeout(r, 500));
 
-        // FASE 2: Usar determineUIState() centralizado
-        // Esta función maneja toda la lógica de mostrar/ocultar UI basándose en sesión
-        // Garantiza que la pantalla de juego se muestre correctamente
         if (typeof determineUIState === 'function') {
             determineUIState();
-            console.log('✅ determineUIState() ejecutado - UI renderizada');
-        } else {
-            console.warn('⚠️  determineUIState() no disponible, fallback a ocultacion manual');
-            this.modalElement.style.display = 'none';
-            // Mostrar elementos del juego
-            const gameScreen = document.getElementById('game-screen');
-            if (gameScreen) gameScreen.style.display = '';
         }
 
         setTimeout(() => {
@@ -160,5 +150,3 @@ if (document.readyState === 'loading') {
 } else {
     new CreateGameModal();
 }
-
-console.log('%c✅ create-game-modal.js - Usa determineUIState() centralizado', 'color: #10B981; font-weight: bold');
