@@ -166,15 +166,26 @@ class HostManager {
         }
 
         const codeSticker = document.querySelector('.code-sticker-floating');
+        const codeSticker = document.querySelector('.code-sticker-floating');
         if (codeSticker) {
             codeSticker.addEventListener('click', () => {
-                navigator.clipboard.writeText(this.gameCode).then(() => {
-                    console.log('📋 Código copiado al clipboard:', this.gameCode);
-                }).catch(err => {
-                    console.error('❌ Error copiando código:', err);
-                });
+            navigator.clipboard.writeText(this.gameCode).then(() => {
+                console.log('📋 Código copiado al clipboard:', this.gameCode);
+                
+                // Agregar clase para feedback visual
+                codeSticker.classList.add('copied');
+                
+                // Remover clase después de la animación
+                setTimeout(() => {
+                    codeSticker.classList.remove('copied');
+                }, 600);
+                
+            }).catch(err => {
+                console.error('❌ Error copiando código:', err);
             });
+        });
         }
+
 
         this.initPanelTabs();
         
