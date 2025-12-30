@@ -166,7 +166,6 @@ class HostManager {
         }
 
         const codeSticker = document.querySelector('.code-sticker-floating');
-        const codeSticker = document.querySelector('.code-sticker-floating');
         if (codeSticker) {
             codeSticker.addEventListener('click', () => {
             navigator.clipboard.writeText(this.gameCode).then(() => {
