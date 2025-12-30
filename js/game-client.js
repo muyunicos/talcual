@@ -30,7 +30,9 @@ class GameClient {
       reconnectsCount: 0,
       lastHeartbeatTime: Date.now(),
       connectionStartTime: null,
-      uptime: 0
+      uptime: 0,
+      latencyEstimate: 0,
+      latencySamples: []
     };
     
     this.validateSchema = true;
@@ -85,6 +87,7 @@ class GameClient {
   async _makeRequest(payload) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const t0 = performance.now();
     
     try {
       const response = await fetch('app/actions.php', {
@@ -100,7 +103,20 @@ class GameClient {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      return await response.json();
+      const result = await response.json();
+      const t1 = performance.now();
+      const rtt = t1 - t0;
+      
+      this.updateLatencyMetrics(rtt);
+      
+      if (result && typeof result === 'object' && window.COMM?.timeSync) {
+        const timeSync = window.COMM.timeSync;
+        if (result.server_now && !timeSync.isCalibrated) {
+          timeSync.calibrateWithRTT(result.server_now, rtt);
+        }
+      }
+      
+      return result;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
@@ -108,6 +124,16 @@ class GameClient {
       }
       throw error;
     }
+  }
+
+  updateLatencyMetrics(rtt) {
+    this.metrics.latencySamples.push(rtt);
+    if (this.metrics.latencySamples.length > 20) {
+      this.metrics.latencySamples.shift();
+    }
+    
+    const sum = this.metrics.latencySamples.reduce((a, b) => a + b, 0);
+    this.metrics.latencyEstimate = sum / this.metrics.latencySamples.length;
   }
 
   connect() {
@@ -396,13 +422,11 @@ class GameClient {
   }
 }
 
-// FIX #1: Corregir getRemainingTime - Usar MILISEGUNDOS consistentemente
 function getRemainingTime(startTimestamp, duration) {
   if (typeof timeSync !== 'undefined' && timeSync && timeSync.isCalibrated) {
     return timeSync.getRemainingTime(startTimestamp, duration);
   }
   
-  // Fallback: Ambos en ms
   const now = Date.now();
   const elapsed = now - startTimestamp;
   return Math.max(0, duration - elapsed);
