@@ -502,6 +502,38 @@ class HostManager {
         overlay.classList.add('active');
     }
 
+    async showHostCountdown(state) {
+        const overlay = document.getElementById('countdown-overlay-host');
+        if (!overlay) return;
+
+        overlay.classList.add('active');
+        const numberEl = document.getElementById('countdown-number-host');
+        if (!numberEl) return;
+
+        const countdownDuration = 4000;
+        const elapsedSinceStart = Date.now() - state.round_started_at;
+
+        for (let i = 3; i >= 1; i--) {
+            const numberShowTime = countdownDuration - (i * 1000);
+            const waitTime = Math.max(0, numberShowTime - elapsedSinceStart);
+
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    numberEl.textContent = i.toString();
+                    numberEl.style.animation = 'none';
+                    void numberEl.offsetWidth;
+                    numberEl.style.animation = '';
+                    resolve();
+                }, waitTime);
+            });
+        }
+
+        const remainingCountdown = Math.max(0, countdownDuration - (Date.now() - state.round_started_at));
+        await new Promise(resolve => setTimeout(resolve, remainingCountdown + 100));
+
+        overlay.classList.remove('active');
+    }
+
     async startGame() {
         if (!this.client) {
             console.error('Cliente no inicializado');
@@ -516,13 +548,12 @@ class HostManager {
             if (!result.success) {
                 alert(result.message || 'Error al iniciar la ronda');
             } else {
-                // FIX #3: Validar que round_started_at existe antes de usar en timer
                 if (result.state && result.state.round_started_at && result.state.round_duration) {
-                    // Calibrar timeSync del host si está disponible
                     if (typeof timeSync !== 'undefined' && timeSync && !timeSync.isCalibrated) {
                         timeSync.calibrate(result.state.round_started_at, result.state.round_duration);
                         console.log('%c⏱️ HOST SYNC CALIBRADO', 'color: #3B82F6; font-weight: bold', `Offset: ${timeSync.offset}ms`);
                     }
+                    await this.showHostCountdown(result.state);
                 }
             }
         } catch (error) {
