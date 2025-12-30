@@ -12,6 +12,77 @@
   Objetivo: diseño fluido, sin scrolls anidados, más "Jackbox".
 */
 
+/* === BOOT ANIMATIONS (SESSIONING) === */
+html.is-booting .boot-el {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(6px);
+}
+
+.boot-el {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+    will-change: opacity, transform;
+}
+
+html.no-session .session-only {
+    display: none !important;
+}
+
+html.has-session .nosession-only {
+    display: none !important;
+}
+
+/* === BACKGROUND IMAGE PRELOADING === */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: url('/images/bg.webp') center / cover no-repeat;
+    opacity: 0;
+    transition: opacity 600ms ease;
+    z-index: -1;
+    pointer-events: none;
+}
+
+body {
+    background-image: none !important;
+}
+
+html.bg-ready body::before {
+    opacity: 1;
+}
+
+/* === COUNTDOWN OVERLAY === */
+.countdown-overlay-host {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.countdown-overlay-host.active {
+    display: flex;
+}
+
+.countdown-number-host {
+    font-size: 180px;
+    font-weight: 700;
+    color: #FF6B9D;
+    line-height: 1;
+    animation: pulse-countdown 1s infinite;
+}
+
 /* === GAME SCREEN (CONTENEDOR PRINCIPAL) === */
 .game-screen {
     position: relative;
@@ -123,9 +194,9 @@
     animation: copiedPulse 0.6s ease-out;
 }
 
-/* Texto "¡Copiado!" flotante */
+/* Texto "!Copiado!" flotante */
 .code-sticker-floating.copied::after {
-    content: '¡Copiado!';
+    content: '!Copiado!';
     position: absolute;
     top: 85%;
     margin-bottom: 8px;
