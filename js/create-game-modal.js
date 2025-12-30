@@ -1,12 +1,14 @@
 /**
- * Host Create Game Modal Handler - Enhanced
+ * Host Create Game Modal Handler - Enhanced v2
  * Maneja la creación de partidas desde el modal en host.html
  * 
- * MEJORAS:
- * - Muestra categoría + palabra aleatoria en el modal
- * - Acceso a opciones avanzadas (hamburguesa)
- * - Al crear: anima entrada de elementos del game screen
- * - Oculta elementos innecesarios mientras el modal está abierto
+ * MEJORAS v2 (29 Dic 2025):
+ * - Al abrir modal: categoría seleccionada al azar automáticamente
+ * - Eliminada vista previa de categoría/palabra
+ * - Código sala muestra palabra aleatoria de categoría elegida
+ * - Si se borra: muestra "se generará automáticamente"
+ * - Categoría elegida persistente durante todas las rondas
+ * - Consignas no se repiten (descartadas hasta agotar, luego reset)
  */
 
 class CreateGameModal {
@@ -24,10 +26,6 @@ class CreateGameModal {
             sidepanel: document.getElementById('floating-side-panel'),
             playersContainer: document.getElementById('players-container')
         };
-        
-        // Elementos para mostrar preview de categoría
-        this.categoryPreview = null;
-        this.wordPreview = null;
         
         this.categories = [];
         this.dictionary = null;
@@ -47,21 +45,27 @@ class CreateGameModal {
         // Cargar diccionario
         await this.loadDictionary();
         
-        // Crear previsualización de categoría en el modal
-        this.createCategoryPreview();
-        
         // Ocultar elementos del game screen
         this.hideGameElements();
         
         // Eventos
         this.btnCreate.addEventListener('click', () => this.handleCreateClick());
-        this.categorySelect.addEventListener('change', () => this.updatePreview());
+        
+        // FIX: Evento de categoría para actualizar código con palabra de categoría
+        this.categorySelect.addEventListener('change', () => this.updateCodeWithCategoryWord());
+        
+        // FIX: Evento de input para detectar borrado
         this.customCodeInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.toUpperCase();
+            const value = e.target.value.trim();
+            if (value === '') {
+                e.target.placeholder = 'se generará automáticamente';
+            } else {
+                e.target.value = value.toUpperCase();
+            }
         });
         
-        // Inicializar preview con categoría aleatoria
-        this.updatePreview();
+        // FIX: Seleccionar categoría aleatoria automáticamente
+        this.selectRandomCategory();
         
         console.log('✅ CreateGameModal listo');
     }
@@ -87,7 +91,7 @@ class CreateGameModal {
             
         } catch (error) {
             console.error('❌ Error cargando diccionario:', error);
-            this.categories = ['GENERAL', 'DEPORTES', 'MÚUSICA'];
+            this.categories = ['GENERAL', 'DEPORTES', 'MÚSICA'];
             this.populateCategorySelect(this.categories);
         }
     }
@@ -145,12 +149,7 @@ class CreateGameModal {
     populateCategorySelect(categories) {
         this.categorySelect.innerHTML = '';
         
-        const emptyOption = document.createElement('option');
-        emptyOption.value = '';
-        emptyOption.textContent = '🎲 Categoría Aleatoria';
-        emptyOption.selected = true;
-        this.categorySelect.appendChild(emptyOption);
-        
+        // FIX: SIN opción vacía, directamente las categorías
         categories.forEach(cat => {
             const option = document.createElement('option');
             option.value = cat;
@@ -159,48 +158,30 @@ class CreateGameModal {
         });
     }
     
-    createCategoryPreview() {
-        // Buscar si ya existe
-        if (document.getElementById('category-preview-section')) return;
+    // FIX: Seleccionar categoría aleatoria automáticamente
+    selectRandomCategory() {
+        if (this.categories.length === 0) return;
         
-        const previewSection = document.createElement('div');
-        previewSection.id = 'category-preview-section';
-        previewSection.style.cssText = `
-            margin: 1.5rem 0;
-            padding: 1rem;
-            background: linear-gradient(135deg, rgba(50, 184, 198, 0.1) 0%, rgba(45, 166, 178, 0.05) 100%);
-            border-radius: 12px;
-            border: 2px solid var(--color-primary, #2186 8D);
-            text-align: center;
-        `;
+        const randomIndex = Math.floor(Math.random() * this.categories.length);
+        const randomCategory = this.categories[randomIndex];
         
-        previewSection.innerHTML = `
-            <div style="font-size: 0.9rem; color: var(--color-text-secondary, #626C70); margin-bottom: 0.5rem;">
-                🌠 Vista Previa
-            </div>
-            <div id="category-preview" style="font-weight: 600; font-size: 1.2rem; color: var(--color-primary, #2186 8D); margin-bottom: 0.5rem;">
-                CATEGORÍA
-            </div>
-            <div id="word-preview" style="font-size: 1.5rem; font-weight: bold; color: var(--color-text, #134252); font-style: italic;">
-                palabra
-            </div>
-        `;
+        this.categorySelect.value = randomCategory;
+        console.log('🎲 Categoría seleccionada automáticamente:', randomCategory);
         
-        // Insertar después del select de categoría
-        this.categorySelect.parentElement.insertAdjacentElement('afterend', previewSection);
-        
-        this.categoryPreview = document.getElementById('category-preview');
-        this.wordPreview = document.getElementById('word-preview');
+        // Actualizar código con palabra de esta categoría
+        this.updateCodeWithCategoryWord();
     }
     
-    updatePreview() {
-        if (!this.categoryPreview || !this.wordPreview) return;
+    // FIX: Actualizar código con palabra de categoría
+    updateCodeWithCategoryWord() {
+        const selectedCategory = this.categorySelect.value;
+        if (!selectedCategory) return;
         
-        const selectedCategory = this.categorySelect.value || this.categories[Math.floor(Math.random() * this.categories.length)];
         const randomWord = this.getRandomWord(selectedCategory);
+        this.customCodeInput.value = randomWord.toUpperCase().substring(0, 5); // Máx 5 letras
+        this.customCodeInput.placeholder = 'se generará automáticamente';
         
-        this.categoryPreview.textContent = selectedCategory || 'ALEATORIO';
-        this.wordPreview.textContent = randomWord;
+        console.log(`📝 Código actualizado con palabra de ${selectedCategory}: ${randomWord}`);
     }
     
     hideGameElements() {
@@ -275,7 +256,10 @@ class CreateGameModal {
             localStorage.setItem('hostGameCode', gameId);
             localStorage.setItem('gameId', gameId);
             localStorage.setItem('isHost', 'true');
-            console.log('📋 Código guardado en localStorage:', gameId);
+            
+            // FIX: Guardar categoría para persistencia
+            localStorage.setItem('gameCategory', category);
+            console.log('📋 Código y categoría guardados:', gameId, category);
             
             this.showMessage('✅ Partida creada. Inicializando...', 'success');
             
@@ -327,4 +311,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ CreateGameModal Enhanced', 'color: #10B981; font-weight: bold');
+console.log('%c✅ CreateGameModal Enhanced v2 - Categoría automática, código como palabra', 'color: #10B981; font-weight: bold');
