@@ -515,6 +515,15 @@ class HostManager {
 
             if (!result.success) {
                 alert(result.message || 'Error al iniciar la ronda');
+            } else {
+                // FIX #3: Validar que round_started_at existe antes de usar en timer
+                if (result.state && result.state.round_started_at && result.state.round_duration) {
+                    // Calibrar timeSync del host si está disponible
+                    if (typeof timeSync !== 'undefined' && timeSync && !timeSync.isCalibrated) {
+                        timeSync.calibrate(result.state.round_started_at, result.state.round_duration);
+                        console.log('%c⏱️ HOST SYNC CALIBRADO', 'color: #3B82F6; font-weight: bold', `Offset: ${timeSync.offset}ms`);
+                    }
+                }
             }
         } catch (error) {
             console.error('Error en startGame():', error);
