@@ -1,0 +1,2 @@
+# Este archivo asegura que la carpeta game_states existe
+# Los archivos de juego se ignoran en .gitignore
