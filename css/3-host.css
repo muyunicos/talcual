@@ -106,19 +106,32 @@
     letter-spacing: 3px;
     font-family: var(--font-display);
 }
+
 /* Estado "Copiado" - Feedback visual */
 .code-sticker-floating.copied {
     border-color: #4CAF50;
     animation: copiedPulse 0.6s ease-out;
 }
 
+/* Animación específica para el texto "¡Copiado!" que coordina centrado + fade in up */
+@keyframes fadeInUpCentered {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
 /* Texto "¡Copiado!" flotante */
 .code-sticker-floating.copied::after {
     content: '¡Copiado!';
     position: absolute;
-    top: -32px;
+    bottom: 100%;
     left: 50%;
-    transform: translateX(-50%);
+    margin-bottom: 8px;
     
     background: #4CAF50;
     color: white;
@@ -131,7 +144,7 @@
     white-space: nowrap;
     pointer-events: none;
     
-    animation: fadeInUp 0.3s ease-out;
+    animation: fadeInUpCentered 0.3s ease-out;
 }
 
 /* Animación pulse para el sticker cuando se copia */
