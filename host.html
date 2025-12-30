@@ -9,6 +9,48 @@
     <link rel="stylesheet" href="./css/4-components.css">
     <link rel="stylesheet" href="./css/3-host.css">
     <link rel="stylesheet" href="./css/5-animations.css">
+
+    <!-- Boot UI: evita flashes al cargar y decide sesión/no-sesión antes del render -->
+    <script>
+        (function () {
+            var root = document.documentElement;
+            root.classList.add('is-booting');
+
+            // Detectar sesión del host (mismo criterio que host-manager.js)
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var code = params.get('code') || localStorage.getItem('hostGameCode');
+                if (code) {
+                    root.classList.add('has-session');
+                } else {
+                    root.classList.add('no-session');
+                }
+            } catch (e) {
+                root.classList.add('no-session');
+            }
+
+            // Fondo: aparecer suave cuando la imagen está lista
+            (function () {
+                var img = new Image();
+                img.src = '/images/bg.webp';
+                var done = function () { root.classList.add('bg-ready'); };
+
+                if (img.decode) {
+                    img.decode().then(done).catch(done);
+                } else {
+                    img.onload = done;
+                    img.onerror = done;
+                }
+            })();
+
+            window.addEventListener('DOMContentLoaded', function () {
+                requestAnimationFrame(function () {
+                    root.classList.remove('is-booting');
+                });
+            });
+        })();
+    </script>
+
     <style>
         /* Animaciones para modal mejorado */
         @keyframes fadeIn {
@@ -21,7 +63,7 @@
                 backdrop-filter: blur(4px);
             }
         }
-        
+
         @keyframes slideDown {
             from {
                 opacity: 0;
@@ -32,7 +74,7 @@
                 transform: translateY(0);
             }
         }
-        
+
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -43,7 +85,7 @@
                 transform: translateX(0);
             }
         }
-        
+
         @keyframes slideOut {
             from {
                 opacity: 1;
@@ -54,7 +96,7 @@
                 transform: translateX(-100%);
             }
         }
-        
+
         /* Estilo para mensaje de estado */
         .status-message-modal {
             margin-top: 1rem;
@@ -65,31 +107,81 @@
             font-weight: 500;
             display: none;
         }
-        
+
         .status-message-modal.status-loading {
             background: #e3f2fd;
             color: #1976d2;
         }
-        
+
         .status-message-modal.status-success {
             background: #e8f5e9;
             color: #388e3c;
         }
-        
+
         .status-message-modal.status-error {
             background: #ffebee;
             color: #c62828;
         }
-        
+
         .status-message-modal.status-info {
             background: #f3e5f5;
             color: #7b1fa2;
+        }
+
+        /* ================================
+           Boot UI (anti-flash) + fondo fade
+           ================================ */
+
+        /* Evitar doble fondo: el global pone background-image en body */
+        body {
+            background-image: none !important;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url('/images/bg.webp') center / cover no-repeat;
+            opacity: 0;
+            transition: opacity 600ms ease;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        html.bg-ready body::before {
+            opacity: 1;
+        }
+
+        /* Todo oculto hasta que DOM esté listo */
+        html.is-booting .boot-el {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(6px);
+        }
+
+        .boot-el {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0);
+            transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+            will-change: opacity, transform;
+        }
+
+        /* Decisión sesión/no-sesión (sin JS de display) */
+        html.no-session .session-only {
+            display: none !important;
+        }
+
+        html.has-session .nosession-only {
+            display: none !important;
         }
     </style>
 </head>
 <body>
     <!-- MODAL CREAR JUEGO -->
-    <div class="modal-overlay" id="modal-create-game">
+    <div class="modal-overlay boot-el nosession-only" id="modal-create-game">
         <div class="modal-content">
             <div class="modal-title">Nueva Partida</div>
 
@@ -101,56 +193,56 @@
             </div>
             <div class="input-group">
                 <label class="input-label" for="custom-code">Código de Sala</label>
-                <input type="text" id="custom-code" class="input-field" 
+                <input type="text" id="custom-code" class="input-field"
                        placeholder="Se genera automáticamente (3-5 letras)" maxlength="5" autocomplete="off">
                 <small class="custom-code-info">
                     Este codigo de sala solo se puede cambiar antes de crear la partida.
                 </small>
             </div>
-            
+
             <button class="btn-modal-primary btn-create-game" id="btn-create-game">
                 Crear Partida
             </button>
-            
+
             <div id="status-message" class="status-message-modal"></div>
         </div>
     </div>
 
     <!-- MODAL CONFIGURACIÓN DE JUEGO -->
-    <div class="modal-overlay" id="modal-game-config" style="display: none;">
+    <div class="modal-overlay boot-el session-only" id="modal-game-config" style="display: none;">
         <div class="modal-content modal-content--config">
             <div class="modal-title">⚙️ Configurar Partida</div>
-            
+
             <div class="input-group">
                 <label class="input-label" for="config-total-rounds">Cantidad de Rondas</label>
                 <div class="input-control">
                     <button class="btn-adjust" id="btn-decrease-rounds">−</button>
-                    <input type="number" id="config-total-rounds" class="input-field input-field-number" 
+                    <input type="number" id="config-total-rounds" class="input-field input-field-number"
                            min="1" max="10" value="3">
                     <button class="btn-adjust" id="btn-increase-rounds">+</button>
                 </div>
             </div>
-            
+
             <div class="input-group">
                 <label class="input-label" for="config-round-duration">Duración de Ronda (segundos)</label>
                 <div class="input-control">
                     <button class="btn-adjust" id="btn-decrease-duration">−</button>
-                    <input type="number" id="config-round-duration" class="input-field input-field-number" 
+                    <input type="number" id="config-round-duration" class="input-field input-field-number"
                            min="30" max="300" value="60" step="10">
                     <button class="btn-adjust" id="btn-increase-duration">+</button>
                 </div>
             </div>
-            
+
             <div class="input-group">
                 <label class="input-label" for="config-min-players">Mínimo de Jugadores</label>
                 <div class="input-control">
                     <button class="btn-adjust" id="btn-decrease-min-players">−</button>
-                    <input type="number" id="config-min-players" class="input-field input-field-number" 
+                    <input type="number" id="config-min-players" class="input-field input-field-number"
                            min="1" max="6" value="2">
                     <button class="btn-adjust" id="btn-increase-min-players">+</button>
                 </div>
             </div>
-            
+
             <div class="modal-buttons">
                 <button class="btn" id="btn-config-cancel">Cancelar</button>
                 <button class="btn-modal-primary" id="btn-config-save">Guardar</button>
@@ -159,7 +251,7 @@
     </div>
 
     <!-- PANTALLA DE HOST -->
-    <div class="game-screen" id="game-screen">
+    <div class="game-screen boot-el session-only" id="game-screen">
         <!-- LOGO FLOTANTE (Arriba a la izquierda) -->
         <div class="logo-floating" id="logo-floating">
             <img src="/images/icon.webp" alt="TalCual Party">
@@ -229,14 +321,14 @@
     </div>
 
     <!-- BOTÓN HAMBURGUESA (Abajo a la izquierda flotando) -->
-    <button class="btn-hamburger" id="btn-hamburger-host" aria-label="Abrir menú">
+    <button class="btn-hamburger boot-el session-only" id="btn-hamburger-host" aria-label="Abrir menú">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
     </button>
 
     <!-- MENÚ HAMBURGUESA HOST -->
-    <nav class="hamburger-menu" id="hamburger-menu-host" style="display: none;" aria-label="Menú de navegación">
+    <nav class="hamburger-menu boot-el session-only" id="hamburger-menu-host" style="display: none;" aria-label="Menú de navegación">
         <div class="hamburger-header">Menú</div>
         <button class="hamburger-option" id="hamburger-restart-round">🔄 Reiniciar Ronda</button>
         <button class="hamburger-option" id="hamburger-new-game">🎮 Nuevo Juego</button>
