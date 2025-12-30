@@ -113,24 +113,9 @@ class TimeSyncManager {
     this.roundDuration = roundDuration;
     
     console.log(
-      `%c⏱️ TIMER CALIBRADO (server_now)`,
+      `%c⏱️ TIMER CALIBRADO (SSE)`,
       'color: #3B82F6; font-weight: bold',
       `| server_now: ${serverNow}ms | Offset: ${this.offset}ms | Range: ${roundStartsAt}-${roundEndsAt}`
-    );
-  }
-
-  calibrate(serverTimestamp, roundDuration = 0) {
-    this.serverStartTime = serverTimestamp;
-    this.clientStartTime = Date.now();
-    this.offset = this.serverStartTime - this.clientStartTime;
-    this.isCalibrated = true;
-    this.calibrationError = 50;
-    this.roundDuration = roundDuration;
-    
-    console.log(
-      `%c⏱️ TIMER CALIBRADO`,
-      'color: #3B82F6; font-weight: bold',
-      `| Offset: ${this.offset}ms | Error: ±${this.calibrationError}ms | Duracion: ${roundDuration}ms`
     );
   }
 
@@ -222,4 +207,4 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-console.log('%c✅ communication.js cargado - TimeSyncManager con calibrateWithRTT', 'color: #10B981; font-weight: bold');
+console.log('%c✅ communication.js cargado - TimeSyncManager limpio (calibrateWithServerTime + calibrateWithRTT)', 'color: #10B981; font-weight: bold');
