@@ -7,8 +7,7 @@
     width: 100%;
     position: fixed;
     height: 100%;
-    z-index: 1;
-
+    z-index: 1000;
 }
 
 .modal-overlay.hidden {
@@ -283,7 +282,7 @@
     }
 }
 
-/* ========== HAMBURGER MENU ========== */
+/* ========== HAMBURGER MENU - FIX #54 ========== */
 
 .btn-hamburger {
     position: fixed;
@@ -291,15 +290,17 @@
     left: 20px;
     width: 50px;
     height: 50px;
-    background: rgba(46, 0, 78, 0.88);
+    background: rgba(46, 0, 78, 0.90);
     border: 2px solid rgba(0, 240, 255, 0.6);
     border-radius: 12px;
     cursor: pointer;
-    display: flex;
+    /* FIX: display flex column */
+    display: flex !important;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
+    padding: 0;
     transition: all 0.3s ease;
     z-index: 100;
     backdrop-filter: blur(10px);
@@ -321,19 +322,24 @@
     transition: all 0.3s ease;
 }
 
+/* FIX: Menu con flex column */
 .hamburger-menu {
     position: fixed;
     bottom: 80px;
     left: 20px;
-    background: rgba(46, 0, 78, 0.92);
+    background: rgba(46, 0, 78, 0.95);
     border: 2px solid rgba(0, 240, 255, 0.55);
     border-radius: 16px;
     min-width: 220px;
+    max-width: 280px;
     box-shadow: 0 0 40px rgba(0, 240, 255, 0.18), var(--sombra-dura);
     z-index: 99;
     overflow: hidden;
     animation: slideDown 0.3s ease-out;
     backdrop-filter: blur(10px);
+    /* FIX: flex column para items verticales */
+    display: flex !important;
+    flex-direction: column;
 }
 
 .hamburger-header {
@@ -344,6 +350,8 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     border-bottom: 1px solid rgba(0, 240, 255, 0.22);
+    /* FIX: no flex, solo block */
+    flex-shrink: 0;
 }
 
 .hamburger-option {
@@ -360,6 +368,8 @@
     text-align: left;
     transition: all 0.2s ease;
     text-decoration: none;
+    /* FIX: no flex, solo block */
+    flex-shrink: 0;
 }
 
 .hamburger-option:last-child {
