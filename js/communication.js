@@ -172,7 +172,33 @@ class TimeSyncManager {
   }
 
   /**
-   * Calibra el offset del reloj usando timestamp del servidor
+   * Calibra el offset del reloj usando server_now (PHASE 2)
+   * Se ejecuta una vez por ronda cuando recibe server_now
+   * 
+   * @param {number} serverNow - Timestamp servidor AHORA (ms)
+   * @param {number} roundStartsAt - Timestamp cuando comienza la ronda (ms, servidor)
+   * @param {number} roundEndsAt - Timestamp cuando termina la ronda (ms, servidor)
+   * @param {number} roundDuration - Duración de ronda (ms)
+   */
+  calibrateWithServerTime(serverNow, roundStartsAt, roundEndsAt, roundDuration = 0) {
+    this.serverNow = serverNow;
+    this.roundStartsAt = roundStartsAt;
+    this.roundEndsAt = roundEndsAt;
+    this.clientCalibrateTime = Date.now();
+    this.offset = serverNow - this.clientCalibrateTime;
+    this.isCalibrated = true;
+    this.calibrationError = 50;
+    this.roundDuration = roundDuration;
+    
+    console.log(
+      `%c⏱️ TIMER CALIBRADO (server_now)`,
+      'color: #3B82F6; font-weight: bold',
+      `| server_now: ${serverNow}ms | Offset: ${this.offset}ms | Range: ${roundStartsAt}-${roundEndsAt}`
+    );
+  }
+
+  /**
+   * Calibra el offset del reloj usando timestamp del servidor (LEGACY)
    * Se ejecuta una vez por ronda cuando recibe round_started_at
    * 
    * @param {number} serverTimestamp - Timestamp servidor (ms)
@@ -183,7 +209,7 @@ class TimeSyncManager {
     this.clientStartTime = Date.now();
     this.offset = this.serverStartTime - this.clientStartTime;
     this.isCalibrated = true;
-    this.calibrationError = 50; // Error estimado ±50ms por latencia
+    this.calibrationError = 50;
     this.roundDuration = roundDuration;
     
     console.log(
@@ -211,11 +237,9 @@ class TimeSyncManager {
    */
   getRemainingTime(roundStartedAt, roundDuration) {
     if (!this.isCalibrated) {
-      // Fallback si no se calibró (debería ser raro)
       return Math.max(0, roundStartedAt + roundDuration - Date.now());
     }
 
-    // Calcular tiempo restante usando reloj sincronizado
     const now = this.getServerTime();
     const roundEndTime = roundStartedAt + roundDuration;
     const remaining = roundEndTime - now;
@@ -229,6 +253,10 @@ class TimeSyncManager {
   reset() {
     this.serverStartTime = null;
     this.clientStartTime = null;
+    this.serverNow = null;
+    this.roundStartsAt = null;
+    this.roundEndsAt = null;
+    this.clientCalibrateTime = null;
     this.offset = 0;
     this.isCalibrated = false;
     this.calibrationError = 0;
@@ -247,6 +275,9 @@ class TimeSyncManager {
       calibrationError: this.calibrationError,
       serverStartTime: this.serverStartTime,
       clientStartTime: this.clientStartTime,
+      serverNow: this.serverNow,
+      roundStartsAt: this.roundStartsAt,
+      roundEndsAt: this.roundEndsAt,
       currentOffset: Date.now() + this.offset - Date.now()
     };
   }
@@ -283,4 +314,4 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-console.log('%c✅ communication.js cargado - Sistema centralizado de eventos + TimeSyncManager', 'color: #10B981; font-weight: bold');
+console.log('%c✅ communication.js cargado - Sistema centralizado de eventos + TimeSyncManager mejorado', 'color: #10B981; font-weight: bold');
