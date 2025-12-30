@@ -10,13 +10,13 @@
     <link rel="stylesheet" href="./css/3-host.css">
     <link rel="stylesheet" href="./css/5-animations.css">
 
-    <!-- Boot UI: evita flashes al cargar y decide sesión/no-sesión antes del render -->
+    <!-- Boot UI: detecta sesión antes del render -->
     <script>
         (function () {
             var root = document.documentElement;
             root.classList.add('is-booting');
 
-            // Detectar sesión del host (mismo criterio que host-manager.js)
+            // Detectar sesión del host
             try {
                 var params = new URLSearchParams(window.location.search);
                 var code = params.get('code') || localStorage.getItem('hostGameCode');
@@ -29,7 +29,7 @@
                 root.classList.add('no-session');
             }
 
-            // Fondo: aparecer suave cuando la imagen está lista
+            // Precargar fondo
             (function () {
                 var img = new Image();
                 img.src = '/images/bg.webp';
@@ -52,7 +52,6 @@
     </script>
 
     <style>
-        /* Animaciones para modal mejorado */
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -97,7 +96,6 @@
             }
         }
 
-        /* Estilo para mensaje de estado */
         .status-message-modal {
             margin-top: 1rem;
             padding: 0.75rem;
@@ -128,11 +126,6 @@
             color: #7b1fa2;
         }
 
-        /* ================================
-           Boot UI (anti-flash) + fondo fade
-           ================================ */
-
-        /* Evitar doble fondo: el global pone background-image en body */
         body {
             background-image: none !important;
         }
@@ -152,7 +145,6 @@
             opacity: 1;
         }
 
-        /* Todo oculto hasta que DOM esté listo */
         html.is-booting .boot-el {
             opacity: 0;
             visibility: hidden;
@@ -169,7 +161,6 @@
             will-change: opacity, transform;
         }
 
-        /* Decisión sesión/no-sesión (sin JS de display) */
         html.no-session .session-only {
             display: none !important;
         }
@@ -250,20 +241,20 @@
         </div>
     </div>
 
-    <!-- LOGO FLOTANTE (SIEMPRE VISIBLE) -->
+    <!-- LOGO FLOTANTE -->
     <div class="logo-floating boot-el" id="logo-floating">
         <img src="/images/icon.webp" alt="TalCual Party">
     </div>
 
     <!-- PANTALLA DE HOST -->
     <div class="game-screen boot-el session-only" id="game-screen">
-        <!-- CÓDIGO DE SALA (Flotante, estilo amarillo inclinado) -->
+        <!-- CÓDIGO DE SALA -->
         <div class="code-sticker-floating" id="code-sticker-floating">
             <div class="code-sticker-label">Código Sala</div>
             <div class="code-sticker-value" id="code-sticker-value">----</div>
         </div>
 
-        <!-- HEADER CON TEMPORIZADOR CENTRADO -->
+        <!-- HEADER CON TEMPORIZADOR -->
         <div class="tv-header">
             <div class="timer-container">
                 <div class="round-info" id="round-info">Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span></div>
@@ -271,33 +262,28 @@
             </div>
         </div>
 
-        <!-- ÁREA CENTRAL (Center Stage) -->
+        <!-- ÁREA CENTRAL -->
         <div class="center-stage" id="center-stage">
             <div class="status-message">Esperando jugadores...</div>
             <button class="btn-empezar" id="btn-start-game" style="display: none;">¡ Empezar Juego!</button>
         </div>
 
-        <!-- PANEL LATERAL FLOTANTE (Ranking / Top Palabras) -->
+        <!-- PANEL LATERAL FLOTANTE -->
         <div class="floating-side-panel" id="floating-side-panel">
-            <!-- Categoría sticker (encima del panel) -->
             <div class="category-sticker" id="category-sticker">Categoría</div>
 
-            <!-- Tabs -->
             <div class="panel-tabs">
                 <div class="panel-tab active" data-tab="ranking">🏆 Ranking</div>
                 <div class="panel-tab" data-tab="topwords">📈 Top Palabras</div>
             </div>
 
-            <!-- Contenedor de vistas (fade transition) -->
             <div class="panel-content">
-                <!-- Vista Ranking -->
                 <div class="panel-view active" data-view="ranking">
                     <div class="panel-list" id="ranking-list">
                         <div class="panel-item"><div class="name">Sin jugadores aún</div></div>
                     </div>
                 </div>
 
-                <!-- Vista Top Palabras -->
                 <div class="panel-view" data-view="topwords">
                     <div class="panel-list" id="top-words-list">
                         <div class="panel-item"><div class="name">Sin palabras aún</div></div>
@@ -306,12 +292,12 @@
             </div>
         </div>
 
-        <!-- CONTENEDOR DE JUGADORES (Bottom center) -->
+        <!-- CONTENEDOR DE JUGADORES -->
         <div class="players-container" id="players-container">
             <div class="players-grid" id="players-grid"></div>
         </div>
 
-        <!-- RESULTS OVERLAY (fullscreen modal con fade) -->
+        <!-- RESULTS OVERLAY -->
         <div class="results-overlay" id="results-overlay">
             <div class="results-panel">
                 <div class="results-title">Resultados</div>
@@ -321,7 +307,7 @@
     </div>
 
     <!-- BOTÓN HAMBURGUESA (SIEMPRE VISIBLE) -->
-    <button class="btn-hamburger boot-el session-only" id="btn-hamburger-host" aria-label="Abrir menú">
+    <button class="btn-hamburger boot-el" id="btn-hamburger-host" aria-label="Abrir menú">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
@@ -337,14 +323,13 @@
         <a href="./index.html" class="hamburger-option hamburger-home">🏠 Inicio</a>
     </nav>
 
-    <!-- Scripts Modulares -->
+    <!-- Scripts -->
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
     <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/create-game-modal.js"></script>
     <script src="./js/floating-side-panel.js"></script>
-    <!-- host-hamburger-menu.js eliminado: lógica consolidada en host-manager.js -->
     <script src="./js/host-manager.js"></script>
 </body>
 </html>
