@@ -511,7 +511,7 @@ class HostManager {
         if (!numberEl) return;
 
         const countdownDuration = 4000;
-        const elapsedSinceStart = Date.now() - state.round_started_at;
+        const elapsedSinceStart = timeSync.getServerTime() - state.round_starts_at;
 
         for (let i = 3; i >= 1; i--) {
             const numberShowTime = countdownDuration - (i * 1000);
@@ -528,7 +528,7 @@ class HostManager {
             });
         }
 
-        const remainingCountdown = Math.max(0, countdownDuration - (Date.now() - state.round_started_at));
+        const remainingCountdown = Math.max(0, countdownDuration - (timeSync.getServerTime() - state.round_starts_at));
         await new Promise(resolve => setTimeout(resolve, remainingCountdown + 100));
 
         overlay.classList.remove('active');
