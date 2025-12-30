@@ -1,20 +1,14 @@
 <?php
-// 🔧 FIX #33: SSE usando patrón de notificación per-game con contador monotónico
-// Archivos: {GAME_ID}_all.json, {GAME_ID}_host.json
-// Contienen un número que incrementa con cada cambio (nunca retrocede)
-
 require_once __DIR__ . '/config.php';
 
-// 🔧 CRITICAL: Headers para evitar buffering en TODOS los niveles
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 header('Connection: keep-alive');
-header('X-Accel-Buffering: no');  // Nginx
+header('X-Accel-Buffering: no');
 header('X-Content-Type-Options: nosniff');
 
-// Deshabilitar output buffering desde PHP
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', '1');
     @apache_setenv('dont-vary', '1');
@@ -47,17 +41,11 @@ function sendSSE($event, $data) {
     echo "event: {$event}\n";
     echo "data: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
     flush();
-    
-    // Fuerza flush en Apache también
     if (function_exists('apache_flush')) {
         @apache_flush();
     }
 }
 
-/**
- * Lee el contador monotónico del archivo de notificación
- * Nunca retrocede, siempre incrementa
- */
 function getNotifyCounter($filePath) {
     if (!file_exists($filePath)) {
         return 0;
@@ -69,21 +57,17 @@ function getNotifyCounter($filePath) {
     return 0;
 }
 
-// 🔧 FIX #33: Usar archivos de notificación per-game con contador
 $notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
 $notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
-
-// Único archivo que nos importa según el rol
 $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
 
-$lastNotify = 0;  // Contador anterior
+$lastNotify = 0;
 $startTime = time();
-$maxDuration = 1800; // 30 minutos
-$heartbeatInterval = 30; // cada 30s
+$maxDuration = 1800;
+$heartbeatInterval = SSE_HEARTBEAT_INTERVAL;
 $lastHeartbeat = time();
-$pollingInterval = 1; // segundos entre checks
+$pollingInterval = 1;
 
-// Enviar evento de conexión inmediato
 sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
@@ -99,19 +83,16 @@ while ((time() - $startTime) < $maxDuration) {
         break;
     }
     
-    // Verificar si el juego existe
     if (!gameExists($gameId)) {
         sendSSE('game_ended', ['message' => 'El juego ha finalizado']);
         logMessage("SSE juego desaparecido: {$gameId}", 'INFO');
         break;
     }
     
-    // 🔧 FIX #33: Leer contador monotónico (nunca retrocede)
     clearstatcache(false, $notifyFile);
     $currentNotify = getNotifyCounter($notifyFile);
     
     if ($currentNotify > $lastNotify) {
-        // Hay cambio(s), enviar estado actualizado
         $state = loadGameState($gameId);
         
         if ($state) {
@@ -124,12 +105,10 @@ while ((time() - $startTime) < $maxDuration) {
             
             logMessage("SSE update enviado para {$gameId} (counter: {$currentNotify}, status={$state['status']}, {$playerCount} activos)", 'DEBUG');
             
-            // 🔧 Esperar un poco antes de volver a chequear para evitar duplicados
-            usleep(100000); // 100ms
+            usleep(100000);
         }
     }
     
-    // Enviar heartbeat cada 30 segundos
     $now = time();
     if ($now - $lastHeartbeat >= $heartbeatInterval) {
         echo ": heartbeat\n\n";
@@ -141,7 +120,6 @@ while ((time() - $startTime) < $maxDuration) {
         logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
     }
     
-    // Dormir 1 segundo
     sleep($pollingInterval);
 }
 
