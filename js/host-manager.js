@@ -2,11 +2,12 @@
  * Host Manager - Integración completa con menú hamburguesa
  * Gestiona: timer, categoría, ranking/top words, panel tabs, menú hamburguesa
  * 
- * MEJORAS v6 (29 Dic 2025):
+ * MEJORAS v7 (30 Dic 2025):
  * - Integrada funcionalidad de menú hamburguesa
  * - Opciones funcionando: Reiniciar Ronda, Nuevo Juego, Opciones, Terminar
  * - Categoría persistente en localStorage
  * - Menú draggable/resizable preparado para futuras mejoras
+ * - FASE 1: Validación de sesión al inicializar
  */
 
 class HostManager {
@@ -35,7 +36,32 @@ class HostManager {
         this.connectGameClient();
     }
 
+    /**
+     * FASE 1: Valida que exista una sesión activa de host
+     * Si no existe sesión, muestra modal de crear nueva partida
+     * @returns {boolean} true si hay sesión activa, false si no
+     */
+    checkActiveSession() {
+        const hasSession = StorageManager.isHostSessionActive();
+        if (!hasSession) {
+            console.warn('⚠️ Sin sesión activa - mostrando modal');
+            const modal = document.getElementById('modal-create-game');
+            if (modal) {
+                modal.style.display = 'flex';
+                console.log('✅ Modal de crear partida mostrado');
+            }
+        }
+        return hasSession;
+    }
+
     initUI() {
+        // FASE 1: Validar sesión antes de inicializar UI
+        const hasSession = this.checkActiveSession();
+        if (!hasSession) {
+            console.log('⚠️ UI no inicializado: sin sesión activa');
+            return;
+        }
+
         const codeValueEl = document.getElementById('code-sticker-value');
         if (codeValueEl) {
             codeValueEl.textContent = this.gameCode;
@@ -591,4 +617,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v6 - Menú hamburguesa integrado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js v7 - Menú hamburguesa + sesión check', 'color: #10B981; font-weight: bold');
