@@ -338,7 +338,7 @@
     overflow-y: auto;
     animation: slideDown 0.3s ease-out;
     backdrop-filter: blur(10px);
-    display: flex !important;
+    display: flex;
     flex-direction: column;
     padding: 0 !important;
     margin: 0 !important;
