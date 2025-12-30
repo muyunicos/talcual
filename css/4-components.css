@@ -321,7 +321,7 @@
     transition: all 0.3s ease;
 }
 
-/* Hamburger Menu Container */
+/* Hamburger Menu Container - CERRADO POR DEFECTO */
 .hamburger-menu {
     position: fixed;
     bottom: 80px;
@@ -336,12 +336,17 @@
     box-shadow: 0 0 40px rgba(0, 240, 255, 0.18), var(--sombra-dura);
     z-index: 99;
     overflow-y: auto;
-    animation: slideDown 0.3s ease-out;
     backdrop-filter: blur(10px);
-    display: flex;
+    display: none;
     flex-direction: column;
     padding: 0 !important;
     margin: 0 !important;
+}
+
+/* Clase para ABRIR el menu */
+.hamburger-menu.menu-open {
+    display: flex;
+    animation: slideDown 0.3s ease-out;
 }
 
 .hamburger-header {
