@@ -92,10 +92,7 @@ class HostHamburgerMenu {
      * Si no hay sesión: mostrar modal de crear
      */
     checkActiveSession() {
-        const gameCode = localStorage.getItem('hostGameCode');
-        const isHost = localStorage.getItem('isHost');
-        
-        this.hasActiveSession = !!(gameCode && isHost === 'true');
+        this.hasActiveSession = StorageManager.isHostSessionActive();
         
         if (!this.hasActiveSession && this.modalCreateGame) {
             // Mostrar modal de crear si no hay sesión
@@ -169,11 +166,8 @@ class HostHamburgerMenu {
         this.close();
         
         if (confirm('¿Estas seguro de que quieres empezar una nueva partida? Se perdera el juego actual.')) {
-            // Limpiar localStorage
-            localStorage.removeItem('hostGameCode');
-            localStorage.removeItem('gameId');
-            localStorage.removeItem('isHost');
-            localStorage.removeItem('gameCategory');
+            // Limpiar localStorage (FASE 1: centralizado)
+            StorageManager.clearHostSession();
             
             // Recargar
             location.reload();
@@ -206,11 +200,8 @@ class HostHamburgerMenu {
         this.close();
         
         if (confirm('¿Estas seguro de que quieres terminar la partida? No se puede deshacer.')) {
-            // Limpiar localStorage
-            localStorage.removeItem('hostGameCode');
-            localStorage.removeItem('gameId');
-            localStorage.removeItem('isHost');
-            localStorage.removeItem('gameCategory');
+            // Limpiar localStorage (FASE 1: centralizado)
+            StorageManager.clearHostSession();
             
             // Ir al inicio
             location.href = './index.html';

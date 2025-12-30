@@ -332,13 +332,12 @@ class CreateGameModal {
             const gameId = result.game_id;
             console.log('✅ Juego creado:', gameId);
             
-            // Guardar en localStorage
-            localStorage.setItem('hostGameCode', gameId);
-            localStorage.setItem('gameId', gameId);
-            localStorage.setItem('isHost', 'true');
-            
-            // FIX: Guardar categoría para persistencia
-            localStorage.setItem('gameCategory', category);
+            // Guardar en localStorage (FASE 1: centralizado)
+            StorageManager.set(StorageKeys.HOST_GAME_CODE, gameId);
+            StorageManager.set(StorageKeys.GAME_ID, gameId);
+            StorageManager.set(StorageKeys.IS_HOST, 'true');
+            StorageManager.set(StorageKeys.GAME_CATEGORY, category);
+
             console.log('📋 Código y categoría guardados:', gameId, category);
             
             this.showMessage('✅ Partida creada. Inicializando...', 'success');
