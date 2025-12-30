@@ -24,6 +24,18 @@ function determineUIState() {
     const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
     
     console.log(`📋 determineUIState() - Session: ${hasSession}, Code: ${gameCode || 'none'}`);
+
+    // CRÍTICO: sincronizar las clases del <html>.
+    // host.html usa .no-session/.has-session para ocultar/mostrar .session-only/.nosession-only
+    // y esas reglas tienen !important; si no se actualizan, la UI puede quedar "en blanco".
+    const root = document.documentElement;
+    if (hasSession && gameCode) {
+        root.classList.add('has-session');
+        root.classList.remove('no-session');
+    } else {
+        root.classList.add('no-session');
+        root.classList.remove('has-session');
+    }
     
     const modalCreate = document.getElementById('modal-create-game');
     const gameScreen = document.getElementById('game-screen');
