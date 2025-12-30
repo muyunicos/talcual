@@ -1,6 +1,7 @@
 /**
  * @file player-manager.js
  * @description Gestor mejorado de lógica del jugador con countdown sincronizado y auto-submit
+ * (Menú hamburguesa ahora manejado por menu-opciones.js)
  */
 
 class PlayerManager {
@@ -23,7 +24,6 @@ class PlayerManager {
         this.selectedAura = null;
 
         this.elements = {};
-        this.hamburgerOpen = false;
 
         // Motor de comparación (player) - evita equivalentes repetidos
         this.wordEngine = null;
@@ -32,7 +32,7 @@ class PlayerManager {
     }
 
     initialize() {
-        debug('🌢 Inicializando PlayerManager');
+        debug('🍢 Inicializando PlayerManager');
         this.cacheElements();
         this.attachEventListeners();
 
@@ -131,10 +131,7 @@ class PlayerManager {
             optionExit: safeGetElement('option-exit'),
             modalNameInput: safeGetElement('modal-name-input'),
             modalBtnCancel: safeGetElement('modal-btn-cancel'),
-            modalBtnSave: safeGetElement('modal-btn-save'),
-            // 🔧 NEW: Hamburger menu elements
-            hamburgerBtn: safeGetElement('btn-hamburger-player'),
-            hamburgerMenu: safeGetElement('hamburger-menu-player')
+            modalBtnSave: safeGetElement('modal-btn-save')
         };
     }
 
@@ -191,27 +188,18 @@ class PlayerManager {
             });
         }
 
-        // 🔧 NEW: Hamburger menu listeners
-        if (this.elements.hamburgerBtn) {
-            this.elements.hamburgerBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleHamburgerMenu();
-            });
-        }
-
+        // Hamburger menu options (menu open/close handled by menu-opciones.js)
         const hamburgerCustomize = safeGetElement('hamburger-customize');
         const hamburgerAbandon = safeGetElement('hamburger-abandon');
 
         if (hamburgerCustomize) {
             hamburgerCustomize.addEventListener('click', () => {
-                this.closeHamburgerMenu();
                 this.showEditNameModal();
             });
         }
 
         if (hamburgerAbandon) {
             hamburgerAbandon.addEventListener('click', () => {
-                this.closeHamburgerMenu();
                 this.exitGame();
             });
         }
@@ -228,9 +216,6 @@ class PlayerManager {
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.footer-left') && !e.target.closest('.btn-config-menu')) {
                 this.hideConfigDropdown();
-            }
-            if (!e.target.closest('.hamburger-menu') && !e.target.closest('.btn-hamburger')) {
-                this.closeHamburgerMenu();
             }
         });
     }
@@ -254,27 +239,6 @@ class PlayerManager {
         if (this.elements.configDropdown) {
             this.elements.configDropdown.style.display = 'none';
         }
-    }
-
-    // 🔧 NEW: Hamburger menu methods
-    toggleHamburgerMenu() {
-        if (this.hamburgerOpen) {
-            this.closeHamburgerMenu();
-        } else {
-            this.openHamburgerMenu();
-        }
-    }
-
-    openHamburgerMenu() {
-        if (!this.elements.hamburgerMenu) return;
-        safeShowElement(this.elements.hamburgerMenu);
-        this.hamburgerOpen = true;
-    }
-
-    closeHamburgerMenu() {
-        if (!this.elements.hamburgerMenu) return;
-        safeHideElement(this.elements.hamburgerMenu);
-        this.hamburgerOpen = false;
     }
 
     showJoinModal() {
@@ -479,7 +443,7 @@ class PlayerManager {
         safeHideElement(this.elements.categoryLabel);
         safeShowElement(this.elements.waitingMessage);
         if (this.elements.waitingMessage) {
-            this.elements.waitingMessage.textContent = 'El anfitríon iniciará la ronda pronto';
+            this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
         }
         safeHideElement(this.elements.wordsInputSection);
         safeHideElement(this.elements.resultsSection);
@@ -525,7 +489,7 @@ class PlayerManager {
         debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, 'debug');
 
         if (isReady) {
-            debug('📝 Ya enviaste tus palabras', 'debug');
+            debug('📏 Ya enviaste tus palabras', 'debug');
             if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
             if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
@@ -537,11 +501,11 @@ class PlayerManager {
             }
             safeHideElement(this.elements.wordsInputSection);
         } else {
-            debug('🔑 Puedes escribir palabras', 'debug');
+            debug('🗒 Puedes escribir palabras', 'debug');
             if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
-            if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✏️ PASO';
+            if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✍️ PASO';
 
             safeHideElement(this.elements.waitingMessage);
             safeShowElement(this.elements.wordsInputSection);
@@ -593,7 +557,7 @@ class PlayerManager {
                 const existing = this.myWords[i];
                 const existingCanonical = this.getCanonicalForCompare(existing);
                 if (existingCanonical && existingCanonical === newCanonical) {
-                    showNotification('Intenta con otra! Ya escribiste una equivalente', 'warning');
+                    showNotification('¡Intenta con otra! Ya escribiste una equivalente', 'warning');
                     return;
                 }
             }
@@ -693,13 +657,13 @@ class PlayerManager {
             } else {
                 showNotification('Error al enviar', 'error');
                 this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = '✏️ PASO';
+                this.elements.btnSubmit.textContent = '✍️ PASO';
             }
         } catch (error) {
             debug('Error:', error, 'error');
             showNotification('Error de conexión', 'error');
             this.elements.btnSubmit.disabled = false;
-            this.elements.btnSubmit.textContent = '✏️ PASO';
+            this.elements.btnSubmit.textContent = '✍️ PASO';
         }
     }
 
@@ -857,4 +821,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Calibración automática de timeSync + feedback', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Menu hamburguesa delegado a menu-opciones.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');
