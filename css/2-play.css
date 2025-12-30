@@ -298,16 +298,16 @@
     gap: var(--space-md);
     position: relative;
 }
-
 .player-name-display {
-    font-size: 14px;
+    font-size: 2em;
+    text-transform: uppercase;
     position: fixed;
     left: 85px;
     bottom: 16px;
-    font-weight: 600;
+    text-shadow: var(--sombra-media);
+    font-weight: bolder;
     color: var(--color-text-muted);
 }
-
 .btn-config-menu {
     width: 36px;
     height: 36px;
