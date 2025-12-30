@@ -435,6 +435,10 @@ class HostManager {
         const sticker = this.getGameCodeClickTarget();
         if (!sticker) return;
 
+        // Evitar duplicar listeners si se llama más de una vez
+        if (sticker.dataset.copyBound === '1') return;
+        sticker.dataset.copyBound = '1';
+
         sticker.title = 'Click para copiar el código';
         sticker.setAttribute('role', 'button');
         sticker.setAttribute('tabindex', '0');
@@ -485,19 +489,26 @@ class HostManager {
     }
 
     showGameCodeCopiedIndicator() {
-        const sticker = this.getGameCodeClickTarget();
-        if (!sticker) return;
+        const targets = [
+            this.elements.codeStickerFloating,
+            this.elements.codeStickerValue,
+            this.elements.gameCodeTv
+        ].filter(Boolean);
 
-        sticker.classList.remove('copied');
-        void sticker.offsetWidth;
-        sticker.classList.add('copied');
+        if (targets.length === 0) return;
+
+        targets.forEach((el) => {
+            el.classList.remove('copied');
+            void el.offsetWidth;
+            el.classList.add('copied');
+        });
 
         if (this.copyIndicatorTimeout) {
             clearTimeout(this.copyIndicatorTimeout);
         }
 
         this.copyIndicatorTimeout = setTimeout(() => {
-            sticker.classList.remove('copied');
+            targets.forEach((el) => el.classList.remove('copied'));
         }, 900);
     }
 
@@ -588,6 +599,11 @@ class HostManager {
         safeShowElement(this.elements.gameScreen);
 
         this.setGameCodeText(this.gameId);
+
+        // 🔧 FIX: asegurar que el listener de copiado quede atado al sticker visible
+        this.elements.codeStickerFloating = safeGetElement('code-sticker-floating');
+        this.elements.codeStickerValue = safeGetElement('code-sticker-value');
+        this.setupGameCodeCopy();
 
         this.client.onStateUpdate = (state) => this.handleStateUpdate(state);
         this.client.onConnectionLost = () => this.handleConnectionLost();
