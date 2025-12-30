@@ -451,6 +451,80 @@ class PlayerManager {
         this.stopTimer();
     }
 
+    // FIX #2: Agregar showCountdown para animación 3,2,1
+    async showCountdown(state) {
+        debug('⏱️ Iniciando countdown', 'debug');
+        
+        safeHideElement(this.elements.waitingMessage);
+        safeShowElement(this.elements.countdownOverlay);
+        
+        if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
+        if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
+        if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
+
+        // Calcular cuándo empezó el countdown
+        const countdownDuration = 4000; // 4 segundos desde el servidor
+        const elapsedSinceStart = Date.now() - state.round_started_at;
+        const countdownRemaining = Math.max(0, countdownDuration - elapsedSinceStart);
+        
+        // Mostrar números: 3, 2, 1
+        for (let i = 3; i >= 1; i--) {
+            // Calcular cuándo mostrar este número
+            const numberShowTime = countdownDuration - (i * 1000);
+            const waitTime = Math.max(0, numberShowTime - elapsedSinceStart);
+            
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    if (this.elements.countdownNumber) {
+                        this.elements.countdownNumber.textContent = i.toString();
+                        this.elements.countdownNumber.style.animation = 'none';
+                        // Trigger reflow para reiniciar animación
+                        void this.elements.countdownNumber.offsetWidth;
+                        this.elements.countdownNumber.style.animation = '';
+                    }
+                    resolve();
+                }, waitTime);
+            });
+        }
+        
+        // Esperar a que termine el countdown
+        const remainingCountdown = Math.max(0, countdownDuration - (Date.now() - state.round_started_at));
+        await new Promise(resolve => setTimeout(resolve, remainingCountdown + 100));
+        
+        // FIX #2a: Mostrar la consigna DESPUÉS del countdown
+        safeHideElement(this.elements.countdownOverlay);
+        
+        if (this.elements.currentWord) {
+            this.elements.currentWord.textContent = state.current_word;
+            this.elements.currentWord.classList.remove('hidden');
+            safeShowElement(this.elements.currentWord);
+            debug(`💡 Palabra mostrada: ${state.current_word}`, 'debug');
+        }
+        
+        if (this.elements.categoryLabel && state.current_category) {
+            this.elements.categoryLabel.textContent = `Categoría: ${state.current_category}`;
+            safeShowElement(this.elements.categoryLabel);
+        } else {
+            safeHideElement(this.elements.categoryLabel);
+        }
+        
+        // FIX #2b: Habilitar inputs DESPUÉS del countdown
+        const me = state.players?.[this.playerId];
+        const isReady = me?.status === 'ready';
+        
+        if (!isReady) {
+            if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
+            if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
+            if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
+            if (this.elements.currentWordInput) this.elements.currentWordInput.focus();
+        }
+        
+        // FIX #2c: Iniciar timer DESPUÉS del countdown
+        if (state.round_started_at && state.round_duration) {
+            this.startContinuousTimer(state);
+        }
+    }
+
     showPlayingState(state) {
         debug('🎮 Estado PLAYING detectado', 'debug');
 
@@ -470,6 +544,19 @@ class PlayerManager {
             return;
         }
 
+        // FIX #2d: Ejecutar countdown si aún no pasaron los 4 segundos
+        if (state.round_started_at) {
+            const elapsedSinceStart = Date.now() - state.round_started_at;
+            const countdownDuration = 4000; // 4 segundos
+            
+            if (elapsedSinceStart < countdownDuration) {
+                debug(`⏱️ Countdown aún en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
+                this.showCountdown(state);
+                return;
+            }
+        }
+
+        // Si ya pasó el countdown, mostrar palabra inmediatamente
         if (this.elements.currentWord) {
             this.elements.currentWord.textContent = state.current_word;
             safeShowElement(this.elements.currentWord);
@@ -821,4 +908,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Menu hamburguesa delegado a menu-opciones.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Countdown 3,2,1 implementado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
