@@ -386,7 +386,7 @@ try {
                 }
 
                 $serverNow = intval(microtime(true) * 1000);
-                $countdownDuration = 4000;
+                $countdownDuration = INITIAL_TIMER * 1000;
                 $roundStartsAt = $serverNow + $countdownDuration;
                 $roundEndsAt = $roundStartsAt + $duration;
 
@@ -690,6 +690,21 @@ try {
             } else {
                 $response = ['success' => false, 'message' => 'Juego no encontrado'];
             }
+            break;
+
+        case 'get_config':
+            $response = [
+                'success' => true,
+                'server_now' => intval(microtime(true) * 1000),
+                'config' => [
+                    'initial_timer' => INITIAL_TIMER,
+                    'default_total_rounds' => DEFAULT_TOTAL_ROUNDS,
+                    'default_round_duration' => DEFAULT_ROUND_DURATION,
+                    'min_players' => MIN_PLAYERS,
+                    'max_players' => MAX_PLAYERS,
+                    'max_words_per_player' => MAX_WORDS_PER_PLAYER
+                ]
+            ];
             break;
 
         case 'get_words':
