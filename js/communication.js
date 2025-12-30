@@ -1,109 +1,65 @@
 /**
  * @file communication.js
- * @description Sistema centralizado de comunicación SSE para TalCual
- * Define tipos de eventos y constantes de comunicación.
+ * @description Sistema centralizado de comunicacion SSE para TalCual
+ * Define tipos de eventos y constantes de comunicacion.
  * 
  * SECURITY NOTE: All input validation must be performed both client-side
  * and server-side. This file defines validation constants for consistency.
  */
 
-// ============================================================================
-// TIPOS DE EVENTOS
-// ============================================================================
-
 const EVENT_TYPES = {
-  // ========== HOST → CLIENTS ==========
-  // Actualizaciones de estado general
   'GAME_STATE_UPDATE': 'game:state:update',
   'GAME_CREATED': 'game:created',
   'GAME_STARTED': 'game:started',
   'GAME_FINISHED': 'game:finished',
   
-  // Eventos de ronda
   'ROUND_STARTED': 'game:round:started',
   'ROUND_ENDED': 'game:round:ended',
   'ROUND_COUNTDOWN': 'game:round:countdown',
   
-  // Eventos de jugadores
   'PLAYER_JOINED': 'game:player:joined',
   'PLAYER_LEFT': 'game:player:left',
   'PLAYER_UPDATED': 'game:player:updated',
   'PLAYER_SCORE_CHANGED': 'game:player:score:changed',
   
-  // Sincronización
   'TIMER_SYNC': 'game:timer:sync',
   'SERVER_TIME': 'server:time',
   
-  // ========== CLIENT → HOST ==========
-  // Acciones del jugador
   'SUBMIT_ANSWERS': 'player:answers:submit',
   'PLAYER_READY': 'player:ready',
   'PLAYER_NAME_CHANGED': 'player:name:changed',
   'PLAYER_LEFT': 'player:left',
   
-  // Sincronización
   'HEARTBEAT': 'player:heartbeat',
   'ACK': 'ack'
 };
 
-// ============================================================================
-// CONSTANTES DE COMUNICACIÓN
-// ============================================================================
-
 const COMM_CONFIG = {
-  // Timeouts - Ajustados para detectar desconexiones rápidamente
-  HEARTBEAT_INTERVAL: 30000,        // Intervalo de heartbeat (30s)
-  MESSAGE_TIMEOUT: 30000,            // Timeout de inactividad (30s)
-  HEARTBEAT_CHECK_INTERVAL: 5000,    // Verificar heartbeat cada 5s
+  HEARTBEAT_INTERVAL: 30000,
+  MESSAGE_TIMEOUT: 30000,
+  HEARTBEAT_CHECK_INTERVAL: 5000,
   
-  // Reconexión - Exponential backoff con jitter para evitar "thundering herd"
-  RECONNECT_INITIAL_DELAY: 1000,           // 1s inicial
-  RECONNECT_MAX_DELAY: 30000,              // Máximo 30s entre intentos
-  RECONNECT_BACKOFF_MULTIPLIER: 1.5,       // Multiplicador exponencial
-  RECONNECT_MAX_ATTEMPTS: 15,               // Máximo 15 intentos (~2min total)
-  RECONNECT_JITTER_MAX: 1000,               // Jitter hasta 1s
+  RECONNECT_INITIAL_DELAY: 1000,
+  RECONNECT_MAX_DELAY: 30000,
+  RECONNECT_BACKOFF_MULTIPLIER: 1.5,
+  RECONNECT_MAX_ATTEMPTS: 15,
+  RECONNECT_JITTER_MAX: 1000,
   
-  // Rate limiting - Prevenir saturación del servidor
-  WORDS_UPDATE_THROTTLE: 2000,      // Máximo cada 2s para palabras
-  STATE_UPDATE_THROTTLE: 500,        // Máximo cada 500ms para estado
+  WORDS_UPDATE_THROTTLE: 2000,
+  STATE_UPDATE_THROTTLE: 500,
   
-  // Validación - Límites y restricciones
-  MAX_WORD_LENGTH: 50,                      // Longitud máxima de palabra
-  MAX_PLAYER_NAME_LENGTH: 20,               // Longitud máxima de nombre
-  MIN_PLAYER_NAME_LENGTH: 2,                // Longitud mínima de nombre
-  MAX_WORDS_PER_ROUND: 10,                  // Máximo palabras por ronda
-  GAME_CODE_LENGTH_MIN: 3,                  // Longitud mínima de código
-  GAME_CODE_LENGTH_MAX: 6                   // Longitud máxima de código
+  MAX_WORD_LENGTH: 50,
+  MAX_PLAYER_NAME_LENGTH: 20,
+  MIN_PLAYER_NAME_LENGTH: 2,
+  MAX_WORDS_PER_ROUND: 10,
+  GAME_CODE_LENGTH_MIN: 3,
+  GAME_CODE_LENGTH_MAX: 6
 };
 
-// ============================================================================
-// VALIDACIÓN DE API
-// ============================================================================
-
-/**
- * Valida respuesta de API
- * @param {object} response
- * @returns {boolean}
- */
 function validateAPIResponse(response) {
   return response && typeof response === 'object' && response.success !== undefined;
 }
 
-// ============================================================================
-// UTILIDADES
-// ============================================================================
-
-/**
- * Calcula delay de reconexión con backoff exponencial + jitter
- * Implementa algoritmo estándar para evitar "thundering herd"
- * 
- * Fórmula:
- * - exponentialDelay = min(initialDelay * (multiplier ^ (attempt - 1)), maxDelay)
- * - finalDelay = exponentialDelay + random(0, jitterMax)
- * 
- * @param {number} attemptNumber - Número de intento (base 1)
- * @returns {number} Delay en ms
- */
 function calculateReconnectDelay(attemptNumber) {
   const exponentialDelay = Math.min(
     COMM_CONFIG.RECONNECT_INITIAL_DELAY * Math.pow(
@@ -117,16 +73,6 @@ function calculateReconnectDelay(attemptNumber) {
   return exponentialDelay + jitter;
 }
 
-/**
- * Obtiene el estado de salud de la conexión
- * Usado para monitoreo y debugging de conexiones
- * 
- * @param {object} connectionMetrics - Métricas de conexión
- * @param {number} connectionMetrics.lastMessageTime - Timestamp del último mensaje
- * @param {number} connectionMetrics.messageCount - Total de mensajes recibidos
- * @param {number} connectionMetrics.errorCount - Total de errores
- * @returns {string} Estado: 'healthy', 'degraded', 'critical'
- */
 function getConnectionHealth(connectionMetrics) {
   if (!connectionMetrics) return 'unknown';
   
@@ -134,52 +80,28 @@ function getConnectionHealth(connectionMetrics) {
   const timeSinceLastMessage = Date.now() - lastMessageTime;
   const errorRate = errorCount / Math.max(messageCount, 1);
   
-  // Critical: >50% errores o timeout
   if (errorRate > 0.5 || timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT) {
     return 'critical';
   }
   
-  // Degraded: >20% errores o inactividad parcial
   if (errorRate > 0.2 || timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT / 2) {
     return 'degraded';
   }
   
-  // Healthy: bajo error rate y actividad reciente
   return 'healthy';
 }
 
-// ============================================================================
-// TIMESYNCMANAGER - SINCRONIZACIÓN DE TIEMPO
-// ============================================================================
-
-/**
- * Gestor de sincronización de tiempo cliente-servidor
- * Resuelve desincronización de relojes entre dispositivos
- * 
- * Problema: Cada cliente usa su reloj local, causando diferencias de ±5-10s
- * Solución: Calibrar offset respecto a servidor en cada ronda
- * 
- * @class TimeSyncManager
- */
 class TimeSyncManager {
   constructor() {
-    this.serverStartTime = null;      // Timestamp servidor cuando empezó ronda
-    this.clientStartTime = null;      // Timestamp cliente cuando se recibió
-    this.offset = 0;                  // Diferencia: serverTime - clientTime
-    this.isCalibrated = false;        // ¿Se calibró ya?
-    this.calibrationError = 0;        // Error estimado en ms
-    this.roundDuration = 0;           // Duración de la ronda en ms
+    this.serverStartTime = null;
+    this.clientStartTime = null;
+    this.offset = 0;
+    this.isCalibrated = false;
+    this.calibrationError = 0;
+    this.roundDuration = 0;
+    this.latencyEstimate = 0;
   }
 
-  /**
-   * Calibra el offset del reloj usando server_now (PHASE 2)
-   * Se ejecuta una vez por ronda cuando recibe server_now
-   * 
-   * @param {number} serverNow - Timestamp servidor AHORA (ms)
-   * @param {number} roundStartsAt - Timestamp cuando comienza la ronda (ms, servidor)
-   * @param {number} roundEndsAt - Timestamp cuando termina la ronda (ms, servidor)
-   * @param {number} roundDuration - Duración de ronda (ms)
-   */
   calibrateWithServerTime(serverNow, roundStartsAt, roundEndsAt, roundDuration = 0) {
     this.serverNow = serverNow;
     this.roundStartsAt = roundStartsAt;
@@ -197,13 +119,6 @@ class TimeSyncManager {
     );
   }
 
-  /**
-   * Calibra el offset del reloj usando timestamp del servidor (LEGACY)
-   * Se ejecuta una vez por ronda cuando recibe round_started_at
-   * 
-   * @param {number} serverTimestamp - Timestamp servidor (ms)
-   * @param {number} roundDuration - Duración de ronda (ms)
-   */
   calibrate(serverTimestamp, roundDuration = 0) {
     this.serverStartTime = serverTimestamp;
     this.clientStartTime = Date.now();
@@ -215,26 +130,29 @@ class TimeSyncManager {
     console.log(
       `%c⏱️ TIMER CALIBRADO`,
       'color: #3B82F6; font-weight: bold',
-      `| Offset: ${this.offset}ms | Error: ±${this.calibrationError}ms | Duración: ${roundDuration}ms`
+      `| Offset: ${this.offset}ms | Error: ±${this.calibrationError}ms | Duracion: ${roundDuration}ms`
     );
   }
 
-  /**
-   * Obtiene "ahora" sincronizado con servidor
-   * @returns {number} Timestamp sincronizado (ms)
-   */
+  calibrateWithRTT(serverNow, rtt) {
+    const latencyEstimate = rtt / 2;
+    const adjustedServerTime = serverNow + latencyEstimate;
+    this.offset = adjustedServerTime - Date.now();
+    this.isCalibrated = true;
+    this.latencyEstimate = latencyEstimate;
+    this.calibrationError = Math.max(30, latencyEstimate * 0.5);
+    
+    console.log(
+      `%c⏱️ SINCRONIZACION FINA (RTT)`,
+      'color: #8B5CF6; font-weight: bold',
+      `| Latencia estimada: ${latencyEstimate.toFixed(2)}ms | RTT: ${rtt.toFixed(2)}ms | Offset: ${this.offset.toFixed(2)}ms`
+    );
+  }
+
   getServerTime() {
     return Date.now() + this.offset;
   }
 
-  /**
-   * Calcula tiempo RESTANTE sincronizado
-   * CRÍTICO: Se usa en updateTimerDisplay() cada 100ms
-   * 
-   * @param {number} roundStartedAt - Timestamp inicio ronda (servidor)
-   * @param {number} roundDuration - Duración total (ms)
-   * @returns {number} Tiempo restante (ms, min 0)
-   */
   getRemainingTime(roundStartedAt, roundDuration) {
     if (!this.isCalibrated) {
       return Math.max(0, roundStartedAt + roundDuration - Date.now());
@@ -247,9 +165,6 @@ class TimeSyncManager {
     return Math.max(0, remaining);
   }
 
-  /**
-   * Reinicia calibración para nueva ronda
-   */
   reset() {
     this.serverStartTime = null;
     this.clientStartTime = null;
@@ -261,34 +176,27 @@ class TimeSyncManager {
     this.isCalibrated = false;
     this.calibrationError = 0;
     this.roundDuration = 0;
+    this.latencyEstimate = 0;
     console.log('%c⏱️ Timer reset para nueva ronda', 'color: #6B7280');
   }
 
-  /**
-   * Información de debugging
-   * @returns {object}
-   */
   getDebugInfo() {
     return {
       isCalibrated: this.isCalibrated,
       offset: this.offset,
       calibrationError: this.calibrationError,
+      latencyEstimate: this.latencyEstimate,
       serverStartTime: this.serverStartTime,
       clientStartTime: this.clientStartTime,
       serverNow: this.serverNow,
       roundStartsAt: this.roundStartsAt,
       roundEndsAt: this.roundEndsAt,
-      currentOffset: Date.now() + this.offset - Date.now()
+      currentServerTime: this.getServerTime()
     };
   }
 }
 
-// Instancia global para todos los scripts
 const timeSync = new TimeSyncManager();
-
-// ============================================================================
-// EXPORT
-// ============================================================================
 
 if (typeof window !== 'undefined') {
   window.COMM = {
@@ -314,4 +222,4 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-console.log('%c✅ communication.js cargado - Sistema centralizado de eventos + TimeSyncManager mejorado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ communication.js cargado - TimeSyncManager con calibrateWithRTT', 'color: #10B981; font-weight: bold');
