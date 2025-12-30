@@ -1,73 +1,44 @@
-# .htaccess para TalCual
-# Configuración básica para Apache
-
-# Activar RewriteEngine
-RewriteEngine On
-
-# Forzar HTTPS (opcional, descomentar si tienes SSL)
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-
-# Prevenir acceso directo a archivos sensibles
-<FilesMatch "^(settings\.php|config\.php|cleanup-cron\.php|debug\.log)$">
-    Order Allow,Deny
-    Deny from all
+# Habilitar PHP como handler
+<FilesMatch "\.php$">
+    AddType application/x-httpd-php .php
 </FilesMatch>
 
-# Permitir acceso a archivos necesarios
-<FilesMatch "\.(html|css|js|json|ico|php)$">
-    Order Allow,Deny
-    Allow from all
-</FilesMatch>
-
-# Solo permitir api-action.php y sse-stream.php como endpoints públicos
-<FilesMatch "^(actions|sse-stream|settings|config\.php$">
-    Order Allow,Deny
-    Allow from all
-</FilesMatch>
-
-# Prevenir listado de directorios
-Options -Indexes
-
-# Protección contra inyección de scripts
+# Configuración para CORS
 <IfModule mod_headers.c>
-    Header set X-XSS-Protection "1; mode=block"
-    Header set X-Content-Type-Options "nosniff"
-    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 </IfModule>
 
-# Compresión GZIP
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
-</IfModule>
+# Asegurar que los archivos JSON se sirven con el tipo correcto
+<FilesMatch "\.json$">
+    AddType application/json .json
+    Header set Access-Control-Allow-Origin "*"
+</FilesMatch>
 
-# Caché para archivos estáticos
+# Habilitar cache busting
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresByType text/css "access plus 1 week"
-    ExpiresByType text/javascript "access plus 1 week"
-    ExpiresByType application/javascript "access plus 1 week"
-    ExpiresByType image/x-icon "access plus 1 month"
-    ExpiresByType application/json "access plus 0 seconds"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType application/x-javascript "access plus 1 month"
 </IfModule>
 
-# Timeout para SSE (ajustar según servidor)
-<IfModule mod_fcgid.c>
-    FcgidIOTimeout 1800
-    FcgidIdleTimeout 1800
+# Reescritura de URLs (si es necesario)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # No reescribir si es un archivo o directorio real
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Permitir acceso a archivos estáticos
+    RewriteCond %{REQUEST_FILENAME} \.(js|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf)$ [OR]
+    RewriteCond %{REQUEST_FILENAME} /$ 
 </IfModule>
-
-# Proteger game_states
-<Directory "game_states">
-    Options -Indexes
-    <FilesMatch "\.json$">
-        Order Allow,Deny
-        Deny from all
-    </FilesMatch>
-</Directory>
-
-# PHP Error Reporting
-php_flag display_errors on
-php_flag display_startup_errors on
-php_value error_reporting E_ALL
-php_value error_log ./error_log
