@@ -208,10 +208,17 @@ class HostManager {
         this.closeHamburgerMenu();
         
         if (confirm('¿Crear una nueva partida? Se perderá el progreso actual.')) {
-            localStorage.removeItem('hostGameCode');
-            localStorage.removeItem('gameId');
-            localStorage.removeItem('isHost');
-            localStorage.removeItem('gameCategory');
+            // FASE 1: centralizado
+            if (typeof StorageManager !== 'undefined') {
+                StorageManager.clearHostSession();
+            } else {
+                // Fallback defensivo
+                localStorage.removeItem('hostGameCode');
+                localStorage.removeItem('gameId');
+                localStorage.removeItem('isHost');
+                localStorage.removeItem('gameCategory');
+            }
+
             location.reload();
         }
     }
@@ -234,10 +241,17 @@ class HostManager {
         this.closeHamburgerMenu();
         
         if (confirm('¿Estás seguro de que quieres terminar la partida?')) {
-            localStorage.removeItem('hostGameCode');
-            localStorage.removeItem('gameId');
-            localStorage.removeItem('isHost');
-            localStorage.removeItem('gameCategory');
+            // FASE 1: centralizado
+            if (typeof StorageManager !== 'undefined') {
+                StorageManager.clearHostSession();
+            } else {
+                // Fallback defensivo
+                localStorage.removeItem('hostGameCode');
+                localStorage.removeItem('gameId');
+                localStorage.removeItem('isHost');
+                localStorage.removeItem('gameCategory');
+            }
+
             location.href = './index.html';
         }
     }
@@ -550,7 +564,12 @@ function initHostManager() {
     let gameCode = urlParams.get('code');
 
     if (!gameCode) {
-        gameCode = localStorage.getItem('hostGameCode');
+        // FASE 1: centralizado
+        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
+            gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
+        } else {
+            gameCode = localStorage.getItem('hostGameCode');
+        }
     }
 
     if (!gameCode) {
