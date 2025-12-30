@@ -2,22 +2,22 @@
  * Host Manager - Integración completa con menú hamburguesa
  * Gestiona: timer, categoría, ranking/top words, panel tabs, menú hamburguesa
  * 
- * MEJORAS v7 (30 Dic 2025):
+ * MEJORAS v9 (30 Dic 2025):
  * - Integrada funcionalidad de menú hamburguesa
  * - Opciones funcionando: Reiniciar Ronda, Nuevo Juego, Opciones, Terminar
  * - Categoría persistente en localStorage
- * - Menú draggable/resizable preparado para futuras mejoras
- * - FASE 1: Validación de sesión al inicializar
  * - FASE 2: Función centralizada determineUIState() para visibilidad
+ * - FASE 3: Consolidación UI - Solo clases CSS, eliminados inline styles conflictivos
  */
 
 /**
  * Determina qué UI mostrar basándose en el estado de sesión
  * Se ejecuta al cargar y después de cada cambio de estado crítico
  * 
- * FASE 2: Función centralizada para evitar inconsistencias
- * - Si hay sesión: mostrar pantalla de juego
- * - Si no hay sesión: mostrar modal de crear
+ * FASE 3: Simplificado - Solo maneja clases del <html>
+ * - El CSS con .session-only/.nosession-only + !important maneja todo
+ * - Sin inline styles que compitan con CSS
+ * - Sin manipulación manual de display: none/flex/block
  */
 function determineUIState() {
     const hasSession = StorageManager.isHostSessionActive();
@@ -25,76 +25,18 @@ function determineUIState() {
     
     console.log(`📋 determineUIState() - Session: ${hasSession}, Code: ${gameCode || 'none'}`);
 
-    // CRÍTICO: sincronizar las clases del <html>.
-    // host.html usa .no-session/.has-session para ocultar/mostrar .session-only/.nosession-only
-    // y esas reglas tienen !important; si no se actualizan, la UI puede quedar "en blanco".
+    // Único trabajo: sincronizar las clases del <html>
+    // host.html usa .no-session/.has-session + CSS !important para controlar visibilidad
     const root = document.documentElement;
+    
     if (hasSession && gameCode) {
         root.classList.add('has-session');
         root.classList.remove('no-session');
+        console.log('🎮 determineUIState: Sesión activa - UI mostrada por CSS');
     } else {
         root.classList.add('no-session');
         root.classList.remove('has-session');
-    }
-    
-    const modalCreate = document.getElementById('modal-create-game');
-    const gameScreen = document.getElementById('game-screen');
-    const btnHamburger = document.getElementById('btn-hamburger-host');
-    
-    if (hasSession && gameCode) {
-        // CASO 1: Hay sesión activa → Mostrar pantalla de juego
-        console.log('🎮 determineUIState: Mostrando pantalla de juego');
-        
-        if (modalCreate) {
-            modalCreate.style.display = 'none';
-            console.log('✅ Modal de crear ocultado');
-        }
-        
-        if (gameScreen) {
-            gameScreen.style.display = '';
-            console.log('✅ Pantalla de juego mostrada');
-        }
-        
-        if (btnHamburger) {
-            btnHamburger.style.display = '';
-            console.log('✅ Botón hamburguesa mostrado');
-        }
-        
-        // Mostrar elementos del juego (remover display: none del hideGameElements)
-        const gameElements = {
-            codeSticker: document.getElementById('code-sticker-floating'),
-            tvHeader: document.querySelector('.tv-header'),
-            sidepanel: document.getElementById('floating-side-panel'),
-            playersContainer: document.getElementById('players-container')
-        };
-        
-        Object.entries(gameElements).forEach(([name, el]) => {
-            if (el) {
-                el.style.display = '';
-                console.log(`  ✅ ${name} mostrado`);
-            } else {
-                console.warn(`  ⚠️ ${name} no encontrado`);
-            }
-        });
-        
-    } else {
-        // CASO 2: Sin sesión → Mostrar modal de crear
-        console.log('➕ determineUIState: Mostrando modal de crear partida');
-        
-        if (gameScreen) {
-            gameScreen.style.display = 'none';
-            console.log('✅ Pantalla de juego ocultada');
-        }
-        
-        if (modalCreate) {
-            modalCreate.style.display = 'flex';
-            console.log('✅ Modal de crear mostrado');
-        }
-        
-        if (btnHamburger) {
-            btnHamburger.style.display = 'none';
-            console.log('✅ Botón hamburguesa ocultado');
-        }
+        console.log('➕ determineUIState: Sin sesión - Modal visible por CSS');
     }
 }
 
@@ -133,18 +75,13 @@ class HostManager {
 
     /**
      * FASE 1: Valida que exista una sesión activa de host
-     * Si no existe sesión, muestra modal de crear nueva partida
+     * Si no existe sesión, retorna false y deja que CSS muestre el modal
      * @returns {boolean} true si hay sesión activa, false si no
      */
     checkActiveSession() {
         const hasSession = StorageManager.isHostSessionActive();
         if (!hasSession) {
-            console.warn('⚠️ Sin sesión activa - mostrando modal');
-            const modal = document.getElementById('modal-create-game');
-            if (modal) {
-                modal.style.display = 'flex';
-                console.log('✅ Modal de crear partida mostrado');
-            }
+            console.warn('⚠️ Sin sesión activa - CSS mostrará modal automáticamente');
         }
         return hasSession;
     }
@@ -177,12 +114,6 @@ class HostManager {
         }
 
         this.initPanelTabs();
-        
-        const modalCreate = document.getElementById('modal-create-game');
-        if (modalCreate) {
-            modalCreate.style.display = 'none';
-            console.log('✅ Modal de crear ocultado');
-        }
 
         console.log('✅ UI inicializado');
     }
@@ -707,4 +638,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v8 - FASE 2: determineUIState() centralizado', 'color: #10B981; font-weight: bold');
+console.log('%c✅ host-manager.js v9 - FASE 3: Solo clases CSS, sin inline styles conflictivos', 'color: #10B981; font-weight: bold');
