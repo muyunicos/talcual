@@ -527,7 +527,6 @@ class HostManager {
             const seconds = Math.ceil(remaining / 1000);
             if (seconds > 3) {
                 numberEl.textContent = 'Preparados...';
-                numberEl.style.fontSize = '1.2em';
             } else if (seconds > 0) {
                 numberEl.classList.add('timer-hury');
                 const displayValue = Math.max(1, seconds);
