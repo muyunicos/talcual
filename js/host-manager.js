@@ -303,9 +303,8 @@ class HostManager {
             this.updateRoundInfo();
         }
 
-        if (state.remaining_time !== undefined) {
-            this.remainingTime = state.remaining_time;
-            this.updateTimer();
+        if (state.round_starts_at && state.round_duration) {
+            this.startContinuousTimer(state);
         }
         
         if (state.min_players !== undefined) {
@@ -373,23 +372,34 @@ class HostManager {
 
     updateTimer() {
         const timerEl = document.getElementById('timer-display');
-        if (timerEl) {
-            const minutes = Math.floor(this.remainingTime / 60);
-            const seconds = this.remainingTime % 60;
-            timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        if (timerEl && typeof this.remainingTime === 'number') {
+            const seconds = Math.max(0, Math.floor(this.remainingTime / 1000));
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         }
     }
 
-    startTimer() {
+    startContinuousTimer(state) {
         this.stopTimer();
-        this.timerInterval = setInterval(() => {
-            if (this.remainingTime > 0) {
-                this.remainingTime--;
+        
+        const tick = () => {
+            if (this.gameState && this.gameState.round_starts_at && this.gameState.round_duration) {
+                this.remainingTime = getRemainingTime(
+                    this.gameState.round_starts_at,
+                    this.gameState.round_duration
+                );
                 this.updateTimer();
-            } else {
-                this.stopTimer();
+
+                // Si el tiempo se agota y estamos en playing, mostrar resultados
+                if (this.remainingTime <= 0 && this.gameState.status === 'playing') {
+                    this.stopTimer();
+                }
             }
-        }, 1000);
+        };
+        
+        tick(); // Actualizar inmediatamente
+        this.timerInterval = setInterval(tick, 1000);
     }
 
     stopTimer() {
@@ -523,11 +533,12 @@ class HostManager {
             const elapsed = nowServer - roundStartsAt;
             const remaining = Math.max(0, countdownDuration - elapsed);
             const seconds = Math.ceil(remaining / 1000);
+            
             if (seconds > 3) {
-                numberEl.textContent = 'Preparados...';
+                numberEl.textContent = '¿Preparado?';
             } else if (seconds > 0) {
                 numberEl.classList.add('timer-hury');
-                const displayValue = Math.max(1, seconds);
+                const displayValue = Math.max(1, seconds - 1);
                 numberEl.textContent = displayValue.toString();
             } else {
                 numberEl.classList.remove('timer-hury');
@@ -559,7 +570,12 @@ class HostManager {
             } else {
                 if (result.state && result.state.round_starts_at && result.state.countdown_duration) {
                     if (typeof timeSync !== 'undefined' && timeSync && !timeSync.isCalibrated) {
-                        timeSync.calibrate(result.state.round_starts_at, result.state.round_duration);
+                        timeSync.calibrateWithServerTime(
+                            result.state.server_now,
+                            result.state.round_starts_at,
+                            result.state.round_ends_at,
+                            result.state.round_duration
+                        );
                         console.log('%c⏱️ HOST SYNC CALIBRADO', 'color: #3B82F6; font-weight: bold', `Offset: ${timeSync.offset}ms`);
                     }
                     this.runPreciseCountdown(result.state.round_starts_at, result.state.countdown_duration);
@@ -614,4 +630,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - Countdown synchronized with player-manager using RAF + timeSync', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - Fixed: timer display (seconds, not ms), countdown message & display', 'color: #FF00FF; font-weight: bold; font-size: 12px');
