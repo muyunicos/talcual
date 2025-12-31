@@ -517,6 +517,7 @@ class HostManager {
         if (!overlay || !numberEl) return;
 
         overlay.classList.add('active');
+
         numberEl.style.fontSize = 'inherit';
 
         const update = () => {
@@ -524,15 +525,15 @@ class HostManager {
             const elapsed = nowServer - roundStartsAt;
             const remaining = Math.max(0, countdownDuration - elapsed);
             const seconds = Math.ceil(remaining / 1000);
-
             if (seconds > 3) {
-                numberEl.textContent = '¿Preparado?';
+                numberEl.textContent = 'Preparados...';
                 numberEl.style.fontSize = '1.2em';
             } else if (seconds > 0) {
-                const displayValue = Math.max(1, seconds - 1);
+                numberEl.classList.add('timer-hury');
+                const displayValue = Math.max(1, seconds);
                 numberEl.textContent = displayValue.toString();
-                numberEl.style.fontSize = 'inherit';
             } else {
+                numberEl.classList.remove('timer-hury');
                 numberEl.textContent = '';
             }
 
@@ -542,7 +543,6 @@ class HostManager {
                 overlay.classList.remove('active');
             }
         };
-
         this.countdownRAFId = requestAnimationFrame(update);
     }
 
