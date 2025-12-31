@@ -1,6 +1,8 @@
 /**
  * @file shared-utils.js
- * @description Utilidades compartidas entre host y player
+ * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS (SessionManager, DictionaryService, ConfigService)
+ * 
+ * 🎯 FASE 1 COMPLETA: Este archivo centraliza TODA la lógica de dependencias
  */
 
 // Global dictionary cache
@@ -171,7 +173,6 @@ class StorageManager {
         try {
             const data = typeof value === 'string' ? value : JSON.stringify(value);
             localStorage.setItem(key, data);
-            // Usar debug centralizado (no console.log)
             debug(`💾 Storage set: ${key}`, value, 'info');
         } catch (error) {
             debug(`❌ Storage error (set): ${key}`, error, 'error');
@@ -722,4 +723,195 @@ function generateRandomLetterCode(length = 4) {
     return code;
 }
 
-console.log('%c✅ shared-utils.js - Timer shows --:-- until game starts, then displays remaining time', 'color: #10B981; font-weight: bold; font-size: 12px');
+// ============================================================================
+// 🎯 FASE 1: SERVICIOS CENTRALIZADOS
+// ============================================================================
+
+/**
+ * SessionManager - Gestión unificada de sesiones (host/player)
+ * ✅ CENTRALIZA: localStorage, beforeunload, recuperación de sesión
+ */
+class SessionManager {
+    constructor(type = 'player') {
+        this.type = type; // 'host' o 'player'
+        this.manager = null; // Referencia al manager que se registre
+        this.setupBeforeUnload();
+    }
+
+    setupBeforeUnload() {
+        window.addEventListener('beforeunload', () => {
+            if (this.manager && typeof this.manager.destroy === 'function') {
+                this.manager.destroy();
+            }
+        });
+    }
+
+    registerManager(manager) {
+        this.manager = manager;
+        debug(`✅ ${this.type.toUpperCase()} manager registrado en SessionManager`, null, 'success');
+    }
+
+    isSessionActive() {
+        if (this.type === 'host') {
+            return StorageManager.isHostSessionActive();
+        }
+        const gameId = StorageManager.get(StorageKeys.GAME_ID);
+        const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
+        return !!(gameId && playerId);
+    }
+
+    /**
+     * Guarda sesión de jugador
+     */
+    savePlayerSession(gameId, playerId, playerName, playerColor) {
+        StorageManager.set(StorageKeys.GAME_ID, gameId);
+        StorageManager.set(StorageKeys.PLAYER_ID, playerId);
+        StorageManager.set(StorageKeys.PLAYER_NAME, playerName);
+        StorageManager.set(StorageKeys.PLAYER_COLOR, playerColor);
+        debug(`✅ Sesión de jugador guardada: ${playerId}`, null, 'success');
+    }
+
+    /**
+     * Recupera sesión de jugador
+     */
+    recover() {
+        const gameId = StorageManager.get(StorageKeys.GAME_ID);
+        const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
+        const playerName = StorageManager.get(StorageKeys.PLAYER_NAME);
+        const playerColor = StorageManager.get(StorageKeys.PLAYER_COLOR);
+
+        if (gameId && playerId && playerName && playerColor) {
+            return { gameId, playerId, playerName, playerColor };
+        }
+
+        return null;
+    }
+
+    /**
+     * Limpia sesión completamente
+     */
+    clear() {
+        if (this.type === 'host') {
+            StorageManager.clearHostSession();
+        } else {
+            StorageManager.clearPlayerSession();
+        }
+        debug(`🧹 ${this.type.toUpperCase()} session cleared`, null, 'info');
+    }
+}
+
+/**
+ * DictionaryService - Gestión centralizada del diccionario
+ * ✅ CENTRALIZA: Carga de JSON, acceso a palabras, categorías
+ * ✅ ELIMINA REDUNDANCIA: Solo un lugar hace fetch a /app/diccionario.json
+ */
+class DictionaryService {
+    constructor() {
+        this.isReady = false;
+        this.initPromise = null;
+    }
+
+    async initialize() {
+        if (this.isReady) return;
+        if (this.initPromise) return this.initPromise;
+
+        this.initPromise = (async () => {
+            try {
+                await loadDictionary();
+                this.isReady = true;
+                debug('📚 DictionaryService inicializado', null, 'success');
+            } catch (error) {
+                debug('❌ Error inicializando DictionaryService: ' + error.message, null, 'error');
+                this.isReady = false;
+            }
+        })();
+
+        return this.initPromise;
+    }
+
+    async getCategories() {
+        await this.initialize();
+        return loadDictionaryCategories();
+    }
+
+    async getWords() {
+        await this.initialize();
+        return loadDictionary();
+    }
+
+    async getRandomWord() {
+        const words = await this.getWords();
+        if (!words.length) return 'SOL';
+        return words[Math.floor(Math.random() * words.length)];
+    }
+}
+
+/**
+ * ConfigService - Gestión centralizada de configuración
+ * ✅ CENTRALIZA: Carga única de config desde actions.php
+ * ✅ ELIMINA REDUNDANCIA: Solo un lugar hace fetch a get_config
+ */
+class ConfigService {
+    constructor() {
+        this.config = null;
+        this.loadPromise = null;
+    }
+
+    async load() {
+        if (this.config) return this.config;
+        if (this.loadPromise) return this.loadPromise;
+
+        this.loadPromise = (async () => {
+            try {
+                const url = new URL('./app/actions.php', window.location.href);
+                const response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_config' }),
+                    cache: 'no-store'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.config) {
+                        this.config = result.config;
+                        debug('⚙️ Configuración cargada', this.config, 'success');
+                        return this.config;
+                    }
+                }
+
+                throw new Error('Config response invalid');
+            } catch (error) {
+                debug('⚠️ Config load failed, usando defaults', error, 'warn');
+                this.config = {
+                    default_total_rounds: 3,
+                    min_players: 2,
+                    max_words_per_player: 6,
+                    round_duration: 60000
+                };
+                return this.config;
+            }
+        })();
+
+        return this.loadPromise;
+    }
+
+    get(key, defaultValue = null) {
+        if (!this.config) return defaultValue;
+        return this.config[key] ?? defaultValue;
+    }
+}
+
+// ============================================================================
+// 🌍 INSTANCIAS GLOBALES - EXPORTAR A window
+// ============================================================================
+
+// ✅ Instancias singleton que se inyectan en todo el código
+window.hostSession = new SessionManager('host');
+window.playerSession = new SessionManager('player');
+window.dictionaryService = new DictionaryService();
+window.configService = new ConfigService();
+
+debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryService, ConfigService)', null, 'success');
+
+console.log('%c✅ shared-utils.js - FASE 1 COMPLETA: Servicios centralizados + utilidades legacy', 'color: #10B981; font-weight: bold; font-size: 12px');
