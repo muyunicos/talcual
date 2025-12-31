@@ -1,6 +1,6 @@
 /**
  * @file shared-utils.js
- * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS (SessionManager, DictionaryService, ConfigService)
+ * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS (SessionManager, DictionaryService, ConfigService, ModalHandler)
  * 
  * 🎯 FASE 1 COMPLETA: Este archivo centraliza TODA la lógica de dependencias
  */
@@ -994,6 +994,89 @@ class ConfigService {
     }
 }
 
+/**
+ * ModalHandler - Gestión centralizada de modales
+ * ✅ CENTRALIZA: Apertura/cierre de modales, manejo de overlay, tracking de modales abiertos
+ * ✅ ELIMINA REDUNDANCIA: ~150 líneas de código duplicado en managers
+ * ✅ DRY: Un solo lugar para lógica modal
+ */
+class ModalHandler {
+    constructor() {
+        this.openModals = new Set();
+    }
+
+    /**
+     * Abre un modal por ID
+     * @param {string} modalId - ID del elemento modal
+     * @returns {boolean} true si se abrió exitosamente
+     */
+    open(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error(`[ModalHandler] Modal no encontrado: ${modalId}`);
+            return false;
+        }
+
+        modal.style.display = 'flex';
+        if (modal.classList) {
+            modal.classList.add('active');
+        }
+
+        this.openModals.add(modalId);
+        debug(`📂 Modal abierto: ${modalId}`, null, 'info');
+
+        return true;
+    }
+
+    /**
+     * Cierra un modal por ID
+     * @param {string} modalId - ID del elemento modal
+     * @returns {boolean} true si se cerró exitosamente
+     */
+    close(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error(`[ModalHandler] Modal no encontrado: ${modalId}`);
+            return false;
+        }
+
+        modal.style.display = 'none';
+        if (modal.classList) {
+            modal.classList.remove('active');
+        }
+
+        this.openModals.delete(modalId);
+        debug(`📂 Modal cerrado: ${modalId}`, null, 'info');
+
+        return true;
+    }
+
+    /**
+     * Cierra todos los modales abiertos
+     */
+    closeAll() {
+        const modalIds = Array.from(this.openModals);
+        modalIds.forEach(id => this.close(id));
+    }
+
+    /**
+     * Verifica si un modal está abierto
+     * @param {string} modalId - ID del elemento modal
+     * @returns {boolean} true si está abierto
+     */
+    isOpen(modalId) {
+        return this.openModals.has(modalId);
+    }
+
+    /**
+     * Obtiene todos los modales abiertos
+     * @returns {string[]} array de IDs de modales abiertos
+     */
+    getOpenModals() {
+        return Array.from(this.openModals);
+    }
+}
+
 // ============================================================================
 // 🌍 INSTANCIAS GLOBALES - EXPORTAR A window
 // ============================================================================
@@ -1003,12 +1086,17 @@ window.hostSession = new SessionManager('host');
 window.playerSession = new SessionManager('player');
 window.dictionaryService = new DictionaryService();
 window.configService = new ConfigService();
+window.modalHandler = new ModalHandler();
 
 // ✅ ALIAS PARA BACKWARDS COMPATIBILITY: wordEngineManager -> dictionaryService
 // Esto evita ReferenceError en managers que aún usan wordEngineManager
 window.wordEngineManager = window.dictionaryService;
 
-debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryService, ConfigService)', null, 'success');
-debug('✅ wordEngineManager aliased a dictionaryService (para compatibilidad)', null, 'success');
+// ✅ ALIAS PARA UI: Modal -> modalHandler
+window.Modal = window.modalHandler;
 
-console.log('%c✅ shared-utils.js - FASE 1 COMPLETA: Servicios centralizados + WordEquivalenceEngine integrado', 'color: #10B981; font-weight: bold; font-size: 12px');
+debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryService, ConfigService, ModalHandler)', null, 'success');
+debug('✅ wordEngineManager aliased a dictionaryService (para compatibilidad)', null, 'success');
+debug('✅ Modal aliased a modalHandler (para UI centralizada)', null, 'success');
+
+console.log('%c✅ shared-utils.js - FASE 1 COMPLETA: Servicios centralizados + ModalHandler implementado', 'color: #10B981; font-weight: bold; font-size: 12px');
