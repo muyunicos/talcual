@@ -464,8 +464,19 @@ class HostManager {
         } else if (state.status === 'round_ended') {
             this.roundEnded = true;
             this.stopTimer();
+            if (document.getElementById('timer-display')) {
+                updateTimerDisplay(null, document.getElementById('timer-display'), '⏳');
+            }
         } else if (state.status === 'finished') {
             this.stopTimer();
+            if (document.getElementById('timer-display')) {
+                updateTimerDisplay(null, document.getElementById('timer-display'), '⏳');
+            }
+        } else if (state.status === 'waiting') {
+            this.stopTimer();
+            if (document.getElementById('timer-display')) {
+                updateTimerDisplay(null, document.getElementById('timer-display'), '⏳');
+            }
         }
         
         if (state.min_players !== undefined) {
