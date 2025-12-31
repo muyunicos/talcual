@@ -3,8 +3,9 @@
  * Maneja: timer, categoría, ranking, panel tabs
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  * 
- * ✅ REFACTORIZADO: Usa SessionManager, ConfigService, y WordEngineManager
+ * ✅ REFACTORIZADO: Usa SessionManager, ConfigService, y DictionaryService
  * ✅ FIX FASE 2: Constructor sin async, initialize() unificado
+ * ✅ FASE 3A: Usa getWordsForCategory() y getRandomWordByCategory()
  */
 
 function determineUIState() {
@@ -54,8 +55,9 @@ class HostManager {
      */
     async initialize() {
         try {
-            // Paso 1: Inicializar word engine
-            await this.initWordEngine();
+            // Paso 1: Inicializar dictionary service (que incluye word engine)
+            await dictionaryService.initialize();
+            this.wordEngineReady = true;
             
             // Paso 2: Cargar config (await completo)
             await this.loadConfigAndInit();
@@ -98,26 +100,14 @@ class HostManager {
         }
     }
 
-    // ✅ REFACTORIZADO: Usa WordEngineManager
-    async initWordEngine() {
-        try {
-            await wordEngineManager.initialize();
-            this.wordEngineReady = true;
-            debug('📜 Word engine inicializado en host', null, 'success');
-        } catch (error) {
-            this.wordEngineReady = false;
-            debug('❌ Error inicializando word engine: ' + error.message, null, 'error');
-        }
-    }
-
-    // ✅ REFACTORIZADO: Delega a WordEngineManager
+    // ✅ REFACTORIZADO FASE 3A: Delega a DictionaryService
     getCanonicalForCompare(word) {
-        return wordEngineManager.getCanonical(word);
+        return dictionaryService.getCanonical(word);
     }
 
-    // ✅ REFACTORIZADO: Delega a WordEngineManager
+    // ✅ REFACTORIZADO FASE 3A: Delega a DictionaryService
     getMatchType(word1, word2) {
-        return wordEngineManager.getMatchType(word1, word2);
+        return dictionaryService.getMatchType(word1, word2);
     }
 
     /**
@@ -714,7 +704,7 @@ class HostManager {
                     };
                     scoreDelta[playerId] += points;
                     
-                    if (wordEngineManager.engine && wordEngineManager.engine.debugMode) {
+                    if (dictionaryService.engine && dictionaryService.engine.debugMode) {
                         console.log(`⭐ ${word} vs otro: tipo=${matchType}, pts=${points}`);
                     }
                 } else {
@@ -757,18 +747,18 @@ class HostManager {
         this.roundEnded = true;
 
         try {
-            // ✅ FIX FASE 2: Esperar explícitamente a que WordEngineManager esté listo
-            if (!wordEngineManager.isReady) {
+            // ✅ FIX FASE 3A: Esperar explícitamente a que DictionaryService esté listo
+            if (!dictionaryService.isReady) {
                 try {
                     await Promise.race([
-                        wordEngineManager.initialize(),
+                        dictionaryService.initialize(),
                         new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Timeout esperando word engine')), 2000)
+                            setTimeout(() => reject(new Error('Timeout esperando dictionary service')), 2000)
                         )
                     ]);
-                    debug('⏱️ Word engine listo para procesar resultados', null, 'success');
+                    debug('⏱️ Dictionary service listo para procesar resultados', null, 'success');
                 } catch (err) {
-                    debug(`⚠️ Word engine no listo a tiempo, continuando con fallback: ${err.message}`, null, 'warning');
+                    debug(`⚠️ Dictionary service no listo a tiempo, continuando con fallback: ${err.message}`, null, 'warning');
                     // Continuamos de todas formas - el scoring fallback funciona
                 }
             }
@@ -941,6 +931,7 @@ let hostManager = null;
 
 /**
  * ✅ FIX FASE 2: Flujo de inicialización ahora es async y secuencial
+ * ✅ FASE 3A: Usa DictionaryService centralizado
  */
 async function initHostManager() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -976,4 +967,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js: FIX FASE 2 - Async initialize() + Modal centralizado + word engine timeout', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js: FASE 3A - Uses DictionaryService for word comparisons', 'color: #00FF00; font-weight: bold; font-size: 12px');
