@@ -389,6 +389,23 @@ class HostManager {
     }
 
     /**
+     * Verifica si TODOS los jugadores han terminado (status='ready')
+     * No cuenta desconectados
+     */
+    checkAllPlayersReady() {
+        if (!this.currentPlayers || this.currentPlayers.length < 1) return false;
+        
+        const activePlayers = this.currentPlayers.filter(p => !p.disconnected);
+        if (activePlayers.length === 0) return false;
+        
+        const readyCount = activePlayers.filter(p => p.status === 'ready').length;
+        const totalCount = activePlayers.length;
+        
+        // Verdadero si: todos están ready
+        return readyCount === totalCount;
+    }
+
+    /**
      * Verifica si todos excepto un jugador están ready
      */
     checkAllButOneReady() {
@@ -480,8 +497,15 @@ class HostManager {
             this.penaltyApplied = false;  // Reset penalty flag for new round
             this.originalTimerValue = null;
             
+            // 🆕 VERIFICAR SI TODOS COMPLETARON
+            if (this.checkAllPlayersReady()) {
+                debug('✅ TODOS LOS JUGADORES COMPLETARON - Terminando ronda', null, 'success');
+                if (!this.roundEnded) {
+                    this.endRoundAndCalculateResults();
+                }
+            }
             // 🔍 VERIFICAR PENALIZACIÓN: Si todos excepto 1 están ready
-            if (this.checkAllButOneReady()) {
+            else if (this.checkAllButOneReady()) {
                 debug('⚠️ PENALIZACIÓN ACTIVA: Todos menos un jugador están ready', null, 'warning');
                 this.applyLatePlayerPenalty();
             }
@@ -1039,4 +1063,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v4: Penalización a último jugador - reduce timer a 5s', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js v5: Detección de todos listos + terminar ronda early', 'color: #00FF00; font-weight: bold; font-size: 12px');
