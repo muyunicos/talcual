@@ -401,6 +401,10 @@ class PlayerManager {
         if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
         if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
 
+        if (this.elements.countdownNumber) {
+            this.elements.countdownNumber.style.fontSize = 'inherit';
+        }
+
         const update = () => {
             const nowServer = timeSync.getServerTime();
             const elapsed = nowServer - roundStartsAt;
@@ -408,9 +412,15 @@ class PlayerManager {
             const seconds = Math.ceil(remaining / 1000);
 
             if (this.elements.countdownNumber) {
-                const displayValue = Math.max(0, seconds - 1);
-                if (this.elements.countdownNumber.textContent !== displayValue.toString()) {
+                if (seconds > 3) {
+                    this.elements.countdownNumber.textContent = '¿Preparado?';
+                    this.elements.countdownNumber.style.fontSize = '1.2em';
+                } else if (seconds > 0) {
+                    const displayValue = Math.max(1, seconds - 1);
                     this.elements.countdownNumber.textContent = displayValue.toString();
+                    this.elements.countdownNumber.style.fontSize = 'inherit';
+                } else {
+                    this.elements.countdownNumber.textContent = '';
                 }
             }
 
@@ -846,4 +856,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Countdown uses state.countdown_duration + fixed getRemainingTime(round_ends_at)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Countdown synchronized with host: ¿Preparado? + 3,2,1 + RAF timing', 'color: #FF00FF; font-weight: bold; font-size: 12px');
