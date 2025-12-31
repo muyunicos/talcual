@@ -434,24 +434,17 @@ html.bg-ready body::before {
     top: 140px;
     right: 30px;
     z-index: 105;
-
     width: 280px;
     max-height: calc(100vh - 300px);
-
     background: var(--tv-panel-bg);
     backdrop-filter: blur(12px);
     border-radius: var(--radius-card);
     border: 3px solid var(--tv-border-cyan);
     box-shadow: var(--tv-glow-cyan), 0 10px 30px rgba(0, 0, 0, 0.50);
-
     display: flex;
     flex-direction: column;
-
-    /* Resizable/draggable se implementa vía JS (interact.js o custom) */
     resize: both;
-    overflow: auto;
     cursor: move;
-
     transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
 
@@ -467,7 +460,6 @@ html.bg-ready body::before {
     left: 50%;
     transform: translateX(-50%) rotate(-1deg);
     z-index: 106;
-
     background: linear-gradient(135deg, #FF0055 0%, #D9004A 100%);
     color: white;
     font-size: 13px;
@@ -479,14 +471,12 @@ html.bg-ready body::before {
     border-radius: var(--radius-md);
     border: 3px solid #AA0037;
     box-shadow: var(--sombra-dura), 0 6px 16px rgba(0, 0, 0, 0.40);
-
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 240px;
 }
 
-/* Contenedor de tabs (para fade entre ranking/top) */
 .panel-tabs {
     display: flex;
     justify-content: space-around;
@@ -517,7 +507,6 @@ html.bg-ready body::before {
     background: rgba(255, 255, 255, 0.08);
 }
 
-/* Contenido del panel (fade transition) */
 .panel-content {
     position: relative;
     flex: 1;
@@ -641,12 +630,6 @@ html.bg-ready body::before {
 
 /* === RESPONSIVE === */
 @media (max-width: 1280px) {
-    .floating-side-panel {
-        width: 240px;
-        top: 120px;
-        right: 20px;
-    }
-
     .center-stage {
         width: clamp(340px, 70vw, 700px);
     }
@@ -685,16 +668,6 @@ html.bg-ready body::before {
         font-size: 13px;
     }
 
-    .floating-side-panel {
-        /* En tablet: panel abajo izquierda, más pequeño */
-        top: auto;
-        bottom: 240px;
-        right: auto;
-        left: 20px;
-        width: 200px;
-        max-height: 300px;
-    }
-
     .category-sticker {
         font-size: 11px;
         padding: 6px 14px;
@@ -721,7 +694,6 @@ html.bg-ready body::before {
         max-height: 160px;
     }
 
-    /* En mobile: panel se oculta o se convierte en modal toggle */
     .floating-side-panel {
         display: none;
     }
