@@ -391,7 +391,7 @@ class PlayerManager {
         this.stopTimer();
     }
 
-    runPreciseCountdown(roundStartsAt) {
+    runPreciseCountdown(roundStartsAt, countdownDuration) {
         if (this.countdownRAFId) {
             cancelAnimationFrame(this.countdownRAFId);
         }
@@ -404,7 +404,7 @@ class PlayerManager {
         const update = () => {
             const nowServer = timeSync.getServerTime();
             const elapsed = nowServer - roundStartsAt;
-            const remaining = Math.max(0, 4000 - elapsed);
+            const remaining = Math.max(0, countdownDuration - elapsed);
             const seconds = Math.ceil(remaining / 1000);
 
             if (this.elements.countdownNumber) {
@@ -430,8 +430,9 @@ class PlayerManager {
 
     async showCountdown(state) {
         debug('⏱️ Iniciando countdown', 'debug');
+        const countdownDuration = state.countdown_duration || 4000;
         safeHideElement(this.elements.waitingMessage);
-        this.runPreciseCountdown(state.round_starts_at);
+        this.runPreciseCountdown(state.round_starts_at, countdownDuration);
     }
 
     showPlayingState(state) {
@@ -454,8 +455,8 @@ class PlayerManager {
 
         if (state.round_starts_at) {
             const nowServer = timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
+            const countdownDuration = state.countdown_duration || 4000;
             const elapsedSinceStart = nowServer - state.round_starts_at;
-            const countdownDuration = 4000;
             
             if (elapsedSinceStart < countdownDuration) {
                 debug(`⏱️ Countdown aun en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
@@ -722,7 +723,7 @@ class PlayerManager {
     }
 
     updateTimerFromState(state) {
-        const remaining = getRemainingTime(state.round_started_at, state.round_duration);
+        const remaining = getRemainingTime(state.round_ends_at);
         updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
 
         if (remaining <= 0 && this.gameState.status === 'playing') {
@@ -845,4 +846,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Countdown preciso con requestAnimationFrame + RTT sync', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Countdown uses state.countdown_duration + fixed getRemainingTime(round_ends_at)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
