@@ -43,6 +43,7 @@ class HostManager {
         // Word comparison engine
         this.wordEngine = null;
         this.wordEngineReady = false;
+        this.wordEngineInitPromise = null;  // Track async init
         this.initWordEngine();
         
         this.initUI();
@@ -54,33 +55,57 @@ class HostManager {
 
     initWordEngine() {
         if (typeof WordEquivalenceEngine !== 'function') {
-            debug('⚠️ WordEquivalenceEngine no disponible - usando comparación simple', null, 'warning');
+            debug('⚠️  WordEquivalenceEngine no disponible en host', null, 'warning');
+            this.wordEngineReady = false;
             return;
         }
 
         try {
             this.wordEngine = new WordEquivalenceEngine();
-            this.wordEngine.init('/js/sinonimos.json').then(() => {
+            
+            // Envolver init en una Promise con timeout
+            this.wordEngineInitPromise = Promise.race([
+                this.wordEngine.init('./js/sinonimos.json'),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout cargando diccionario')), 3000)
+                )
+            ])
+            .then(() => {
                 this.wordEngineReady = true;
-                debug('📜 Word engine inicializado en host', null, 'info');
-            }).catch(err => {
-                debug('❌ Error cargando word engine: ' + err, null, 'warning');
+                debug('📜 Word engine inicializado en host', null, 'success');
+                console.log('%c✅ HOST: Word engine listo con', 'color: #00AA00; font-weight: bold', 
+                    Object.keys(this.wordEngine.dictionaryMap).length, 'palabras en diccionario');
+            })
+            .catch(err => {
+                this.wordEngineReady = false;
+                debug('❌ Error inicializando word engine: ' + err.message, null, 'error');
+                console.error('%c❌ HOST: Word engine falló', 'color: #AA0000; font-weight: bold', err.message);
             });
         } catch (e) {
             debug('❌ Word engine no disponible: ' + e.message, null, 'warning');
+            this.wordEngineReady = false;
         }
     }
 
+    /**
+     * Obtiene la forma canónica de una palabra.
+     * Usa el engine si está listo, sino fallback simple.
+     */
     getCanonicalForCompare(word) {
         const raw = (word || '').toString().trim();
         if (!raw) return '';
 
-        // Usar word engine si está disponible
+        // Usar word engine si está disponible y listo
         if (this.wordEngine && this.wordEngineReady && typeof this.wordEngine.getCanonical === 'function') {
             return this.wordEngine.getCanonical(raw);
         }
 
-        // Fallback a normalización simple
+        // Fallback: usar método local del engine (funciona incluso sin diccionario)
+        if (this.wordEngine && typeof this.wordEngine.getCanonical === 'function') {
+            return this.wordEngine.getCanonical(raw);
+        }
+
+        // Fallback final: normalización simple
         return raw
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
@@ -324,7 +349,7 @@ class HostManager {
 
     handleGameState(state) {
         this.gameState = state;
-        debug('📈 Estado del host actualizado:', state.status, 'info');
+        debug('📊 Estado del host actualizado:', state.status, 'info');
         
         // Actualizar categoría
         if (state.current_category || state.category) {
@@ -460,7 +485,7 @@ class HostManager {
 
                 // Cuando el tiempo de juego se agota y estamos en playing, procesar resultados
                 if (this.remainingTime <= 100 && this.gameState.status === 'playing' && !this.roundEnded) {
-                    debug('⏱️ TIEMPO DE RONDA AGOTADO - Procesando resultados...', null, 'warning');
+                    debug('⏲️ TIEMPO DE RONDA AGOTADO - Procesando resultados...', null, 'warning');
                     this.stopTimer();
                     this.endRoundAndCalculateResults();
                 }
@@ -548,7 +573,7 @@ class HostManager {
     }
 
     processRoundResults() {
-        debug('🧰 Calculando resultados con word-comparison engine...', null, 'info');
+        debug('💶 Calculando resultados con word-comparison engine...', null, 'info');
         const state = this.gameState;
         if (!state || !state.players) {
             debug('❌ Estado inválido para procesar resultados', null, 'error');
@@ -599,7 +624,7 @@ class HostManager {
             });
         });
 
-        debug(`📊 Palabras encontradas (canonical): ${Object.keys(wordFrequency).length}`, null, 'info');
+        debug(`📈 Palabras encontradas (canonical): ${Object.keys(wordFrequency).length}`, null, 'info');
 
         // Calcular puntos y results por jugador
         const scoreDelta = {};
@@ -664,6 +689,21 @@ class HostManager {
         this.roundEnded = true;
 
         try {
+            // Esperar a que el word engine esté listo (con timeout)
+            if (this.wordEngineInitPromise) {
+                try {
+                    await Promise.race([
+                        this.wordEngineInitPromise,
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Timeout esperando word engine')), 1000)
+                        )
+                    ]);
+                } catch (err) {
+                    debug(`⚠️ Word engine no listo a tiempo, continuando con fallback: ${err.message}`, null, 'warning');
+                    // Continuar de todas formas - getCanonicalForCompare tiene fallback
+                }
+            }
+
             // Procesar resultados localmente
             const results = this.processRoundResults();
             if (!results) {
@@ -866,4 +906,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - REFACTORED: Timer shows only gameplay duration (uses round_started_at)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FIX: Word engine init con timeout, fallback robusto', 'color: #FF00FF; font-weight: bold; font-size: 12px');
