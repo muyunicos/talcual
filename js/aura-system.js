@@ -1,6 +1,6 @@
 /**
  * @file aura-system.js
- * @description Sistema de Auras Dinámicas - 12 colores base generan 6 auras aleatorias
+ * @description Sistema de Auras Dinámicas - 12 colores base generan 4 auras + randomizador
  * Cada aura es un par de colores para gradientes vibrantes
  */
 
@@ -25,7 +25,7 @@ const AURA_BASE_COLORS = [
 function generateRandomAuras() {
     const auras = [];
     const usedIndices = new Set();
-    while (auras.length < 6) {
+    while (auras.length < 4) {
         const idx1 = Math.floor(Math.random() * AURA_BASE_COLORS.length);
         const idx2 = Math.floor(Math.random() * AURA_BASE_COLORS.length);
         if (idx1 !== idx2) {
@@ -162,6 +162,19 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
         });
         container.appendChild(circle);
     });
+    
+    const randomizer = document.createElement('div');
+    randomizer.className = 'aura-circle aura-randomizer';
+    randomizer.dataset.index = 'random';
+    randomizer.innerHTML = '✨';
+    randomizer.title = 'Generar nuevas auras';
+    
+    randomizer.addEventListener('click', () => {
+        const newAuras = generateRandomAuras();
+        renderAuraSelectors(container, newAuras, null, onSelect);
+    });
+    
+    container.appendChild(randomizer);
 }
 
 function isValidAura(colorStr) {
