@@ -53,73 +53,54 @@ function getRandomAura() {
 }
 
 function savePlayerColor(colorStr) {
-    try {
-        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
-            StorageManager.set(StorageKeys.PLAYER_COLOR, colorStr);
-            console.log(`💾 Color guardado (StorageManager):`, colorStr);
-        } else {
-            localStorage.setItem(AURA_STORAGE_KEY, colorStr);
-            console.log(`💾 Color guardado (localStorage fallback):`, colorStr);
-        }
+    if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
+        StorageManager.set(StorageKeys.PLAYER_COLOR, colorStr);
+    } else {
+        localStorage.setItem(AURA_STORAGE_KEY, colorStr);
     }
 }
 
 function loadPlayerColor() {
-    try {
-        let color = null;
-        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
-            color = StorageManager.get(StorageKeys.PLAYER_COLOR);
-            if (color && isValidAura(color)) {
-                console.log(`📕 Color cargado (StorageManager):`, color);
-                return color;
-            }
-        }
-        color = localStorage.getItem(AURA_STORAGE_KEY);
+    let color = null;
+    if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
+        color = StorageManager.get(StorageKeys.PLAYER_COLOR);
         if (color && isValidAura(color)) {
-            console.log(`📕 Color cargado (localStorage fallback):`, color);
             return color;
         }
-    } catch (error) {
-        console.error('Error cargando color:', error);
+    }
+    color = localStorage.getItem(AURA_STORAGE_KEY);
+    if (color && isValidAura(color)) {
+        return color;
     }
     return null;
 }
 
 function clearPlayerColor() {
-    try {
-        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
-            StorageManager.remove(StorageKeys.PLAYER_COLOR);
-            console.log(`🗑️ Color eliminado (StorageManager)`);
-        } else {
-            localStorage.removeItem(AURA_STORAGE_KEY);
-            console.log(`🗑️ Color eliminado (localStorage fallback)`);
-        }
-    } catch (error) {
-        console.error('Error limpiando color:', error);
+    if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
+        StorageManager.remove(StorageKeys.PLAYER_COLOR);
+    } else {
+        localStorage.removeItem(AURA_STORAGE_KEY);
     }
 }
 
-function applyColorGradient(colorStr, element = null) {
-    const target = element || document.body;
+function applyColorGradient(colorStr) {
     if (!colorStr) return;
     const colors = colorStr.split(',').map(c => c.trim());
     if (colors.length === 2) {
         const gradient = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
-        target.style.background = gradient;
-        target.style.backgroundAttachment = 'fixed';
+        document.body.style.background = gradient;
+        document.body.style.backgroundAttachment = 'fixed';
     } else if (colors.length === 1) {
-        target.style.background = colors[0];
+        document.body.style.background = colors[0];
     }
-    if (target === document.body) {
-        addBackgroundTextureOverlay();
-    }
+    addBackgroundTextureOverlay();
 }
 
-
 function addBackgroundTextureOverlay() {
-    const before = document.querySelector('body::before');
-    if (!before) {
-        const style = document.createElement('style');
+    let style = document.querySelector('style[data-texture]');
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute('data-texture', 'true');
         style.textContent = `
             body::before {
                 content: '';
@@ -181,4 +162,10 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
         });
         container.appendChild(circle);
     });
+}
+
+function isValidAura(colorStr) {
+    if (!colorStr || typeof colorStr !== 'string') return false;
+    const parts = colorStr.split(',');
+    return parts.every(color => /^#[0-9A-F]{6}$/i.test(color.trim()));
 }
