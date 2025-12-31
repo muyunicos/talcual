@@ -513,8 +513,11 @@ class HostManager {
         const numberEl = document.getElementById('countdown-number-host');
         if (!numberEl) return;
 
-        const countdownDuration = 4000;
+        // Use countdown_duration from state, default 4000ms if missing
+        const countdownDuration = state.countdown_duration || 4000;
         const elapsedSinceStart = timeSync.getServerTime() - state.round_starts_at;
+
+        debug(`\u23f1\ufe0f Host Countdown: duration=${countdownDuration}ms, elapsed=${elapsedSinceStart}ms`, 'debug');
 
         for (let i = 3; i >= 1; i--) {
             const numberShowTime = countdownDuration - (i * 1000);
@@ -603,3 +606,5 @@ if (document.readyState === 'loading') {
 } else {
     initHostManager();
 }
+
+console.log('%c✅ host-manager.js - Countdown uses state.countdown_duration + synchronized timing', 'color: #FF00FF; font-weight: bold; font-size: 12px');
