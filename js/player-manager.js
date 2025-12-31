@@ -413,13 +413,15 @@ class PlayerManager {
 
             if (this.elements.countdownNumber) {
                 if (seconds > 3) {
+                    this.elements.countdownNumber.classList.add('timer-hury');
                     this.elements.countdownNumber.textContent = '¿Preparado?';
                     this.elements.countdownNumber.style.fontSize = '1.2em';
                 } else if (seconds > 0) {
-                    const displayValue = Math.max(1, seconds - 1);
+                    const displayValue = Math.max(1);
                     this.elements.countdownNumber.textContent = displayValue.toString();
                     this.elements.countdownNumber.style.fontSize = 'inherit';
                 } else {
+                    this.elements.countdownNumber.classList.remove('timer-hury');
                     this.elements.countdownNumber.textContent = '';
                 }
             }
@@ -855,5 +857,3 @@ document.addEventListener('DOMContentLoaded', () => {
         playerManager.initialize();
     }
 }, { once: true });
-
-console.log('%c✅ player-manager.js - Countdown synchronized with host: ¿Preparado? + 3,2,1 + RAF timing', 'color: #FF00FF; font-weight: bold; font-size: 12px');

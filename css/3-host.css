@@ -80,7 +80,11 @@ html.bg-ready body::before {
     font-weight: 700;
     color: #FF6B9D;
     line-height: 1;
+}
+
+.countdown-number-host.timer-hury {
     animation: pulse-countdown 1s infinite;
+    font-size: 280px;
 }
 
 /* === GAME SCREEN (CONTENEDOR PRINCIPAL) === */
