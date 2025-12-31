@@ -164,8 +164,7 @@ class HostManager {
                 }).catch(err => {
                     console.error('Error copiando código:', err);
                 });
-            });
-        }  
+            });  
         }
 
         this.initPanelTabs();
