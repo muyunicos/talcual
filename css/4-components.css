@@ -175,8 +175,8 @@
 /* PLAYER SQUARCLE */
 .player-squarcle {
     position: relative;
-    width: 100%;
-    max-width: 170px;
+    width: 8em;
+    max-width: 46%;
     aspect-ratio: 1;
     border-radius: var(--radius-card);
     display: flex;
