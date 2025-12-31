@@ -1,10 +1,11 @@
 /**
  * @file shared-utils.js
- * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS (SessionManager, DictionaryService, ConfigService, ModalHandler)
+ * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS (SessionManager, DictionaryService, ConfigService, ModalHandler, ModalController)
  * 
  * 🎯 FASE 1 COMPLETA: Este archivo centraliza TODA la lógica de dependencias
  * 🎯 FASE 2: FIX - Logging y timeout en beforeunload
  * 🎯 FASE 3A: ADD - DictionaryService category-aware methods
+ * 🎯 FASE 3B: ADD - ModalController class para gestión unificada de modales
  */
 
 // Global dictionary cache
@@ -12,6 +13,9 @@ let dictionaryCache = null; // flattened words
 let dictionaryPromise = null;
 let dictionaryDataCache = null; // raw JSON
 let dictionaryDataPromise = null;
+
+// Global modal z-index tracking
+let modalZIndexCounter = 1000;
 
 // ============================================================================
 // DEBUGGING
@@ -1068,19 +1072,198 @@ class ConfigService {
     }
 }
 
+// ============================================================================
+// 🎯 FASE 3B: ModalController - Gestión Unificada de Modales
+// ============================================================================
+
 /**
- * ModalHandler - Gestión centralizada de modales
+ * ModalController - Controlador único para cualquier modal
+ * 
+ * Maneja automáticamente:
+ * - Apertura/cierre con transiciones
+ * - Click en backdrop (click fuera del modal)
+ * - Tecla ESC para cerrar
+ * - Z-index stacking
+ * - Atributos ARIA para accesibilidad
+ * - Hooks lifecycle (beforeOpen, afterOpen, beforeClose, afterClose)
+ * 
+ * Reduce ~80 líneas de código duplicado en managers
+ */
+class ModalController {
+    /**
+     * @param {string} modalId - ID del elemento modal (clase .modal-overlay)
+     * @param {Object} options - Configuración del modal
+     * @param {boolean} options.closeOnBackdrop - Cerrar al click fuera (default: true)
+     * @param {boolean} options.closeOnEsc - Cerrar con tecla ESC (default: true)
+     * @param {Function} options.onBeforeOpen - Hook antes de abrir
+     * @param {Function} options.onAfterOpen - Hook después de abrir
+     * @param {Function} options.onBeforeClose - Hook antes de cerrar
+     * @param {Function} options.onAfterClose - Hook después de cerrar
+     */
+    constructor(modalId, options = {}) {
+        this.modalId = modalId;
+        this.modal = document.getElementById(modalId);
+        this.isOpen = false;
+        this.options = {
+            closeOnBackdrop: options.closeOnBackdrop !== false,
+            closeOnEsc: options.closeOnEsc !== false,
+            onBeforeOpen: options.onBeforeOpen || (() => {}),
+            onAfterOpen: options.onAfterOpen || (() => {}),
+            onBeforeClose: options.onBeforeClose || (() => {}),
+            onAfterClose: options.onAfterClose || (() => {})
+        };
+
+        if (!this.modal) {
+            console.error(`[ModalController] Modal no encontrado: ${modalId}`);
+            return;
+        }
+
+        this.setupEventListeners();
+        debug(`🎪 ModalController creado para: ${modalId}`, null, 'info');
+    }
+
+    /**
+     * Configura event listeners del modal
+     */
+    setupEventListeners() {
+        // Backdrop click (solo si el click es en el overlay, no en el contenido)
+        this.modal.addEventListener('click', (e) => {
+            if (this.options.closeOnBackdrop && e.target === this.modal) {
+                this.close();
+            }
+        });
+
+        // Botones con atributo data-close
+        const closeButtons = this.modal.querySelectorAll('[data-close]');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.close());
+        });
+
+        // Tecla ESC global
+        if (this.options.closeOnEsc) {
+            this.escKeyHandler = (e) => {
+                if (e.key === 'Escape' && this.isOpen) {
+                    this.close();
+                }
+            };
+        }
+    }
+
+    /**
+     * Abre el modal
+     */
+    open() {
+        if (this.isOpen) return;
+
+        try {
+            // Hook pre-apertura
+            this.options.onBeforeOpen();
+
+            // Mostrar modal
+            this.modal.style.display = 'flex';
+            this.modal.classList.add('active');
+            this.modal.setAttribute('aria-hidden', 'false');
+
+            // Z-index
+            this.modal.style.zIndex = modalZIndexCounter++;
+
+            // Agregar listener de ESC
+            if (this.escKeyHandler) {
+                document.addEventListener('keydown', this.escKeyHandler);
+            }
+
+            this.isOpen = true;
+
+            // Hook post-apertura (asincrónico para permitir transiciones CSS)
+            requestAnimationFrame(() => {
+                this.options.onAfterOpen();
+            });
+
+            debug(`🎪 Modal abierto: ${this.modalId}`, null, 'info');
+        } catch (error) {
+            debug(`❌ Error abriendo modal ${this.modalId}: ${error.message}`, null, 'error');
+        }
+    }
+
+    /**
+     * Cierra el modal
+     */
+    close() {
+        if (!this.isOpen) return;
+
+        try {
+            // Hook pre-cierre
+            this.options.onBeforeClose();
+
+            // Ocultar modal
+            this.modal.classList.remove('active');
+            this.modal.setAttribute('aria-hidden', 'true');
+
+            // Remover listener de ESC
+            if (this.escKeyHandler) {
+                document.removeEventListener('keydown', this.escKeyHandler);
+            }
+
+            this.isOpen = false;
+
+            // Hook post-cierre (permite transiciones CSS)
+            setTimeout(() => {
+                this.modal.style.display = 'none';
+                this.options.onAfterClose();
+            }, 300); // Ajustar según duración de transición CSS
+
+            debug(`🎪 Modal cerrado: ${this.modalId}`, null, 'info');
+        } catch (error) {
+            debug(`❌ Error cerrando modal ${this.modalId}: ${error.message}`, null, 'error');
+        }
+    }
+
+    /**
+     * Toggle apertura/cierre
+     */
+    toggle() {
+        if (this.isOpen) {
+            this.close();
+        } else {
+            this.open();
+        }
+    }
+
+    /**
+     * Verifica si el modal está abierto
+     * @returns {boolean}
+     */
+    getIsOpen() {
+        return this.isOpen;
+    }
+
+    /**
+     * Limpia event listeners (destructor)
+     */
+    destroy() {
+        if (this.escKeyHandler) {
+            document.removeEventListener('keydown', this.escKeyHandler);
+        }
+        debug(`🗑️ ModalController destruido: ${this.modalId}`, null, 'info');
+    }
+}
+
+/**
+ * ModalHandler - Gestión centralizada de modales (LEGACY - para compatibilidad)
  * ✅ CENTRALIZA: Apertura/cierre de modales, manejo de overlay, tracking de modales abiertos
  * ✅ ELIMINA REDUNDANCIA: ~150 líneas de código duplicado en managers
  * ✅ DRY: Un solo lugar para lógica modal
+ * 
+ * NOTA: Usa ModalController internamente para nueva funcionalidad
  */
 class ModalHandler {
     constructor() {
         this.openModals = new Set();
+        this.controllers = new Map(); // ID -> ModalController
     }
 
     /**
-     * Abre un modal por ID
+     * Abre un modal por ID (compatibilidad legacy)
      * @param {string} modalId - ID del elemento modal
      * @returns {boolean} true si se abrió exitosamente
      */
@@ -1103,7 +1286,7 @@ class ModalHandler {
     }
 
     /**
-     * Cierra un modal por ID
+     * Cierra un modal por ID (compatibilidad legacy)
      * @param {string} modalId - ID del elemento modal
      * @returns {boolean} true si se cerró exitosamente
      */
@@ -1149,6 +1332,28 @@ class ModalHandler {
     getOpenModals() {
         return Array.from(this.openModals);
     }
+
+    /**
+     * NUEVA: Crea o retorna un ModalController para un modal
+     * @param {string} modalId - ID del elemento modal
+     * @param {Object} options - Opciones del ModalController
+     * @returns {ModalController}
+     */
+    createController(modalId, options = {}) {
+        if (!this.controllers.has(modalId)) {
+            this.controllers.set(modalId, new ModalController(modalId, options));
+        }
+        return this.controllers.get(modalId);
+    }
+
+    /**
+     * NUEVA: Obtiene un ModalController existente
+     * @param {string} modalId - ID del elemento modal
+     * @returns {ModalController | null}
+     */
+    getController(modalId) {
+        return this.controllers.get(modalId) || null;
+    }
 }
 
 // ============================================================================
@@ -1172,6 +1377,7 @@ window.Modal = window.modalHandler;
 debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryService, ConfigService, ModalHandler)', null, 'success');
 debug('✅ wordEngineManager aliased a dictionaryService (para compatibilidad)', null, 'success');
 debug('✅ Modal aliased a modalHandler (para UI centralizada)', null, 'success');
-debug('✅ FASE 3A: DictionaryService con getWordsForCategory() y getRandomWordByCategory()', null, 'success');
+debug('🎯 FASE 3A: DictionaryService con getWordsForCategory() y getRandomWordByCategory()', null, 'success');
+debug('🎪 FASE 3B: ModalController para gestión unificada de modales', null, 'success');
 
-console.log('%c✅ shared-utils.js - FASE 1 + 2 + 3A: Servicios centralizados + category-aware methods', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ shared-utils.js - FASE 1 + 2 + 3A + 3B: Servicios centralizados + ModalController', 'color: #10B981; font-weight: bold; font-size: 12px');
