@@ -37,6 +37,7 @@ class HostManager {
         this.currentPlayers = [];
         this.gameState = {};
         this.countdownRAFId = null;
+        this.currentCategory = 'Sin categoría';
         
         this.initUI();
         this.attachEventListeners();
@@ -281,6 +282,13 @@ class HostManager {
 
     handleGameState(state) {
         this.gameState = state;
+        debug('📈 Estado del host actualizado:', state.status, 'info');
+        
+        // Actualizar categoría
+        if (state.current_category || state.category) {
+            const category = state.current_category || state.category;
+            this.updateCategorySticker(category);
+        }
         
         if (state.players) {
             this.currentPlayers = Array.isArray(state.players) 
@@ -291,11 +299,6 @@ class HostManager {
         this.updateRanking(this.currentPlayers);
         this.updateTopWords(state.topWords || []);
         this.checkStartButtonVisibility();
-
-        const categorySticker = document.getElementById('category-sticker');
-        if (categorySticker && state.category) {
-            categorySticker.textContent = state.category;
-        }
 
         if (state.round !== undefined) {
             this.currentRound = state.round;
@@ -309,6 +312,18 @@ class HostManager {
         
         if (state.min_players !== undefined) {
             this.minPlayers = state.min_players;
+        }
+    }
+
+    updateCategorySticker(category) {
+        const categorySticker = document.getElementById('category-sticker');
+        if (categorySticker) {
+            const displayCategory = category && category.trim() ? category : 'Sin categoría';
+            if (categorySticker.textContent !== displayCategory) {
+                categorySticker.textContent = displayCategory;
+                this.currentCategory = displayCategory;
+                debug(`🍰 Categoría actualizada: ${displayCategory}`, null, 'info');
+            }
         }
     }
 
@@ -448,6 +463,8 @@ class HostManager {
             `;
             list.appendChild(item);
         });
+        
+        debug(`🏆 Ranking actualizado: ${sorted.length} jugadores`, null, 'info');
     }
 
     updateTopWords(topWords) {
@@ -472,6 +489,8 @@ class HostManager {
             `;
             list.appendChild(item);
         });
+        
+        debug(`📄 Top palabras actualizado: ${topWords.length} palabras`, null, 'info');
     }
 
     showResults(results) {
@@ -630,4 +649,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - Fixed: timer display (seconds, not ms), countdown message & display', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - Fixed: category-sticker updates, robust ranking/topwords refresh, debug logging', 'color: #FF00FF; font-weight: bold; font-size: 12px');
