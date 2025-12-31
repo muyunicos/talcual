@@ -3,6 +3,7 @@
  * Maneja: timer, categoría, ranking, panel tabs
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  * 
+ * ✅ REFACTORIZADO FASE 3C: Usa ModalController para gestionar modales
  * ✅ REFACTORIZADO: Usa SessionManager, ConfigService, y DictionaryService
  * ✅ FIX FASE 2: Constructor sin async, initialize() unificado
  * ✅ FASE 3A: Usa getWordsForCategory() y getRandomWordByCategory()
@@ -43,6 +44,9 @@ class HostManager {
         this.countdownRAFId = null;
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
+        
+        // ✅ CAMBIO: Inicializar ModalController en constructor
+        this.configModal = null;
         
         // ✅ FIX FASE 2: No llamar async en constructor
         // Las inicializaciones async ahora se hacen en initialize()
@@ -86,11 +90,33 @@ class HostManager {
         }
         
         this.initUI();
+        
+        // ✅ CAMBIO: Crear ModalController después de initUI
+        this.initializeModals();
+        
         this.attachEventListeners();
         this.attachMenuEventListeners();
         this.attachConfigModalListeners();
         this.initializeTimerDisplay();
         this.connectGameClient();
+    }
+
+    // ✅ CAMBIO: Método para inicializar ModalController
+    initializeModals() {
+        this.configModal = new ModalController('modal-game-config', {
+            closeOnBackdrop: true,
+            closeOnEsc: true,
+            onBeforeOpen: () => {
+                // Populate form with current values before opening
+                const inputRounds = document.getElementById('config-total-rounds');
+                const inputDuration = document.getElementById('config-round-duration');
+                const inputMinPlayers = document.getElementById('config-min-players');
+                
+                if (inputRounds) inputRounds.value = this.totalRounds;
+                if (inputDuration) inputDuration.value = 60;
+                if (inputMinPlayers) inputMinPlayers.value = this.minPlayers;
+            }
+        });
     }
 
     initializeTimerDisplay() {
@@ -198,14 +224,13 @@ class HostManager {
     }
 
     attachConfigModalListeners() {
-        const modalConfig = document.getElementById('modal-game-config');
         const btnCancel = document.getElementById('btn-config-cancel');
         const btnSave = document.getElementById('btn-config-save');
         
-        if (!modalConfig || !btnCancel || !btnSave) return;
+        if (!btnCancel || !btnSave) return;
 
-        // ✅ FIX FASE 2: Usar Modal.close() centralizado
-        btnCancel.addEventListener('click', () => Modal.close('modal-game-config'));
+        // ✅ CAMBIO: Usar ModalController.close()
+        btnCancel.addEventListener('click', () => this.configModal.close());
 
         btnSave.addEventListener('click', () => this.saveGameConfig());
 
@@ -250,12 +275,6 @@ class HostManager {
                 input.value = parseInt(input.value) + 1;
             }
         });
-
-        modalConfig.addEventListener('click', (e) => {
-            if (e.target === modalConfig) {
-                Modal.close('modal-game-config');
-            }
-        });
     }
 
     async saveGameConfig() {
@@ -277,7 +296,8 @@ class HostManager {
             }
             
             this.updateRoundInfo();
-            Modal.close('modal-game-config');
+            // ✅ CAMBIO: Usar ModalController.close()
+            this.configModal.close();
             console.log('✅ Configuración guardada');
         } catch (error) {
             console.error('Error guardando configuración:', error);
@@ -300,21 +320,8 @@ class HostManager {
     }
 
     handleSettings() {
-        // ✅ FIX FASE 2: Usar Modal.open() centralizado
-        const modalConfig = document.getElementById('modal-game-config');
-        if (modalConfig) {
-            const inputRounds = document.getElementById('config-total-rounds');
-            const inputDuration = document.getElementById('config-round-duration');
-            const inputMinPlayers = document.getElementById('config-min-players');
-            
-            if (inputRounds) inputRounds.value = this.totalRounds;
-            if (inputDuration) inputDuration.value = 60;
-            if (inputMinPlayers) inputMinPlayers.value = this.minPlayers;
-            
-            Modal.open('modal-game-config');
-        } else {
-            alert('Modal de configuración no disponible');
-        }
+        // ✅ CAMBIO: Usar ModalController.open()
+        this.configModal.open();
     }
 
     handleTerminate() {
@@ -365,7 +372,7 @@ class HostManager {
 
     handleGameState(state) {
         this.gameState = state;
-        debug('📊 Estado del host actualizado:', state.status, 'info');
+        debug('📂 Estado del host actualizado:', state.status, 'info');
         
         if (state.current_category || state.category) {
             const category = state.current_category || state.category;
@@ -589,7 +596,7 @@ class HostManager {
             list.appendChild(item);
         });
         
-        debug(`🏆 Ranking actualizado: ${sorted.length} jugadores`, null, 'info');
+        debug(`🎆 Ranking actualizado: ${sorted.length} jugadores`, null, 'info');
     }
 
     updateTopWords(topWords) {
@@ -921,6 +928,12 @@ class HostManager {
             cancelAnimationFrame(this.countdownRAFId);
             this.countdownRAFId = null;
         }
+        
+        // ✅ CAMBIO: Destruir ModalController
+        if (this.configModal) {
+            this.configModal.destroy();
+        }
+        
         if (this.client) {
             this.client.disconnect();
         }
@@ -932,6 +945,7 @@ let hostManager = null;
 /**
  * ✅ FIX FASE 2: Flujo de inicialización ahora es async y secuencial
  * ✅ FASE 3A: Usa DictionaryService centralizado
+ * ✅ FASE 3C: Usa ModalController para modales
  */
 async function initHostManager() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -967,4 +981,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js: FASE 3A - Uses DictionaryService for word comparisons', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js: FASE 3C - Uses ModalController for unified modal management', 'color: #00FF00; font-weight: bold; font-size: 12px');
