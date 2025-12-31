@@ -510,30 +510,30 @@ try {
                 break;
             }
 
-            $hostResults = $input['host_results'] ?? null;
-            if (!is_array($hostResults) || !isset($hostResults['players']) || !is_array($hostResults['players'])) {
-                $response = ['success' => false, 'message' => 'host_results requerido'];
-                break;
-            }
+            // Host ha calculado los resultados - simplemente aplicar
+            $roundResults = $input['round_results'] ?? [];
+            $topWords = $input['top_words'] ?? [];
+            $scoreDeltas = $input['score_deltas'] ?? [];
 
+            // Aplicar resultados a cada jugador
             foreach ($state['players'] as $pId => $player) {
-                $pRes = $hostResults['players'][$pId] ?? null;
-                $roundResults = (is_array($pRes) && isset($pRes['round_results']) && is_array($pRes['round_results'])) ? $pRes['round_results'] : [];
-                $delta = (is_array($pRes) && isset($pRes['score_delta'])) ? intval($pRes['score_delta']) : 0;
-
-                $state['players'][$pId]['round_results'] = $roundResults;
-                $state['players'][$pId]['score'] = intval($state['players'][$pId]['score'] ?? 0) + $delta;
+                if (isset($roundResults[$pId])) {
+                    $state['players'][$pId]['round_results'] = $roundResults[$pId];
+                }
+                if (isset($scoreDeltas[$pId])) {
+                    $state['players'][$pId]['score'] = intval($state['players'][$pId]['score'] ?? 0) + intval($scoreDeltas[$pId]);
+                }
                 $state['players'][$pId]['status'] = 'connected';
             }
 
-            $topWords = [];
-            if (isset($hostResults['round_top_words']) && is_array($hostResults['round_top_words'])) {
-                $topWords = $hostResults['round_top_words'];
+            // Guardar top words
+            if (!empty($topWords)) {
+                $state['round_top_words'] = $topWords;
             }
 
-            $state['round_top_words'] = $topWords;
             $state['last_update'] = time();
 
+            // Determinar si el juego terminó
             if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS)) {
                 $state['status'] = 'finished';
                 trackGameAction($gameId, 'game_finished', []);
@@ -541,6 +541,7 @@ try {
                 $state['status'] = 'round_ended';
             }
 
+            // Limpiar timers
             $state['round_started_at'] = null;
             $state['round_starts_at'] = null;
             $state['round_ends_at'] = null;
