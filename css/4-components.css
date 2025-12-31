@@ -266,7 +266,7 @@
 .status-waiting { }
 .status-disconnected { }
 
-/* ========== AURA SELECTOR - FIXED ========== */
+/* ========== AURA SELECTOR ========== */
 .aura-selector {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -274,7 +274,7 @@
     margin-top: 15px;
 }
 
-.aura-option {
+.aura-circle {
     width: 70px;
     height: 70px;
     border-radius: 50%;
@@ -285,12 +285,12 @@
     position: relative;
 }
 
-.aura-option:hover {
+.aura-circle:hover {
     transform: scale(1.15);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
-.aura-option.selected {
+.aura-circle.selected {
     border: 3px solid white;
     box-shadow: 0 0 20px rgba(255, 255, 255, 1),
                 inset 0 0 10px rgba(255, 255, 255, 0.5);
@@ -352,13 +352,13 @@
     z-index: 99;
     overflow-y: auto;
     backdrop-filter: blur(10px);
-    display: none !important;  /* CERRADO POR DEFECTO */
+    display: none !important;
     flex-direction: column;
     padding: 0 !important;
     margin: 0 !important;
 }
 
-/* Clase para ABRIR el menu - CON !important PARA PISAR EL STYLE INLINE */
+/* Clase para ABRIR el menu */
 .hamburger-menu.menu-open {
     display: flex !important;
     animation: slideDown 0.3s ease-out;
@@ -463,7 +463,7 @@
         gap: 12px;
     }
 
-    .aura-option {
+    .aura-circle {
         width: 60px;
         height: 60px;
     }
@@ -541,7 +541,7 @@
         gap: 10px;
     }
 
-    .aura-option {
+    .aura-circle {
         width: 50px;
         height: 50px;
     }
