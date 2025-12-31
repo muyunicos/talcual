@@ -31,6 +31,9 @@ function debug(message, data = null, type = 'info') {
         case 'warn':
             console.warn(`${prefix} ⚠️ ${message}`, data || '');
             break;
+        case 'success':
+            console.log(`${prefix} ✅ ${message}`, data || '');
+            break;
         case 'info':
         default:
             console.log(`${prefix} ${message}`, data || '');
@@ -43,22 +46,40 @@ function debug(message, data = null, type = 'info') {
 // ============================================================================
 
 /**
- * Obtiene el tiempo restante usando timeSync sincronizado
- * CAMBIO #3: Usa TimeSyncManager para sincronización client-servidor
+ * REFACTORIZADO: Obtiene el tiempo restante SOLO de la ronda (sin countdown)
+ * Usa el timestamp cuando comienza la ronda real (round_started_at)
  * 
- * @param {number} startTimestamp - Timestamp de inicio ronda (ms, servidor)
- * @param {number} duration - Duración en ms
+ * @param {number} roundStartedAt - Timestamp cuando COMIENZA LA RONDA REAL (ms, servidor)
+ * @param {number} roundDuration - Duración SOLO de la ronda en ms (sin countdown)
  * @returns {number} Milisegundos restantes (sincronizado)
  */
-function getRemainingTime(startTimestamp, duration) {
+function getRemainingTime(roundStartedAt, roundDuration) {
     // Si timeSync está disponible y calibrado, usar tiempo sincronizado
     if (typeof timeSync !== 'undefined' && timeSync && timeSync.isCalibrated) {
-        return timeSync.getRemainingTime(startTimestamp, duration);
+        return timeSync.getRemainingTime(roundStartedAt, roundDuration);
     }
     
     // Fallback: cálculo local (menos preciso, pero funciona)
     const now = Date.now();
-    const endTime = startTimestamp + duration;
+    const endTime = roundStartedAt + roundDuration;
+    return Math.max(0, endTime - now);
+}
+
+/**
+ * NUEVO: Obtiene el tiempo restante del COUNTDOWN
+ * Usa round_starts_at (cuando comienza el countdown)
+ * 
+ * @param {number} roundStartsAt - Timestamp cuando comienza countdown (ms, servidor)
+ * @param {number} countdownDuration - Duración countdown en ms
+ * @returns {number} Milisegundos restantes
+ */
+function getRemainingCountdownTime(roundStartsAt, countdownDuration) {
+    if (typeof timeSync !== 'undefined' && timeSync && timeSync.isCalibrated) {
+        return timeSync.getRemainingTime(roundStartsAt, countdownDuration);
+    }
+    
+    const now = Date.now();
+    const endTime = roundStartsAt + countdownDuration;
     return Math.max(0, endTime - now);
 }
 
@@ -76,7 +97,7 @@ function formatTime(ms) {
 
 /**
  * Actualiza display de timer en el DOM con feedback visual
- * CAMBIO #3: Agrega clases CSS para feedback visual
+ * Muestra SOLO tiempo de ronda (sin countdown)
  * 
  * @param {number} ms - Milisegundos restantes
  * @param {HTMLElement} element - Elemento donde mostrar
@@ -89,8 +110,8 @@ function updateTimerDisplay(ms, element, prefix = '⏳', warningThreshold = 5000
     const formatted = formatTime(ms);
     element.textContent = prefix ? `${prefix} ${formatted}` : formatted;
     
-    // CAMBIO #3: Agregar feedback visual
-    // Rojo parpadeante cuando < 5s
+    // Agregar feedback visual
+    // Rojo cuando < 5s
     if (ms <= warningThreshold && ms > 0) {
         element.classList.add('timer-warning');
         element.classList.remove('timer-expired');
@@ -587,7 +608,7 @@ async function loadDictionary() {
                 dictionaryCache = Array.isArray(maybe) ? maybe.map(normalizeWordForCode).filter(Boolean) : [];
             }
 
-            debug(`📚 Diccionario cargado: ${dictionaryCache.length} palabras`, null, 'info');
+            debug(`📚 Diccionario cargado: ${dictionaryCache.length} palabras`, null, 'success');
             dictionaryPromise = null;
             return dictionaryCache;
         } catch (error) {
@@ -661,7 +682,7 @@ async function generateGameCodeForCategory(categoryName = null, minLength = 3, m
         const randomIndex = Math.floor(Math.random() * validWords.length);
         const code = validWords[randomIndex];
 
-        debug(`✅ Código generado: ${code}`, null, 'info');
+        debug(`✅ Código generado: ${code}`, null, 'success');
         return code;
     } catch (error) {
         debug('Error en generateGameCodeForCategory, usando fallback', error, 'warn');
@@ -692,4 +713,4 @@ function generateRandomLetterCode(length = 4) {
     return code;
 }
 
-console.log('%c✅ shared-utils.js - Sincronización de tiempo + feedback visual mejorada', 'color: #10B981; font-weight: bold');
+console.log('%c✅ shared-utils.js - REFACTORED: Timer shows only gameplay duration (without countdown)', 'color: #10B981; font-weight: bold; font-size: 12px');
