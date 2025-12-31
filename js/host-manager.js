@@ -39,13 +39,11 @@ class HostManager {
         this.countdownRAFId = null;
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
-        this.penaltyApplied = false;  // Track if penalty already applied
-        this.originalTimerValue = null;  // Store original timer to detect when all but one ready
         
         // Word comparison engine
         this.wordEngine = null;
         this.wordEngineReady = false;
-        this.wordEngineInitPromise = null;  // Track async init
+        this.wordEngineInitPromise = null;
         this.initWordEngine();
         
         this.initUI();
@@ -65,7 +63,6 @@ class HostManager {
         try {
             this.wordEngine = new WordEquivalenceEngine();
             
-            // Envolver init en una Promise con timeout
             this.wordEngineInitPromise = Promise.race([
                 this.wordEngine.init('./js/sinonimos.json'),
                 new Promise((_, reject) => 
@@ -91,20 +88,11 @@ class HostManager {
 
     /**
      * Obtiene la forma canónica de una palabra para agrupar en comparación.
-     * 
-     * IMPORTANTE: Siempre usa el engine.getCanonical() que tiene:
-     * 1. Búsqueda en diccionario (si cargó)
-     * 2. Búsqueda por stem en diccionario
-     * 3. Fallback: devuelve la raíz derivada (getStem)
-     * 
-     * El fallback local garantiza que PERRITA y PERRO ambos → PER
      */
     getCanonicalForCompare(word) {
         const raw = (word || '').toString().trim();
         if (!raw) return '';
 
-        // ✅ SIEMPRE usar el engine si existe
-        // El engine.getCanonical() tiene 3 niveles de fallback incorporados
         if (this.wordEngine) {
             const canonical = this.wordEngine.getCanonical(raw);
             
@@ -115,7 +103,6 @@ class HostManager {
             return canonical;
         }
 
-        // Fallback final (solo si engine NO existe, muy raro)
         console.warn(`⚠️  Word engine no disponible, fallback simple para "${raw}"`);
         return raw
             .normalize('NFD')
@@ -126,7 +113,6 @@ class HostManager {
 
     /**
      * Obtiene el tipo de coincidencia entre dos palabras.
-     * Retorna 'EXACTA' | 'PLURAL' | 'GENERO' | 'SINONIMO' | null
      */
     getMatchType(word1, word2) {
         if (!this.wordEngine) return null;
@@ -139,15 +125,15 @@ class HostManager {
     calculatePointsByType(matchType) {
         switch (matchType) {
             case 'EXACTA':
-                return 10;  // Palabras idénticas
+                return 10;
             case 'PLURAL':
-                return 8;   // Plurales, diminutivos, compuestos
+                return 8;
             case 'GENERO':
-                return 5;   // Diferencia de género (loca/loco)
+                return 5;
             case 'SINONIMO':
-                return 5;   // Del diccionario
+                return 5;
             case 'SIMILAR':
-                return 5;   // Stems similares
+                return 5;
             default:
                 return 0;
         }
@@ -178,8 +164,8 @@ class HostManager {
                 }).catch(err => {
                     console.error('Error copiando código:', err);
                 });
-            }
-        );  
+            });
+        }  
         }
 
         this.initPanelTabs();
@@ -389,8 +375,8 @@ class HostManager {
     }
 
     /**
-     * Verifica si TODOS los jugadores han terminado (status='ready')
-     * No cuenta desconectados
+     * 🔄 CAMBIO OPCIÓN C: ready = "confirmó terminar"
+     * Verifica si TODOS los jugadores han confirmado terminar (status='ready')
      */
     checkAllPlayersReady() {
         if (!this.currentPlayers || this.currentPlayers.length < 1) return false;
@@ -401,76 +387,13 @@ class HostManager {
         const readyCount = activePlayers.filter(p => p.status === 'ready').length;
         const totalCount = activePlayers.length;
         
-        // Verdadero si: todos están ready
         return readyCount === totalCount;
-    }
-
-    /**
-     * Verifica si todos excepto un jugador están ready
-     */
-    checkAllButOneReady() {
-        if (!this.currentPlayers || this.currentPlayers.length < 2) return false;
-        
-        const readyCount = this.currentPlayers.filter(p => p.status === 'ready').length;
-        const totalCount = this.currentPlayers.length;
-        
-        // Verdadero si: readyCount === totalCount - 1 (todos excepto 1)
-        return readyCount === totalCount - 1;
-    }
-
-    /**
-     * Aplica penalización: reduce el timer a 5 segundos
-     * Solo si había más de 5 segundos restantes
-     */
-    applyLatePlayerPenalty() {
-        if (this.penaltyApplied) {
-            debug('⚠️ Penalización ya aplicada, ignorando', null, 'warning');
-            return;
-        }
-
-        const remainingMs = this.remainingTime;
-        const remainingSecs = Math.floor(remainingMs / 1000);
-
-        if (remainingSecs > 5) {
-            debug(`⏱️ PENALIZACIÓN: Reduciendo timer a 5s (era ${remainingSecs}s)`, null, 'warning');
-            
-            this.penaltyApplied = true;
-            
-            // Store original to potentially revert if needed
-            if (!this.originalTimerValue) {
-                this.originalTimerValue = this.gameState.round_duration;
-            }
-            
-            // Reduce remaining time to 5 seconds
-            const nowServer = timeSync.getServerTime();
-            const newRoundEndTime = nowServer + 5000;  // 5 seconds from now
-            const newDuration = newRoundEndTime - this.gameState.round_started_at;
-            
-            // Update local state
-            this.gameState.round_duration = newDuration;
-            this.remainingTime = 5000;
-            this.updateTimer();
-            
-            // Notify clients of the penalty
-            if (this.client) {
-                this.client.sendAction('apply_timer_penalty', {
-                    new_duration: newDuration,
-                    remaining_ms: 5000
-                }).catch(err => {
-                    debug('Error notificando penalización a clientes:', err, 'error');
-                });
-            }
-        } else {
-            debug('ℹ️ Timer ya tiene ≤5s, no aplicar penalización', null, 'info');
-            this.penaltyApplied = true;
-        }
     }
 
     handleGameState(state) {
         this.gameState = state;
         debug('📊 Estado del host actualizado:', state.status, 'info');
         
-        // Actualizar categoría
         if (state.current_category || state.category) {
             const category = state.current_category || state.category;
             this.updateCategorySticker(category);
@@ -494,20 +417,14 @@ class HostManager {
 
         if (state.status === 'playing') {
             this.roundEnded = false;
-            this.penaltyApplied = false;  // Reset penalty flag for new round
-            this.originalTimerValue = null;
             
-            // 🆕 VERIFICAR SI TODOS COMPLETARON
+            // 🔄 CAMBIO OPCIÓN C: Cortar ronda solo cuando TODOS confirmaron (status='ready')
+            // No por quota (llegar a 6 palabras)
             if (this.checkAllPlayersReady()) {
-                debug('✅ TODOS LOS JUGADORES COMPLETARON - Terminando ronda', null, 'success');
+                debug('✅ TODOS LOS JUGADORES CONFIRMARON - Terminando ronda', null, 'success');
                 if (!this.roundEnded) {
                     this.endRoundAndCalculateResults();
                 }
-            }
-            // 🔍 VERIFICAR PENALIZACIÓN: Si todos excepto 1 están ready
-            else if (this.checkAllButOneReady()) {
-                debug('⚠️ PENALIZACIÓN ACTIVA: Todos menos un jugador están ready', null, 'warning');
-                this.applyLatePlayerPenalty();
             }
             
             if (state.round_started_at && state.round_duration) {
@@ -610,15 +527,12 @@ class HostManager {
         
         const tick = () => {
             if (this.gameState && this.gameState.round_started_at && this.gameState.round_duration) {
-                // CAMBIO: Usar round_started_at (cuando empieza REALMENTE la ronda)
-                // No round_starts_at (que es cuando empieza el countdown)
                 this.remainingTime = getRemainingTime(
                     this.gameState.round_started_at,
                     this.gameState.round_duration
                 );
                 this.updateTimer();
 
-                // Cuando el tiempo de juego se agota y estamos en playing, procesar resultados
                 if (this.remainingTime <= 100 && this.gameState.status === 'playing' && !this.roundEnded) {
                     debug('⏲️ TIEMPO DE RONDA AGOTADO - Procesando resultados...', null, 'warning');
                     this.stopTimer();
@@ -627,7 +541,7 @@ class HostManager {
             }
         };
         
-        tick(); // Actualizar inmediatamente
+        tick();
         this.timerInterval = setInterval(tick, 1000);
     }
 
@@ -715,14 +629,12 @@ class HostManager {
             return null;
         }
 
-        // Obtener todos los jugadores y sus respuestas
         const playersArray = Array.isArray(state.players) 
             ? state.players 
             : Object.values(state.players);
 
         debug(`👥 Procesando ${playersArray.length} jugadores`, null, 'info');
 
-        // Normalizar respuestas de cada jugador
         const playerAnswers = {};
         playersArray.forEach(player => {
             if (player.answers && Array.isArray(player.answers)) {
@@ -732,11 +644,10 @@ class HostManager {
             }
         });
 
-        // Calcular matching de palabras usando canonicalización y SCORING VARIABLE
         const roundResults = {};
         const canonicalToOriginal = {};
         const wordFrequency = {};
-        const matchTypes = {};  // Guardar tipo de coincidencia para cada canonical
+        const matchTypes = {};
 
         Object.entries(playerAnswers).forEach(([playerId, answers]) => {
             roundResults[playerId] = {};
@@ -762,7 +673,6 @@ class HostManager {
 
         debug(`📈 Palabras encontradas (canonical): ${Object.keys(wordFrequency).length}`, null, 'info');
 
-        // Calcular puntos CON SCORING VARIABLE
         const scoreDelta = {};
         Object.entries(playerAnswers).forEach(([playerId, answers]) => {
             scoreDelta[playerId] = 0;
@@ -772,11 +682,8 @@ class HostManager {
                 const freq = wordFrequency[canonical];
                 
                 if (freq && freq.count > 1) {
-                    // Palabra coincidió con otro jugador
-                    // Determinar tipo de coincidencia
-                    let matchType = 'SIMILAR';  // default
+                    let matchType = 'SIMILAR';
                     
-                    // Buscar la primera coincidencia de otro jugador para este canonical
                     const otherPlayerId = freq.players.find(p => p !== playerId);
                     if (otherPlayerId) {
                         const otherWord = playerAnswers[otherPlayerId].find(w => 
@@ -792,7 +699,7 @@ class HostManager {
                     roundResults[playerId][word] = {
                         count: freq.count,
                         points: points,
-                        match_type: matchType,  // Para debug
+                        match_type: matchType,
                         matched_with: freq.players.filter(p => p !== playerId).map(pId => {
                             const player = playersArray.find(pl => pl.id === pId);
                             return player?.name || 'Anonym';
@@ -804,7 +711,6 @@ class HostManager {
                         console.log(`⭐ ${word} vs otro: tipo=${matchType}, pts=${points}`);
                     }
                 } else {
-                    // Palabra no coincidió
                     roundResults[playerId][word] = {
                         count: 1,
                         points: 0,
@@ -817,11 +723,9 @@ class HostManager {
 
         debug(`⭐ Deltas de puntos calculados (scoring variable)`, null, 'info');
 
-        // Calcular top palabras (usando la palabra más común de cada canonical)
         const topWords = Object.entries(wordFrequency)
-            .filter(([canonical, data]) => data.count > 1)  // Solo palabras con más de 1 jugador
+            .filter(([canonical, data]) => data.count > 1)
             .map(([canonical, data]) => {
-                // Usar la palabra original más común o simplemente la primera
                 const originalWord = Array.from(data.originalWords)[0];
                 return { word: originalWord || canonical, count: data.count };
             })
@@ -846,7 +750,6 @@ class HostManager {
         this.roundEnded = true;
 
         try {
-            // Esperar a que el word engine esté listo (con timeout)
             if (this.wordEngineInitPromise) {
                 try {
                     await Promise.race([
@@ -857,37 +760,29 @@ class HostManager {
                     ]);
                 } catch (err) {
                     debug(`⚠️ Word engine no listo a tiempo, continuando con fallback: ${err.message}`, null, 'warning');
-                    // Continuar de todas formas - getCanonicalForCompare tiene fallback
                 }
             }
 
-            // Procesar resultados localmente
             const results = this.processRoundResults();
             if (!results) {
                 throw new Error('No se pudieron procesar los resultados');
             }
 
-            // Actualizar el estado local con los resultados
             const playersArray = Array.isArray(this.gameState.players) 
                 ? this.gameState.players 
                 : Object.values(this.gameState.players);
 
             playersArray.forEach(player => {
-                // Actualizar round_results
                 player.round_results = results.round_results[player.id] || {};
-                // Actualizar score
                 player.score = (player.score || 0) + (results.score_deltas[player.id] || 0);
-                // Cambiar status a connected
                 player.status = 'connected';
             });
 
-            // Actualizar top words en estado
             this.gameState.round_top_words = results.top_words;
             this.gameState.last_update = Math.floor(Date.now() / 1000);
 
             debug('📄 Enviando end_round al servidor...', null, 'info');
 
-            // Llamar a end_round - el backend solo actualiza score basado en player.score
             const response = await this.client.sendAction('end_round', {
                 round_results: results.round_results,
                 top_words: results.top_words,
@@ -1063,4 +958,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v5: Detección de todos listos + terminar ronda early', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js v6: Opción C - ready = confirmed finish, not quota', 'color: #00FF00; font-weight: bold; font-size: 12px');
