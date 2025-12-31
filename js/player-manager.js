@@ -2,7 +2,10 @@
  * Player Manager - Gestión de jugador en partida
  * Maneja: unión, palabras, timer, resultados
  * 
- * ✅ REFACTORIZADO: Usa SessionManager y WordEngineManager
+ * ✅ REFACTORIZADO FASE 1 COMPLETA:
+ * - Usa SessionManager para gestión de sesión
+ * - Usa ConfigService en lugar de loadConfig()
+ * - Usa WordEngineManager para comparación de palabras
  */
 
 class PlayerManager {
@@ -28,14 +31,14 @@ class PlayerManager {
         this.tempSelectedAura = null;
 
         this.elements = {};
-        
-        // ✅ ELIMINADO: wordEngine ya está en wordEngineManager
     }
 
     async initialize() {
         debug('📃 Inicializando PlayerManager');
         
-        await this.loadConfig();
+        // ✅ CAMBIO: Usar ConfigService en lugar de loadConfig()
+        await configService.load();
+        this.maxWords = configService.get('max_words_per_player', 6);
         
         this.cacheElements();
         this.attachEventListeners();
@@ -57,28 +60,6 @@ class PlayerManager {
         playerSession.registerManager(this);
 
         debug('✅ PlayerManager inicializado');
-    }
-
-    async loadConfig() {
-        try {
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_config' }),
-                cache: 'no-store'
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.config) {
-                    this.maxWords = result.config.max_words_per_player || 6;
-                }
-            }
-        } catch (error) {
-            console.warn('[WARN] Config load failed, using defaults');
-            this.maxWords = 6;
-        }
     }
 
     // ✅ CAMBIO: Delegar a WordEngineManager
@@ -1003,4 +984,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js: REFACTORIZADO con SessionManager + WordEngineManager', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - REFACTORIZADO FASE 1 COMPLETA: Usa ConfigService + SessionManager', 'color: #FF00FF; font-weight: bold; font-size: 12px');
