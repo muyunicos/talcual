@@ -76,15 +76,15 @@ html.bg-ready body::before {
 }
 
 .countdown-number-host {
-    font-size: 180px;
+    font-size: clamp(1rem, 12vw, 5rem);
     font-weight: 700;
-    color: #FF6B9D;
+    color: #ffffff;
     line-height: 1;
 }
 
 .countdown-number-host.timer-hury {
     animation: pulse-countdown 1s infinite;
-    font-size: 280px;
+    font-size: clamp(1rem, 20vw, 8rem);
 }
 
 /* === GAME SCREEN (CONTENEDOR PRINCIPAL) === */
