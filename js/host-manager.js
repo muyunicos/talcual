@@ -118,13 +118,10 @@ class HostManager {
         
         if (!modalConfig || !btnCancel || !btnSave) return;
 
-        // Botón Cancelar
         btnCancel.addEventListener('click', () => this.closeConfigModal());
 
-        // Botón Guardar
         btnSave.addEventListener('click', () => this.saveGameConfig());
 
-        // Botones de ajuste para Rondas
         document.getElementById('btn-decrease-rounds')?.addEventListener('click', () => {
             const input = document.getElementById('config-total-rounds');
             if (input && parseInt(input.value) > 1) {
@@ -139,7 +136,6 @@ class HostManager {
             }
         });
 
-        // Botones de ajuste para Duración
         document.getElementById('btn-decrease-duration')?.addEventListener('click', () => {
             const input = document.getElementById('config-round-duration');
             if (input && parseInt(input.value) > 30) {
@@ -154,7 +150,6 @@ class HostManager {
             }
         });
 
-        // Botones de ajuste para Mínimo de Jugadores
         document.getElementById('btn-decrease-min-players')?.addEventListener('click', () => {
             const input = document.getElementById('config-min-players');
             if (input && parseInt(input.value) > 1) {
@@ -169,7 +164,6 @@ class HostManager {
             }
         });
 
-        // Cerrar modal si se hace click fuera
         modalConfig.addEventListener('click', (e) => {
             if (e.target === modalConfig) {
                 this.closeConfigModal();
@@ -234,13 +228,12 @@ class HostManager {
     handleSettings() {
         const modalConfig = document.getElementById('modal-game-config');
         if (modalConfig) {
-            // Cargar valores actuales en el modal
             const inputRounds = document.getElementById('config-total-rounds');
             const inputDuration = document.getElementById('config-round-duration');
             const inputMinPlayers = document.getElementById('config-min-players');
             
             if (inputRounds) inputRounds.value = this.totalRounds;
-            if (inputDuration) inputDuration.value = 60; // Valor por defecto
+            if (inputDuration) inputDuration.value = 60;
             if (inputMinPlayers) inputMinPlayers.value = this.minPlayers;
             
             modalConfig.style.display = 'flex';
@@ -336,7 +329,17 @@ class HostManager {
             squarcle.dataset.playerId = player.id || player.playerId;
             squarcle.style.animationDelay = `${index * 0.1}s`;
             squarcle.style.animation = 'popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
-            squarcle.style.background = player.color || 'linear-gradient(135deg, #808080 0%, #404040 100%)';
+            
+            if (player.color) {
+                const colors = player.color.split(',').map(c => c.trim());
+                if (colors.length === 2) {
+                    squarcle.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+                } else {
+                    squarcle.style.background = colors[0];
+                }
+            } else {
+                squarcle.style.background = 'linear-gradient(135deg, #808080 0%, #404040 100%)';
+            }
 
             const initial = document.createElement('div');
             initial.className = 'player-initial';
