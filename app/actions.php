@@ -223,7 +223,7 @@ try {
 
             if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = DEFAULT_TOTAL_ROUNDS;
             if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = DEFAULT_ROUND_DURATION;
-            if ($minPlayers < 1 || $minPlayers > 6) $minPlayers = MIN_PLAYERS;
+            if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
 
             $selectedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
             if ($selectedCategory === '') $selectedCategory = null;
@@ -496,12 +496,10 @@ try {
                 break;
             }
 
-            // Host ha calculado los resultados - simplemente aplicar
             $roundResults = $input['round_results'] ?? [];
             $topWords = $input['top_words'] ?? [];
             $scoreDeltas = $input['score_deltas'] ?? [];
 
-            // Aplicar resultados a cada jugador
             foreach ($state['players'] as $pId => $player) {
                 if (isset($roundResults[$pId])) {
                     $state['players'][$pId]['round_results'] = $roundResults[$pId];
@@ -512,14 +510,12 @@ try {
                 $state['players'][$pId]['status'] = 'connected';
             }
 
-            // Guardar top words
             if (!empty($topWords)) {
                 $state['round_top_words'] = $topWords;
             }
 
             $state['last_update'] = time();
 
-            // Determinar si el juego terminó
             if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS)) {
                 $state['status'] = 'finished';
                 trackGameAction($gameId, 'game_finished', []);
@@ -527,7 +523,6 @@ try {
                 $state['status'] = 'round_ended';
             }
 
-            // Limpiar timers
             $state['round_started_at'] = null;
             $state['round_starts_at'] = null;
             $state['round_ends_at'] = null;
