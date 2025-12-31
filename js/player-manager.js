@@ -812,6 +812,12 @@ class PlayerManager {
     }
 
     updateTimerFromState(state) {
+        // 🆕 Si round_started_at es null, la ronda terminó
+        if (!state.round_started_at) {
+            this.stopTimer();
+            return;
+        }
+
         // CAMBIO: Usar round_started_at (cuando comienza LA RONDA REAL)
         // No round_starts_at (que es cuando comienza el countdown)
         const remaining = getRemainingTime(state.round_started_at, state.round_duration);
@@ -946,4 +952,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js v4: UX mejorada - input se deshabilita cuando se completan palabras, botón "LISTO"', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js v5: Timer sincronizado + detención cuando termina ronda', 'color: #FF00FF; font-weight: bold; font-size: 12px');
