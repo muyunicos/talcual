@@ -172,7 +172,7 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
     randomizer.addEventListener('click', () => {
         const newAuras = generateRandomAuras();
         const randomAura = newAuras[Math.floor(Math.random() * newAuras.length)];
-        renderAuraSelectors(container, newAuras, randomAura, onSelect);
+        renderAuraSelectors(container, newAuras, randomAura.hex, onSelect);
     });
     
     container.appendChild(randomizer);
