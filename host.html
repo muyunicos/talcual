@@ -53,14 +53,14 @@
 </head>
 <body>
     <!-- BOTÓN HAMBURGUESA (DELANTE DE MODALES) -->
-    <button class="btn-hamburger boot-el" id="btn-hamburger-host" aria-label="Abrir menú">
+    <button class="btn-hamburger boot-el" id="btn-hamburger-host" aria-label="Abrir menú de opciones">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
     </button>
 
-    <!-- MENÓ HAMBURGUESA HOST -->
-    <nav class="hamburger-menu boot-el session-only" id="hamburger-menu-host" aria-label="Menú de navegación">
+    <!-- MENÚ HAMBURGUESA HOST -->
+    <nav class="hamburger-menu boot-el session-only" id="hamburger-menu-host" aria-label="Menú de navegación y opciones del host">
         <div class="hamburger-header">Menú</div>
         <button class="hamburger-option" id="hamburger-restart-round">🔄 Reiniciar Ronda</button>
         <button class="hamburger-option" id="hamburger-new-game">🎮 Nuevo Juego</button>
@@ -76,14 +76,14 @@
 
             <div class="input-group">
                 <label class="input-label" for="category-select">Categoría</label>
-                <select id="category-select" class="input-field">
+                <select id="category-select" class="input-field" aria-label="Seleccionar categoría para la partida">
                     <option value="" selected>Cargando categorías...</option>
                 </select>
             </div>
             <div class="input-group">
                 <label class="input-label" for="custom-code">Código de Sala</label>
                 <input type="text" id="custom-code" class="input-field"
-                       placeholder="Se genera automáticamente (3-5 letras)" maxlength="5" autocomplete="off">
+                       placeholder="Se genera automáticamente (3-5 letras)" maxlength="5" autocomplete="off" aria-label="Código personalizado para la sala">
                 <small class="custom-code-info">
                     Este codigo de sala solo se puede cambiar antes de crear la partida.
                 </small>
@@ -105,30 +105,30 @@
             <div class="input-group">
                 <label class="input-label" for="config-total-rounds">Cantidad de Rondas</label>
                 <div class="input-control">
-                    <button class="btn-adjust" id="btn-decrease-rounds">−</button>
+                    <button class="btn-adjust" id="btn-decrease-rounds" aria-label="Disminuir cantidad de rondas">−</button>
                     <input type="number" id="config-total-rounds" class="input-field input-field-number"
-                           min="1" max="10" value="3">
-                    <button class="btn-adjust" id="btn-increase-rounds">+</button>
+                           min="1" max="10" value="3" aria-label="Número de rondas">
+                    <button class="btn-adjust" id="btn-increase-rounds" aria-label="Aumentar cantidad de rondas">+</button>
                 </div>
             </div>
 
             <div class="input-group">
                 <label class="input-label" for="config-round-duration">Duración de Ronda (segundos)</label>
                 <div class="input-control">
-                    <button class="btn-adjust" id="btn-decrease-duration">−</button>
+                    <button class="btn-adjust" id="btn-decrease-duration" aria-label="Disminuir duración de ronda">−</button>
                     <input type="number" id="config-round-duration" class="input-field input-field-number"
-                           min="30" max="300" value="60" step="10">
-                    <button class="btn-adjust" id="btn-increase-duration">+</button>
+                           min="30" max="300" value="60" step="10" aria-label="Duración de cada ronda en segundos">
+                    <button class="btn-adjust" id="btn-increase-duration" aria-label="Aumentar duración de ronda">+</button>
                 </div>
             </div>
 
             <div class="input-group">
                 <label class="input-label" for="config-min-players">Mínimo de Jugadores</label>
                 <div class="input-control">
-                    <button class="btn-adjust" id="btn-decrease-min-players">−</button>
+                    <button class="btn-adjust" id="btn-decrease-min-players" aria-label="Disminuir mínimo de jugadores">−</button>
                     <input type="number" id="config-min-players" class="input-field input-field-number"
-                           min="1" max="6" value="2">
-                    <button class="btn-adjust" id="btn-increase-min-players">+</button>
+                           min="1" max="6" value="2" aria-label="Número mínimo de jugadores para iniciar">
+                    <button class="btn-adjust" id="btn-increase-min-players" aria-label="Aumentar mínimo de jugadores">+</button>
                 </div>
             </div>
 
@@ -141,46 +141,46 @@
 
     <!-- LOGO FLOTANTE -->
     <div class="logo-floating boot-el" id="logo-floating">
-        <img src="/images/icon.webp" alt="TalCual Party">
+        <img src="/images/icon.webp" alt="TalCual Party Logo">
     </div>
 
     <!-- PANTALLA DE HOST -->
     <div class="game-screen boot-el session-only" id="game-screen">
-        <!-- COUNTDOWN OVERLAY -->
-        <div class="countdown-overlay-host" id="countdown-overlay-host">
-            <div class="countdown-number-host" id="countdown-number-host">3</div>
+        <!-- COUNTDOWN OVERLAY (Mostrado durante INITIAL_TIMER antes de que comience la ronda) -->
+        <div class="countdown-overlay-host" id="countdown-overlay-host" role="status" aria-live="assertive" aria-label="Contador regresivo antes de comenzar ronda">
+            <div class="countdown-number-host" id="countdown-number-host" aria-atomic="true">3</div>
         </div>
 
         <!-- CÓDIGO DE SALA -->
-        <div class="code-sticker-floating" id="code-sticker-floating">
+        <div class="code-sticker-floating" id="code-sticker-floating" aria-label="Código de sala actual">
             <div class="code-sticker-label">Código Sala</div>
-            <div class="code-sticker-value" id="code-sticker-value">----</div>
+            <div class="code-sticker-value" id="code-sticker-value" aria-atomic="true">----</div>
         </div>
 
         <!-- HEADER CON TEMPORIZADOR -->
         <div class="tv-header">
             <div class="timer-container">
-                <div class="round-info" id="round-info">Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span></div>
-                <div class="timer-display" id="timer-display">00:00</div>
+                <div class="round-info" id="round-info" aria-live="polite" aria-label="Información de ronda">Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span></div>
+                <div class="timer-display" id="timer-display" aria-live="assertive" aria-label="Tiempo restante de ronda">00:00</div>
             </div>
         </div>
 
         <!-- ÁREA CENTRAL -->
-        <div class="center-stage" id="center-stage">
-            <div class="status-message">Esperando jugadores...</div>
-            <button class="btn-empezar" id="btn-start-game" style="display: none;">! Empezar Juego!</button>
+        <div class="center-stage" id="center-stage" role="main" aria-label="Área principal de juego">
+            <div class="status-message" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
+            <button class="btn-empezar" id="btn-start-game" style="display: none;" aria-label="Botón para iniciar el juego">! Empezar Juego!</button>
         </div>
 
         <!-- PANEL LATERAL FLOTANTE -->
-        <div class="floating-side-panel" id="floating-side-panel">
-            <div class="category-sticker" id="category-sticker">Categoría</div>
+        <div class="floating-side-panel" id="floating-side-panel" role="complementary" aria-label="Panel lateral con ranking y palabras top">
+            <div class="category-sticker" id="category-sticker" aria-label="Categoría actual">Categoría</div>
 
-            <div class="panel-tabs">
-                <div class="panel-tab active" data-tab="ranking">🏆 Ranking</div>
-                <div class="panel-tab" data-tab="topwords">📈 Top Palabras</div>
+            <div class="panel-tabs" role="tablist" aria-label="Vistas del panel lateral">
+                <div class="panel-tab active" data-tab="ranking" role="tab" aria-selected="true" aria-label="Ver ranking de jugadores">🏆 Ranking</div>
+                <div class="panel-tab" data-tab="topwords" role="tab" aria-selected="false" aria-label="Ver palabras top">📈 Top Palabras</div>
             </div>
 
-            <div class="panel-content">
+            <div class="panel-content" role="tabpanel">
                 <div class="panel-view active" data-view="ranking">
                     <div class="panel-list" id="ranking-list">
                         <div class="panel-item"><div class="name">Sin jugadores aún</div></div>
@@ -196,12 +196,12 @@
         </div>
 
         <!-- CONTENEDOR DE JUGADORES -->
-        <div class="players-container" id="players-container">
+        <div class="players-container" id="players-container" role="region" aria-label="Contenedor de jugadores conectados">
             <div class="players-grid" id="players-grid"></div>
         </div>
 
         <!-- RESULTS OVERLAY -->
-        <div class="results-overlay" id="results-overlay">
+        <div class="results-overlay" id="results-overlay" role="region" aria-label="Resultados de la ronda">
             <div class="results-panel">
                 <div class="results-title">Resultados</div>
                 <div id="results-content"></div>
@@ -209,14 +209,19 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts Modulares (orden importa) -->
+    <!-- Comunicación y sincronización -->
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
+    
+    <!-- Sistemas de juego -->
     <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/create-game-modal.js"></script>
     <script src="./js/floating-side-panel.js"></script>
     <script src="./js/menu-opciones.js"></script>
+    
+    <!-- Gestor principal del host -->
     <script src="./js/host-manager.js"></script>
 </body>
 </html>
