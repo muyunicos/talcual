@@ -4,6 +4,7 @@
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  * 
  * ✅ REFACTORIZADO: Usa SessionManager, ConfigService, y WordEngineManager
+ * ✅ FIX FASE 2: Constructor sin async, initialize() unificado
  */
 
 function determineUIState() {
@@ -42,11 +43,28 @@ class HostManager {
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
         
-        // ✅ CAMBIO: Usar WordEngineManager centralizado
+        // ✅ FIX FASE 2: No llamar async en constructor
+        // Las inicializaciones async ahora se hacen en initialize()
         this.wordEngineReady = false;
-        this.initWordEngine();
-        
-        this.loadConfigAndInit();
+    }
+
+    /**
+     * ✅ FIX FASE 2: Nuevo método que centraliza todas las inicializaciones async
+     * Esto permite que el constructor devuelva sincronía y el flujo sea clara
+     */
+    async initialize() {
+        try {
+            // Paso 1: Inicializar word engine
+            await this.initWordEngine();
+            
+            // Paso 2: Cargar config (await completo)
+            await this.loadConfigAndInit();
+            
+            debug('✅ HOST MANAGER - Inicialización completa', null, 'success');
+        } catch (error) {
+            debug('❌ Error en HostManager.initialize()', error, 'error');
+            throw error;
+        }
     }
 
     async loadConfigAndInit() {
@@ -196,7 +214,8 @@ class HostManager {
         
         if (!modalConfig || !btnCancel || !btnSave) return;
 
-        btnCancel.addEventListener('click', () => this.closeConfigModal());
+        // ✅ FIX FASE 2: Usar Modal.close() centralizado
+        btnCancel.addEventListener('click', () => Modal.close('modal-game-config'));
 
         btnSave.addEventListener('click', () => this.saveGameConfig());
 
@@ -244,16 +263,9 @@ class HostManager {
 
         modalConfig.addEventListener('click', (e) => {
             if (e.target === modalConfig) {
-                this.closeConfigModal();
+                Modal.close('modal-game-config');
             }
         });
-    }
-
-    closeConfigModal() {
-        const modalConfig = document.getElementById('modal-game-config');
-        if (modalConfig) {
-            modalConfig.style.display = 'none';
-        }
     }
 
     async saveGameConfig() {
@@ -275,7 +287,7 @@ class HostManager {
             }
             
             this.updateRoundInfo();
-            this.closeConfigModal();
+            Modal.close('modal-game-config');
             console.log('✅ Configuración guardada');
         } catch (error) {
             console.error('Error guardando configuración:', error);
@@ -298,6 +310,7 @@ class HostManager {
     }
 
     handleSettings() {
+        // ✅ FIX FASE 2: Usar Modal.open() centralizado
         const modalConfig = document.getElementById('modal-game-config');
         if (modalConfig) {
             const inputRounds = document.getElementById('config-total-rounds');
@@ -308,7 +321,7 @@ class HostManager {
             if (inputDuration) inputDuration.value = 60;
             if (inputMinPlayers) inputMinPlayers.value = this.minPlayers;
             
-            modalConfig.style.display = 'flex';
+            Modal.open('modal-game-config');
         } else {
             alert('Modal de configuración no disponible');
         }
@@ -744,17 +757,19 @@ class HostManager {
         this.roundEnded = true;
 
         try {
-            // ✅ CAMBIO: Esperar a que WordEngineManager esté listo
+            // ✅ FIX FASE 2: Esperar explícitamente a que WordEngineManager esté listo
             if (!wordEngineManager.isReady) {
                 try {
                     await Promise.race([
                         wordEngineManager.initialize(),
                         new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Timeout esperando word engine')), 1000)
+                            setTimeout(() => reject(new Error('Timeout esperando word engine')), 2000)
                         )
                     ]);
+                    debug('⏱️ Word engine listo para procesar resultados', null, 'success');
                 } catch (err) {
                     debug(`⚠️ Word engine no listo a tiempo, continuando con fallback: ${err.message}`, null, 'warning');
+                    // Continuamos de todas formas - el scoring fallback funciona
                 }
             }
 
@@ -924,7 +939,10 @@ class HostManager {
 
 let hostManager = null;
 
-function initHostManager() {
+/**
+ * ✅ FIX FASE 2: Flujo de inicialización ahora es async y secuencial
+ */
+async function initHostManager() {
     const urlParams = new URLSearchParams(window.location.search);
     let gameCode = urlParams.get('code');
 
@@ -936,10 +954,20 @@ function initHostManager() {
         return;
     }
 
-    hostManager = new HostManager(gameCode);
-    
-    // ✅ CAMBIO: Usa SessionManager para registrar beforeunload automático
-    hostSession.registerManager(hostManager);
+    try {
+        // ✅ FIX FASE 2: Crear instancia SIN async, luego llamar initialize()
+        hostManager = new HostManager(gameCode);
+        
+        // ✅ FIX FASE 2: Await completo de la inicialización
+        await hostManager.initialize();
+        
+        // ✅ CAMBIO: Usa SessionManager para registrar beforeunload automático
+        hostSession.registerManager(hostManager);
+        
+        debug('✅ HOST MANAGER - Completamente inicializado y listo', null, 'success');
+    } catch (error) {
+        debug('❌ Error en initHostManager', error, 'error');
+    }
 }
 
 if (document.readyState === 'loading') {
@@ -948,4 +976,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js: REFACTORIZADO con SessionManager + ConfigService + WordEngineManager', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js: FIX FASE 2 - Async initialize() + Modal centralizado + word engine timeout', 'color: #00FF00; font-weight: bold; font-size: 12px');
