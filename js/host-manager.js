@@ -38,6 +38,7 @@ class HostManager {
         this.gameState = {};
         this.countdownRAFId = null;
         this.currentCategory = 'Sin categoría';
+        this.roundEnded = false;
         
         this.initUI();
         this.attachEventListeners();
@@ -306,8 +307,16 @@ class HostManager {
             this.updateRoundInfo();
         }
 
-        if (state.round_starts_at && state.round_duration) {
-            this.startContinuousTimer(state);
+        if (state.status === 'playing') {
+            this.roundEnded = false;
+            if (state.round_starts_at && state.round_duration) {
+                this.startContinuousTimer(state);
+            }
+        } else if (state.status === 'round_ended') {
+            this.roundEnded = true;
+            this.stopTimer();
+        } else if (state.status === 'finished') {
+            this.stopTimer();
         }
         
         if (state.min_players !== undefined) {
@@ -406,9 +415,11 @@ class HostManager {
                 );
                 this.updateTimer();
 
-                // Si el tiempo se agota y estamos en playing, mostrar resultados
-                if (this.remainingTime <= 0 && this.gameState.status === 'playing') {
+                // Cuando el tiempo se agota y estamos en playing, procesar resultados
+                if (this.remainingTime <= 100 && this.gameState.status === 'playing' && !this.roundEnded) {
+                    debug('⏱️ TIEMPO AGOTADO - Procesando resultados...', null, 'warning');
                     this.stopTimer();
+                    this.endRoundAndCalculateResults();
                 }
             }
         };
@@ -491,6 +502,152 @@ class HostManager {
         });
         
         debug(`📄 Top palabras actualizado: ${topWords.length} palabras`, null, 'info');
+    }
+
+    processRoundResults() {
+        debug('🧰 Calculando resultados de la ronda...', null, 'info');
+        const state = this.gameState;
+        if (!state || !state.players) {
+            debug('❌ Estado inválido para procesar resultados', null, 'error');
+            return null;
+        }
+
+        // Obtener todos los jugadores y sus respuestas
+        const playersArray = Array.isArray(state.players) 
+            ? state.players 
+            : Object.values(state.players);
+
+        debug(`👥 Procesando ${playersArray.length} jugadores`, null, 'info');
+
+        // Normalizar respuestas de cada jugador
+        const playerAnswers = {};
+        playersArray.forEach(player => {
+            if (player.answers && Array.isArray(player.answers)) {
+                playerAnswers[player.id] = player.answers.map(w => String(w).toUpperCase().trim());
+            } else {
+                playerAnswers[player.id] = [];
+            }
+        });
+
+        // Calcular matching de palabras
+        const roundResults = {};
+        const wordFrequency = {};
+
+        Object.entries(playerAnswers).forEach(([playerId, answers]) => {
+            roundResults[playerId] = {};
+            
+            answers.forEach(word => {
+                if (!wordFrequency[word]) {
+                    wordFrequency[word] = { count: 0, players: [] };
+                }
+                wordFrequency[word].count++;
+                if (!wordFrequency[word].players.includes(playerId)) {
+                    wordFrequency[word].players.push(playerId);
+                }
+            });
+        });
+
+        debug(`📊 Palabras encontradas: ${Object.keys(wordFrequency).length}`, null, 'info');
+
+        // Calcular puntos y results por jugador
+        const scoreDelta = {};
+        Object.entries(playerAnswers).forEach(([playerId, answers]) => {
+            scoreDelta[playerId] = 0;
+            
+            answers.forEach(word => {
+                const freq = wordFrequency[word];
+                if (freq && freq.count > 1) {
+                    // Palabra coincidió con otro jugador
+                    const points = 10;
+                    roundResults[playerId][word] = {
+                        count: freq.count,
+                        points: points,
+                        matched_with: freq.players.filter(p => p !== playerId).map(pId => {
+                            const player = playersArray.find(pl => pl.id === pId);
+                            return player?.name || 'Anonym';
+                        })
+                    };
+                    scoreDelta[playerId] += points;
+                } else {
+                    // Palabra no coincidió
+                    roundResults[playerId][word] = {
+                        count: 1,
+                        points: 0,
+                        matched_with: []
+                    };
+                }
+            });
+        });
+
+        debug(`🌟 Deltas de puntos calculados`, null, 'info');
+
+        // Calcular top palabras
+        const topWords = Object.entries(wordFrequency)
+            .filter(([word, data]) => data.count > 1)  // Solo palabras con más de 1 jugador
+            .map(([word, data]) => ({ word, count: data.count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        debug(`📄 Top palabras: ${topWords.length} (solo con coincidencias)`, null, 'info');
+
+        return {
+            round_results: roundResults,
+            score_deltas: scoreDelta,
+            top_words: topWords
+        };
+    }
+
+    async endRoundAndCalculateResults() {
+        if (this.roundEnded) {
+            debug('⚠️ Ronda ya finalizada, ignorando', null, 'warning');
+            return;
+        }
+
+        this.roundEnded = true;
+
+        try {
+            // Procesar resultados localmente
+            const results = this.processRoundResults();
+            if (!results) {
+                throw new Error('No se pudieron procesar los resultados');
+            }
+
+            debug('📄 Enviando resultados al servidor...', null, 'info');
+
+            // Construir objeto host_results para el backend
+            const hostResults = {
+                players: {}
+            };
+
+            const playersArray = Array.isArray(this.gameState.players) 
+                ? this.gameState.players 
+                : Object.values(this.gameState.players);
+
+            playersArray.forEach(player => {
+                hostResults.players[player.id] = {
+                    round_results: results.round_results[player.id] || {},
+                    score_delta: results.score_deltas[player.id] || 0
+                };
+            });
+
+            hostResults.round_top_words = results.top_words;
+
+            debug(`✅ host_results preparado con ${results.top_words.length} top words`, null, 'info');
+
+            // Llamar a end_round en la API
+            const response = await this.client.sendAction('end_round', {
+                host_results: hostResults
+            });
+
+            if (response.success) {
+                debug('✅ Ronda finalizada en el servidor', null, 'success');
+                this.handleGameState(response.state);
+            } else {
+                debug('❌ Error en end_round: ' + response.message, null, 'error');
+            }
+        } catch (error) {
+            debug('❌ Error en endRoundAndCalculateResults: ' + error.message, null, 'error');
+        }
     }
 
     showResults(results) {
@@ -649,4 +806,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - Fixed: category-sticker updates, robust ranking/topwords refresh, debug logging', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FIXED: Round ending with results calculation, word matching, scoring & top words', 'color: #FF00FF; font-weight: bold; font-size: 12px');
