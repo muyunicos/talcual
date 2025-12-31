@@ -548,7 +548,19 @@ class HostManager {
     startContinuousTimer(state) {
         this.stopTimer();
         
+        // ✅ CORRECCIÓN: Calibrar timeSync si aún no está calibrado
+        if (state.server_now && state.round_starts_at && !timeSync.isCalibrated) {
+            timeSync.calibrateWithServerTime(
+                state.server_now,
+                state.round_starts_at,
+                state.round_ends_at,
+                state.round_duration
+            );
+            debug('⏱️ HOST SYNC CALIBRADO en startContinuousTimer', null, 'success');
+        }
+        
         const tick = () => {
+            // ✅ CORRECCIÓN: Usar timeSync.getServerTime() como en player-manager
             if (this.gameState && this.gameState.round_started_at && this.gameState.round_duration) {
                 this.remainingTime = getRemainingTime(
                     this.gameState.round_started_at,
