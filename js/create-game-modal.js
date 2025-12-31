@@ -1,6 +1,12 @@
 /**
  * Create Game Modal - Modal para crear nuevas partidas
- * Maneja: carga de diccionario, categorías, creación de partida
+ * Maneja: Ui para crear partida
+ * 
+ * ✅ REFACTORIZADO FASE 1:
+ * - Elimina loadDictionary() → Usa DictionaryService
+ * - Elimina loadConfig() → Usa ConfigService
+ * - Simplifica lógica de categorías
+ * - SOLO responsable de UI
  */
 
 class CreateGameModal {
@@ -11,76 +17,33 @@ class CreateGameModal {
         this.customCodeInput = document.getElementById('custom-code');
         this.statusMessage = document.getElementById('status-message');
 
-        this.dictionary = null;
         this.categories = [];
-        this.config = {};
+        this.categoryWordsMap = {}; // Cache: category -> [words]
 
         this.init();
     }
 
     async init() {
-        await this.loadConfig();
-        await this.loadDictionary();
-
-        this.populateCategorySelect(this.categories);
-
-        this.btnCreate.addEventListener('click', () => this.handleCreateClick());
-        this.categorySelect.addEventListener('change', () => this.updateCodeWithCategoryWord());
-
-        this.customCodeInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.trim().toUpperCase().slice(0, 5);
-        });
-
-        this.selectRandomCategory();
-    }
-
-    async loadConfig() {
         try {
-            const url = new URL('./app/actions.php', window.location.href);
-            url.searchParams.set('action', 'get_config');
-            
-            const response = await fetch(url.toString(), { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_config' }),
-                cache: 'no-store'
+            // ✅ CAMBIO: Usar servicios centralizados
+            await dictionaryService.initialize();
+            await configService.load();
+
+            this.categories = await dictionaryService.getCategories();
+            this.populateCategorySelect(this.categories);
+
+            this.btnCreate.addEventListener('click', () => this.handleCreateClick());
+            this.categorySelect.addEventListener('change', () => this.updateCodeWithCategoryWord());
+
+            this.customCodeInput.addEventListener('input', (e) => {
+                e.target.value = e.target.value.trim().toUpperCase().slice(0, 5);
             });
-            
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.config) {
-                    this.config = result.config;
-                }
-            }
-        } catch (error) {
-            console.warn('[WARN] Config load failed, using defaults');
-            this.config = {
-                default_total_rounds: 3,
-                default_round_duration: 60,
-                min_players: 2
-            };
-        }
-    }
 
-    async loadDictionary() {
-        try {
-            const url = new URL('./app/diccionario.json', window.location.href);
-            const response = await fetch(url.toString(), { cache: 'no-store' });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Failed to load dictionary`);
-            }
-            
-            this.dictionary = await response.json();
-            
-            if (!this.dictionary || Object.keys(this.dictionary).length === 0) {
-                throw new Error('Dictionary is empty or invalid');
-            }
-            
-            this.categories = Object.keys(this.dictionary).sort((a, b) => a.localeCompare(b, 'es'));
+            this.selectRandomCategory();
+            debug('✅ CreateGameModal inicializado', null, 'success');
         } catch (error) {
-            console.error('[ERROR] Loading dictionary:', error);
-            this.showMessage('Error cargando diccionario', 'error');
+            debug('❌ Error inicializando CreateGameModal', error, 'error');
+            this.showMessage('Error inicializando modal', 'error');
             this.btnCreate.disabled = true;
         }
     }
@@ -103,62 +66,38 @@ class CreateGameModal {
         this.updateCodeWithCategoryWord();
     }
 
-    extractWordsForCategory(category) {
-        const categoryData = this.dictionary[category];
-        const words = [];
-
-        for (const consignaObj of categoryData) {
-            for (const tips of Object.values(consignaObj)) {
-                for (const tip of tips) {
-                    for (const part of tip.split('|')) {
-                        words.push(part.trim());
-                    }
-                }
-            }
-        }
-
-        return words;
-    }
-
-    getValidWordsForCategory(category) {
-        return this.extractWordsForCategory(category)
-            .map((w) => w.trim().toUpperCase())
-            .filter(Boolean)
-            .filter((w) => w.length >= 3 && w.length <= 5)
-            .filter((w) => /^[A-ZÁÉÍÓÚÑ]+$/.test(w));
-    }
-
-    getRandomWord(category) {
-        const validWords = this.getValidWordsForCategory(category);
-        return validWords[Math.floor(Math.random() * validWords.length)];
-    }
-
-    updateCodeWithCategoryWord() {
+    async updateCodeWithCategoryWord() {
         const selectedCategory = this.categorySelect.value;
-        const randomWord = this.getRandomWord(selectedCategory);
         
-        if (randomWord) {
-            this.customCodeInput.value = randomWord.slice(0, 5);
+        try {
+            // Obtener una palabra random para esta categoría
+            const randomWord = await dictionaryService.getRandomWord();
+            
+            if (randomWord) {
+                this.customCodeInput.value = randomWord.slice(0, 5);
+            }
+        } catch (error) {
+            debug('Error obteniendo palabra para categoría', error, 'warn');
         }
     }
 
     initializeHostManager() {
         if (typeof initHostManager === 'function') {
-            console.log('[INFO] Calling initHostManager()');
+            debug('Llamando initHostManager()', null, 'info');
             try {
                 initHostManager();
             } catch (error) {
-                console.error('[ERROR] initHostManager() failed:', error);
+                debug('initHostManager() falló', error, 'error');
                 this.handleHostManagerError();
             }
         } else {
-            console.warn('[WARN] initHostManager not available, using fallback');
+            debug('initHostManager no disponible, usando fallback', null, 'warn');
             this.handleHostManagerError();
         }
     }
 
     handleHostManagerError() {
-        console.log('[INFO] Redirecting to host.html');
+        debug('Redireccionando a host.html', null, 'info');
         const gameCode = document.querySelector('[data-game-code]')?.dataset.gameCode ||
                         localStorage.getItem('hostGameCode') ||
                         document.querySelector('#code-sticker-value')?.textContent;
@@ -178,13 +117,14 @@ class CreateGameModal {
             const category = this.categorySelect.value;
             const customCode = this.customCodeInput.value.trim().toUpperCase() || null;
 
+            // ✅ CAMBIO: Usar ConfigService
             const payload = {
                 action: 'create_game',
                 game_id: customCode,
                 category,
-                total_rounds: this.config.default_total_rounds || 3,
-                round_duration: this.config.default_round_duration || 60,
-                min_players: this.config.min_players || 2
+                total_rounds: configService.get('default_total_rounds', 3),
+                round_duration: configService.get('default_round_duration', 60),
+                min_players: configService.get('min_players', 2)
             };
 
             const controller = new AbortController();
@@ -229,7 +169,7 @@ class CreateGameModal {
                 this.initializeHostManager();
             }, 100);
         } catch (error) {
-            console.error('[ERROR] Creating game:', error);
+            debug('Error creando partida', error, 'error');
             
             if (error.name === 'AbortError') {
                 this.showMessage('Timeout: La solicitud tardó demasiado', 'error');
@@ -258,4 +198,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ create-game-modal.js: Config loaded from server', 'color: #0066FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ create-game-modal.js - REFACTORIZADO: Usa DictionaryService y ConfigService', 'color: #0066FF; font-weight: bold; font-size: 12px');
