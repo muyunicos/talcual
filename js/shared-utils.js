@@ -692,25 +692,4 @@ function generateRandomLetterCode(length = 4) {
     return code;
 }
 
-// ============================================================================
-// APLICAR GRADIENTES DE COLOR (Player Manager)
-// ============================================================================
-
-/**
- * Aplica gradiente de aura del jugador
- * @param {string} colorString - String con dos colores separados por coma (ej: "#FF9966,#FF5E62")
- */
-function applyColorGradient(colorString) {
-    if (!colorString) return;
-    
-    const colors = colorString.split(',').map(c => c.trim());
-    if (colors.length < 2) {
-        colors.push(colors[0]); // Si solo hay un color, usarlo para ambos
-    }
-    
-    const root = document.documentElement;
-    root.style.setProperty('--aura-color-1', colors[0]);
-    root.style.setProperty('--aura-color-2', colors[1] || colors[0]);
-}
-
 console.log('%c✅ shared-utils.js - Sincronización de tiempo + feedback visual mejorada', 'color: #10B981; font-weight: bold');
