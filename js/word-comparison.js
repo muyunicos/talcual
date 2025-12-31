@@ -1,11 +1,11 @@
 /**
- * Word Comparison Engine V7 - Género, Plural, Sinónimos + Fallback Local
+ * Word Comparison Engine V8 - Scoring Variable por Tipo de Coincidencia
  * 
  * Cambios:
- * - Extender getStem() para manejar más plurales (CIÓN->CIÓN, diminutivos)
- * - Agregar areEquivalentLocally() fallback para cuando diccionario no está cargado
- * - Mejorar getCanonical() con stemming local
- * - Agregar debug granular para diagnosticar por qué dos palabras sí/no se comparan
+ * - Agregar getMatchType() para identificar tipo de coincidencia
+ * - Agregar areEquivalentWithType() que retorna {match: bool, type: string}
+ * - Backward compatible con areEquivalent()
+ * - Permite asignar puntos diferentes: EXACTA=10, PLURAL=8, GENERO=5, SINONIMO=5
  */
 
 class WordEquivalenceEngine {
@@ -143,6 +143,66 @@ class WordEquivalenceEngine {
     }
 
     /**
+     * Identifica el tipo de coincidencia entre dos palabras.
+     * Retorna: 'EXACTA' | 'PLURAL' | 'GENERO' | 'SINONIMO' | null
+     */
+    getMatchType(word1, word2) {
+        const n1 = this.normalize(word1);
+        const n2 = this.normalize(word2);
+
+        if (!n1 || !n2) return null;
+
+        // 1. EXACTA: Idénticas
+        if (n1 === n2) return 'EXACTA';
+
+        // 2. Obtener stems para análisis
+        const stem1 = this.getStem(n1);
+        const stem2 = this.getStem(n2);
+
+        // Si no coinciden stems, no hay coincidencia
+        if (stem1 !== stem2) return null;
+
+        // 3. PLURAL: Diferencia es solo -S o -ES o diminutivo
+        // Ej: BEBE vs BEBES, GATO vs GATOS, GATITO vs GATO
+        const isPluralLike = (word) => {
+            return word.endsWith('S') || 
+                   word.endsWith('ES') || 
+                   word.match(/IT[AO]$/) ||
+                   word.match(/CH[AO]$/) ||
+                   word.match(/LL[AO]$/);
+        };
+        
+        if (isPluralLike(n1) || isPluralLike(n2)) {
+            return 'PLURAL';
+        }
+
+        // 4. GENERO: Diferencia es solo la vocal final (A/O/E)
+        const last1 = n1.slice(-1);
+        const last2 = n2.slice(-1);
+        const isGenderVowel = (v) => ['A', 'E', 'O'].includes(v);
+        
+        if (isGenderVowel(last1) && isGenderVowel(last2) && last1 !== last2) {
+            return 'GENERO';
+        }
+
+        // 5. SINONIMO: En el diccionario con IDs diferentes
+        if (this.isLoaded) {
+            let id1 = this.dictionaryMap[n1];
+            let id2 = this.dictionaryMap[n2];
+            
+            if (!id1) id1 = this.dictionaryMap[stem1];
+            if (!id2) id2 = this.dictionaryMap[stem2];
+            
+            if (id1 && id2 && id1 === id2) {
+                return 'SINONIMO';
+            }
+        }
+
+        // 6. Por defecto, si los stems coinciden
+        return 'SIMILAR';
+    }
+
+    /**
      * Comparación LOCAL: Sin diccionario, solo por raíces derivadas.
      * Útil cuando el diccionario aún no ha cargado.
      */
@@ -191,6 +251,24 @@ class WordEquivalenceEngine {
         // Fallback 3: Si no está en diccionario, devolver la raíz
         // Esto asegura que BEBE, BEBES, BEBÉ todos mapeen a "BEB"
         return stem.length > 0 ? stem : n;
+    }
+
+    /**
+     * Comparación con tipo de coincidencia.
+     * Retorna {match: boolean, type: string | null}
+     */
+    areEquivalentWithType(word1, word2) {
+        const matchType = this.getMatchType(word1, word2);
+        const match = matchType !== null && matchType !== 'EXACTA'.replace(/^.../, '');
+        
+        if (this.debugMode && matchType) {
+            console.log(`🎯 areEquivalentWithType("${word1}", "${word2}"): tipo=${matchType}`);
+        }
+        
+        return {
+            match: matchType !== null,
+            type: matchType
+        };
     }
 
     /**
