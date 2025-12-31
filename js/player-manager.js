@@ -446,7 +446,6 @@ class PlayerManager {
                 }
             }
         };
-
         this.countdownRAFId = requestAnimationFrame(update);
     }
 
@@ -525,15 +524,12 @@ class PlayerManager {
                 safeShowElement(this.elements.waitingMessage);
             }
             
-            // 🔄 CAMBIO OPCIÓN C: Mantener visible pero deshabilitado
-            // Antes: safeHideElement(this.elements.wordsInputSection);
-            // Ahora: permitir VER la lista de palabras sin poder editarlas
+            // 🔄 CAMBIO OPCIÓN C: Mantener visible pero read-only
             if (this.elements.wordsListContainer) {
-                // Mostrar lista pero sin poder interactuar
                 this.elements.wordsListContainer.classList.add('read-only');
             }
         } else {
-            debug('💗 Puedes escribir palabras', 'debug');
+            debug('💗 Puedes escribir y editar palabras', 'debug');
             this.isReady = false;
             if (this.elements.currentWordInput) {
                 this.elements.currentWordInput.disabled = false;
@@ -542,12 +538,16 @@ class PlayerManager {
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
                 this.elements.btnSubmit.disabled = false;
-                // 🔄 CAMBIO OPCIÓN C: Botón dice ENVIAR si 6 palabras, PASO si menos
                 this.updateFinishButtonText();
             }
 
             safeHideElement(this.elements.waitingMessage);
             safeShowElement(this.elements.wordsInputSection);
+            
+            // Remover clase read-only para permitir edición
+            if (this.elements.wordsListContainer) {
+                this.elements.wordsListContainer.classList.remove('read-only');
+            }
 
             if (!me?.answers || me.answers.length === 0) {
                 this.myWords = [];
@@ -558,13 +558,17 @@ class PlayerManager {
             }
         }
 
-        // CAMBIO: Usar round_started_at para el timer (cuando COMIENZA LA RONDA REAL)
-        // No round_starts_at (que es cuando comienza el countdown)
+        // CAMBIO: Usar round_started_at para el timer
         if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
     }
 
+    /**
+     * 🔄 CAMBIO OPCIÓN C: addWord() BLOQUEA al alcanzar maxWords
+     * - NO auto-ready
+     * - Solo bloquea agregar, permite editar
+     */
     async addWord() {
         const input = this.elements.currentWordInput;
         if (!input) return;
@@ -572,13 +576,14 @@ class PlayerManager {
         const word = input.value.trim();
         if (!word) return;
 
-        if (word.length > COMM_CONFIG.MAX_WORD_LENGTH) {
-            showNotification(`Palabra demasiado larga (maximo ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
+        // 🔄 CAMBIO: Bloquear si ya tenemos maxWords
+        if (this.myWords.length >= this.maxWords) {
+            showNotification(`📦 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
             return;
         }
 
-        if (this.myWords.length >= this.maxWords) {
-            showNotification(`Maximo ${this.maxWords} palabras`, 'warning');
+        if (word.length > COMM_CONFIG.MAX_WORD_LENGTH) {
+            showNotification(`Palabra demasiado larga (maximo ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
             return;
         }
 
@@ -608,9 +613,7 @@ class PlayerManager {
         this.scheduleWordsUpdate();
         input.focus();
 
-        // 🔄 CAMBIO OPCIÓN C: Quitar auto-ready al alcanzar maxWords
-        // Antes: if (this.myWords.length >= this.maxWords) { this.markReady(); }
-        // Ahora: Solo actualizar botón
+        // 🔄 CAMBIO: Solo actualizar botón, NO marcar ready
         if (this.myWords.length === this.maxWords) {
             debug(`📦 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
             this.updateFinishButtonText();
@@ -627,7 +630,7 @@ class PlayerManager {
             safeShowElement(this.elements.wordsListContainer);
 
             if (this.elements.wordsList) {
-                // 🔄 CAMBIO: Ícono de lápiz (✏️) en lugar de tilde (🗸️)
+                // 🔄 CAMBIO: Ícono de lápiz (✏️) para editar
                 this.elements.wordsList.innerHTML = this.myWords.map((word, idx) => `
                     <div class="word-item" onclick="playerManager.removeWord(${idx})">
                         <span class="word-text">${sanitizeText(word)}</span>
@@ -640,18 +643,21 @@ class PlayerManager {
         }
     }
 
+    /**
+     * 🔄 CAMBIO OPCIÓN C: removeWord() permite EDITAR
+     * - Guarda palabra removida en el input para editarla
+     * - Si estábamos ready y borramos palabras, revertir a estado editable
+     */
     removeWord(index) {
-        // 🔄 CAMBIO: Guardar la palabra removida y cargarla en el input
         const removed = this.myWords.splice(index, 1)[0] || '';
         
         this.updateWordsList();
         this.scheduleWordsUpdate();
 
-        // Precargar el input con la palabra removida
+        // 🔄 CAMBIO: Precargar el input con la palabra removida
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.value = removed;
             
-            // Focusear si no está deshabilitado
             if (!this.elements.currentWordInput.disabled) {
                 this.elements.currentWordInput.focus();
             }
@@ -700,16 +706,15 @@ class PlayerManager {
 
     /**
      * 🔄 CAMBIO OPCIÓN C: handleFinishButton()
-     * Reemplaza toggleReady()
-     * - Si 6 palabras: ENVIAR (mark ready)
-     * - Si menos de 6: PASO (mark ready igual)
+     * Ejecuta cuando jugador presiona ENVIAR (6 palabras) o PASO (menos de 6)
+     * - Marca como ready (confirmó terminar)
      */
     async handleFinishButton() {
         if (this.isReady) {
             // Ya está ready, desactivar (volver atrás)
             await this.markNotReady();
         } else {
-            // Marcar como terminado (ready)
+            // Marcar como terminado (ready) - confirmó fin
             await this.markReady();
         }
     }
@@ -728,7 +733,10 @@ class PlayerManager {
     }
 
     /**
-     * Marcar como READY (confirmar fin)
+     * 🔄 CAMBIO OPCIÓN C: markReady()
+     * Solo ejecuta cuando jugador presiona ENVIAR o PASO
+     * - Deshabilita input y formulario
+     * - Envía confirmed finish al servidor (forced_pass: true)
      */
     async markReady() {
         if (!this.client) return;
@@ -736,7 +744,6 @@ class PlayerManager {
         debug('👍 Marcando como READY (confirmó terminar)', 'info');
         this.isReady = true;
 
-        // Deshabilitar input
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.disabled = true;
             this.elements.currentWordInput.placeholder = '✅ Terminaste';
@@ -750,7 +757,7 @@ class PlayerManager {
         try {
             await this.client.sendAction('submit_answers', {
                 answers: this.myWords,
-                forced_pass: true  // Confirma fin
+                forced_pass: true  // Confirmó fin
             });
         } catch (error) {
             debug('Error marcando como ready:', error, 'error');
@@ -758,7 +765,8 @@ class PlayerManager {
     }
 
     /**
-     * Revertir a NO READY (si jugador borra palabras)
+     * 🔄 CAMBIO OPCIÓN C: markNotReady()
+     * Revertir a estado editable (si jugador borra palabras estando ready)
      */
     async markNotReady() {
         if (!this.client) return;
@@ -766,7 +774,6 @@ class PlayerManager {
         debug('🔼 Revertiendo a NO READY', 'info');
         this.isReady = false;
 
-        // Habilitar input
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.disabled = false;
             this.elements.currentWordInput.placeholder = 'Ingresa una palabra...';
@@ -841,7 +848,6 @@ class PlayerManager {
         this.updateTimerFromState(state);
 
         this.timerInterval = setInterval(() => {
-            // Solo actualizar si estamos en 'playing', sino dejar de contar
             if (this.gameState && this.gameState.status === 'playing') {
                 this.updateTimerFromState(this.gameState);
             }
@@ -849,18 +855,15 @@ class PlayerManager {
     }
 
     updateTimerFromState(state) {
-        // 🆕 Si round_started_at es null, la ronda terminó
         if (!state.round_started_at) {
             this.stopTimer();
             return;
         }
 
-        // CAMBIO: Usar round_started_at (cuando comienza LA RONDA REAL)
-        // No round_starts_at (que es cuando comienza el countdown)
         const remaining = getRemainingTime(state.round_started_at, state.round_duration);
         updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
 
-        // Auto-submit ANTES de que remaining sea 0 (para que server procese y cambie status)
+        // Auto-submit ANTES de que remaining sea 0
         if (remaining <= 500 && this.gameState.status === 'playing') {
             const me = this.gameState.players?.[this.playerId];
             if (me?.status !== 'ready') {
@@ -989,4 +992,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js v6: Opción C - Edit words + ready only on finish', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js v7: Opción C - Can\'t add new words, can edit, ready = confirmed finish', 'color: #FF00FF; font-weight: bold; font-size: 12px');
