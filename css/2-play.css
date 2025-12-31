@@ -33,7 +33,6 @@
     transition: all 0.3s ease;
 }
 
-/* CAMBIO #4: Feedback visual para timer */
 .header-timer.timer-warning {
     color: #FF6B6B;
     animation: timerWarning 1s infinite;
@@ -281,23 +280,6 @@
     color: var(--color-text-muted);
 }
 
-/* BOTTOM FOOTER */
-.bottom-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-md) var(--space-lg);
-    background: rgba(15, 23, 42, 0.8);
-    border-top: 1px solid rgba(139, 92, 246, 0.2);
-    gap: var(--space-lg);
-}
-
-.footer-left {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    position: relative;
-}
 .player-name-display {
     font-size: 2em;
     text-transform: uppercase;
@@ -307,83 +289,6 @@
     text-shadow: var(--sombra-media);
     font-weight: bolder;
     color: var(--color-text-muted);
-}
-.btn-config-menu {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 2px solid rgba(139, 92, 246, 0.3);
-    background: rgba(139, 92, 246, 0.2);
-    color: var(--color-text-light);
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all var(--transition-normal);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-config-menu:hover {
-    background: rgba(139, 92, 246, 0.4);
-    border-color: rgba(139, 92, 246, 0.6);
-    transform: scale(1.05);
-}
-
-.config-dropdown {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    background: rgba(30, 41, 59, 0.95);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    border-radius: var(--radius-input);
-    min-width: 160px;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 100;
-    overflow: hidden;
-}
-
-.config-option {
-    display: block;
-    width: 100%;
-    padding: var(--space-md) var(--space-lg);
-    border: none;
-    background: transparent;
-    color: var(--color-text-muted);
-    text-align: left;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.config-option:hover {
-    background: rgba(139, 92, 246, 0.2);
-    color: var(--color-text-light);
-    padding-left: var(--space-xl);
-}
-
-.config-option:last-child {
-    border-top: 1px solid rgba(139, 92, 246, 0.2);
-}
-
-.btn-exit {
-    padding: var(--space-md) var(--space-lg);
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.1);
-    color: #fca5a5;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-normal);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.btn-exit:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.6);
 }
 
 /* COUNTDOWN OVERLAY */
@@ -449,11 +354,6 @@
     .current-word {
         font-size: 36px;
     }
-
-    .bottom-footer {
-        flex-direction: column;
-        gap: var(--space-md);
-    }
     
     .countdown-number {
         font-size: 80px;
@@ -510,17 +410,6 @@
     .btn-submit {
         padding: var(--space-lg) var(--space-2xl);
         font-size: 14px;
-    }
-    
-    .bottom-footer {
-        padding: var(--space-md);
-        gap: var(--space-md);
-    }
-    
-    .btn-config-menu {
-        width: 32px;
-        height: 32px;
-        font-size: 16px;
     }
     
     .countdown-number {
