@@ -518,8 +518,6 @@ class HostManager {
 
         overlay.classList.add('active');
 
-        numberEl.style.fontSize = 'inherit';
-
         const update = () => {
             const nowServer = timeSync.getServerTime();
             const elapsed = nowServer - roundStartsAt;
