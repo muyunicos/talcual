@@ -279,7 +279,6 @@
     width: 70px;
     height: 70px;
     border-radius: 50%;
-    border: 3px solid transparent;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -293,7 +292,7 @@
 }
 
 .aura-circle.selected {
-    border: 3px solid white;
+    border: 3px solid #ffd700;
     box-shadow: 0 0 20px rgba(255, 255, 255, 1),
                 inset 0 0 10px rgba(255, 255, 255, 0.5);
     animation: selectedPulse 1s infinite;
@@ -301,7 +300,7 @@
 
 .aura-randomizer {
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.6) 0%, rgba(0, 240, 255, 0.6) 100%) !important;
-    border: 2px dashed rgba(255, 255, 255, 0.5);
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;

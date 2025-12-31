@@ -25,7 +25,7 @@ const AURA_BASE_COLORS = [
 function generateRandomAuras() {
     const auras = [];
     const usedIndices = new Set();
-    while (auras.length < 4) {
+    while (auras.length < 3) {
         const idx1 = Math.floor(Math.random() * AURA_BASE_COLORS.length);
         const idx2 = Math.floor(Math.random() * AURA_BASE_COLORS.length);
         if (idx1 !== idx2) {
