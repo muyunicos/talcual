@@ -97,15 +97,24 @@ function formatTime(ms) {
 
 /**
  * Actualiza display de timer en el DOM con feedback visual
- * Muestra SOLO tiempo de ronda (sin countdown)
+ * Muestra --:-- hasta que la ronda comience (round_started_at existe)
+ * Luego muestra tiempo de ronda (sin countdown)
  * 
- * @param {number} ms - Milisegundos restantes
+ * @param {number} ms - Milisegundos restantes (null/undefined para mostrar --:--)
  * @param {HTMLElement} element - Elemento donde mostrar
  * @param {string} prefix - Prefijo (ej: '⏳')
  * @param {number} warningThreshold - Mostrar warning desde X ms
  */
 function updateTimerDisplay(ms, element, prefix = '⏳', warningThreshold = 5000) {
     if (!element) return;
+    
+    // Si no hay tiempo (null, undefined o negativo), mostrar --:--
+    if (ms === null || ms === undefined || ms === false) {
+        element.textContent = prefix ? `${prefix} --:--` : '--:--';
+        element.classList.remove('timer-warning');
+        element.classList.remove('timer-expired');
+        return;
+    }
     
     const formatted = formatTime(ms);
     element.textContent = prefix ? `${prefix} ${formatted}` : formatted;
@@ -713,4 +722,4 @@ function generateRandomLetterCode(length = 4) {
     return code;
 }
 
-console.log('%c✅ shared-utils.js - REFACTORED: Timer shows only gameplay duration (without countdown)', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ shared-utils.js - Timer shows --:-- until game starts, then displays remaining time', 'color: #10B981; font-weight: bold; font-size: 12px');
