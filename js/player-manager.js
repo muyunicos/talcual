@@ -820,9 +820,24 @@ class PlayerManager {
         const me = state.players?.[this.playerId];
         const myResults = me?.round_results;
 
+        // 🔧 FIX: Diferencia entre "no participó" y "esperando resultados"
         if (!myResults || Object.keys(myResults).length === 0) {
-            if (this.elements.resultsSection) {
-                this.elements.resultsSection.innerHTML = '<div class="waiting-message">Esperando resultados...</div>';
+            // Verificar si envié palabras en esta ronda
+            const myAnswers = me?.answers;
+            const sentAnswers = myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0;
+            
+            if (!sentAnswers) {
+                // No envié palabras
+                if (this.elements.resultsSection) {
+                    this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
+                }
+                debug('⚠️ No envié palabras esta ronda', 'warning');
+            } else {
+                // Sí envié palabras pero no hay resultados aún
+                if (this.elements.resultsSection) {
+                    this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
+                }
+                debug('⏳ Esperando procesamiento de resultados', 'info');
             }
         } else {
             let html = '<div class="results-title">📈 Tus Resultados</div>';
@@ -1031,4 +1046,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js v9: Input/button disable logic FIXED - only input disabled at maxWords', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js v10: Mensaje correcto cuando no se enviaron palabras', 'color: #FF00FF; font-weight: bold; font-size: 12px');
