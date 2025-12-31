@@ -20,10 +20,9 @@ class FloatingSidePanelHandler {
         const btn = document.createElement('button');
         btn.id = 'sidepanel-toggle-btn';
         btn.className = 'sidepanel-toggle';
-        btn.innerHTML = '📈';
         btn.setAttribute('aria-label', 'Toggle panel lateral');     
         btn.innerHTML = `
-            <span>📈 Ranking / Top Palabras</span>
+            <span>Top Ranking</span>
             <span id="toggle-arrow" style="font-size: 1.2rem; margin-left: 8px;">▼</span>
         `;
         btn.addEventListener('click', () => this.togglePanel());
