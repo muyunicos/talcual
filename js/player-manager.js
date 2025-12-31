@@ -6,6 +6,7 @@
  * - Usa SessionManager para gestión de sesión
  * - Usa ConfigService en lugar de loadConfig()
  * - Usa WordEngineManager para comparación de palabras
+ * - Usa ModalHandler para gestión de modales (NUEVO)
  */
 
 class PlayerManager {
@@ -52,7 +53,7 @@ class PlayerManager {
             debug('🔄 Recuperando sesión', 'info');
             this.recoverSession(sessionData.gameId, sessionData.playerId, sessionData.playerName, sessionData.playerColor);
         } else {
-            debug('💱 Mostrando modal de unión', 'info');
+            debug('💡 Mostrando modal de unión', 'info');
             this.showJoinModal();
         }
 
@@ -178,7 +179,8 @@ class PlayerManager {
     }
 
     showJoinModal() {
-        safeShowElement(this.elements.modalJoinGame);
+        // ✅ CAMBIO: Usar ModalHandler centralizado
+        Modal.open('modal-join-game');
         safeHideElement(this.elements.gameScreen);
 
         this.availableAuras = generateRandomAuras();
@@ -241,7 +243,8 @@ class PlayerManager {
 
         applyColorGradient(this.playerColor);
 
-        safeHideElement(this.elements.modalJoinGame);
+        // ✅ CAMBIO: Usar ModalHandler centralizado
+        Modal.close('modal-join-game');
         safeShowElement(this.elements.gameScreen);
 
         if (this.elements.headerCode) this.elements.headerCode.textContent = this.gameId;
@@ -316,7 +319,7 @@ class PlayerManager {
                 }
             }
         } catch (error) {
-            debug('Error uniendose:', error, 'error');
+            debug('Error uniéndose:', error, 'error');
             if (this.elements.statusMessage) {
                 this.elements.statusMessage.innerHTML = '❌ Error de conexion';
             }
@@ -609,7 +612,7 @@ class PlayerManager {
                 this.elements.wordsList.innerHTML = this.myWords.map((word, idx) => `
                     <div class="word-item" onclick="playerManager.removeWord(${idx})">
                         <span class="word-text">${sanitizeText(word)}</span>
-                        <span class="word-delete">✏️</span>
+                        <span class="word-delete">✍️</span>
                     </div>
                 `).join('');
             }
@@ -787,7 +790,7 @@ class PlayerManager {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
                 }
-                debug('⚠️ No envié palabras esta ronda', 'warning');
+                debug('⚠️ No envíé palabras esta ronda', 'warning');
             } else {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
@@ -913,14 +916,16 @@ class PlayerManager {
             );
         }
         
-        safeShowElement(this.elements.modalEditName, 'flex');
+        // ✅ CAMBIO: Usar ModalHandler centralizado
+        Modal.open('modal-edit-name');
         if (this.elements.modalNameInput) {
             this.elements.modalNameInput.focus();
         }
     }
 
     hideEditNameModal() {
-        safeHideElement(this.elements.modalEditName);
+        // ✅ CAMBIO: Usar ModalHandler centralizado
+        Modal.close('modal-edit-name');
         this.tempSelectedAura = null;
     }
 
@@ -984,4 +989,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - REFACTORIZADO FASE 1 COMPLETA: Usa ConfigService + SessionManager', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - REFACTORIZADO FASE 1 COMPLETA: Usa ModalHandler centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
