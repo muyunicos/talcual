@@ -732,10 +732,9 @@ class PlayerManager {
         this.updateTimerFromState(state);
 
         this.timerInterval = setInterval(() => {
+            // Solo actualizar si estamos en 'playing', sino dejar de contar
             if (this.gameState && this.gameState.status === 'playing') {
                 this.updateTimerFromState(this.gameState);
-            } else {
-                this.stopTimer();
             }
         }, 1000);
     }
@@ -744,8 +743,13 @@ class PlayerManager {
         const remaining = getRemainingTime(state.round_starts_at, state.round_duration);
         updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
 
-        if (remaining <= 0 && this.gameState.status === 'playing') {
-            this.autoSubmitWords();
+        // Auto-submit ANTES de que remaining sea 0 (para que server procese y cambie status)
+        if (remaining <= 500 && this.gameState.status === 'playing') {
+            const me = this.gameState.players?.[this.playerId];
+            if (me?.status !== 'ready') {
+                debug('🔅 Auto-enviando palabras al terminar el tiempo', 'info');
+                this.autoSubmitWords();
+            }
         }
     }
 
@@ -761,10 +765,14 @@ class PlayerManager {
     }
 
     async autoSubmitWords() {
-        const me = this.gameState.players?.[this.playerId];
-        if (me?.status !== 'ready') {
-            debug('🔅 Auto-enviando palabras al terminar el tiempo', 'info');
-            await this.submitWords();
+        if (!this.client) return;
+        try {
+            await this.client.sendAction('submit_answers', {
+                answers: this.myWords,
+                forced_pass: true
+            });
+        } catch (error) {
+            debug('Error en auto-submit:', error, 'error');
         }
     }
 
@@ -864,4 +872,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Fixed: countdown (3,2,1), timer (NaN), and input visibility', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - Fixed: auto-submit before time=0 to show results, timer only updates in playing status', 'color: #10B981; font-weight: bold; font-size: 12px');
