@@ -2,16 +2,16 @@
  * Create Game Modal - Modal para crear nuevas partidas
  * Maneja: Ui para crear partida
  * 
- * ✅ REFACTORIZADO FASE 1:
- * - Elimina loadDictionary() → Usa DictionaryService
- * - Elimina loadConfig() → Usa ConfigService
- * - Simplifica lógica de categorías
+ * ✅ REFACTORIZADO FASE 3C:
+ * - Usa ModalController para gestión centralizada de modales
+ * - Usa DictionaryService para carga de categorías
+ * - Usa ConfigService para configuración
  * - SOLO responsable de UI
  */
 
 class CreateGameModal {
     constructor() {
-        this.modalElement = document.getElementById('modal-create-game');
+        this.modalController = null;
         this.btnCreate = document.getElementById('btn-create-game');
         this.categorySelect = document.getElementById('category-select');
         this.customCodeInput = document.getElementById('custom-code');
@@ -25,6 +25,18 @@ class CreateGameModal {
 
     async init() {
         try {
+            // ✅ CAMBIO: Crear ModalController para el modal
+            this.modalController = new ModalController('modal-create-game', {
+                closeOnBackdrop: true,
+                closeOnEsc: true,
+                onBeforeOpen: () => {
+                    // Reset form when modal opens
+                    this.selectRandomCategory();
+                    this.customCodeInput.value = '';
+                    this.statusMessage.style.display = 'none';
+                }
+            });
+
             // ✅ CAMBIO: Usar servicios centralizados
             await dictionaryService.initialize();
             await configService.load();
@@ -198,4 +210,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ create-game-modal.js - REFACTORIZADO: Usa DictionaryService y ConfigService', 'color: #0066FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ create-game-modal.js - REFACTORIZADO FASE 3C: Usa ModalController', 'color: #0066FF; font-weight: bold; font-size: 12px');
