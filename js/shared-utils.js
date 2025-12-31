@@ -3,6 +3,7 @@
  * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS (SessionManager, DictionaryService, ConfigService, ModalHandler)
  * 
  * 🎯 FASE 1 COMPLETA: Este archivo centraliza TODA la lógica de dependencias
+ * 🎯 FASE 2: FIX - Logging y timeout en beforeunload
  */
 
 // Global dictionary cache
@@ -730,6 +731,7 @@ function generateRandomLetterCode(length = 4) {
 /**
  * SessionManager - Gestión unificada de sesiones (host/player)
  * ✅ CENTRALIZA: localStorage, beforeunload, recuperación de sesión
+ * ✅ FASE 2 FIX: Logging y timeout en beforeunload
  */
 class SessionManager {
     constructor(type = 'player') {
@@ -738,10 +740,35 @@ class SessionManager {
         this.setupBeforeUnload();
     }
 
+    /**
+     * ✅ FASE 2 FIX: beforeunload con logging y timeout
+     */
     setupBeforeUnload() {
         window.addEventListener('beforeunload', () => {
-            if (this.manager && typeof this.manager.destroy === 'function') {
-                this.manager.destroy();
+            try {
+                // ✅ FIX: Agregar logging de inicio
+                debug(`⏹️ beforeunload ejecutado para ${this.type.toUpperCase()}`, null, 'info');
+                
+                if (this.manager && typeof this.manager.destroy === 'function') {
+                    // ✅ FIX: Timeout de 2000ms para permitir que destroy() se complete
+                    const destroyPromise = Promise.resolve(this.manager.destroy());
+                    
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => {
+                            reject(new Error('destroy() timeout'));
+                        }, 2000);
+                    });
+                    
+                    Promise.race([destroyPromise, timeoutPromise])
+                        .then(() => {
+                            debug(`✅ destroy() completado para ${this.type.toUpperCase()}`, null, 'success');
+                        })
+                        .catch((err) => {
+                            debug(`⚠️ destroy() timeout o error: ${err.message}`, null, 'warn');
+                        });
+                }
+            } catch (error) {
+                debug(`❌ Error en beforeunload: ${error.message}`, null, 'error');
             }
         });
     }
@@ -1099,4 +1126,4 @@ debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryServ
 debug('✅ wordEngineManager aliased a dictionaryService (para compatibilidad)', null, 'success');
 debug('✅ Modal aliased a modalHandler (para UI centralizada)', null, 'success');
 
-console.log('%c✅ shared-utils.js - FASE 1 COMPLETA: Servicios centralizados + ModalHandler implementado', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ shared-utils.js - FASE 1 + FASE 2: Servicios centralizados + SessionManager beforeunload logging + timeout', 'color: #10B981; font-weight: bold; font-size: 12px');
