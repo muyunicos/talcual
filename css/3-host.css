@@ -447,6 +447,25 @@ html.bg-ready body::before {
     cursor: move;
     transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
+sidepanel-toggle-btn{
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    width: 280px !important;
+    padding: 12px !important;
+    background: var(--color-primary, #21868D) !important;
+    color: var(--color-btn-primary-text, #FCFCF9) !important;
+    border: none !important;
+    border-radius: 8px 8px 0 0 !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    z-index: 501 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    transition: all 0.3s ease !important;
+}
 
 .floating-side-panel:hover {
     border-color: rgba(0, 240, 255, 0.70);
