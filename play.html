@@ -31,8 +31,7 @@
 
             <div class="input-group">
                 <label class="input-label">✨ Elige tu Aura</label>
-                <div class="aura-selector" id="color-selector">
-                </div>
+                <div class="aura-selector" id="color-selector"></div>
             </div>
 
             <button class="btn-modal-primary" id="btn-join">¡A Jugar!</button>
@@ -45,56 +44,56 @@
     <div class="game-screen" id="game-screen">
         <div class="player-layout">
             <div class="top-header">
-            <div class="header-round" id="header-round" aria-live="polite" aria-label="Ronda actual"></div>
-            <div class="header-timer" id="header-timer" aria-live="polite" aria-label="Tiempo restante"></div>
-            <div class="code-sticker code-sticker--small" id="header-code" aria-label="Código de sala">----</div>
-        </div>
-
-        <div class="player-info">
-            <div class="player-score" id="player-score"></div>
-        </div>
-
-        <div class="status-card" id="status-card" role="status" aria-live="polite" aria-atomic="true">
-            <div class="category-label" id="category-label" style="display: none;"></div>
-            <div class="current-word hidden" id="current-word"></div>
-            <div class="waiting-message" id="waiting-message">
-                Espera unos segundos...
-            </div>
-        </div>
-
-        <div class="words-input-section hidden" id="words-input-section">
-            <div class="input-row">
-                <input type="text" id="current-word-input" class="word-input" 
-                       placeholder="Escribe..." autocomplete="off">
-                <button class="btn-add" id="btn-add-word" aria-label="Agregar palabra">send</button>
+                <div class="header-round" id="header-round" aria-live="polite" aria-label="Ronda actual"></div>
+                <div class="header-timer" id="header-timer" aria-live="assertive" aria-label="Tiempo restante de la ronda"></div>
+                <div class="code-sticker code-sticker--small" id="header-code" aria-label="Código de sala">----</div>
             </div>
 
-            <div class="words-list hidden" id="words-list-container">
-                <div class="words-list-title">
-                    Tus palabras (<span id="word-count">0</span>/<span id="max-words">6</span>)
+            <div class="player-info">
+                <div class="player-score" id="player-score"></div>
+            </div>
+
+            <div class="status-card" id="status-card" role="status" aria-live="polite" aria-atomic="true">
+                <div class="category-label" id="category-label" style="display: none;"></div>
+                <div class="current-word hidden" id="current-word"></div>
+                <div class="waiting-message" id="waiting-message">
+                    Espera unos segundos...
                 </div>
-                <div id="words-list"></div>
             </div>
 
-            <div class="submit-section">
-                <button class="btn-submit" id="btn-submit" aria-label="Pasar al siguiente">⏭️ PASO</button>
+            <div class="words-input-section hidden" id="words-input-section">
+                <div class="input-row">
+                    <input type="text" id="current-word-input" class="word-input" 
+                           placeholder="Escribe..." autocomplete="off" aria-label="Campo de entrada para palabras">
+                    <button class="btn-add" id="btn-add-word" aria-label="Agregar palabra al listado">send</button>
+                </div>
+
+                <div class="words-list hidden" id="words-list-container">
+                    <div class="words-list-title">
+                        Tus palabras (<span id="word-count">0</span>/<span id="max-words">6</span>)
+                    </div>
+                    <div id="words-list"></div>
+                </div>
+
+                <div class="submit-section">
+                    <button class="btn-submit" id="btn-submit" aria-label="Enviar respuestas o pasar">⏭️ PASO</button>
+                </div>
             </div>
+
+            <div class="results-section" id="results-section" role="region" aria-label="Resultados de la ronda"></div>
         </div>
-
-        <div class="results-section" id="results-section"></div>
-
-    </div>
-        </div>
-        
-
-    <div class="countdown-overlay" id="countdown-overlay">
-        <div class="countdown-number" id="countdown-number"></div>
     </div>
 
+    <!-- COUNTDOWN OVERLAY (Mostrado durante INITIAL_TIMER antes de que comience la ronda) -->
+    <div class="countdown-overlay" id="countdown-overlay" role="status" aria-live="assertive" aria-label="Contador regresivo">
+        <div class="countdown-number" id="countdown-number" aria-atomic="true"></div>
+    </div>
+
+    <!-- MODAL EDITAR NOMBRE Y AURA -->
     <div class="modal-overlay" id="modal-edit-name" style="display: none;">
         <div class="modal-content">
             <div class="modal-title">Cambiar Nombre</div>
-            <input type="text" id="modal-name-input" class="input-field" maxlength="20" autocomplete="off">
+            <input type="text" id="modal-name-input" class="input-field" maxlength="20" autocomplete="off" aria-label="Nuevo nombre">
             
             <div class="input-group" style="margin-top: 15px;">
                 <label class="input-label">✨ Tu Aura</label>
@@ -109,15 +108,15 @@
     </div>
 
     <!-- BOTÓN HAMBURGUESA -->
-    <button class="btn-hamburger" id="btn-hamburger-player" aria-label="Abrir menú">
+    <button class="btn-hamburger" id="btn-hamburger-player" aria-label="Abrir menú de opciones">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
     </button>
-    <div class="player-name-display" id="player-name-display">---</div>
+    <div class="player-name-display" id="player-name-display" aria-label="Tu nombre en el juego">---</div>
 
     <!-- MENÚ HAMBURGUESA PLAYER (CONTROLADO POR menu-opciones.js) -->
-    <nav class="hamburger-menu" id="hamburger-menu-player" aria-label="Menú de navegación">
+    <nav class="hamburger-menu" id="hamburger-menu-player" aria-label="Menú de navegación y opciones">
         <div class="hamburger-header">Menú</div>
         <button class="hamburger-option" id="hamburger-customize">✨ Personalizar</button>
         <button class="hamburger-option hamburger-danger" id="hamburger-abandon">🚺 Retirarse</button>
@@ -125,12 +124,17 @@
     </nav>
 
     <!-- Scripts Modulares (orden importa) -->
+    <!-- Comunicación y sincronización -->
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
+    
+    <!-- Sistemas de juego -->
     <script src="./js/aura-system.js"></script>
     <script src="./js/word-comparison.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/menu-opciones.js"></script>
+    
+    <!-- Gestor principal del jugador -->
     <script src="./js/player-manager.js"></script>
 </body>
 </html>
