@@ -1,3 +1,8 @@
+/**
+ * Create Game Modal - Modal para crear nuevas partidas
+ * Maneja: carga de diccionario, categorías, creación de partida
+ */
+
 class CreateGameModal {
     constructor() {
         this.modalElement = document.getElementById('modal-create-game');
@@ -107,6 +112,43 @@ class CreateGameModal {
         }
     }
 
+    /**
+     * 🔧 Inicializar el host manager después de crear partida
+     * Checks si initHostManager está disponible antes de llamar
+     */
+    initializeHostManager() {
+        if (typeof initHostManager === 'function') {
+            // ✅ initHostManager está disponible
+            console.log('[INFO] Calling initHostManager()');
+            try {
+                initHostManager();
+            } catch (error) {
+                console.error('[ERROR] initHostManager() failed:', error);
+                this.handleHostManagerError();
+            }
+        } else {
+            // ❌ initHostManager no está disponible
+            console.warn('[WARN] initHostManager not available, using fallback');
+            this.handleHostManagerError();
+        }
+    }
+
+    /**
+     * Fallback si initHostManager no está disponible
+     */
+    handleHostManagerError() {
+        console.log('[INFO] Redirecting to host.html');
+        const gameCode = document.querySelector('[data-game-code]')?.dataset.gameCode ||
+                        localStorage.getItem('hostGameCode') ||
+                        document.querySelector('#code-sticker-value')?.textContent;
+        
+        if (gameCode) {
+            window.location.href = `./host.html?code=${encodeURIComponent(gameCode)}`;
+        } else {
+            this.showMessage('Error inicializando host', 'error');
+        }
+    }
+
     async handleCreateClick() {
         this.btnCreate.disabled = true;
         this.showMessage('Creando partida...', 'info');
@@ -162,14 +204,15 @@ class CreateGameModal {
                 determineUIState();
             }
 
+            // 🔧 FIX: Usar método seguro para inicializar host manager
             setTimeout(() => {
-                initHostManager();
+                this.initializeHostManager();
             }, 100);
         } catch (error) {
             console.error('[ERROR] Creating game:', error);
             
             if (error.name === 'AbortError') {
-                this.showMessage('Timeout: La solicitud tard demasiado', 'error');
+                this.showMessage('Timeout: La solicitud tardó demasiado', 'error');
             } else {
                 this.showMessage('Error creando partida', 'error');
             }
@@ -194,3 +237,5 @@ if (document.readyState === 'loading') {
 } else {
     new CreateGameModal();
 }
+
+console.log('%c✅ create-game-modal.js v2: Safe initialization with initHostManager guard', 'color: #0066FF; font-weight: bold; font-size: 12px');

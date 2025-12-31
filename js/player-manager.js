@@ -52,6 +52,13 @@ class PlayerManager {
             this.showJoinModal();
         }
 
+        // 🧹 FIX: Add cleanup listener
+        window.addEventListener('beforeunload', () => {
+            if (playerManager) {
+                playerManager.destroy();
+            }
+        });
+
         debug('✅ PlayerManager inicializado');
     }
 
@@ -524,7 +531,6 @@ class PlayerManager {
                 safeShowElement(this.elements.waitingMessage);
             }
             
-            // 🔄 CAMBIO OPCIÓN C: Mantener visible pero read-only
             if (this.elements.wordsListContainer) {
                 this.elements.wordsListContainer.classList.add('read-only');
             }
@@ -544,7 +550,6 @@ class PlayerManager {
             safeHideElement(this.elements.waitingMessage);
             safeShowElement(this.elements.wordsInputSection);
             
-            // Remover clase read-only para permitir edición
             if (this.elements.wordsListContainer) {
                 this.elements.wordsListContainer.classList.remove('read-only');
             }
@@ -558,17 +563,11 @@ class PlayerManager {
             }
         }
 
-        // CAMBIO: Usar round_started_at para el timer
         if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
     }
 
-    /**
-     * 🔄 CAMBIO OPCIÓN C: addWord() BLOQUEA al alcanzar maxWords
-     * - NO auto-ready
-     * - Solo bloquea agregar, permite editar
-     */
     async addWord() {
         const input = this.elements.currentWordInput;
         if (!input) return;
@@ -576,7 +575,6 @@ class PlayerManager {
         const word = input.value.trim();
         if (!word) return;
 
-        // 🔄 CAMBIO: Bloquear si ya tenemos maxWords
         if (this.myWords.length >= this.maxWords) {
             showNotification(`📦 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
             return;
@@ -613,7 +611,6 @@ class PlayerManager {
         this.scheduleWordsUpdate();
         input.focus();
 
-        // 🔄 CAMBIO: Solo actualizar botón, NO marcar ready
         if (this.myWords.length === this.maxWords) {
             debug(`📦 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
             this.updateFinishButtonText();
@@ -630,7 +627,6 @@ class PlayerManager {
             safeShowElement(this.elements.wordsListContainer);
 
             if (this.elements.wordsList) {
-                // 🔄 CAMBIO: Ícono de lápiz (✏️) para editar
                 this.elements.wordsList.innerHTML = this.myWords.map((word, idx) => `
                     <div class="word-item" onclick="playerManager.removeWord(${idx})">
                         <span class="word-text">${sanitizeText(word)}</span>
@@ -643,18 +639,12 @@ class PlayerManager {
         }
     }
 
-    /**
-     * 🔄 CAMBIO OPCIÓN C: removeWord() permite EDITAR
-     * - Guarda palabra removida en el input para editarla
-     * - Si estábamos ready y borramos palabras, revertir a estado editable
-     */
     removeWord(index) {
         const removed = this.myWords.splice(index, 1)[0] || '';
         
         this.updateWordsList();
         this.scheduleWordsUpdate();
 
-        // 🔄 CAMBIO: Precargar el input con la palabra removida
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.value = removed;
             
@@ -663,7 +653,6 @@ class PlayerManager {
             }
         }
 
-        // Si quitamos palabras y estábamos ready, volver a estado editable
         if (this.isReady && this.myWords.length < this.maxWords) {
             debug('🔼 Revertiendo a estado editable (palabras removidas)', 'debug');
             this.markNotReady();
@@ -704,24 +693,14 @@ class PlayerManager {
         }
     }
 
-    /**
-     * 🔄 CAMBIO OPCIÓN C: handleFinishButton()
-     * Ejecuta cuando jugador presiona ENVIAR (6 palabras) o PASO (menos de 6)
-     * - Marca como ready (confirmó terminar)
-     */
     async handleFinishButton() {
         if (this.isReady) {
-            // Ya está ready, desactivar (volver atrás)
             await this.markNotReady();
         } else {
-            // Marcar como terminado (ready) - confirmó fin
             await this.markReady();
         }
     }
 
-    /**
-     * Actualizar texto del botón según cantidad de palabras
-     */
     updateFinishButtonText() {
         if (!this.elements.btnSubmit) return;
         
@@ -732,12 +711,6 @@ class PlayerManager {
         }
     }
 
-    /**
-     * 🔄 CAMBIO OPCIÓN C: markReady()
-     * Solo ejecuta cuando jugador presiona ENVIAR o PASO
-     * - Deshabilita input y formulario
-     * - Envía confirmed finish al servidor (forced_pass: true)
-     */
     async markReady() {
         if (!this.client) return;
 
@@ -757,17 +730,13 @@ class PlayerManager {
         try {
             await this.client.sendAction('submit_answers', {
                 answers: this.myWords,
-                forced_pass: true  // Confirmó fin
+                forced_pass: true
             });
         } catch (error) {
             debug('Error marcando como ready:', error, 'error');
         }
     }
 
-    /**
-     * 🔄 CAMBIO OPCIÓN C: markNotReady()
-     * Revertir a estado editable (si jugador borra palabras estando ready)
-     */
     async markNotReady() {
         if (!this.client) return;
 
@@ -863,7 +832,6 @@ class PlayerManager {
         const remaining = getRemainingTime(state.round_started_at, state.round_duration);
         updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
 
-        // Auto-submit ANTES de que remaining sea 0
         if (remaining <= 500 && this.gameState.status === 'playing') {
             const me = this.gameState.players?.[this.playerId];
             if (me?.status !== 'ready') {
@@ -873,6 +841,9 @@ class PlayerManager {
         }
     }
 
+    /**
+     * 🧹 FIX: Proper cleanup of timers and RAF
+     */
     stopTimer() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
@@ -882,6 +853,27 @@ class PlayerManager {
             cancelAnimationFrame(this.countdownRAFId);
             this.countdownRAFId = null;
         }
+    }
+
+    /**
+     * 🧹 FIX: Destroy method for proper cleanup
+     */
+    destroy() {
+        debug('🗑️ Destroying PlayerManager...', 'info');
+        
+        // Stop all timers
+        this.stopTimer();
+        
+        // Disconnect client
+        if (this.client) {
+            this.client.disconnect();
+            this.client = null;
+        }
+        
+        // Clear state
+        this.myWords = [];
+        this.gameState = null;
+        this.elements = {};
     }
 
     async autoSubmitWords() {
@@ -992,4 +984,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js v7: Opción C - Can\'t add new words, can edit, ready = confirmed finish', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js v8: Memory leak fixes + proper cleanup', 'color: #FF00FF; font-weight: bold; font-size: 12px');
