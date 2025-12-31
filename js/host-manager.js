@@ -2,10 +2,12 @@
  * Host Manager - Gestión de partida en host
  * Maneja: timer, categoría, ranking, panel tabs
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
+ * 
+ * ✅ REFACTORIZADO: Usa SessionManager y WordEngineManager
  */
 
 function determineUIState() {
-    const hasSession = StorageManager.isHostSessionActive();
+    const hasSession = hostSession.isSessionActive(); // ✅ CAMBIO: Usa SessionManager
     const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
     const root = document.documentElement;
     
@@ -40,10 +42,8 @@ class HostManager {
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
         
-        // Word comparison engine
-        this.wordEngine = null;
+        // ✅ CAMBIO: Usar WordEngineManager centralizado
         this.wordEngineReady = false;
-        this.wordEngineInitPromise = null;
         this.initWordEngine();
         
         this.loadConfigAndInit();
@@ -85,70 +85,26 @@ class HostManager {
         }
     }
 
-    initWordEngine() {
-        if (typeof WordEquivalenceEngine !== 'function') {
-            debug('⚠️  WordEquivalenceEngine no disponible en host', null, 'warning');
-            this.wordEngineReady = false;
-            return;
-        }
-
+    // ✅ REFACTORIZADO: Usa WordEngineManager
+    async initWordEngine() {
         try {
-            this.wordEngine = new WordEquivalenceEngine();
-            
-            this.wordEngineInitPromise = Promise.race([
-                this.wordEngine.init('./js/sinonimos.json'),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout cargando diccionario')), 3000)
-                )
-            ])
-            .then(() => {
-                this.wordEngineReady = true;
-                debug('📜 Word engine inicializado en host', null, 'success');
-                console.log('%c✅ HOST: Word engine listo con', 'color: #00AA00; font-weight: bold', 
-                    Object.keys(this.wordEngine.dictionaryMap).length, 'palabras en diccionario');
-            })
-            .catch(err => {
-                this.wordEngineReady = false;
-                debug('❌ Error inicializando word engine: ' + err.message, null, 'error');
-                console.error('%c❌ HOST: Word engine falló', 'color: #AA0000; font-weight: bold', err.message);
-            });
-        } catch (e) {
-            debug('❌ Word engine no disponible: ' + e.message, null, 'warning');
+            await wordEngineManager.initialize();
+            this.wordEngineReady = true;
+            debug('📜 Word engine inicializado en host', null, 'success');
+        } catch (error) {
             this.wordEngineReady = false;
+            debug('❌ Error inicializando word engine: ' + error.message, null, 'error');
         }
     }
 
-    /**
-     * Obtiene la forma canónica de una palabra para agrupar en comparación.
-     */
+    // ✅ REFACTORIZADO: Delega a WordEngineManager
     getCanonicalForCompare(word) {
-        const raw = (word || '').toString().trim();
-        if (!raw) return '';
-
-        if (this.wordEngine) {
-            const canonical = this.wordEngine.getCanonical(raw);
-            
-            if (this.wordEngine.debugMode) {
-                console.log(`🔤 HOST: "${raw}" → canonical "${canonical}" (engine${this.wordEngineReady ? ' READY' : ' fallback local'})`);
-            }
-            
-            return canonical;
-        }
-
-        console.warn(`⚠️  Word engine no disponible, fallback simple para "${raw}"`);
-        return raw
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '');
+        return wordEngineManager.getCanonical(word);
     }
 
-    /**
-     * Obtiene el tipo de coincidencia entre dos palabras.
-     */
+    // ✅ REFACTORIZADO: Delega a WordEngineManager
     getMatchType(word1, word2) {
-        if (!this.wordEngine) return null;
-        return this.wordEngine.getMatchType(word1, word2);
+        return wordEngineManager.getMatchType(word1, word2);
     }
 
     /**
@@ -340,14 +296,8 @@ class HostManager {
 
     handleNewGame() {
         if (confirm('¿Crear una nueva partida? Se perderá el progreso actual.')) {
-            if (typeof StorageManager !== 'undefined') {
-                StorageManager.clearHostSession();
-            } else {
-                localStorage.removeItem('hostGameCode');
-                localStorage.removeItem('gameId');
-                localStorage.removeItem('isHost');
-                localStorage.removeItem('gameCategory');
-            }
+            // ✅ CAMBIO: Usa SessionManager para limpiar
+            hostSession.clear();
             location.reload();
         }
     }
@@ -371,14 +321,8 @@ class HostManager {
 
     handleTerminate() {
         if (confirm('¿Estás seguro de que quieres terminar la partida?')) {
-            if (typeof StorageManager !== 'undefined') {
-                StorageManager.clearHostSession();
-            } else {
-                localStorage.removeItem('hostGameCode');
-                localStorage.removeItem('gameId');
-                localStorage.removeItem('isHost');
-                localStorage.removeItem('gameCategory');
-            }
+            // ✅ CAMBIO: Usa SessionManager para limpiar
+            hostSession.clear();
             location.href = './index.html';
         }
     }
@@ -762,7 +706,7 @@ class HostManager {
                     };
                     scoreDelta[playerId] += points;
                     
-                    if (this.wordEngine && this.wordEngine.debugMode) {
+                    if (wordEngineManager.engine && wordEngineManager.engine.debugMode) {
                         console.log(`⭐ ${word} vs otro: tipo=${matchType}, pts=${points}`);
                     }
                 } else {
@@ -805,10 +749,11 @@ class HostManager {
         this.roundEnded = true;
 
         try {
-            if (this.wordEngineInitPromise) {
+            // ✅ CAMBIO: Esperar a que WordEngineManager esté listo
+            if (!wordEngineManager.isReady) {
                 try {
                     await Promise.race([
-                        this.wordEngineInitPromise,
+                        wordEngineManager.initialize(),
                         new Promise((_, reject) => 
                             setTimeout(() => reject(new Error('Timeout esperando word engine')), 1000)
                         )
@@ -921,7 +866,7 @@ class HostManager {
                 numberEl.textContent = '¿Preparado?';
             } else if (seconds > 0) {
                 numberEl.classList.add('timer-hury');
-                const displayValue = Math.max(1);
+                const displayValue = Math.max(1, seconds);
                 numberEl.textContent = displayValue.toString();
             } else {
                 numberEl.classList.remove('timer-hury');
@@ -989,11 +934,7 @@ function initHostManager() {
     let gameCode = urlParams.get('code');
 
     if (!gameCode) {
-        if (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined') {
-            gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
-        } else {
-            gameCode = localStorage.getItem('hostGameCode');
-        }
+        gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
     }
 
     if (!gameCode) {
@@ -1001,10 +942,9 @@ function initHostManager() {
     }
 
     hostManager = new HostManager(gameCode);
-
-    window.addEventListener('beforeunload', () => {
-        if (hostManager) hostManager.destroy();
-    });
+    
+    // ✅ CAMBIO: Usa SessionManager para registrar beforeunload automático
+    hostSession.registerManager(hostManager);
 }
 
 if (document.readyState === 'loading') {
@@ -1013,4 +953,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js: Config loaded from server', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js: REFACTORIZADO con SessionManager + WordEngineManager', 'color: #00FF00; font-weight: bold; font-size: 12px');
