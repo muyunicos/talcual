@@ -122,6 +122,35 @@ class HostManager {
             .replace(/[^A-Z0-9]/g, '');
     }
 
+    /**
+     * Obtiene el tipo de coincidencia entre dos palabras.
+     * Retorna 'EXACTA' | 'PLURAL' | 'GENERO' | 'SINONIMO' | null
+     */
+    getMatchType(word1, word2) {
+        if (!this.wordEngine) return null;
+        return this.wordEngine.getMatchType(word1, word2);
+    }
+
+    /**
+     * Calcula puntos según el tipo de coincidencia.
+     */
+    calculatePointsByType(matchType) {
+        switch (matchType) {
+            case 'EXACTA':
+                return 10;  // Palabras idénticas
+            case 'PLURAL':
+                return 8;   // Plurales, diminutivos, compuestos
+            case 'GENERO':
+                return 5;   // Diferencia de género (loca/loco)
+            case 'SINONIMO':
+                return 5;   // Del diccionario
+            case 'SIMILAR':
+                return 5;   // Stems similares
+            default:
+                return 0;
+        }
+    }
+
     checkActiveSession() {
         return StorageManager.isHostSessionActive();
     }
@@ -583,7 +612,7 @@ class HostManager {
     }
 
     processRoundResults() {
-        debug('💶 Calculando resultados con word-comparison engine...', null, 'info');
+        debug('💶 Calculando resultados con scoring variable...', null, 'info');
         const state = this.gameState;
         if (!state || !state.players) {
             debug('❌ Estado inválido para procesar resultados', null, 'error');
@@ -607,10 +636,11 @@ class HostManager {
             }
         });
 
-        // Calcular matching de palabras usando canonicalización
+        // Calcular matching de palabras usando canonicalización y SCORING VARIABLE
         const roundResults = {};
-        const canonicalToOriginal = {};  // Map de canonical -> [list of original words]
+        const canonicalToOriginal = {};
         const wordFrequency = {};
+        const matchTypes = {};  // Guardar tipo de coincidencia para cada canonical
 
         Object.entries(playerAnswers).forEach(([playerId, answers]) => {
             roundResults[playerId] = {};
@@ -636,39 +666,60 @@ class HostManager {
 
         debug(`📈 Palabras encontradas (canonical): ${Object.keys(wordFrequency).length}`, null, 'info');
 
-        // Calcular puntos y results por jugador
+        // Calcular puntos CON SCORING VARIABLE
         const scoreDelta = {};
         Object.entries(playerAnswers).forEach(([playerId, answers]) => {
             scoreDelta[playerId] = 0;
             
-            answers.forEach(word => {
+            answers.forEach((word, wordIdx) => {
                 const canonical = this.getCanonicalForCompare(word);
                 const freq = wordFrequency[canonical];
                 
                 if (freq && freq.count > 1) {
                     // Palabra coincidió con otro jugador
-                    const points = 10;
+                    // Determinar tipo de coincidencia
+                    let matchType = 'SIMILAR';  // default
+                    
+                    // Buscar la primera coincidencia de otro jugador para este canonical
+                    const otherPlayerId = freq.players.find(p => p !== playerId);
+                    if (otherPlayerId) {
+                        const otherWord = playerAnswers[otherPlayerId].find(w => 
+                            this.getCanonicalForCompare(w) === canonical
+                        );
+                        if (otherWord) {
+                            matchType = this.getMatchType(word, otherWord) || 'SIMILAR';
+                        }
+                    }
+                    
+                    const points = this.calculatePointsByType(matchType);
+                    
                     roundResults[playerId][word] = {
                         count: freq.count,
                         points: points,
+                        match_type: matchType,  // Para debug
                         matched_with: freq.players.filter(p => p !== playerId).map(pId => {
                             const player = playersArray.find(pl => pl.id === pId);
                             return player?.name || 'Anonym';
                         })
                     };
                     scoreDelta[playerId] += points;
+                    
+                    if (this.wordEngine && this.wordEngine.debugMode) {
+                        console.log(`⭐ ${word} vs otro: tipo=${matchType}, pts=${points}`);
+                    }
                 } else {
                     // Palabra no coincidió
                     roundResults[playerId][word] = {
                         count: 1,
                         points: 0,
+                        match_type: null,
                         matched_with: []
                     };
                 }
             });
         });
 
-        debug(`⭐ Deltas de puntos calculados`, null, 'info');
+        debug(`⭐ Deltas de puntos calculados (scoring variable)`, null, 'info');
 
         // Calcular top palabras (usando la palabra más común de cada canonical)
         const topWords = Object.entries(wordFrequency)
@@ -916,4 +967,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js FIX: getCanonicalForCompare() SIEMPRE usa engine con stemming fallback', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js v3: Sistema de puntuación variable (10pts exacta, 8pts plural, 5pts género/sinónimo)', 'color: #00FF00; font-weight: bold; font-size: 12px');
