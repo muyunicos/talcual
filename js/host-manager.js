@@ -36,6 +36,7 @@ class HostManager {
         this.minPlayers = 2;
         this.currentPlayers = [];
         this.gameState = {};
+        this.countdownRAFId = null;
         
         this.initUI();
         this.attachEventListeners();
@@ -505,39 +506,44 @@ class HostManager {
         overlay.classList.add('active');
     }
 
-    async showHostCountdown(state) {
-        const overlay = document.getElementById('countdown-overlay-host');
-        if (!overlay) return;
-
-        overlay.classList.add('active');
-        const numberEl = document.getElementById('countdown-number-host');
-        if (!numberEl) return;
-
-        // Use countdown_duration from state, default 4000ms if missing
-        const countdownDuration = state.countdown_duration || 4000;
-        const elapsedSinceStart = timeSync.getServerTime() - state.round_starts_at;
-
-        debug(`\u23f1\ufe0f Host Countdown: duration=${countdownDuration}ms, elapsed=${elapsedSinceStart}ms`, 'debug');
-
-        for (let i = 3; i >= 1; i--) {
-            const numberShowTime = countdownDuration - (i * 1000);
-            const waitTime = Math.max(0, numberShowTime - elapsedSinceStart);
-
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    numberEl.textContent = i.toString();
-                    numberEl.style.animation = 'none';
-                    void numberEl.offsetWidth;
-                    numberEl.style.animation = '';
-                    resolve();
-                }, waitTime);
-            });
+    runPreciseCountdown(roundStartsAt, countdownDuration) {
+        if (this.countdownRAFId) {
+            cancelAnimationFrame(this.countdownRAFId);
         }
 
-        const remainingCountdown = Math.max(0, countdownDuration - (timeSync.getServerTime() - state.round_starts_at));
-        await new Promise(resolve => setTimeout(resolve, remainingCountdown + 100));
+        const overlay = document.getElementById('countdown-overlay-host');
+        const numberEl = document.getElementById('countdown-number-host');
 
-        overlay.classList.remove('active');
+        if (!overlay || !numberEl) return;
+
+        overlay.classList.add('active');
+        numberEl.style.fontSize = 'inherit';
+
+        const update = () => {
+            const nowServer = timeSync.getServerTime();
+            const elapsed = nowServer - roundStartsAt;
+            const remaining = Math.max(0, countdownDuration - elapsed);
+            const seconds = Math.ceil(remaining / 1000);
+
+            if (seconds > 3) {
+                numberEl.textContent = '¿Preparado?';
+                numberEl.style.fontSize = '1.2em';
+            } else if (seconds > 0) {
+                const displayValue = Math.max(1, seconds - 1);
+                numberEl.textContent = displayValue.toString();
+                numberEl.style.fontSize = 'inherit';
+            } else {
+                numberEl.textContent = '';
+            }
+
+            if (remaining > 0) {
+                this.countdownRAFId = requestAnimationFrame(update);
+            } else {
+                overlay.classList.remove('active');
+            }
+        };
+
+        this.countdownRAFId = requestAnimationFrame(update);
     }
 
     async startGame() {
@@ -554,12 +560,12 @@ class HostManager {
             if (!result.success) {
                 alert(result.message || 'Error al iniciar la ronda');
             } else {
-                if (result.state && result.state.round_started_at && result.state.round_duration) {
+                if (result.state && result.state.round_starts_at && result.state.countdown_duration) {
                     if (typeof timeSync !== 'undefined' && timeSync && !timeSync.isCalibrated) {
-                        timeSync.calibrate(result.state.round_started_at, result.state.round_duration);
+                        timeSync.calibrate(result.state.round_starts_at, result.state.round_duration);
                         console.log('%c⏱️ HOST SYNC CALIBRADO', 'color: #3B82F6; font-weight: bold', `Offset: ${timeSync.offset}ms`);
                     }
-                    await this.showHostCountdown(result.state);
+                    this.runPreciseCountdown(result.state.round_starts_at, result.state.countdown_duration);
                 }
             }
         } catch (error) {
@@ -570,6 +576,10 @@ class HostManager {
 
     destroy() {
         this.stopTimer();
+        if (this.countdownRAFId) {
+            cancelAnimationFrame(this.countdownRAFId);
+            this.countdownRAFId = null;
+        }
         if (this.client) {
             this.client.disconnect();
         }
@@ -607,4 +617,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - Countdown uses state.countdown_duration + synchronized timing', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - Countdown synchronized with player-manager using RAF + timeSync', 'color: #FF00FF; font-weight: bold; font-size: 12px');
