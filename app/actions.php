@@ -452,21 +452,7 @@ try {
 
             foreach ($answers as $word) {
                 $trimmed = trim($word);
-                if (empty($trimmed)) {
-                    continue;
-                }
-
-                $validation = validatePlayerWord($trimmed);
-
-                if ($validation['valid']) {
-                    $normalized = strtoupper($trimmed);
-
-                    if (!in_array($normalized, $validAnswers, true)) {
-                        $validAnswers[] = $normalized;
-                    }
-                } else {
-                    $errors[] = $validation['error'];
-                }
+                $validAnswers[] = strtoupper($trimmed);
             }
 
             if (count($validAnswers) > MAX_WORDS_PER_PLAYER) {

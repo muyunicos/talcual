@@ -375,24 +375,19 @@ function getRandomWord() {
 // Seleccionar palabra aleatoria de una categoría
 function getRandomWordFromCategory($category) {
     $words = getWordsByCategory($category);
-
     if (empty($words)) {
         return getRandomWord();
     }
-
     return $words[array_rand($words)];
 }
 
-// Verificar si un código de sala existe
 function gameExists($gameId) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) return false;
-    
     $file = GAME_STATES_DIR . '/' . $gameId . '.json';
     return file_exists($file) && (time() - filemtime($file) < MAX_GAME_AGE);
 }
 
-// Obtener estadísticas del diccionario
 function getDictionaryStats() {
     $dict = loadDictionary();
 
@@ -408,8 +403,6 @@ function getDictionaryStats() {
             $count = count($palabras);
             $stats['total_palabras'] += $count;
             $stats['categorias_detalle'][$categoria] = $count;
-            
-            // Contar palabras que sirven para código
             foreach ($palabras as $palabra) {
                 if (mb_strlen($palabra) <= MAX_CODE_LENGTH) {
                     $stats['palabras_codigo']++;
@@ -421,10 +414,8 @@ function getDictionaryStats() {
     return $stats;
 }
 
-// Analytics básico (MEJORA #10)
 function trackGameAction($gameId, $action, $data = []) {
     if (!DEV_MODE && !file_exists(ANALYTICS_FILE)) {
-        // Solo trackear en producción si analytics existe
         return;
     }
     
@@ -443,7 +434,6 @@ function trackGameAction($gameId, $action, $data = []) {
     
     $analytics[] = $entry;
     
-    // Mantener solo últimas 1000 entradas
     if (count($analytics) > 1000) {
         $analytics = array_slice($analytics, -1000);
     }
@@ -451,33 +441,6 @@ function trackGameAction($gameId, $action, $data = []) {
     @file_put_contents(ANALYTICS_FILE, json_encode($analytics, JSON_PRETTY_PRINT));
 }
 
-// Validar palabra del jugador (MEJORA #14, #20)
-function validatePlayerWord($word, $currentWord = '') {
-    if (empty($word)) {
-        return ['valid' => false, 'error' => 'Palabra vacía'];
-    }
-    
-    $word = trim($word);
-    
-    // Validar longitud
-    if (mb_strlen($word) > MAX_WORD_LENGTH) {
-        return ['valid' => false, 'error' => 'Palabra demasiado larga'];
-    }
-    
-    // No permitir espacios (MEJORA #20)
-    if (strpos($word, ' ') !== false) {
-        return ['valid' => false, 'error' => 'No se permiten espacios'];
-    }
-    
-    // No permitir la palabra actual
-    if (!empty($currentWord) && strtoupper($word) === strtoupper($currentWord)) {
-        return ['valid' => false, 'error' => 'No puedes usar la palabra actual'];
-    }
-    
-    return ['valid' => true];
-}
-
-// Ejecutar limpieza automática mejorada (MEJORA #16)
 if (rand(1, 100) <= (CLEANUP_PROBABILITY * 100)) {
     cleanupOldGames();
 }
