@@ -178,6 +178,78 @@ function renderAuraSelectors(container, auras, selectedAura = null, onSelect = n
     container.appendChild(randomizer);
 }
 
+function renderAuraSelectorsEdit(container, currentAura, onSelect = null) {
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const auras = [];
+    if (currentAura && isValidAura(currentAura)) {
+        const [c1, c2] = currentAura.split(',').map(c => c.trim());
+        auras.push({
+            color1: c1,
+            color2: c2,
+            hex: currentAura
+        });
+    }
+    
+    const additionalAuras = generateRandomAuras();
+    auras.push(...additionalAuras);
+    
+    auras.forEach((aura, index) => {
+        const circle = document.createElement('div');
+        circle.className = 'aura-circle';
+        circle.dataset.color = aura.hex;
+        circle.dataset.index = index;
+        
+        const gradient = `linear-gradient(135deg, ${aura.color1} 0%, ${aura.color2} 100%)`;
+        circle.style.background = gradient;
+        
+        if (index === 0) {
+            circle.classList.add('selected');
+        }
+        
+        circle.addEventListener('click', () => {
+            container.querySelectorAll('.aura-circle:not(.aura-randomizer)').forEach(c => {
+                c.classList.remove('selected');
+            });
+            circle.classList.add('selected');
+            
+            if (onSelect) {
+                onSelect(aura);
+            }
+        });
+        container.appendChild(circle);
+    });
+    
+    const randomizer = document.createElement('div');
+    randomizer.className = 'aura-circle aura-randomizer';
+    randomizer.dataset.index = 'random';
+    randomizer.innerHTML = '✨';
+    randomizer.title = 'Generar nuevas auras';
+    
+    randomizer.addEventListener('click', () => {
+        const newAuras = generateRandomAuras();
+        const selectedElement = container.querySelector('.aura-circle.selected');
+        const selectedColor = selectedElement ? selectedElement.dataset.color : (currentAura || null);
+        
+        const allAuras = [];
+        if (selectedColor && isValidAura(selectedColor)) {
+            const [c1, c2] = selectedColor.split(',').map(c => c.trim());
+            allAuras.push({
+                color1: c1,
+                color2: c2,
+                hex: selectedColor
+            });
+        }
+        allAuras.push(...newAuras);
+        
+        renderAuraSelectorsEdit(container, selectedColor || currentAura, onSelect);
+    });
+    
+    container.appendChild(randomizer);
+}
+
 function isValidAura(colorStr) {
     if (!colorStr || typeof colorStr !== 'string') return false;
     const parts = colorStr.split(',');
