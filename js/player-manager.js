@@ -1,3 +1,8 @@
+/**
+ * Player Manager - Gestión de jugador en partida
+ * Maneja: unión, palabras, timer, resultados
+ */
+
 class PlayerManager {
     constructor() {
         this.gameId = null;
@@ -27,7 +32,7 @@ class PlayerManager {
     }
 
     initialize() {
-        debug('🍣 Inicializando PlayerManager');
+        debug('📃 Inicializando PlayerManager');
         this.cacheElements();
         this.attachEventListeners();
 
@@ -502,7 +507,7 @@ class PlayerManager {
         debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, 'debug');
 
         if (isReady) {
-            debug('📏 Ya enviaste tus palabras', 'debug');
+            debug('📶 Ya enviaste tus palabras', 'debug');
             if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
             if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
@@ -514,7 +519,7 @@ class PlayerManager {
             }
             safeHideElement(this.elements.wordsInputSection);
         } else {
-            debug('🗸 Puedes escribir palabras', 'debug');
+            debug('💗 Puedes escribir palabras', 'debug');
             if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
@@ -532,7 +537,9 @@ class PlayerManager {
             }
         }
 
-        if (state.round_starts_at && state.round_duration) {
+        // CAMBIO: Usar round_started_at para el timer (cuando COMIENZA LA RONDA REAL)
+        // No round_starts_at (que es cuando comienza el countdown)
+        if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
     }
@@ -740,7 +747,9 @@ class PlayerManager {
     }
 
     updateTimerFromState(state) {
-        const remaining = getRemainingTime(state.round_starts_at, state.round_duration);
+        // CAMBIO: Usar round_started_at (cuando comienza LA RONDA REAL)
+        // No round_starts_at (que es cuando comienza el countdown)
+        const remaining = getRemainingTime(state.round_started_at, state.round_duration);
         updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
 
         // Auto-submit ANTES de que remaining sea 0 (para que server procese y cambie status)
@@ -872,4 +881,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - Fixed: auto-submit before time=0 to show results, timer only updates in playing status', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - REFACTORED: Timer shows only gameplay duration (uses round_started_at)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
