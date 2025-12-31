@@ -102,7 +102,7 @@ function formatTime(ms) {
  * Muestra --:-- hasta que la ronda comience (round_started_at existe)
  * Luego muestra tiempo de ronda (sin countdown)
  * 
- * @param {number} ms - Milisegundos restantes (null/undefined para mostrar --:--)
+ * @param {number} ms - Milisegundos restantes (null/undefined para mostrar --:--)  
  * @param {HTMLElement} element - Elemento donde mostrar
  * @param {string} prefix - Prefijo (ej: '⏳')
  * @param {number} warningThreshold - Mostrar warning desde X ms
@@ -801,25 +801,50 @@ class SessionManager {
 }
 
 /**
- * DictionaryService - Gestión centralizada del diccionario
- * ✅ CENTRALIZA: Carga de JSON, acceso a palabras, categorías
+ * DictionaryService - Gestión centralizada del diccionario + motor de comparación
+ * ✅ CENTRALIZA: Carga de JSON, acceso a palabras, categorías, comparación lingüística
+ * ✅ INTEGRA: WordEquivalenceEngine para análisis semántico de palabras
  * ✅ ELIMINA REDUNDANCIA: Solo un lugar hace fetch a /app/diccionario.json
  */
 class DictionaryService {
     constructor() {
         this.isReady = false;
         this.initPromise = null;
+        this.engine = null; // WordEquivalenceEngine instance
     }
 
+    /**
+     * Inicializa el servicio y su motor de comparación
+     */
     async initialize() {
         if (this.isReady) return;
         if (this.initPromise) return this.initPromise;
 
         this.initPromise = (async () => {
             try {
+                // 1. Cargar diccionario de tips
                 await loadDictionary();
+
+                // 2. Instanciar motor de comparación si está disponible
+                if (typeof WordEquivalenceEngine !== 'undefined') {
+                    this.engine = new WordEquivalenceEngine();
+                    
+                    // El engine carga desde /js/sinonimos.json (diccionario semántico)
+                    try {
+                        const response = await fetch('/js/sinonimos.json', { cache: 'no-store' });
+                        if (response.ok) {
+                            const semiData = await response.json();
+                            this.engine.processDictionary(semiData);
+                            this.engine.isLoaded = true;
+                            debug('🔤 WordEquivalenceEngine integrado en DictionaryService', null, 'success');
+                        }
+                    } catch (e) {
+                        debug('⚠️ No se pudo cargar sinonimos.json, motor sin diccionario semántico', e, 'warn');
+                    }
+                }
+
                 this.isReady = true;
-                debug('📚 DictionaryService inicializado', null, 'success');
+                debug('📚 DictionaryService completamente inicializado', null, 'success');
             } catch (error) {
                 debug('❌ Error inicializando DictionaryService: ' + error.message, null, 'error');
                 this.isReady = false;
@@ -829,20 +854,87 @@ class DictionaryService {
         return this.initPromise;
     }
 
+    /**
+     * Obtiene categorías del diccionario
+     */
     async getCategories() {
         await this.initialize();
         return loadDictionaryCategories();
     }
 
+    /**
+     * Obtiene todas las palabras cargadas
+     */
     async getWords() {
         await this.initialize();
         return loadDictionary();
     }
 
+    /**
+     * Obtiene palabra aleatoria
+     */
     async getRandomWord() {
         const words = await this.getWords();
         if (!words.length) return 'SOL';
         return words[Math.floor(Math.random() * words.length)];
+    }
+
+    /**
+     * 🔤 MÉTODOS PROXY PARA WordEquivalenceEngine
+     * Estos permiten que otros módulos usen la lógica sin acceder directo a engine
+     */
+
+    /**
+     * Obtiene forma canónica de una palabra
+     * @param {string} word
+     * @returns {string}
+     */
+    getCanonical(word) {
+        if (!this.engine || !this.engine.isLoaded) {
+            return normalizeWordForCode(word);
+        }
+        return this.engine.getCanonical(word);
+    }
+
+    /**
+     * Obtiene tipo de coincidencia entre dos palabras
+     * @param {string} word1
+     * @param {string} word2
+     * @returns {string | null} 'EXACTA', 'PLURAL', 'GENERO', 'SINONIMO', null
+     */
+    getMatchType(word1, word2) {
+        if (!this.engine) return null;
+        return this.engine.getMatchType(word1, word2);
+    }
+
+    /**
+     * Compara dos palabras con detalle
+     * @param {string} word1
+     * @param {string} word2
+     * @returns {boolean}
+     */
+    areEquivalent(word1, word2) {
+        if (!this.engine || !this.engine.isLoaded) {
+            // Fallback: comparación local por stems
+            const n1 = normalizeWordForCode(word1);
+            const n2 = normalizeWordForCode(word2);
+            return n1 === n2;
+        }
+        return this.engine.areEquivalent(word1, word2);
+    }
+
+    /**
+     * Compara con tipo de coincidencia
+     * @param {string} word1
+     * @param {string} word2
+     * @returns {object} {match: boolean, type: string | null}
+     */
+    areEquivalentWithType(word1, word2) {
+        if (!this.engine) {
+            const match = this.areEquivalent(word1, word2);
+            return { match, type: match ? 'EQUIVALENTE' : null };
+        }
+        return this.engine.areEquivalentWithType(word1, word2);
     }
 }
 
@@ -912,6 +1004,11 @@ window.playerSession = new SessionManager('player');
 window.dictionaryService = new DictionaryService();
 window.configService = new ConfigService();
 
-debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryService, ConfigService)', null, 'success');
+// ✅ ALIAS PARA BACKWARDS COMPATIBILITY: wordEngineManager -> dictionaryService
+// Esto evita ReferenceError en managers que aún usan wordEngineManager
+window.wordEngineManager = window.dictionaryService;
 
-console.log('%c✅ shared-utils.js - FASE 1 COMPLETA: Servicios centralizados + utilidades legacy', 'color: #10B981; font-weight: bold; font-size: 12px');
+debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryService, ConfigService)', null, 'success');
+debug('✅ wordEngineManager aliased a dictionaryService (para compatibilidad)', null, 'success');
+
+console.log('%c✅ shared-utils.js - FASE 1 COMPLETA: Servicios centralizados + WordEquivalenceEngine integrado', 'color: #10B981; font-weight: bold; font-size: 12px');
