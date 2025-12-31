@@ -13,6 +13,7 @@ class PlayerManager {
         this.gameState = null;
         this.myWords = [];
         this.maxWords = 6;
+        this.isReady = false;  // Track if player marked as ready
         this.timerInterval = null;
         this.countdownTimeout = null;
         this.countdownRAFId = null;
@@ -157,7 +158,7 @@ class PlayerManager {
         }
 
         if (this.elements.btnSubmit) {
-            this.elements.btnSubmit.addEventListener('click', () => this.submitWords());
+            this.elements.btnSubmit.addEventListener('click', () => this.toggleReady());
         }
 
         const hamburgerCustomize = safeGetElement('hamburger-customize');
@@ -507,11 +508,17 @@ class PlayerManager {
         debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, 'debug');
 
         if (isReady) {
-            debug('📶 Ya enviaste tus palabras', 'debug');
-            if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
+            debug('📆 Ya completaste tus palabras', 'debug');
+            this.isReady = true;
+            if (this.elements.currentWordInput) {
+                this.elements.currentWordInput.disabled = true;
+                this.elements.currentWordInput.placeholder = '✅ Ya completaste todas las palabras';
+            }
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
-            if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
-            if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✅ Enviado';
+            if (this.elements.btnSubmit) {
+                this.elements.btnSubmit.disabled = false;
+                this.elements.btnSubmit.textContent = '👍 LISTO';
+            }
 
             if (this.elements.waitingMessage) {
                 this.elements.waitingMessage.textContent = 'Esperando a los demas jugadores...';
@@ -520,10 +527,16 @@ class PlayerManager {
             safeHideElement(this.elements.wordsInputSection);
         } else {
             debug('💗 Puedes escribir palabras', 'debug');
-            if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
+            this.isReady = false;
+            if (this.elements.currentWordInput) {
+                this.elements.currentWordInput.disabled = false;
+                this.elements.currentWordInput.placeholder = 'Ingresa una palabra...';
+            }
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
-            if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
-            if (this.elements.btnSubmit) this.elements.btnSubmit.textContent = '✍️ PASO';
+            if (this.elements.btnSubmit) {
+                this.elements.btnSubmit.disabled = false;
+                this.elements.btnSubmit.textContent = '✍️ PASO';
+            }
 
             safeHideElement(this.elements.waitingMessage);
             safeShowElement(this.elements.wordsInputSection);
@@ -586,6 +599,12 @@ class PlayerManager {
         this.updateWordsList();
         this.scheduleWordsUpdate();
         input.focus();
+
+        // ✅ Si llegamos a maxWords, marcar como "ready" automáticamente
+        if (this.myWords.length >= this.maxWords) {
+            debug(`📦 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
+            this.markReady();
+        }
     }
 
     updateWordsList() {
@@ -601,7 +620,7 @@ class PlayerManager {
                 this.elements.wordsList.innerHTML = this.myWords.map((word, idx) => `
                     <div class="word-item" onclick="playerManager.removeWord(${idx})">
                         <span class="word-text">${sanitizeText(word)}</span>
-                        <span class="word-delete">🗑️</span>
+                        <span class="word-delete">🗸️</span>
                     </div>
                 `).join('');
             }
@@ -614,6 +633,12 @@ class PlayerManager {
         this.myWords.splice(index, 1);
         this.updateWordsList();
         this.scheduleWordsUpdate();
+
+        // Si quitamos palabras y estábamos ready, volver a estado editable
+        if (this.isReady && this.myWords.length < this.maxWords) {
+            debug('🔼 Revertiendo a estado editable (palabras removidas)', 'debug');
+            this.markNotReady();
+        }
     }
 
     scheduleWordsUpdate() {
@@ -650,38 +675,78 @@ class PlayerManager {
         }
     }
 
-    async submitWords() {
-        if (!this.client || !this.elements.btnSubmit) return;
+    /**
+     * Marcar como READY (todas las palabras completas)
+     */
+    async markReady() {
+        if (!this.client) return;
 
-        this.elements.btnSubmit.disabled = true;
-        this.elements.btnSubmit.textContent = 'Enviando...';
+        debug('👍 Marcando como READY', 'info');
+        this.isReady = true;
+
+        // Deshabilitar input
+        if (this.elements.currentWordInput) {
+            this.elements.currentWordInput.disabled = true;
+            this.elements.currentWordInput.placeholder = '✅ Ya completaste todas las palabras';
+        }
+        if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
+        if (this.elements.btnSubmit) {
+            this.elements.btnSubmit.textContent = '👍 LISTO';
+        }
 
         try {
-            const result = await this.client.sendAction('submit_answers', {
+            await this.client.sendAction('submit_answers', {
                 answers: this.myWords,
                 forced_pass: true
             });
-
-            if (result.success) {
-                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
-                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
-                this.elements.btnSubmit.textContent = '✅ Enviado';
-
-                if (this.elements.waitingMessage) {
-                    this.elements.waitingMessage.textContent = 'Esperando a los demas jugadores...';
-                    safeShowElement(this.elements.waitingMessage);
-                }
-                safeHideElement(this.elements.wordsInputSection);
-            } else {
-                showNotification('Error al enviar', 'error');
-                this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = '✍️ PASO';
-            }
         } catch (error) {
-            debug('Error:', error, 'error');
-            showNotification('Error de conexion', 'error');
-            this.elements.btnSubmit.disabled = false;
+            debug('Error marcando como ready:', error, 'error');
+        }
+    }
+
+    /**
+     * Revertir a NO READY (si jugador borra palabras)
+     */
+    async markNotReady() {
+        if (!this.client) return;
+
+        debug('🔼 Revertiendo a NO READY', 'info');
+        this.isReady = false;
+
+        // Habilitar input
+        if (this.elements.currentWordInput) {
+            this.elements.currentWordInput.disabled = false;
+            this.elements.currentWordInput.placeholder = 'Ingresa una palabra...';
+        }
+        if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
+        if (this.elements.btnSubmit) {
             this.elements.btnSubmit.textContent = '✍️ PASO';
+        }
+
+        try {
+            await this.client.sendAction('submit_answers', {
+                answers: this.myWords,
+                forced_pass: false
+            });
+        } catch (error) {
+            debug('Error revertiendo ready:', error, 'error');
+        }
+    }
+
+    /**
+     * Toggle entre READY y NO READY (botón LISTO / PASO)
+     */
+    async toggleReady() {
+        if (this.isReady) {
+            // Está READY, volver a NO READY
+            await this.markNotReady();
+        } else {
+            // Está NO READY, pasar a READY
+            if (this.myWords.length > 0) {
+                await this.markReady();
+            } else {
+                showNotification('Agrega al menos una palabra', 'warning');
+            }
         }
     }
 
@@ -697,7 +762,7 @@ class PlayerManager {
 
         if (!myResults || Object.keys(myResults).length === 0) {
             if (this.elements.resultsSection) {
-                this.elements.resultsSection.innerHTML = '<div class="waiting-message">No enviaste palabras esta ronda</div>';
+                this.elements.resultsSection.innerHTML = '<div class="waiting-message">Esperando resultados...</div>';
             }
         } else {
             let html = '<div class="results-title">📈 Tus Resultados</div>';
@@ -756,7 +821,7 @@ class PlayerManager {
         if (remaining <= 500 && this.gameState.status === 'playing') {
             const me = this.gameState.players?.[this.playerId];
             if (me?.status !== 'ready') {
-                debug('🔅 Auto-enviando palabras al terminar el tiempo', 'info');
+                debug('🔵 Auto-enviando palabras al terminar el tiempo', 'info');
                 this.autoSubmitWords();
             }
         }
@@ -881,4 +946,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - REFACTORED: Timer shows only gameplay duration (uses round_started_at)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js v4: UX mejorada - input se deshabilita cuando se completan palabras, botón "LISTO"', 'color: #FF00FF; font-weight: bold; font-size: 12px');
