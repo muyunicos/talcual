@@ -1,6 +1,8 @@
 /**
  * Player Manager - Gestión de jugador en partida
  * Maneja: unión, palabras, timer, resultados
+ * 
+ * ✅ REFACTORIZADO: Usa SessionManager y WordEngineManager
  */
 
 class PlayerManager {
@@ -26,10 +28,8 @@ class PlayerManager {
         this.tempSelectedAura = null;
 
         this.elements = {};
-
-        this.wordEngine = null;
-        this.wordEngineReady = false;
-        this.wordEngineInitPromise = null;
+        
+        // ✅ ELIMINADO: wordEngine ya está en wordEngineManager
     }
 
     async initialize() {
@@ -40,26 +40,21 @@ class PlayerManager {
         this.cacheElements();
         this.attachEventListeners();
 
-        this.initWordEngine();
+        // ✅ CAMBIO: Inicializar WordEngineManager
+        await this.initWordEngine();
 
-        const savedGameId = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.GAME_ID) : getLocalStorage('gameId');
-        const savedPlayerId = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_ID) : getLocalStorage('playerId');
-        const savedPlayerName = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_NAME) : getLocalStorage('playerName');
-        const savedPlayerColor = (typeof StorageKeys !== 'undefined') ? getLocalStorage(StorageKeys.PLAYER_COLOR) : getLocalStorage('playerColor');
-
-        if (savedGameId && savedPlayerId && savedPlayerName && savedPlayerColor) {
-            debug('🔄 Recuperando sesion');
-            this.recoverSession(savedGameId, savedPlayerId, savedPlayerName, savedPlayerColor);
+        // ✅ CAMBIO: Usar SessionManager para recuperar sesión
+        const sessionData = playerSession.recover();
+        if (sessionData) {
+            debug('🔄 Recuperando sesión', 'info');
+            this.recoverSession(sessionData.gameId, sessionData.playerId, sessionData.playerName, sessionData.playerColor);
         } else {
-            debug('💱 Mostrando modal de union');
+            debug('💱 Mostrando modal de unión', 'info');
             this.showJoinModal();
         }
 
-        window.addEventListener('beforeunload', () => {
-            if (playerManager) {
-                playerManager.destroy();
-            }
-        });
+        // ✅ CAMBIO: SessionManager maneja automáticamente el beforeunload
+        playerSession.registerManager(this);
 
         debug('✅ PlayerManager inicializado');
     }
@@ -86,42 +81,19 @@ class PlayerManager {
         }
     }
 
-    initWordEngine() {
-        if (this.wordEngineInitPromise) return this.wordEngineInitPromise;
-
-        this.wordEngineInitPromise = (async () => {
-            try {
-                if (typeof WordEquivalenceEngine !== 'function') {
-                    console.warn('⚠️ WordEquivalenceEngine no esta disponible. Verificar inclusion de js/word-comparison.js');
-                    this.wordEngineReady = false;
-                    return;
-                }
-
-                this.wordEngine = new WordEquivalenceEngine();
-                await this.wordEngine.init('./js/sinonimos.json');
-                this.wordEngineReady = true;
-            } catch (e) {
-                console.error('❌ Error inicializando word engine (player):', e);
-                this.wordEngineReady = false;
-            }
-        })();
-
-        return this.wordEngineInitPromise;
+    // ✅ CAMBIO: Delegar a WordEngineManager
+    async initWordEngine() {
+        try {
+            await wordEngineManager.initialize();
+            debug('📜 Word engine inicializado en player', null, 'success');
+        } catch (error) {
+            debug('❌ Error inicializando word engine: ' + error.message, null, 'error');
+        }
     }
 
+    // ✅ CAMBIO: Delegar a WordEngineManager
     getCanonicalForCompare(word) {
-        const raw = (word || '').toString().trim();
-        if (!raw) return '';
-
-        if (this.wordEngine && this.wordEngineReady && typeof this.wordEngine.getCanonical === 'function') {
-            return this.wordEngine.getCanonical(raw);
-        }
-
-        return raw
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '');
+        return wordEngineManager.getCanonical(word);
     }
 
     cacheElements() {
@@ -264,19 +236,19 @@ class PlayerManager {
                 const state = result.state;
 
                 if (state.players && state.players[playerId]) {
-                    debug('✅ Sesion recuperada');
+                    debug('✅ Sesión recuperada');
                     this.loadGameScreen(state);
                     return;
                 }
             }
 
-            debug('⚠️ No se pudo recuperar sesion');
-            clearGameSession();
+            debug('⚠️ No se pudo recuperar sesión');
+            playerSession.clear();
             this.showJoinModal();
 
         } catch (error) {
-            debug('Error recuperando sesion:', error, 'error');
-            clearGameSession();
+            debug('Error recuperando sesión:', error, 'error');
+            playerSession.clear();
             this.showJoinModal();
         }
     }
@@ -330,17 +302,8 @@ class PlayerManager {
         this.playerName = name;
         this.playerId = generatePlayerId();
 
-        if (typeof StorageKeys !== 'undefined') {
-            setLocalStorage(StorageKeys.GAME_ID, this.gameId);
-            setLocalStorage(StorageKeys.PLAYER_ID, this.playerId);
-            setLocalStorage(StorageKeys.PLAYER_NAME, this.playerName);
-            setLocalStorage(StorageKeys.PLAYER_COLOR, this.playerColor);
-        } else {
-            setLocalStorage('gameId', this.gameId);
-            setLocalStorage('playerId', this.playerId);
-            setLocalStorage('playerName', this.playerName);
-            setLocalStorage('playerColor', this.playerColor);
-        }
+        // ✅ CAMBIO: Usar SessionManager para guardar
+        playerSession.savePlayerSession(this.gameId, this.playerId, this.playerName, this.playerColor);
 
         if (this.elements.btnJoin) {
             this.elements.btnJoin.disabled = true;
@@ -465,7 +428,7 @@ class PlayerManager {
                     this.elements.countdownNumber.textContent = '¿Preparado?';
                     this.elements.countdownNumber.style.fontSize = '1.2em';
                 } else if (seconds > 0) {
-                    const displayValue = Math.max(1);
+                    const displayValue = Math.max(1, seconds);
                     this.elements.countdownNumber.textContent = displayValue.toString();
                     this.elements.countdownNumber.style.fontSize = 'inherit';
                 } else {
@@ -621,8 +584,7 @@ class PlayerManager {
             return;
         }
 
-        await this.initWordEngine();
-
+        // ✅ CAMBIO: WordEngineManager ya está inicializado
         const normalized = word.toUpperCase();
         if (this.myWords.includes(normalized)) {
             showNotification('Ya agregaste esa palabra', 'warning');
@@ -1000,17 +962,8 @@ class PlayerManager {
             savePlayerColor(this.playerColor);
         }
 
-        if (typeof StorageKeys !== 'undefined') {
-            setLocalStorage(StorageKeys.PLAYER_NAME, newName);
-            if (this.tempSelectedAura) {
-                setLocalStorage(StorageKeys.PLAYER_COLOR, this.tempSelectedAura);
-            }
-        } else {
-            setLocalStorage('playerName', newName);
-            if (this.tempSelectedAura) {
-                setLocalStorage('playerColor', this.tempSelectedAura);
-            }
-        }
+        // ✅ CAMBIO: Usar SessionManager para guardar cambios
+        playerSession.savePlayerSession(this.gameId, this.playerId, newName, this.playerColor);
 
         if (this.client) {
             try {
@@ -1035,7 +988,8 @@ class PlayerManager {
         if (this.client) {
             this.client.disconnect();
         }
-        clearGameSession();
+        // ✅ CAMBIO: Usar SessionManager para limpiar
+        playerSession.clear();
         location.reload();
     }
 }
@@ -1049,4 +1003,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js: Configuración cargada desde servidor', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js: REFACTORIZADO con SessionManager + WordEngineManager', 'color: #FF00FF; font-weight: bold; font-size: 12px');
