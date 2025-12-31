@@ -163,6 +163,10 @@ class PlayerManager {
         if (this.elements.maxWordsDisplay) {
             this.elements.maxWordsDisplay.textContent = this.maxWords;
         }
+        
+        if (this.elements.headerTimer) {
+            updateTimerDisplay(null, this.elements.headerTimer, '⏳');
+        }
     }
 
     attachEventListeners() {
@@ -430,6 +434,9 @@ class PlayerManager {
         safeHideElement(this.elements.resultsSection);
         safeHideElement(this.elements.countdownOverlay);
         this.stopTimer();
+        if (this.elements.headerTimer) {
+            updateTimerDisplay(null, this.elements.headerTimer, '⏳');
+        }
     }
 
     runPreciseCountdown(roundStartsAt, countdownDuration, onComplete) {
@@ -822,6 +829,9 @@ class PlayerManager {
         safeHideElement(this.elements.categoryLabel);
         safeHideElement(this.elements.waitingMessage);
         this.stopTimer();
+        if (this.elements.headerTimer) {
+            updateTimerDisplay(null, this.elements.headerTimer, '⏳');
+        }
 
         const me = state.players?.[this.playerId];
         const myResults = me?.round_results;
