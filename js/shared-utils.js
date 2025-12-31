@@ -4,6 +4,7 @@
  * 
  * 🎯 FASE 1 COMPLETA: Este archivo centraliza TODA la lógica de dependencias
  * 🎯 FASE 2: FIX - Logging y timeout en beforeunload
+ * 🎯 FASE 3A: ADD - DictionaryService category-aware methods
  */
 
 // Global dictionary cache
@@ -832,6 +833,7 @@ class SessionManager {
  * ✅ CENTRALIZA: Carga de JSON, acceso a palabras, categorías, comparación lingüística
  * ✅ INTEGRA: WordEquivalenceEngine para análisis semántico de palabras
  * ✅ ELIMINA REDUNDANCIA: Solo un lugar hace fetch a /app/diccionario.json
+ * ✅ FASE 3A: ADD - Métodos category-aware (getWordsForCategory, getRandomWordByCategory)
  */
 class DictionaryService {
     constructor() {
@@ -904,6 +906,51 @@ class DictionaryService {
         const words = await this.getWords();
         if (!words.length) return 'SOL';
         return words[Math.floor(Math.random() * words.length)];
+    }
+
+    /**
+     * 📌 FASE 3A NEW: Obtiene todas las palabras de una categoría específica
+     * @param {string} categoryName - Nombre de categoría
+     * @returns {Promise<Array<string>>} Array de palabras normalizadas
+     */
+    async getWordsForCategory(categoryName) {
+        if (!categoryName) return this.getWords();
+        
+        const data = await loadDictionaryData();
+        if (!data || !data[categoryName]) {
+            debug(`⚠️ Categoría no encontrada: ${categoryName}`, null, 'warn');
+            return [];
+        }
+
+        const categoryNode = data[categoryName];
+        const words = extractWordsFromDictionary(categoryNode);
+        
+        if (!words.length) {
+            debug(`⚠️ Categoría vacía: ${categoryName}`, null, 'warn');
+        }
+
+        return words;
+    }
+
+    /**
+     * 📌 FASE 3A NEW: Obtiene palabra random de una categoría específica
+     * @param {string} categoryName - Nombre de categoría
+     * @returns {Promise<string>} Palabra normalizada random
+     */
+    async getRandomWordByCategory(categoryName) {
+        if (!categoryName) {
+            return this.getRandomWord();
+        }
+
+        const words = await this.getWordsForCategory(categoryName);
+        
+        if (!words.length) {
+            debug(`⚠️ Sin palabras en ${categoryName}, fallback a general`, null, 'warn');
+            return this.getRandomWord();
+        }
+
+        const randomIndex = Math.floor(Math.random() * words.length);
+        return words[randomIndex];
     }
 
     /**
@@ -1125,5 +1172,6 @@ window.Modal = window.modalHandler;
 debug('✅ Servicios centralizados inicializados (SessionManager, DictionaryService, ConfigService, ModalHandler)', null, 'success');
 debug('✅ wordEngineManager aliased a dictionaryService (para compatibilidad)', null, 'success');
 debug('✅ Modal aliased a modalHandler (para UI centralizada)', null, 'success');
+debug('✅ FASE 3A: DictionaryService con getWordsForCategory() y getRandomWordByCategory()', null, 'success');
 
-console.log('%c✅ shared-utils.js - FASE 1 + FASE 2: Servicios centralizados + SessionManager beforeunload logging + timeout', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ shared-utils.js - FASE 1 + 2 + 3A: Servicios centralizados + category-aware methods', 'color: #10B981; font-weight: bold; font-size: 12px');
