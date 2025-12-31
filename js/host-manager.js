@@ -350,7 +350,7 @@ class HostManager {
 
         if (state.status === 'playing') {
             this.roundEnded = false;
-            if (state.round_starts_at && state.round_duration) {
+            if (state.round_started_at && state.round_duration) {
                 this.startContinuousTimer(state);
             }
         } else if (state.status === 'round_ended') {
@@ -449,16 +449,18 @@ class HostManager {
         this.stopTimer();
         
         const tick = () => {
-            if (this.gameState && this.gameState.round_starts_at && this.gameState.round_duration) {
+            if (this.gameState && this.gameState.round_started_at && this.gameState.round_duration) {
+                // CAMBIO: Usar round_started_at (cuando empieza REALMENTE la ronda)
+                // No round_starts_at (que es cuando empieza el countdown)
                 this.remainingTime = getRemainingTime(
-                    this.gameState.round_starts_at,
+                    this.gameState.round_started_at,
                     this.gameState.round_duration
                 );
                 this.updateTimer();
 
-                // Cuando el tiempo se agota y estamos en playing, procesar resultados
+                // Cuando el tiempo de juego se agota y estamos en playing, procesar resultados
                 if (this.remainingTime <= 100 && this.gameState.status === 'playing' && !this.roundEnded) {
-                    debug('⏱️ TIEMPO AGOTADO - Procesando resultados...', null, 'warning');
+                    debug('⏱️ TIEMPO DE RONDA AGOTADO - Procesando resultados...', null, 'warning');
                     this.stopTimer();
                     this.endRoundAndCalculateResults();
                 }
@@ -864,4 +866,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - REFACTORED: Lightweight results with word-comparison, reduced server load', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - REFACTORED: Timer shows only gameplay duration (uses round_started_at)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
