@@ -249,6 +249,7 @@ try {
                 'server_now' => intval(microtime(true) * 1000),
                 'round_starts_at' => null,
                 'round_ends_at' => null,
+                'countdown_duration' => INITIAL_TIMER * 1000,
                 'min_players' => $minPlayers,
                 'round_details' => [],
                 'round_top_words' => [],
@@ -387,8 +388,9 @@ try {
 
                 $serverNow = intval(microtime(true) * 1000);
                 $countdownDuration = INITIAL_TIMER * 1000;
-                $roundStartsAt = $serverNow + $countdownDuration;
-                $roundEndsAt = $roundStartsAt + $duration;
+                $roundStartsAt = $serverNow;
+                $roundStartedAt = $roundStartsAt + $countdownDuration;
+                $roundEndsAt = $roundStartedAt + $duration;
 
                 $state['round']++;
                 $state['status'] = 'playing';
@@ -396,9 +398,10 @@ try {
                 $state['current_category'] = $preferredCategory;
                 $state['round_duration'] = $duration;
                 $state['total_rounds'] = $totalRounds;
+                $state['countdown_duration'] = $countdownDuration;
                 $state['server_now'] = $serverNow;
-                $state['round_started_at'] = $roundStartsAt + $countdownDuration;
                 $state['round_starts_at'] = $roundStartsAt;
+                $state['round_started_at'] = $roundStartedAt;
                 $state['round_ends_at'] = $roundEndsAt;
                 $state['last_update'] = time();
 
@@ -551,6 +554,7 @@ try {
             $state['server_now'] = null;
             $state['round_starts_at'] = null;
             $state['round_ends_at'] = null;
+            $state['countdown_duration'] = null;
 
             if (saveGameState($gameId, $state)) {
                 trackGameAction($gameId, 'round_ended', []);
@@ -594,6 +598,7 @@ try {
             $state['server_now'] = intval(microtime(true) * 1000);
             $state['round_starts_at'] = null;
             $state['round_ends_at'] = null;
+            $state['countdown_duration'] = null;
             $state['round_top_words'] = [];
             $state['last_update'] = time();
 
