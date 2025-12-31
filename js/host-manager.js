@@ -3,7 +3,7 @@
  * Maneja: timer, categoría, ranking, panel tabs
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  * 
- * ✅ REFACTORIZADO: Usa SessionManager y WordEngineManager
+ * ✅ REFACTORIZADO: Usa SessionManager, ConfigService, y WordEngineManager
  */
 
 function determineUIState() {
@@ -51,23 +51,18 @@ class HostManager {
 
     async loadConfigAndInit() {
         try {
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_config' }),
-                cache: 'no-store'
-            });
+            // ✅ CAMBIO FASE 1: Usar ConfigService en lugar de fetch redundante
+            await configService.load();
             
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.config) {
-                    this.totalRounds = result.config.default_total_rounds || 3;
-                    this.minPlayers = result.config.min_players || 2;
-                }
-            }
+            // Aplicar configuración cargada
+            this.totalRounds = configService.get('default_total_rounds', 3);
+            this.minPlayers = configService.get('min_players', 2);
+            
+            debug('⚙️ Configuración aplicada: totalRounds=' + this.totalRounds + ', minPlayers=' + this.minPlayers, null, 'success');
         } catch (error) {
-            console.warn('[WARN] Config load failed, using defaults', error);
+            debug('❌ Error cargando config, usando defaults', error, 'warn');
+            this.totalRounds = 3;
+            this.minPlayers = 2;
         }
         
         this.initUI();
@@ -953,4 +948,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js: REFACTORIZADO con SessionManager + WordEngineManager', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js: REFACTORIZADO con SessionManager + ConfigService + WordEngineManager', 'color: #00FF00; font-weight: bold; font-size: 12px');
