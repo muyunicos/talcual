@@ -447,7 +447,7 @@ html.bg-ready body::before {
     cursor: move;
     transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
-.sidepanel-toggle-btn{
+.sidepanel-toggle{
 position: fixed !important;
     bottom: 20px !important;
     right: 20px !important;
