@@ -391,7 +391,7 @@ class PlayerManager {
         this.stopTimer();
     }
 
-    runPreciseCountdown(roundStartsAt, countdownDuration) {
+    runPreciseCountdown(roundStartsAt, countdownDuration, onComplete) {
         if (this.countdownRAFId) {
             cancelAnimationFrame(this.countdownRAFId);
         }
@@ -417,7 +417,7 @@ class PlayerManager {
                     this.elements.countdownNumber.textContent = '¿Preparado?';
                     this.elements.countdownNumber.style.fontSize = '1.2em';
                 } else if (seconds > 0) {
-                    const displayValue = Math.max(1);
+                    const displayValue = Math.max(1, seconds - 1);
                     this.elements.countdownNumber.textContent = displayValue.toString();
                     this.elements.countdownNumber.style.fontSize = 'inherit';
                 } else {
@@ -434,6 +434,10 @@ class PlayerManager {
                 if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
                 if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
                 if (this.elements.currentWordInput) this.elements.currentWordInput.focus();
+                
+                if (typeof onComplete === 'function') {
+                    onComplete();
+                }
             }
         };
 
@@ -444,10 +448,13 @@ class PlayerManager {
         debug('⏱️ Iniciando countdown', 'debug');
         const countdownDuration = state.countdown_duration || 4000;
         safeHideElement(this.elements.waitingMessage);
-        this.runPreciseCountdown(state.round_starts_at, countdownDuration);
+        
+        return new Promise((resolve) => {
+            this.runPreciseCountdown(state.round_starts_at, countdownDuration, resolve);
+        });
     }
 
-    showPlayingState(state) {
+    async showPlayingState(state) {
         debug('🎮 Estado PLAYING detectado', 'debug');
 
         safeHideElement(this.elements.resultsSection);
@@ -472,8 +479,7 @@ class PlayerManager {
             
             if (elapsedSinceStart < countdownDuration) {
                 debug(`⏱️ Countdown aun en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
-                this.showCountdown(state);
-                return;
+                await this.showCountdown(state);
             }
         }
 
@@ -526,7 +532,7 @@ class PlayerManager {
             }
         }
 
-        if (state.round_started_at && state.round_duration) {
+        if (state.round_starts_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
     }
@@ -735,7 +741,7 @@ class PlayerManager {
     }
 
     updateTimerFromState(state) {
-        const remaining = getRemainingTime(state.round_ends_at);
+        const remaining = getRemainingTime(state.round_starts_at, state.round_duration);
         updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
 
         if (remaining <= 0 && this.gameState.status === 'playing') {
@@ -857,3 +863,5 @@ document.addEventListener('DOMContentLoaded', () => {
         playerManager.initialize();
     }
 }, { once: true });
+
+console.log('%c✅ player-manager.js - Fixed: countdown (3,2,1), timer (NaN), and input visibility', 'color: #10B981; font-weight: bold; font-size: 12px');
