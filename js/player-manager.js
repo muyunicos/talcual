@@ -465,7 +465,7 @@ class PlayerManager {
                     this.elements.countdownNumber.textContent = '¿Preparado?';
                     this.elements.countdownNumber.style.fontSize = '1.2em';
                 } else if (seconds > 0) {
-                    const displayValue = Math.max(1, seconds - 1);
+                    const displayValue = Math.max(1);
                     this.elements.countdownNumber.textContent = displayValue.toString();
                     this.elements.countdownNumber.style.fontSize = 'inherit';
                 } else {

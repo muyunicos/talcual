@@ -921,7 +921,7 @@ class HostManager {
                 numberEl.textContent = '¿Preparado?';
             } else if (seconds > 0) {
                 numberEl.classList.add('timer-hury');
-                const displayValue = Math.max(1, seconds - 1);
+                const displayValue = Math.max(1);
                 numberEl.textContent = displayValue.toString();
             } else {
                 numberEl.classList.remove('timer-hury');
