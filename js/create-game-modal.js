@@ -13,11 +13,13 @@ class CreateGameModal {
 
         this.dictionary = null;
         this.categories = [];
+        this.config = {};
 
         this.init();
     }
 
     async init() {
+        await this.loadConfig();
         await this.loadDictionary();
 
         this.populateCategorySelect(this.categories);
@@ -30,6 +32,34 @@ class CreateGameModal {
         });
 
         this.selectRandomCategory();
+    }
+
+    async loadConfig() {
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            url.searchParams.set('action', 'get_config');
+            
+            const response = await fetch(url.toString(), { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_config' }),
+                cache: 'no-store'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.config) {
+                    this.config = result.config;
+                }
+            }
+        } catch (error) {
+            console.warn('[WARN] Config load failed, using defaults');
+            this.config = {
+                default_total_rounds: 3,
+                default_round_duration: 60,
+                min_players: 2
+            };
+        }
     }
 
     async loadDictionary() {
@@ -112,13 +142,8 @@ class CreateGameModal {
         }
     }
 
-    /**
-     * 🔧 Inicializar el host manager después de crear partida
-     * Checks si initHostManager está disponible antes de llamar
-     */
     initializeHostManager() {
         if (typeof initHostManager === 'function') {
-            // ✅ initHostManager está disponible
             console.log('[INFO] Calling initHostManager()');
             try {
                 initHostManager();
@@ -127,15 +152,11 @@ class CreateGameModal {
                 this.handleHostManagerError();
             }
         } else {
-            // ❌ initHostManager no está disponible
             console.warn('[WARN] initHostManager not available, using fallback');
             this.handleHostManagerError();
         }
     }
 
-    /**
-     * Fallback si initHostManager no está disponible
-     */
     handleHostManagerError() {
         console.log('[INFO] Redirecting to host.html');
         const gameCode = document.querySelector('[data-game-code]')?.dataset.gameCode ||
@@ -161,9 +182,9 @@ class CreateGameModal {
                 action: 'create_game',
                 game_id: customCode,
                 category,
-                total_rounds: 3,
-                round_duration: 60,
-                min_players: 2
+                total_rounds: this.config.default_total_rounds || 3,
+                round_duration: this.config.default_round_duration || 60,
+                min_players: this.config.min_players || 2
             };
 
             const controller = new AbortController();
@@ -204,7 +225,6 @@ class CreateGameModal {
                 determineUIState();
             }
 
-            // 🔧 FIX: Usar método seguro para inicializar host manager
             setTimeout(() => {
                 this.initializeHostManager();
             }, 100);
@@ -238,4 +258,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ create-game-modal.js v2: Safe initialization with initHostManager guard', 'color: #0066FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ create-game-modal.js: Config loaded from server', 'color: #0066FF; font-weight: bold; font-size: 12px');
