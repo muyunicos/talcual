@@ -117,10 +117,6 @@ class PlayerManager {
             countdownOverlay: safeGetElement('countdown-overlay'),
             countdownNumber: safeGetElement('countdown-number'),
             playerNameDisplay: safeGetElement('player-name-display'),
-            btnConfigMenu: safeGetElement('btn-config-menu'),
-            configDropdown: safeGetElement('config-dropdown'),
-            optionEditName: safeGetElement('option-edit-name'),
-            optionExit: safeGetElement('option-exit'),
             modalNameInput: safeGetElement('modal-name-input'),
             modalBtnCancel: safeGetElement('modal-btn-cancel'),
             modalBtnSave: safeGetElement('modal-btn-save'),
@@ -159,27 +155,6 @@ class PlayerManager {
             this.elements.btnSubmit.addEventListener('click', () => this.submitWords());
         }
 
-        if (this.elements.btnConfigMenu) {
-            this.elements.btnConfigMenu.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleConfigDropdown();
-            });
-        }
-
-        if (this.elements.optionEditName) {
-            this.elements.optionEditName.addEventListener('click', () => {
-                this.hideConfigDropdown();
-                this.showEditNameModal();
-            });
-        }
-
-        if (this.elements.optionExit) {
-            this.elements.optionExit.addEventListener('click', () => {
-                this.hideConfigDropdown();
-                this.exitGame();
-            });
-        }
-
         const hamburgerCustomize = safeGetElement('hamburger-customize');
         const hamburgerAbandon = safeGetElement('hamburger-abandon');
 
@@ -201,33 +176,6 @@ class PlayerManager {
 
         if (this.elements.modalBtnSave) {
             this.elements.modalBtnSave.addEventListener('click', () => this.saveNewName());
-        }
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.footer-left') && !e.target.closest('.btn-config-menu')) {
-                this.hideConfigDropdown();
-            }
-        });
-    }
-
-    toggleConfigDropdown() {
-        if (!this.elements.configDropdown) return;
-        if (this.elements.configDropdown.style.display === 'none') {
-            this.showConfigDropdown();
-        } else {
-            this.hideConfigDropdown();
-        }
-    }
-
-    showConfigDropdown() {
-        if (this.elements.configDropdown) {
-            this.elements.configDropdown.style.display = 'block';
-        }
-    }
-
-    hideConfigDropdown() {
-        if (this.elements.configDropdown) {
-            this.elements.configDropdown.style.display = 'none';
         }
     }
 
