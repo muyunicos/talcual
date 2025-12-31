@@ -46,6 +46,30 @@ class HostManager {
         this.wordEngineInitPromise = null;
         this.initWordEngine();
         
+        this.loadConfigAndInit();
+    }
+
+    async loadConfigAndInit() {
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_config' }),
+                cache: 'no-store'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.config) {
+                    this.totalRounds = result.config.default_total_rounds || 3;
+                    this.minPlayers = result.config.min_players || 2;
+                }
+            }
+        } catch (error) {
+            console.warn('[WARN] Config load failed, using defaults', error);
+        }
+        
         this.initUI();
         this.attachEventListeners();
         this.attachMenuEventListeners();
@@ -410,7 +434,7 @@ class HostManager {
 
         if (state.round !== undefined) {
             this.currentRound = state.round;
-            this.totalRounds = state.total_rounds || 3;
+            this.totalRounds = state.total_rounds || this.totalRounds;
             this.updateRoundInfo();
         }
 
@@ -957,4 +981,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v6: Opción C - ready = confirmed finish, not quota', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js: Config loaded from server', 'color: #00FF00; font-weight: bold; font-size: 12px');
