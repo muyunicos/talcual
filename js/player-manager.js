@@ -17,6 +17,7 @@ class PlayerManager {
 
         this.availableAuras = [];
         this.selectedAura = null;
+        this.tempSelectedAura = null;
 
         this.elements = {};
 
@@ -26,7 +27,7 @@ class PlayerManager {
     }
 
     initialize() {
-        debug('🍢 Inicializando PlayerManager');
+        debug('🍣 Inicializando PlayerManager');
         this.cacheElements();
         this.attachEventListeners();
 
@@ -122,7 +123,8 @@ class PlayerManager {
             optionExit: safeGetElement('option-exit'),
             modalNameInput: safeGetElement('modal-name-input'),
             modalBtnCancel: safeGetElement('modal-btn-cancel'),
-            modalBtnSave: safeGetElement('modal-btn-save')
+            modalBtnSave: safeGetElement('modal-btn-save'),
+            auraSelectorEdit: safeGetElement('aura-selector-edit')
         };
     }
 
@@ -545,7 +547,7 @@ class PlayerManager {
             }
             safeHideElement(this.elements.wordsInputSection);
         } else {
-            debug('🗒 Puedes escribir palabras', 'debug');
+            debug('🗸 Puedes escribir palabras', 'debug');
             if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
@@ -803,6 +805,19 @@ class PlayerManager {
         if (this.elements.modalNameInput) {
             this.elements.modalNameInput.value = this.playerName;
         }
+        
+        this.tempSelectedAura = this.playerColor;
+        
+        if (this.elements.auraSelectorEdit) {
+            renderAuraSelectorsEdit(
+                this.elements.auraSelectorEdit,
+                this.playerColor,
+                (aura) => {
+                    this.tempSelectedAura = aura.hex;
+                }
+            );
+        }
+        
         safeShowElement(this.elements.modalEditName, 'flex');
         if (this.elements.modalNameInput) {
             this.elements.modalNameInput.focus();
@@ -811,6 +826,7 @@ class PlayerManager {
 
     hideEditNameModal() {
         safeHideElement(this.elements.modalEditName);
+        this.tempSelectedAura = null;
     }
 
     async saveNewName() {
@@ -826,17 +842,32 @@ class PlayerManager {
             this.elements.playerNameDisplay.textContent = newName;
         }
 
+        if (this.tempSelectedAura && this.tempSelectedAura !== this.playerColor) {
+            this.playerColor = this.tempSelectedAura;
+            applyColorGradient(this.playerColor);
+            savePlayerColor(this.playerColor);
+        }
+
         if (typeof StorageKeys !== 'undefined') {
             setLocalStorage(StorageKeys.PLAYER_NAME, newName);
+            if (this.tempSelectedAura) {
+                setLocalStorage(StorageKeys.PLAYER_COLOR, this.tempSelectedAura);
+            }
         } else {
             setLocalStorage('playerName', newName);
+            if (this.tempSelectedAura) {
+                setLocalStorage('playerColor', this.tempSelectedAura);
+            }
         }
 
         if (this.client) {
             try {
                 await this.client.sendAction('update_player_name', { name: newName });
+                if (this.tempSelectedAura) {
+                    await this.client.sendAction('update_player_color', { color: this.tempSelectedAura });
+                }
             } catch (error) {
-                debug('Error actualizando nombre:', error, 'error');
+                debug('Error actualizando nombre/color:', error, 'error');
             }
         }
 
