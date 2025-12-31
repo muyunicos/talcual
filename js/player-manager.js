@@ -2,11 +2,11 @@
  * Player Manager - Gestión de jugador en partida
  * Maneja: unión, palabras, timer, resultados
  * 
- * ✅ REFACTORIZADO FASE 1 COMPLETA:
- * - Usa SessionManager para gestión de sesión
- * - Usa ConfigService en lugar de loadConfig()
- * - Usa WordEngineManager para comparación de palabras
- * - Usa ModalHandler para gestión de modales (NUEVO)
+ * ✅ REFACTORIZADO FASE 3C COMPLETA:
+ * - Usa ModalController para gestión centralizada de modales
+ * - Mantiene SessionManager para gestión de sesión
+ * - Mantiene ConfigService en lugar de loadConfig()
+ * - Mantiene WordEngineManager para comparación de palabras
  */
 
 class PlayerManager {
@@ -32,6 +32,10 @@ class PlayerManager {
         this.tempSelectedAura = null;
 
         this.elements = {};
+
+        // ✅ CAMBIO: Inicializar ModalController en constructor
+        this.joinModal = null;
+        this.editNameModal = null;
     }
 
     async initialize() {
@@ -42,6 +46,10 @@ class PlayerManager {
         this.maxWords = configService.get('max_words_per_player', 6);
         
         this.cacheElements();
+        
+        // ✅ CAMBIO: Crear ModalControllers después de cachear elementos
+        this.initializeModals();
+        
         this.attachEventListeners();
 
         // ✅ CAMBIO: Inicializar WordEngineManager
@@ -63,6 +71,38 @@ class PlayerManager {
         debug('✅ PlayerManager inicializado');
     }
 
+    // ✅ CAMBIO: Método para inicializar ModalControllers
+    initializeModals() {
+        // Join game modal
+        this.joinModal = new ModalController('modal-join-game', {
+            closeOnBackdrop: true,
+            closeOnEsc: true,
+            onBeforeOpen: () => {
+                safeHideElement(this.elements.gameScreen);
+            },
+            onAfterOpen: () => {
+                // Focus on game code input after modal opens
+                setTimeout(() => {
+                    if (this.elements.inputGameCode) {
+                        this.elements.inputGameCode.focus();
+                    }
+                }, 100);
+            }
+        });
+
+        // Edit name modal
+        this.editNameModal = new ModalController('modal-edit-name', {
+            closeOnBackdrop: true,
+            closeOnEsc: true,
+            onAfterOpen: () => {
+                // Focus on name input after modal opens
+                if (this.elements.modalNameInput) {
+                    this.elements.modalNameInput.focus();
+                }
+            }
+        });
+    }
+
     // ✅ CAMBIO: Delegar a WordEngineManager
     async initWordEngine() {
         try {
@@ -80,9 +120,7 @@ class PlayerManager {
 
     cacheElements() {
         this.elements = {
-            modalJoinGame: safeGetElement('modal-join-game'),
             gameScreen: safeGetElement('game-screen'),
-            modalEditName: safeGetElement('modal-edit-name'),
             inputGameCode: safeGetElement('input-game-code'),
             inputPlayerName: safeGetElement('input-player-name'),
             btnJoin: safeGetElement('btn-join'),
@@ -179,9 +217,8 @@ class PlayerManager {
     }
 
     showJoinModal() {
-        // ✅ CAMBIO: Usar ModalHandler centralizado
-        Modal.open('modal-join-game');
-        safeHideElement(this.elements.gameScreen);
+        // ✅ CAMBIO: Usar ModalController centralizado
+        this.joinModal.open();
 
         this.availableAuras = generateRandomAuras();
 
@@ -198,10 +235,6 @@ class PlayerManager {
             );
             this.playerColor = randomAura.hex;
             this.selectedAura = randomAura;
-        }
-
-        if (this.elements.inputGameCode) {
-            setTimeout(() => this.elements.inputGameCode.focus(), 100);
         }
     }
 
@@ -243,8 +276,8 @@ class PlayerManager {
 
         applyColorGradient(this.playerColor);
 
-        // ✅ CAMBIO: Usar ModalHandler centralizado
-        Modal.close('modal-join-game');
+        // ✅ CAMBIO: Usar ModalController centralizado
+        this.joinModal.close();
         safeShowElement(this.elements.gameScreen);
 
         if (this.elements.headerCode) this.elements.headerCode.textContent = this.gameId;
@@ -882,6 +915,14 @@ class PlayerManager {
             this.client = null;
         }
         
+        // ✅ CAMBIO: Destruir ModalControllers
+        if (this.joinModal) {
+            this.joinModal.destroy();
+        }
+        if (this.editNameModal) {
+            this.editNameModal.destroy();
+        }
+        
         this.myWords = [];
         this.gameState = null;
         this.elements = {};
@@ -916,16 +957,13 @@ class PlayerManager {
             );
         }
         
-        // ✅ CAMBIO: Usar ModalHandler centralizado
-        Modal.open('modal-edit-name');
-        if (this.elements.modalNameInput) {
-            this.elements.modalNameInput.focus();
-        }
+        // ✅ CAMBIO: Usar ModalController centralizado
+        this.editNameModal.open();
     }
 
     hideEditNameModal() {
-        // ✅ CAMBIO: Usar ModalHandler centralizado
-        Modal.close('modal-edit-name');
+        // ✅ CAMBIO: Usar ModalController centralizado
+        this.editNameModal.close();
         this.tempSelectedAura = null;
     }
 
@@ -989,4 +1027,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - REFACTORIZADO FASE 1 COMPLETA: Usa ModalHandler centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - REFACTORIZADO FASE 3C COMPLETA: Usa ModalController', 'color: #FF00FF; font-weight: bold; font-size: 12px');
