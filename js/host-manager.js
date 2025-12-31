@@ -88,24 +88,33 @@ class HostManager {
     }
 
     /**
-     * Obtiene la forma canónica de una palabra.
-     * Usa el engine si está listo, sino fallback simple.
+     * Obtiene la forma canónica de una palabra para agrupar en comparación.
+     * 
+     * IMPORTANTE: Siempre usa el engine.getCanonical() que tiene:
+     * 1. Búsqueda en diccionario (si cargó)
+     * 2. Búsqueda por stem en diccionario
+     * 3. Fallback: devuelve la raíz derivada (getStem)
+     * 
+     * El fallback local garantiza que PERRITA y PERRO ambos → PER
      */
     getCanonicalForCompare(word) {
         const raw = (word || '').toString().trim();
         if (!raw) return '';
 
-        // Usar word engine si está disponible y listo
-        if (this.wordEngine && this.wordEngineReady && typeof this.wordEngine.getCanonical === 'function') {
-            return this.wordEngine.getCanonical(raw);
+        // ✅ SIEMPRE usar el engine si existe
+        // El engine.getCanonical() tiene 3 niveles de fallback incorporados
+        if (this.wordEngine) {
+            const canonical = this.wordEngine.getCanonical(raw);
+            
+            if (this.wordEngine.debugMode) {
+                console.log(`🔤 HOST: "${raw}" → canonical "${canonical}" (engine${this.wordEngineReady ? ' READY' : ' fallback local'})`);
+            }
+            
+            return canonical;
         }
 
-        // Fallback: usar método local del engine (funciona incluso sin diccionario)
-        if (this.wordEngine && typeof this.wordEngine.getCanonical === 'function') {
-            return this.wordEngine.getCanonical(raw);
-        }
-
-        // Fallback final: normalización simple
+        // Fallback final (solo si engine NO existe, muy raro)
+        console.warn(`⚠️  Word engine no disponible, fallback simple para "${raw}"`);
         return raw
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
@@ -138,7 +147,8 @@ class HostManager {
                 }).catch(err => {
                     console.error('Error copiando código:', err);
                 });
-            });
+            }
+        );
         }
 
         this.initPanelTabs();
@@ -906,4 +916,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - FIX: Word engine init con timeout, fallback robusto', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js FIX: getCanonicalForCompare() SIEMPRE usa engine con stemming fallback', 'color: #00FF00; font-weight: bold; font-size: 12px');
