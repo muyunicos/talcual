@@ -39,6 +39,8 @@ class HostManager {
         this.countdownRAFId = null;
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
+        this.penaltyApplied = false;  // Track if penalty already applied
+        this.originalTimerValue = null;  // Store original timer to detect when all but one ready
         
         // Word comparison engine
         this.wordEngine = null;
@@ -177,7 +179,7 @@ class HostManager {
                     console.error('Error copiando código:', err);
                 });
             }
-        );
+        );  
         }
 
         this.initPanelTabs();
@@ -386,6 +388,67 @@ class HostManager {
         this.client.connect();
     }
 
+    /**
+     * Verifica si todos excepto un jugador están ready
+     */
+    checkAllButOneReady() {
+        if (!this.currentPlayers || this.currentPlayers.length < 2) return false;
+        
+        const readyCount = this.currentPlayers.filter(p => p.status === 'ready').length;
+        const totalCount = this.currentPlayers.length;
+        
+        // Verdadero si: readyCount === totalCount - 1 (todos excepto 1)
+        return readyCount === totalCount - 1;
+    }
+
+    /**
+     * Aplica penalización: reduce el timer a 5 segundos
+     * Solo si había más de 5 segundos restantes
+     */
+    applyLatePlayerPenalty() {
+        if (this.penaltyApplied) {
+            debug('⚠️ Penalización ya aplicada, ignorando', null, 'warning');
+            return;
+        }
+
+        const remainingMs = this.remainingTime;
+        const remainingSecs = Math.floor(remainingMs / 1000);
+
+        if (remainingSecs > 5) {
+            debug(`⏱️ PENALIZACIÓN: Reduciendo timer a 5s (era ${remainingSecs}s)`, null, 'warning');
+            
+            this.penaltyApplied = true;
+            
+            // Store original to potentially revert if needed
+            if (!this.originalTimerValue) {
+                this.originalTimerValue = this.gameState.round_duration;
+            }
+            
+            // Reduce remaining time to 5 seconds
+            const nowServer = timeSync.getServerTime();
+            const newRoundEndTime = nowServer + 5000;  // 5 seconds from now
+            const newDuration = newRoundEndTime - this.gameState.round_started_at;
+            
+            // Update local state
+            this.gameState.round_duration = newDuration;
+            this.remainingTime = 5000;
+            this.updateTimer();
+            
+            // Notify clients of the penalty
+            if (this.client) {
+                this.client.sendAction('apply_timer_penalty', {
+                    new_duration: newDuration,
+                    remaining_ms: 5000
+                }).catch(err => {
+                    debug('Error notificando penalización a clientes:', err, 'error');
+                });
+            }
+        } else {
+            debug('ℹ️ Timer ya tiene ≤5s, no aplicar penalización', null, 'info');
+            this.penaltyApplied = true;
+        }
+    }
+
     handleGameState(state) {
         this.gameState = state;
         debug('📊 Estado del host actualizado:', state.status, 'info');
@@ -414,6 +477,15 @@ class HostManager {
 
         if (state.status === 'playing') {
             this.roundEnded = false;
+            this.penaltyApplied = false;  // Reset penalty flag for new round
+            this.originalTimerValue = null;
+            
+            // 🔍 VERIFICAR PENALIZACIÓN: Si todos excepto 1 están ready
+            if (this.checkAllButOneReady()) {
+                debug('⚠️ PENALIZACIÓN ACTIVA: Todos menos un jugador están ready', null, 'warning');
+                this.applyLatePlayerPenalty();
+            }
+            
             if (state.round_started_at && state.round_duration) {
                 this.startContinuousTimer(state);
             }
@@ -967,4 +1039,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js v3: Sistema de puntuación variable (10pts exacta, 8pts plural, 5pts género/sinónimo)', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js v4: Penalización a último jugador - reduce timer a 5s', 'color: #00FF00; font-weight: bold; font-size: 12px');
