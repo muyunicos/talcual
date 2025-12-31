@@ -167,7 +167,7 @@ function sanitizeGameId($gameId) {
 function sanitizePlayerId($playerId) {
     if (empty($playerId)) return null;
     
-    // Solo permitir caracteres alfanuméricos y guión bajo
+    // Solo permitir caracteres alfanuméricos y guíón bajo
     $clean = preg_replace('/[^a-zA-Z0-9_]/', '', $playerId);
     
     if (strlen($clean) < 5 || strlen($clean) > 50) {
@@ -415,10 +415,6 @@ function getDictionaryStats() {
 }
 
 function trackGameAction($gameId, $action, $data = []) {
-    if (!DEV_MODE && !file_exists(ANALYTICS_FILE)) {
-        return;
-    }
-    
     $entry = [
         'timestamp' => time(),
         'game_id' => $gameId,
