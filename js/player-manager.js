@@ -13,7 +13,7 @@ class PlayerManager {
         this.gameState = null;
         this.myWords = [];
         this.maxWords = 6;
-        this.isReady = false;  // Track if player marked as ready
+        this.isReady = false;
         this.timerInterval = null;
         this.countdownTimeout = null;
         this.countdownRAFId = null;
@@ -32,8 +32,11 @@ class PlayerManager {
         this.wordEngineInitPromise = null;
     }
 
-    initialize() {
+    async initialize() {
         debug('📃 Inicializando PlayerManager');
+        
+        await this.loadConfig();
+        
         this.cacheElements();
         this.attachEventListeners();
 
@@ -52,7 +55,6 @@ class PlayerManager {
             this.showJoinModal();
         }
 
-        // 🧹 FIX: Add cleanup listener
         window.addEventListener('beforeunload', () => {
             if (playerManager) {
                 playerManager.destroy();
@@ -60,6 +62,28 @@ class PlayerManager {
         });
 
         debug('✅ PlayerManager inicializado');
+    }
+
+    async loadConfig() {
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_config' }),
+                cache: 'no-store'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.config) {
+                    this.maxWords = result.config.max_words_per_player || 6;
+                }
+            }
+        } catch (error) {
+            console.warn('[WARN] Config load failed, using defaults');
+            this.maxWords = 6;
+        }
     }
 
     initWordEngine() {
@@ -135,6 +159,10 @@ class PlayerManager {
             modalBtnSave: safeGetElement('modal-btn-save'),
             auraSelectorEdit: safeGetElement('aura-selector-edit')
         };
+
+        if (this.elements.maxWordsDisplay) {
+            this.elements.maxWordsDisplay.textContent = this.maxWords;
+        }
     }
 
     attachEventListeners() {
@@ -516,12 +544,10 @@ class PlayerManager {
         if (isReady) {
             debug('📆 Ya confirmaste que terminaste', 'debug');
             this.isReady = true;
-            // 🔧 FIX: Disable input ONLY when ready
             if (this.elements.currentWordInput) {
                 this.elements.currentWordInput.disabled = true;
                 this.elements.currentWordInput.placeholder = '✅ Terminaste';
             }
-            // 🔧 FIX: Keep btnAddWord enabled (to allow editing)
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
                 this.elements.btnSubmit.disabled = false;
@@ -539,13 +565,11 @@ class PlayerManager {
         } else {
             debug('💗 Puedes escribir y editar palabras', 'debug');
             this.isReady = false;
-            // 🔧 FIX: Input disabled ONLY if we reached maxWords
             if (this.elements.currentWordInput) {
                 const isAtMax = this.myWords.length >= this.maxWords;
                 this.elements.currentWordInput.disabled = isAtMax;
                 this.elements.currentWordInput.placeholder = isAtMax ? `Maximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
             }
-            // 🔧 FIX: btnAddWord always enabled (for adding/editing)
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
                 this.elements.btnSubmit.disabled = false;
@@ -644,24 +668,16 @@ class PlayerManager {
         }
     }
 
-    /**
-     * 🔧 FIX: Remove word and allow editing
-     * - Takes word out of the list
-     * - Puts it in the input for editing
-     * - Re-enables input if it was disabled
-     */
     removeWord(index) {
         const removed = this.myWords.splice(index, 1)[0] || '';
         
         this.updateWordsList();
         this.scheduleWordsUpdate();
 
-        // 🔧 FIX: Put word in input for editing
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.value = removed;
         }
 
-        // 🔧 FIX: Re-enable input when editing
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.disabled = false;
             this.elements.currentWordInput.placeholder = 'Edita o agrega otra palabra...';
@@ -670,7 +686,6 @@ class PlayerManager {
             }
         }
 
-        // 🔧 FIX: Update button states
         this.updateInputAndButtons();
 
         if (this.isReady && this.myWords.length < this.maxWords) {
@@ -679,14 +694,10 @@ class PlayerManager {
         }
     }
 
-    /**
-     * 🆕 Helper: Update input disabled state and button text based on myWords.length
-     */
     updateInputAndButtons() {
         if (!this.isReady) {
             const isAtMax = this.myWords.length >= this.maxWords;
             
-            // 🔧 FIX: Input disabled ONLY when at max
             if (this.elements.currentWordInput) {
                 this.elements.currentWordInput.disabled = isAtMax;
                 if (isAtMax) {
@@ -696,7 +707,6 @@ class PlayerManager {
                 }
             }
             
-            // 🔧 FIX: Update button text
             this.updateFinishButtonText();
         }
     }
@@ -759,12 +769,10 @@ class PlayerManager {
         debug('👍 Marcando como READY (confirmó terminar)', 'info');
         this.isReady = true;
 
-        // 🔧 FIX: Disable input when marking ready
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.disabled = true;
             this.elements.currentWordInput.placeholder = '✅ Terminaste';
         }
-        // 🔧 FIX: Keep button enabled
         if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
         if (this.elements.btnSubmit) {
             this.elements.btnSubmit.disabled = false;
@@ -787,13 +795,11 @@ class PlayerManager {
         debug('🔼 Revertiendo a NO READY', 'info');
         this.isReady = false;
 
-        // 🔧 FIX: Re-enable input and buttons based on state
         if (this.elements.currentWordInput) {
             const isAtMax = this.myWords.length >= this.maxWords;
             this.elements.currentWordInput.disabled = isAtMax;
             this.elements.currentWordInput.placeholder = isAtMax ? `Maximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
         }
-        // 🔧 FIX: Keep button enabled
         if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
         if (this.elements.btnSubmit) {
             this.elements.btnSubmit.disabled = false;
@@ -820,20 +826,16 @@ class PlayerManager {
         const me = state.players?.[this.playerId];
         const myResults = me?.round_results;
 
-        // 🔧 FIX: Diferencia entre "no participó" y "esperando resultados"
         if (!myResults || Object.keys(myResults).length === 0) {
-            // Verificar si envié palabras en esta ronda
             const myAnswers = me?.answers;
             const sentAnswers = myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0;
             
             if (!sentAnswers) {
-                // No envié palabras
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
                 }
                 debug('⚠️ No envié palabras esta ronda', 'warning');
             } else {
-                // Sí envié palabras pero no hay resultados aún
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
                 }
@@ -903,9 +905,6 @@ class PlayerManager {
         }
     }
 
-    /**
-     * 🧹 FIX: Proper cleanup of timers and RAF
-     */
     stopTimer() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
@@ -917,22 +916,16 @@ class PlayerManager {
         }
     }
 
-    /**
-     * 🧹 FIX: Destroy method for proper cleanup
-     */
     destroy() {
         debug('🗑️ Destroying PlayerManager...', 'info');
         
-        // Stop all timers
         this.stopTimer();
         
-        // Disconnect client
         if (this.client) {
             this.client.disconnect();
             this.client = null;
         }
         
-        // Clear state
         this.myWords = [];
         this.gameState = null;
         this.elements = {};
@@ -1046,4 +1039,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js v10: Mensaje correcto cuando no se enviaron palabras', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js: Configuración cargada desde servidor', 'color: #FF00FF; font-weight: bold; font-size: 12px');
