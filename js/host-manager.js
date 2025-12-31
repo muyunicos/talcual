@@ -40,11 +40,52 @@ class HostManager {
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
         
+        // Word comparison engine
+        this.wordEngine = null;
+        this.wordEngineReady = false;
+        this.initWordEngine();
+        
         this.initUI();
         this.attachEventListeners();
         this.attachMenuEventListeners();
         this.attachConfigModalListeners();
         this.connectGameClient();
+    }
+
+    initWordEngine() {
+        if (typeof WordEquivalenceEngine !== 'function') {
+            debug('⚠️ WordEquivalenceEngine no disponible - usando comparación simple', null, 'warning');
+            return;
+        }
+
+        try {
+            this.wordEngine = new WordEquivalenceEngine();
+            this.wordEngine.init('/js/sinonimos.json').then(() => {
+                this.wordEngineReady = true;
+                debug('📜 Word engine inicializado en host', null, 'info');
+            }).catch(err => {
+                debug('❌ Error cargando word engine: ' + err, null, 'warning');
+            });
+        } catch (e) {
+            debug('❌ Word engine no disponible: ' + e.message, null, 'warning');
+        }
+    }
+
+    getCanonicalForCompare(word) {
+        const raw = (word || '').toString().trim();
+        if (!raw) return '';
+
+        // Usar word engine si está disponible
+        if (this.wordEngine && this.wordEngineReady && typeof this.wordEngine.getCanonical === 'function') {
+            return this.wordEngine.getCanonical(raw);
+        }
+
+        // Fallback a normalización simple
+        return raw
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
     }
 
     checkActiveSession() {
@@ -505,7 +546,7 @@ class HostManager {
     }
 
     processRoundResults() {
-        debug('🧰 Calculando resultados de la ronda...', null, 'info');
+        debug('🧰 Calculando resultados con word-comparison engine...', null, 'info');
         const state = this.gameState;
         if (!state || !state.players) {
             debug('❌ Estado inválido para procesar resultados', null, 'error');
@@ -529,25 +570,34 @@ class HostManager {
             }
         });
 
-        // Calcular matching de palabras
+        // Calcular matching de palabras usando canonicalización
         const roundResults = {};
+        const canonicalToOriginal = {};  // Map de canonical -> [list of original words]
         const wordFrequency = {};
 
         Object.entries(playerAnswers).forEach(([playerId, answers]) => {
             roundResults[playerId] = {};
             
             answers.forEach(word => {
-                if (!wordFrequency[word]) {
-                    wordFrequency[word] = { count: 0, players: [] };
+                const canonical = this.getCanonicalForCompare(word);
+                
+                if (!canonicalToOriginal[canonical]) {
+                    canonicalToOriginal[canonical] = new Set();
                 }
-                wordFrequency[word].count++;
-                if (!wordFrequency[word].players.includes(playerId)) {
-                    wordFrequency[word].players.push(playerId);
+                canonicalToOriginal[canonical].add(word);
+                
+                if (!wordFrequency[canonical]) {
+                    wordFrequency[canonical] = { count: 0, players: [], originalWords: new Set() };
                 }
+                wordFrequency[canonical].count++;
+                if (!wordFrequency[canonical].players.includes(playerId)) {
+                    wordFrequency[canonical].players.push(playerId);
+                }
+                wordFrequency[canonical].originalWords.add(word);
             });
         });
 
-        debug(`📊 Palabras encontradas: ${Object.keys(wordFrequency).length}`, null, 'info');
+        debug(`📊 Palabras encontradas (canonical): ${Object.keys(wordFrequency).length}`, null, 'info');
 
         // Calcular puntos y results por jugador
         const scoreDelta = {};
@@ -555,7 +605,9 @@ class HostManager {
             scoreDelta[playerId] = 0;
             
             answers.forEach(word => {
-                const freq = wordFrequency[word];
+                const canonical = this.getCanonicalForCompare(word);
+                const freq = wordFrequency[canonical];
+                
                 if (freq && freq.count > 1) {
                     // Palabra coincidió con otro jugador
                     const points = 10;
@@ -579,16 +631,20 @@ class HostManager {
             });
         });
 
-        debug(`🌟 Deltas de puntos calculados`, null, 'info');
+        debug(`⭐ Deltas de puntos calculados`, null, 'info');
 
-        // Calcular top palabras
+        // Calcular top palabras (usando la palabra más común de cada canonical)
         const topWords = Object.entries(wordFrequency)
-            .filter(([word, data]) => data.count > 1)  // Solo palabras con más de 1 jugador
-            .map(([word, data]) => ({ word, count: data.count }))
+            .filter(([canonical, data]) => data.count > 1)  // Solo palabras con más de 1 jugador
+            .map(([canonical, data]) => {
+                // Usar la palabra original más común o simplemente la primera
+                const originalWord = Array.from(data.originalWords)[0];
+                return { word: originalWord || canonical, count: data.count };
+            })
             .sort((a, b) => b.count - a.count)
             .slice(0, 10);
 
-        debug(`📄 Top palabras: ${topWords.length} (solo con coincidencias)`, null, 'info');
+        debug(`📄 Top palabras: ${topWords.length} (con equivalencias)`, null, 'info');
 
         return {
             round_results: roundResults,
@@ -612,36 +668,38 @@ class HostManager {
                 throw new Error('No se pudieron procesar los resultados');
             }
 
-            debug('📄 Enviando resultados al servidor...', null, 'info');
-
-            // Construir objeto host_results para el backend
-            const hostResults = {
-                players: {}
-            };
-
+            // Actualizar el estado local con los resultados
             const playersArray = Array.isArray(this.gameState.players) 
                 ? this.gameState.players 
                 : Object.values(this.gameState.players);
 
             playersArray.forEach(player => {
-                hostResults.players[player.id] = {
-                    round_results: results.round_results[player.id] || {},
-                    score_delta: results.score_deltas[player.id] || 0
-                };
+                // Actualizar round_results
+                player.round_results = results.round_results[player.id] || {};
+                // Actualizar score
+                player.score = (player.score || 0) + (results.score_deltas[player.id] || 0);
+                // Cambiar status a connected
+                player.status = 'connected';
             });
 
-            hostResults.round_top_words = results.top_words;
+            // Actualizar top words en estado
+            this.gameState.round_top_words = results.top_words;
+            this.gameState.last_update = Math.floor(Date.now() / 1000);
 
-            debug(`✅ host_results preparado con ${results.top_words.length} top words`, null, 'info');
+            debug('📄 Enviando end_round al servidor...', null, 'info');
 
-            // Llamar a end_round en la API
+            // Llamar a end_round - el backend solo actualiza score basado en player.score
             const response = await this.client.sendAction('end_round', {
-                host_results: hostResults
+                round_results: results.round_results,
+                top_words: results.top_words,
+                score_deltas: results.score_deltas
             });
 
             if (response.success) {
                 debug('✅ Ronda finalizada en el servidor', null, 'success');
-                this.handleGameState(response.state);
+                if (response.state) {
+                    this.handleGameState(response.state);
+                }
             } else {
                 debug('❌ Error en end_round: ' + response.message, null, 'error');
             }
@@ -806,4 +864,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js - FIXED: Round ending with results calculation, word matching, scoring & top words', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - REFACTORED: Lightweight results with word-comparison, reduced server load', 'color: #FF00FF; font-weight: bold; font-size: 12px');
