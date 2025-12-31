@@ -516,13 +516,15 @@ class PlayerManager {
         if (isReady) {
             debug('📆 Ya confirmaste que terminaste', 'debug');
             this.isReady = true;
+            // 🔧 FIX: Disable input ONLY when ready
             if (this.elements.currentWordInput) {
                 this.elements.currentWordInput.disabled = true;
                 this.elements.currentWordInput.placeholder = '✅ Terminaste';
             }
-            if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
+            // 🔧 FIX: Keep btnAddWord enabled (to allow editing)
+            if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
-                this.elements.btnSubmit.disabled = true;
+                this.elements.btnSubmit.disabled = false;
                 this.elements.btnSubmit.textContent = '👍 LISTO';
             }
 
@@ -537,10 +539,13 @@ class PlayerManager {
         } else {
             debug('💗 Puedes escribir y editar palabras', 'debug');
             this.isReady = false;
+            // 🔧 FIX: Input disabled ONLY if we reached maxWords
             if (this.elements.currentWordInput) {
-                this.elements.currentWordInput.disabled = false;
-                this.elements.currentWordInput.placeholder = 'Ingresa una palabra...';
+                const isAtMax = this.myWords.length >= this.maxWords;
+                this.elements.currentWordInput.disabled = isAtMax;
+                this.elements.currentWordInput.placeholder = isAtMax ? `Maximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
             }
+            // 🔧 FIX: btnAddWord always enabled (for adding/editing)
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
                 this.elements.btnSubmit.disabled = false;
@@ -613,7 +618,7 @@ class PlayerManager {
 
         if (this.myWords.length === this.maxWords) {
             debug(`📦 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
-            this.updateFinishButtonText();
+            this.updateInputAndButtons();
         }
     }
 
@@ -639,23 +644,60 @@ class PlayerManager {
         }
     }
 
+    /**
+     * 🔧 FIX: Remove word and allow editing
+     * - Takes word out of the list
+     * - Puts it in the input for editing
+     * - Re-enables input if it was disabled
+     */
     removeWord(index) {
         const removed = this.myWords.splice(index, 1)[0] || '';
         
         this.updateWordsList();
         this.scheduleWordsUpdate();
 
+        // 🔧 FIX: Put word in input for editing
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.value = removed;
-            
-            if (!this.elements.currentWordInput.disabled) {
+        }
+
+        // 🔧 FIX: Re-enable input when editing
+        if (this.elements.currentWordInput) {
+            this.elements.currentWordInput.disabled = false;
+            this.elements.currentWordInput.placeholder = 'Edita o agrega otra palabra...';
+            if (!this.isReady) {
                 this.elements.currentWordInput.focus();
             }
         }
 
+        // 🔧 FIX: Update button states
+        this.updateInputAndButtons();
+
         if (this.isReady && this.myWords.length < this.maxWords) {
             debug('🔼 Revertiendo a estado editable (palabras removidas)', 'debug');
             this.markNotReady();
+        }
+    }
+
+    /**
+     * 🆕 Helper: Update input disabled state and button text based on myWords.length
+     */
+    updateInputAndButtons() {
+        if (!this.isReady) {
+            const isAtMax = this.myWords.length >= this.maxWords;
+            
+            // 🔧 FIX: Input disabled ONLY when at max
+            if (this.elements.currentWordInput) {
+                this.elements.currentWordInput.disabled = isAtMax;
+                if (isAtMax) {
+                    this.elements.currentWordInput.placeholder = `Maximo ${this.maxWords} palabras`;
+                } else {
+                    this.elements.currentWordInput.placeholder = 'Ingresa una palabra...';
+                }
+            }
+            
+            // 🔧 FIX: Update button text
+            this.updateFinishButtonText();
         }
     }
 
@@ -717,13 +759,15 @@ class PlayerManager {
         debug('👍 Marcando como READY (confirmó terminar)', 'info');
         this.isReady = true;
 
+        // 🔧 FIX: Disable input when marking ready
         if (this.elements.currentWordInput) {
             this.elements.currentWordInput.disabled = true;
             this.elements.currentWordInput.placeholder = '✅ Terminaste';
         }
-        if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
+        // 🔧 FIX: Keep button enabled
+        if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
         if (this.elements.btnSubmit) {
-            this.elements.btnSubmit.disabled = true;
+            this.elements.btnSubmit.disabled = false;
             this.elements.btnSubmit.textContent = '👍 LISTO';
         }
 
@@ -743,10 +787,13 @@ class PlayerManager {
         debug('🔼 Revertiendo a NO READY', 'info');
         this.isReady = false;
 
+        // 🔧 FIX: Re-enable input and buttons based on state
         if (this.elements.currentWordInput) {
-            this.elements.currentWordInput.disabled = false;
-            this.elements.currentWordInput.placeholder = 'Ingresa una palabra...';
+            const isAtMax = this.myWords.length >= this.maxWords;
+            this.elements.currentWordInput.disabled = isAtMax;
+            this.elements.currentWordInput.placeholder = isAtMax ? `Maximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
         }
+        // 🔧 FIX: Keep button enabled
         if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
         if (this.elements.btnSubmit) {
             this.elements.btnSubmit.disabled = false;
@@ -984,4 +1031,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js v8: Memory leak fixes + proper cleanup', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js v9: Input/button disable logic FIXED - only input disabled at maxWords', 'color: #FF00FF; font-weight: bold; font-size: 12px');
