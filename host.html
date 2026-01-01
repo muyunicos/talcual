@@ -70,71 +70,39 @@
     </nav>
 
     <!-- MODAL CREAR JUEGO -->
-    <div class="modal-overlay boot-el nosession-only" id="modal-create-game">
+    <div class="modal-overlay boot-el nosession-only" id="modal-start-game">
         <div class="modal-content">
             <div class="modal-title">Nueva Partida</div>
 
             <div class="input-group">
-                <label class="input-label" for="category-select">Categoría</label>
-                <select id="category-select" class="input-field" aria-label="Seleccionar categoría para la partida">
-                    <option value="" selected>Cargando categorías...</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label class="input-label" for="custom-code">Código de Sala</label>
-                <input type="text" id="custom-code" class="input-field"
-                       placeholder="Se genera automáticamente (3-5 letras)" maxlength="5" autocomplete="off" aria-label="Código personalizado para la sala">
-                <small class="custom-code-info">
-                    Este codigo de sala solo se puede cambiar antes de crear la partida.
-                </small>
+                <label class="input-label" for="input-game-code">Código de Sala</label>
+                <input type="text" id="input-game-code" class="input-field"
+                       placeholder="EJ: ABC123" maxlength="6" autocomplete="off" aria-label="Código para la sala">
             </div>
 
-            <button class="btn-modal-primary btn-create-game" id="btn-create-game">
-                Crear Partida
+            <button class="btn-modal-primary" id="btn-create-game">
+                🎮 Crear Juego
             </button>
 
             <div id="status-message" class="status-message-modal"></div>
         </div>
     </div>
 
-    <!-- MODAL CONFIGURACIÓN DE JUEGO (ARRANCA CERRADO) -->
-    <div class="modal-overlay boot-el" id="modal-game-config" style="display: none;">
-        <div class="modal-content modal-content--config">
-            <div class="modal-title">⚠️ Configurar Partida</div>
+    <!-- MODAL SELECCIÓN DE CATEGORÍA -->
+    <div class="modal-overlay boot-el" id="modal-category" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-title">📚 Seleccionar Categoría</div>
 
             <div class="input-group">
-                <label class="input-label" for="config-total-rounds">Cantidad de Rondas</label>
-                <div class="input-control">
-                    <button class="btn-adjust" id="btn-decrease-rounds" aria-label="Disminuir cantidad de rondas">−</button>
-                    <input type="number" id="config-total-rounds" class="input-field input-field-number"
-                           min="1" max="10" value="3" aria-label="Número de rondas">
-                    <button class="btn-adjust" id="btn-increase-rounds" aria-label="Aumentar cantidad de rondas">+</button>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label class="input-label" for="config-round-duration">Duración de Ronda (segundos)</label>
-                <div class="input-control">
-                    <button class="btn-adjust" id="btn-decrease-duration" aria-label="Disminuir duración de ronda">−</button>
-                    <input type="number" id="config-round-duration" class="input-field input-field-number"
-                           min="30" max="300" value="60" step="10" aria-label="Duración de cada ronda en segundos">
-                    <button class="btn-adjust" id="btn-increase-duration" aria-label="Aumentar duración de ronda">+</button>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label class="input-label" for="config-min-players">Mínimo de Jugadores</label>
-                <div class="input-control">
-                    <button class="btn-adjust" id="btn-decrease-min-players" aria-label="Disminuir mínimo de jugadores">−</button>
-                    <input type="number" id="config-min-players" class="input-field input-field-number"
-                           min="1" max="6" value="2" aria-label="Número mínimo de jugadores para iniciar">
-                    <button class="btn-adjust" id="btn-increase-min-players" aria-label="Aumentar mínimo de jugadores">+</button>
-                </div>
+                <label class="input-label" for="category-input">Categoría</label>
+                <input type="text" id="category-input" class="input-field"
+                       placeholder="Escribe una categoría (ej: Películas, Animales, Países)" 
+                       maxlength="50" aria-label="Nombre de la categoría">
             </div>
 
             <div class="modal-buttons">
-                <button class="btn" id="btn-config-cancel">Cancelar</button>
-                <button class="btn-modal-primary" id="btn-config-save">Guardar</button>
+                <button class="btn" id="btn-cancel-category">Cancelar</button>
+                <button class="btn-modal-primary" id="btn-confirm-category">Confirmar</button>
             </div>
         </div>
     </div>
@@ -145,67 +113,55 @@
     </div>
 
     <!-- PANTALLA DE HOST -->
-    <div class="game-screen boot-el session-only" id="game-screen">
+    <div class="game-screen boot-el session-only" id="game-screen" style="display: none;">
         <!-- COUNTDOWN OVERLAY (Mostrado durante INITIAL_TIMER antes de que comience la ronda) -->
-        <div class="countdown-overlay-host" id="countdown-overlay-host" role="status" aria-live="assertive" aria-label="Contador regresivo antes de comenzar ronda">
-            <div class="countdown-number-host" id="countdown-number-host" aria-atomic="true">3</div>
+        <div class="countdown-overlay" id="countdown-overlay" role="status" aria-live="assertive" aria-label="Contador regresivo antes de comenzar ronda">
+            <div class="countdown-number" id="countdown-number" aria-atomic="true">3</div>
         </div>
 
         <!-- CÓDIGO DE SALA -->
-        <div class="code-sticker-floating" id="code-sticker-floating" aria-label="Código de sala actual">
-            <div class="code-sticker-label">Código Sala</div>
-            <div class="code-sticker-value" id="code-sticker-value" aria-atomic="true">----</div>
+        <div class="code-sticker-floating" aria-label="Código de sala actual">
+            <div class="code-sticker-label">Código</div>
+            <div class="code-sticker-value" id="header-code" aria-atomic="true">----</div>
         </div>
 
         <!-- HEADER CON TEMPORIZADOR -->
         <div class="tv-header">
             <div class="timer-container">
-                <div class="round-info" id="round-info" aria-live="polite" aria-label="Información de ronda">Ronda <span id="round-display">0</span>/<span id="total-rounds-display">3</span></div>
-                <div class="timer-display" id="timer-display" aria-live="assertive" aria-label="Tiempo restante de ronda">00:00</div>
+                <div class="round-info" aria-live="polite" aria-label="Información de ronda">Ronda <span id="header-round">0</span>/3</div>
+                <div class="timer-display" id="header-timer" aria-live="assertive" aria-label="Tiempo restante de ronda">⏳</div>
             </div>
         </div>
 
         <!-- ÁREA CENTRAL -->
         <div class="center-stage" id="center-stage" role="main" aria-label="Área principal de juego">
-            <div class="status-message" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
-            <button class="btn-empezar" id="btn-start-game" style="display: none;" aria-label="Botón para iniciar el juego">! Empezar Juego!</button>
+            <div class="status-message" id="status-message" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
+            <div class="current-word" id="current-word" style="display: none;">???</div>
+            <div class="category-label" id="category-label" style="display: none;">Categoría</div>
+            <button class="btn-start" id="btn-start-round" style="display: none;" aria-label="Botón para iniciar la ronda">🎮 Iniciar Ronda</button>
         </div>
 
         <!-- PANEL LATERAL FLOTANTE -->
-        <div class="floating-side-panel" id="floating-side-panel" role="complementary" aria-label="Panel lateral con ranking y palabras top">
-            <div class="category-sticker" id="category-sticker" aria-label="Categoría actual">Categoría</div>
+        <div class="floating-side-panel" id="floating-side-panel" role="complementary" aria-label="Panel lateral con ranking">
+            <div class="category-sticker" id="category-sticker" aria-label="Categoría actual">Sin categoría</div>
 
             <div class="panel-tabs" role="tablist" aria-label="Vistas del panel lateral">
                 <div class="panel-tab active" data-tab="ranking" role="tab" aria-selected="true" aria-label="Ver ranking de jugadores">🏆 Ranking</div>
-                <div class="panel-tab" data-tab="topwords" role="tab" aria-selected="false" aria-label="Ver palabras top">📈 Top Palabras</div>
             </div>
 
             <div class="panel-content" role="tabpanel">
                 <div class="panel-view active" data-view="ranking">
-                    <div class="panel-list" id="ranking-list">
+                    <div class="panel-list" id="players-list">
                         <div class="panel-item"><div class="name">Sin jugadores aún</div></div>
                     </div>
                 </div>
-
-                <div class="panel-view" data-view="topwords">
-                    <div class="panel-list" id="top-words-list">
-                        <div class="panel-item"><div class="name">Sin palabras aún</div></div>
-                    </div>
-                </div>
             </div>
         </div>
 
-        <!-- CONTENEDOR DE JUGADORES -->
-        <div class="players-container" id="players-container" role="region" aria-label="Contenedor de jugadores conectados">
-            <div class="players-grid" id="players-grid"></div>
-        </div>
-
-        <!-- RESULTS OVERLAY -->
-        <div class="results-overlay" id="results-overlay" role="region" aria-label="Resultados de la ronda">
-            <div class="results-panel">
-                <div class="results-title">Resultados</div>
-                <div id="results-content"></div>
-            </div>
+        <!-- BOTONES DE CONTROL -->
+        <div class="control-buttons" style="display: none;">
+            <button class="btn" id="btn-select-category" aria-label="Seleccionar categoría para esta ronda">📚 Categoría</button>
+            <button class="btn" id="btn-end-game" aria-label="Terminar el juego">🚫 Terminar</button>
         </div>
     </div>
 
@@ -214,12 +170,13 @@
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
     
+    <!-- 🔧 FASE 5: ModalController (DEBE ESTAR ANTES QUE LOS MANAGERS) -->
+    <script src="./js/modal-controller.js"></script>
+    
     <!-- Sistemas de juego -->
     <script src="./js/aura-system.js"></script>
     <script src="./js/word-comparison.js"></script>
     <script src="./js/game-client.js"></script>
-    <script src="./js/create-game-modal.js"></script>
-    <script src="./js/floating-side-panel.js"></script>
     <script src="./js/menu-opciones.js"></script>
     
     <!-- Gestor principal del host -->
