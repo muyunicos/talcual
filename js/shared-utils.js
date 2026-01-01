@@ -9,6 +9,7 @@
  * 🎯 FASE 4: ConfigService race condition safeguards
  * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
  * 🔧 FASE 5-HOTFIX: CRITICAL - Remove race condition, restore fallbacks, fix dependencies
+ * 🔧 FEATURE: Remove duplicate timeSync + hostSession/debug dependency fix
  */
 
 // ============================================================================
@@ -514,6 +515,20 @@ class ConfigService {
 const configService = new ConfigService();
 
 // ============================================================================
+// TIME SYNC MANAGER (USE FROM communication.js)
+// ============================================================================
+
+/**
+ * 🔧 FEATURE: Remove duplicate timeSync declaration
+ * communication.js already creates a TimeSyncManager instance
+ * We reference it here for backward compatibility
+ * If communication.js hasn't loaded yet, we'll have a race condition
+ * But this is handled by checking typeof before use
+ */
+// timeSync is now expected to be from communication.js
+// (See host.html: communication.js loads BEFORE shared-utils.js)
+
+// ============================================================================
 // MODAL CONTROLLER
 // ============================================================================
 
@@ -721,29 +736,7 @@ function showNotification(message, type = 'info') {
 }
 
 // ============================================================================
-// TIME SYNC HELPER
-// ============================================================================
-
-const timeSync = {
-    offset: 0,
-    isCalibrated: false,
-
-    calibrateWithServerTime(serverNow, roundStartsAt, roundEndsAt, roundDuration) {
-        this.offset = serverNow - Date.now();
-        this.isCalibrated = true;
-        debug(`⏱️  TimeSyncManager calibrated`, { 
-            offset: this.offset,
-            roundDuration
-        }, 'success');
-    },
-
-    getServerTime() {
-        return Date.now() + this.offset;
-    }
-};
-
-// ============================================================================
 // INITIALIZATION
 // ============================================================================
 
-debug('✅ shared-utils.js cargado exitosamente - WordEngine inicializado', null, 'success');
+debug('✅ shared-utils.js cargado exitosamente - servicios centralizados listos', null, 'success');
