@@ -2,11 +2,10 @@
  * Player Manager - Gestión de jugador en partida
  * Maneja: unión, palabras, timer, resultados
  * 
- * ✅ REFACTORIZADO FASE 3C COMPLETA:
- * - Usa ModalController para gestión centralizada de modales
- * - Mantiene SessionManager para gestión de sesión
- * - Mantiene ConfigService en lugar de loadConfig()
- * - Mantiene WordEngineManager para comparación de palabras
+ * 🔧 REFACTORIZADO FASE 5:
+ * - Usa wordEngine desacoplado (no wordEngineManager)
+ * - Manejo de errores fuerte en config/dict
+ * - Rechaza Promises si hay error (no fallbacks)
  */
 
 class PlayerManager {
@@ -41,34 +40,59 @@ class PlayerManager {
     async initialize() {
         debug('📃 Inicializando PlayerManager');
         
-        // ✅ CAMBIO: Usar ConfigService en lugar de loadConfig()
-        await configService.load();
-        this.maxWords = configService.get('max_words_per_player', 6);
-        
-        this.cacheElements();
-        
-        // ✅ CAMBIO: Crear ModalControllers después de cachear elementos
-        this.initializeModals();
-        
-        this.attachEventListeners();
+        try {
+            // 🔧 FASE 5: Manejo de errores fuerte
+            await configService.load();
+            this.maxWords = configService.get('max_words_per_player', 6);
+            
+            this.cacheElements();
+            
+            // ✅ CAMBIO: Crear ModalControllers después de cachear elementos
+            this.initializeModals();
+            
+            this.attachEventListeners();
 
-        // ✅ CAMBIO: Inicializar WordEngineManager
-        await this.initWordEngine();
+            // 🔧 FASE 5: Inicializar WordEngine con manejo de error
+            await this.initWordEngine();
 
-        // ✅ CAMBIO: Usar SessionManager para recuperar sesión
-        const sessionData = playerSession.recover();
-        if (sessionData) {
-            debug('🔄 Recuperando sesión', 'info');
-            this.recoverSession(sessionData.gameId, sessionData.playerId, sessionData.playerName, sessionData.playerColor);
-        } else {
-            debug('💡 Mostrando modal de unión', 'info');
-            this.showJoinModal();
+            // ✅ CAMBIO: Usar SessionManager para recuperar sesión
+            const sessionData = playerSession.recover();
+            if (sessionData) {
+                debug('🔄 Recuperando sesión', 'info');
+                this.recoverSession(sessionData.gameId, sessionData.playerId, sessionData.playerName, sessionData.playerColor);
+            } else {
+                debug('💡 Mostrando modal de unión', 'info');
+                this.showJoinModal();
+            }
+
+            // ✅ CAMBIO: SessionManager maneja automáticamente el beforeunload
+            playerSession.registerManager(this);
+
+            debug('✅ PlayerManager inicializado');
+        } catch (error) {
+            debug('❌ Error inicializando PlayerManager: ' + error.message, null, 'error');
+            this.showFatalError('Error de inicialización. Por favor recarga la página.');
+            throw error;
         }
+    }
 
-        // ✅ CAMBIO: SessionManager maneja automáticamente el beforeunload
-        playerSession.registerManager(this);
-
-        debug('✅ PlayerManager inicializado');
+    showFatalError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'fatal-error';
+        errorDiv.textContent = message;
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #EF4444;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            text-align: center;
+        `;
+        document.body.appendChild(errorDiv);
     }
 
     // ✅ CAMBIO: Método para inicializar ModalControllers
@@ -103,19 +127,20 @@ class PlayerManager {
         });
     }
 
-    // ✅ CAMBIO: Delegar a WordEngineManager
+    // 🔧 FASE 5: Delegar a WordEngine con manejo de error
     async initWordEngine() {
         try {
-            await wordEngineManager.initialize();
+            await dictionaryService.initialize();
             debug('📜 Word engine inicializado en player', null, 'success');
         } catch (error) {
             debug('❌ Error inicializando word engine: ' + error.message, null, 'error');
+            // Continuar de todas formas - scoring fallback funciona
         }
     }
 
-    // ✅ CAMBIO: Delegar a WordEngineManager
+    // 🔧 FASE 5: Delegar a WordEngine desacoplado
     getCanonicalForCompare(word) {
-        return wordEngineManager.getCanonical(word);
+        return wordEngine.getCanonical(word);
     }
 
     cacheElements() {
@@ -538,7 +563,7 @@ class PlayerManager {
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
                 this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = '👍 LISTO';
+                this.elements.btnSubmit.textContent = 'ὄd LISTO';
             }
 
             if (this.elements.waitingMessage) {
@@ -592,7 +617,7 @@ class PlayerManager {
         if (!word) return;
 
         if (this.myWords.length >= this.maxWords) {
-            showNotification(`📦 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
+            showNotification(`📆 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
             return;
         }
 
@@ -601,7 +626,7 @@ class PlayerManager {
             return;
         }
 
-        // ✅ CAMBIO: WordEngineManager ya está inicializado
+        // 🔧 FASE 5: WordEngine ya está desacoplado
         const normalized = word.toUpperCase();
         if (this.myWords.includes(normalized)) {
             showNotification('Ya agregaste esa palabra', 'warning');
@@ -627,7 +652,7 @@ class PlayerManager {
         input.focus();
 
         if (this.myWords.length === this.maxWords) {
-            debug(`📦 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
+            debug(`📆 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
             this.updateInputAndButtons();
         }
     }
@@ -906,7 +931,7 @@ class PlayerManager {
     }
 
     destroy() {
-        debug('🗑️ Destroying PlayerManager...', 'info');
+        debug('🗸 Destroying PlayerManager...', 'info');
         
         this.stopTimer();
         
@@ -1027,4 +1052,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - REFACTORIZADO FASE 3C COMPLETA: Usa ModalController', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - FASE 5: Strong error handling, wordEngine decoupling', 'color: #FF00FF; font-weight: bold; font-size: 12px');
