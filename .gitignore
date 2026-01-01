@@ -10,7 +10,7 @@ images/
 favicon.ico
 
 # Dictionary
-app/diccionario1.json
+app/diccionario-test.json
 app/diccionario.json
 
 # Logs
