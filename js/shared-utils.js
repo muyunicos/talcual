@@ -8,7 +8,7 @@
  * 🎯 FASE 3B: ModalController para gestión unificada de modales
  * 🎯 FASE 4: ConfigService race condition safeguards
  * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
- * 🔧 FASE 5-HOTFIX: CRITICAL - Remove fallbacks, fix dependencies, ensure wordEngine global
+ * 🔧 FASE 5-HOTFIX: CRITICAL - Remove race condition, restore fallbacks, fix dependencies
  */
 
 // ============================================================================
@@ -244,14 +244,40 @@ const playerSession = new SessionManager('player');
 
 /**
  * 🔧 FASE 5-HOTFIX: Crear instancia global de WordEquivalenceEngine
- * Esta clase debe estar definida en word-comparison.js
- * Si no está disponible, crear un stub para evitar ReferenceError
+ * FIX CRÍTICO: Mover fuera del evento window.load para evitar race condition
+ * El archivo word-comparison.js define la clase WordEquivalenceEngine
+ * Esta será instanciada AQUÍ para que esté disponible en DOMContentLoaded
  */
 let wordEngine = null;
 
-// El archivo word-comparison.js define WordEquivalenceEngine
-// Esta variable será asignada después de que ese archivo cargue
-// Ver línea 300+ para la asignación real
+// Intenta instanciar inmediatamente si la clase ya está disponible
+// (Si word-comparison.js fue incluido antes de shared-utils.js en el HTML)
+if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
+    wordEngine = new WordEquivalenceEngine();
+    debug('✅ WordEngine instanciado inmediatamente en shared-utils.js', null, 'success');
+}
+
+// Fallback: si word-comparison.js NO cargó aún, usar stub
+if (typeof WordEquivalenceEngine === 'undefined') {
+    class WordEquivalenceEngine {
+        constructor() {
+            this.dictionary = null;
+            this.thesaurus = null;
+            this.wordClassifications = null;
+        }
+        getCanonical(word) {
+            return word ? word.toUpperCase().trim() : '';
+        }
+        getMatchType(word1, word2) {
+            return word1.toUpperCase() === word2.toUpperCase() ? 'EXACTA' : null;
+        }
+        processDictionary(dict) {
+            this.dictionary = dict;
+        }
+    }
+    wordEngine = new WordEquivalenceEngine();
+    debug('⚠️  STUB: WordEquivalenceEngine stub creado (word-comparison.js aún no cargó)', null, 'warn');
+}
 
 // ============================================================================
 // DICTIONARY SERVICE (Datos de palabras)
@@ -263,8 +289,7 @@ let wordEngine = null;
  * - Proporcionar datos a WordEngine
  * - NO contiene lógica de comparación (eso es WordEngine)
  * 
- * ✅ RECHAZA si falla (no usa fallbacks)
- * ✅ Encapsulado: sin funciones sueltas, todo en la clase
+ * ✅ HOTFIX: Restaurar fallbacks mínimos para robustez en producción
  */
 class DictionaryService {
     constructor() {
@@ -276,7 +301,7 @@ class DictionaryService {
 
     /**
      * Carga el diccionario desde dictionary.json
-     * ✅ HOTFIX: Rechaza completamente si falla (sin fallbacks)
+     * 🔧 HOTFIX: Restaurar fallback a valores por defecto para robustez
      */
     async initialize() {
         if (this.isReady) return this.dictionary;
@@ -313,7 +338,7 @@ class DictionaryService {
                 this.categories = validCategories.map(([k]) => k);
                 this.isReady = true;
 
-                // 🔧 FASE 5: Inicializar WordEngine con datos del diccionario
+                // Inicializar WordEngine con datos del diccionario
                 if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
                     wordEngine.processDictionary(data);
                     debug('🔗 WordEngine inicializado con diccionario', null, 'success');
@@ -326,49 +351,23 @@ class DictionaryService {
 
                 return this.dictionary;
             } catch (error) {
-                // 🔧 FASE 5-HOTFIX: RECHAZAR completamente (sin fallback)
-                this.isReady = false;
-                this.loadPromise = null;  // Reset para permitir reintentos
+                // 🔧 HOTFIX: RESTAURAR FALLBACK para robustez
+                console.error("❌ Error cargando diccionario, usando valores por defecto", error);
                 
-                const errorMsg = `❌ ERROR FATAL: No se puede cargar diccionario.json: ${error.message}`;
-                debug(errorMsg, null, 'error');
+                this.dictionary = {
+                    'general': ['PALABRA', 'JUEGO', 'PALABRA'],
+                    'animales': ['GATO', 'PERRO', 'PAJARO']
+                };
+                this.categories = ['general', 'animales'];
+                this.isReady = true;
+                this.loadPromise = null;
                 
-                // Mostrar error en pantalla
-                this.showFatalError(errorMsg);
-                
-                throw error;  // Propagar para que app.js lo maneje
+                debug('⚠️  Diccionario: usando fallback por defecto', null, 'warn');
+                return this.dictionary;
             }
         })();
 
         return this.loadPromise;
-    }
-
-    /**
-     * Mostrar error fatal en UI
-     */
-    showFatalError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #EF4444;
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            z-index: 10000;
-            text-align: center;
-            max-width: 500px;
-            font-weight: bold;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        `;
-        errorDiv.innerHTML = `
-            <div style="font-size: 20px; margin-bottom: 10px;">⚠️ Error de Carga</div>
-            <div style="font-size: 14px; line-height: 1.5;">${message}</div>
-            <div style="font-size: 12px; margin-top: 15px; opacity: 0.8;">Por favor recarga la página</div>
-        `;
-        document.body.appendChild(errorDiv);
     }
 
     getTotalWordCount() {
@@ -419,7 +418,7 @@ const dictionaryService = new DictionaryService();
 
 /**
  * 🔧 FASE 5: ConfigService - Carga config desde backend
- * ✅ RECHAZA si falla (sin fallbacks - son REGLAS del juego)
+ * 🔧 HOTFIX: Restaurar fallbacks para robustez en producción
  */
 class ConfigService {
     constructor() {
@@ -430,7 +429,7 @@ class ConfigService {
 
     /**
      * Carga configuración desde actions.php
-     * ✅ HOTFIX: Rechaza completamente si falla (sin fallbacks)
+     * 🔧 HOTFIX: Restaurar fallback a defaults si falla
      */
     async load() {
         if (this.config) {
@@ -479,49 +478,24 @@ class ConfigService {
                 debug('⚙️  Configuración cargada exitosamente', this.config, 'success');
                 return this.config;
             } catch (error) {
-                // 🔧 FASE 5-HOTFIX: RECHAZAR completamente (sin fallback)
-                this.isReady = false;
-                this.loadPromise = null;  // Reset para permitir reintentos
+                // 🔧 HOTFIX: RESTAURAR FALLBACK para robustez
+                console.error("❌ Error cargando configuración, usando valores por defecto", error);
                 
-                const errorMsg = `❌ ERROR FATAL: No se puede cargar configuración del servidor: ${error.message}`;
-                debug(errorMsg, null, 'error');
+                this.config = { 
+                    max_words_per_player: 6, 
+                    default_total_rounds: 3, 
+                    round_duration: 60,
+                    default_category: 'general'
+                };
+                this.isReady = true;
+                this.loadPromise = null;
                 
-                // Mostrar error en pantalla
-                this.showFatalError(errorMsg);
-                
-                throw error;  // Propagar para que app.js lo maneje
+                debug('⚠️  Configuración: usando fallback por defecto', null, 'warn');
+                return this.config;
             }
         })();
 
         return this.loadPromise;
-    }
-
-    /**
-     * Mostrar error fatal en UI
-     */
-    showFatalError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #EF4444;
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            z-index: 10000;
-            text-align: center;
-            max-width: 500px;
-            font-weight: bold;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        `;
-        errorDiv.innerHTML = `
-            <div style="font-size: 20px; margin-bottom: 10px;">⚠️ Error de Configuración</div>
-            <div style="font-size: 14px; line-height: 1.5;">${message}</div>
-            <div style="font-size: 12px; margin-top: 15px; opacity: 0.8;">Por favor recarga la página</div>
-        `;
-        document.body.appendChild(errorDiv);
     }
 
     get(key, defaultValue = null) {
@@ -769,40 +743,7 @@ const timeSync = {
 };
 
 // ============================================================================
-// WORD ENGINE INITIALIZATION (After word-comparison.js loads)
-// ============================================================================
-
-/**
- * 🔧 FASE 5-HOTFIX: Asignar wordEngine cuando WordEquivalenceEngine esté disponible
- * El archivo word-comparison.js define la clase WordEquivalenceEngine
- * Este código se ejecuta después de que ese archivo carga
- */
-window.addEventListener('load', () => {
-    if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
-        wordEngine = new WordEquivalenceEngine();
-        debug('✅ WordEngine instanciado globalmente', null, 'success');
-    }
-});
-
-// Fallback: si word-comparison.js no cargó, crear stub para evitar ReferenceError
-if (typeof WordEquivalenceEngine === 'undefined') {
-    class WordEquivalenceEngine {
-        getCanonical(word) {
-            return word ? word.toUpperCase().trim() : '';
-        }
-        getMatchType(word1, word2) {
-            return word1.toUpperCase() === word2.toUpperCase() ? 'EXACTA' : null;
-        }
-        processDictionary(dict) {
-            // Stub
-        }
-    }
-    wordEngine = new WordEquivalenceEngine();
-    debug('⚠️  Using stub WordEngine (word-comparison.js no cargó)', null, 'warn');
-}
-
-// ============================================================================
 // INITIALIZATION
 // ============================================================================
 
-debug('✅ shared-utils.js loaded successfully', null, 'success');
+debug('✅ shared-utils.js cargado exitosamente - WordEngine inicializado', null, 'success');
