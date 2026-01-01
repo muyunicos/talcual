@@ -41,7 +41,7 @@
     </div>
 
     <!-- PANTALLA DE JUEGO -->
-    <div class="game-screen" id="game-screen">
+    <div class="game-screen" id="game-screen" style="display: none;">
         <div class="player-layout">
             <div class="top-header">
                 <div class="header-round" id="header-round" aria-live="polite" aria-label="Ronda actual"></div>
@@ -76,7 +76,7 @@
                 </div>
 
                 <div class="submit-section">
-                    <button class="btn-submit" id="btn-submit" aria-label="Enviar respuestas o pasar">⏭️ PASO</button>
+                    <button class="btn-submit" id="btn-submit" aria-label="Enviar respuestas o pasar">✍️ PASO</button>
                 </div>
             </div>
 
@@ -119,14 +119,17 @@
     <nav class="hamburger-menu" id="hamburger-menu-player" aria-label="Menú de navegación y opciones">
         <div class="hamburger-header">Menú</div>
         <button class="hamburger-option" id="hamburger-customize">✨ Personalizar</button>
-        <button class="hamburger-option hamburger-danger" id="hamburger-abandon">🚺 Retirarse</button>
+        <button class="hamburger-option hamburger-danger" id="hamburger-abandon">👺 Retirarse</button>
         <a href="./index.html" class="hamburger-option hamburger-home">❤️ Aportar</a>
     </nav>
 
     <!-- Scripts Modulares (orden importa) -->
-    <!-- ✅ SERVICIOS CENTRALIZADOS Y UTILIDADES (TODO en shared-utils.js) -->
+    <!-- ✅ SERVICIOS CENTRALIZADOS Y UTILIDADES -->
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
+    
+    <!-- 🔧 FASE 5: ModalController (DEBE ESTAR ANTES QUE LOS MANAGERS) -->
+    <script src="./js/modal-controller.js"></script>
     
     <!-- Sistemas de juego -->
     <script src="./js/aura-system.js"></script>
