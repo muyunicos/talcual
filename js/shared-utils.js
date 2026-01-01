@@ -7,6 +7,7 @@
  * 🎯 FASE 3A: ADD - DictionaryService category-aware methods
  * 🎯 FASE 3B: ADD - ModalController class para gestión unificada de modales
  * 🔧 FIX: SessionManager improvements - beforeunload, role validation, state tracking
+ * 🎪 FIX: ModalController enhancements - focus management, reset, a11y
  */
 
 // Global dictionary cache
@@ -1222,6 +1223,8 @@ class ConfigService {
 /**
  * ModalController - Controlador único para cualquier modal
  * 
+ * ✅ MEJORAS: Focus management, reset state, keyboard trapping, a11y
+ * 
  * Maneja automáticamente:
  * - Apertura/cierre con transiciones
  * - Click en backdrop (click fuera del modal)
@@ -1229,6 +1232,7 @@ class ConfigService {
  * - Z-index stacking
  * - Atributos ARIA para accesibilidad
  * - Hooks lifecycle (beforeOpen, afterOpen, beforeClose, afterClose)
+ * - Focus management (auto-focus, focus trap, focus restore)
  * 
  * Reduce ~80 líneas de código duplicado en managers
  */
@@ -1238,6 +1242,8 @@ class ModalController {
      * @param {Object} options - Configuración del modal
      * @param {boolean} options.closeOnBackdrop - Cerrar al click fuera (default: true)
      * @param {boolean} options.closeOnEsc - Cerrar con tecla ESC (default: true)
+     * @param {boolean} options.autoFocus - Auto-focus first element (default: true)
+     * @param {boolean} options.trapFocus - Keep focus inside modal (default: false)
      * @param {Function} options.onBeforeOpen - Hook antes de abrir
      * @param {Function} options.onAfterOpen - Hook después de abrir
      * @param {Function} options.onBeforeClose - Hook antes de cerrar
@@ -1247,9 +1253,12 @@ class ModalController {
         this.modalId = modalId;
         this.modal = document.getElementById(modalId);
         this.isOpen = false;
+        this.lastFocusedElement = null; // Para restaurar foco
         this.options = {
             closeOnBackdrop: options.closeOnBackdrop !== false,
             closeOnEsc: options.closeOnEsc !== false,
+            autoFocus: options.autoFocus !== false,
+            trapFocus: options.trapFocus === true,
             onBeforeOpen: options.onBeforeOpen || (() => {}),
             onAfterOpen: options.onAfterOpen || (() => {}),
             onBeforeClose: options.onBeforeClose || (() => {}),
@@ -1290,6 +1299,48 @@ class ModalController {
                 }
             };
         }
+
+        // Focus trap (si está habilitado)
+        if (this.options.trapFocus) {
+            this.focusTrapHandler = (e) => this.handleTrapFocus(e);
+        }
+    }
+
+    /**
+     * 🎯 NUEVO: Maneja tab trapping (mantiene foco dentro del modal)
+     */
+    handleTrapFocus(e) {
+        if (e.key !== 'Tab' || !this.isOpen) return;
+
+        const focusables = this.modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+
+        if (focusables.length === 0) return;
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const activeEl = document.activeElement;
+
+        if (e.shiftKey && activeEl === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && activeEl === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+
+    /**
+     * 🎯 NUEVO: Busca el primer elemento focusable en el modal
+     */
+    setFocusToFirstElement() {
+        const focusable = this.modal.querySelector(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable) {
+            focusable.focus();
+        }
     }
 
     /**
@@ -1299,6 +1350,9 @@ class ModalController {
         if (this.isOpen) return;
 
         try {
+            // Guardar elemento que tenía foco antes de abrir modal
+            this.lastFocusedElement = document.activeElement;
+
             // Hook pre-apertura
             this.options.onBeforeOpen();
 
@@ -1310,15 +1364,21 @@ class ModalController {
             // Z-index
             this.modal.style.zIndex = modalZIndexCounter++;
 
-            // Agregar listener de ESC
+            // Agregar listeners de ESC y focus trap
             if (this.escKeyHandler) {
                 document.addEventListener('keydown', this.escKeyHandler);
+            }
+            if (this.focusTrapHandler) {
+                document.addEventListener('keydown', this.focusTrapHandler);
             }
 
             this.isOpen = true;
 
-            // Hook post-apertura (asincrónico para permitir transiciones CSS)
+            // Auto-focus (asincrónico para permitir transiciones CSS)
             requestAnimationFrame(() => {
+                if (this.options.autoFocus) {
+                    this.setFocusToFirstElement();
+                }
                 this.options.onAfterOpen();
             });
 
@@ -1342,9 +1402,12 @@ class ModalController {
             this.modal.classList.remove('active');
             this.modal.setAttribute('aria-hidden', 'true');
 
-            // Remover listener de ESC
+            // Remover listeners de ESC y focus trap
             if (this.escKeyHandler) {
                 document.removeEventListener('keydown', this.escKeyHandler);
+            }
+            if (this.focusTrapHandler) {
+                document.removeEventListener('keydown', this.focusTrapHandler);
             }
 
             this.isOpen = false;
@@ -1353,6 +1416,11 @@ class ModalController {
             setTimeout(() => {
                 this.modal.style.display = 'none';
                 this.options.onAfterClose();
+
+                // 🎯 NUEVO: Restaurar foco al elemento que lo tenía antes
+                if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
+                    this.lastFocusedElement.focus();
+                }
             }, 300); // Ajustar según duración de transición CSS
 
             debug(`🎪 Modal cerrado: ${this.modalId}`, null, 'info');
@@ -1381,11 +1449,23 @@ class ModalController {
     }
 
     /**
+     * 🎯 NUEVO: Limpia estado sin re-abrir el modal
+     */
+    resetState() {
+        this.isOpen = false;
+        this.lastFocusedElement = null;
+        debug(`🔄 Modal state reset: ${this.modalId}`, null, 'info');
+    }
+
+    /**
      * Limpia event listeners (destructor)
      */
     destroy() {
         if (this.escKeyHandler) {
             document.removeEventListener('keydown', this.escKeyHandler);
+        }
+        if (this.focusTrapHandler) {
+            document.removeEventListener('keydown', this.focusTrapHandler);
         }
         debug(`🗑️ ModalController destruido: ${this.modalId}`, null, 'info');
     }
@@ -1452,11 +1532,12 @@ class ModalHandler {
     }
 
     /**
-     * Cierra todos los modales abiertos
+     * 🎯 NUEVO: Cierra todos los modales abiertos
      */
-    closeAll() {
+    closeAllModals() {
         const modalIds = Array.from(this.openModals);
         modalIds.forEach(id => this.close(id));
+        debug(`📂 Todos los modales cerrados`, null, 'info');
     }
 
     /**
@@ -1474,6 +1555,13 @@ class ModalHandler {
      */
     getOpenModals() {
         return Array.from(this.openModals);
+    }
+
+    /**
+     * 🎯 NUEVO: Obtiene cantidad de modales abiertos
+     */
+    getOpenCount() {
+        return this.openModals.size;
     }
 
     /**
@@ -1496,6 +1584,15 @@ class ModalHandler {
      */
     getController(modalId) {
         return this.controllers.get(modalId) || null;
+    }
+
+    /**
+     * 🎯 NUEVO: Resetea todos los estados sin animations
+     */
+    resetAll() {
+        this.openModals.clear();
+        this.controllers.clear();
+        debug(`🔄 Todos los estados de modales resetados`, null, 'info');
     }
 }
 
@@ -1523,5 +1620,6 @@ debug('✅ Modal aliased a modalHandler (para UI centralizada)', null, 'success'
 debug('🎯 FASE 3A: DictionaryService con getWordsForCategory() y getRandomWordByCategory()', null, 'success');
 debug('🎪 FASE 3B: ModalController para gestión unificada de modales', null, 'success');
 debug('🔧 FIX: SessionManager - beforeunload, role validation, state tracking', null, 'success');
+debug('🎪 FIX: ModalController - focus management, reset state, accessibility', null, 'success');
 
-console.log('%c✅ shared-utils.js - FASE 1 + 2 + 3A + 3B + FIX: SessionManager improvements', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ shared-utils.js - FASE 1 + 2 + 3A + 3B + FIX: SessionManager + ModalController enhancements', 'color: #10B981; font-weight: bold; font-size: 12px');
