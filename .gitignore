@@ -9,8 +9,8 @@ game_states/
 images/
 favicon.ico
 
-# Dictionary (production fallback)
-# app/diccionario.json is git-tracked as critical game data
+# Dictionary
+app/diccionario1.json
 
 # Logs
 debug.log
