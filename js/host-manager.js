@@ -3,17 +3,16 @@
  * Maneja: timer, categoría, ranking, panel tabs
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  * 
- * ✅ REFACTORIZADO FASE 3C: Usa ModalController para gestionar modales
- * ✅ REFACTORIZADO: Usa SessionManager, ConfigService, y DictionaryService
- * ✅ FIX FASE 2: Constructor sin async, initialize() unificado
- * ✅ FASE 3A: Usa getWordsForCategory() y getRandomWordByCategory()
+ * ✅ REFACTORIZADO FASE 5: Manejo de errores en config/dict
+ * ✅ Usa wordEngine desacoplado (no wordEngineManager)
+ * ✅ Rechaza Promises si hay error (no fallbacks)
  */
 
 function determineUIState() {
     const hasSession = hostSession.isSessionActive(); // ✅ CAMBIO: Usa SessionManager
     const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
     const root = document.documentElement;
-    
+
     if (hasSession && gameCode) {
         root.classList.add('has-session');
         root.classList.remove('no-session');
@@ -55,6 +54,7 @@ class HostManager {
 
     /**
      * ✅ FIX FASE 2: Nuevo método que centraliza todas las inicializaciones async
+     * 🔧 FASE 5: Manejo de errores fuerte - rechaza si falla
      * Esto permite que el constructor devuelva sincronía y el flujo sea clara
      */
     async initialize() {
@@ -69,8 +69,28 @@ class HostManager {
             debug('✅ HOST MANAGER - Inicialización completa', null, 'success');
         } catch (error) {
             debug('❌ Error en HostManager.initialize()', error, 'error');
+            this.showFatalError('Error de inicialización. Por favor recarga la página.');
             throw error;
         }
+    }
+
+    showFatalError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'fatal-error';
+        errorDiv.textContent = message;
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #EF4444;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            text-align: center;
+        `;
+        document.body.appendChild(errorDiv);
     }
 
     async loadConfigAndInit() {
@@ -84,9 +104,9 @@ class HostManager {
             
             debug('⚙️ Configuración aplicada: totalRounds=' + this.totalRounds + ', minPlayers=' + this.minPlayers, null, 'success');
         } catch (error) {
-            debug('❌ Error cargando config, usando defaults', error, 'warn');
-            this.totalRounds = 3;
-            this.minPlayers = 2;
+            // 🔧 FASE 5: RECHAZAR en lugar de continuar con defaults
+            debug('❌ Error cargando config, no se puede continuar', error, 'error');
+            throw error;
         }
         
         this.initUI();
@@ -126,14 +146,14 @@ class HostManager {
         }
     }
 
-    // ✅ REFACTORIZADO FASE 3A: Delega a DictionaryService
+    // ✅ REFACTORIZADO FASE 5: Usa wordEngine desacoplado
     getCanonicalForCompare(word) {
-        return dictionaryService.getCanonical(word);
+        return wordEngine.getCanonical(word);
     }
 
-    // ✅ REFACTORIZADO FASE 3A: Delega a DictionaryService
+    // ✅ REFACTORIZADO FASE 5: Usa wordEngine desacoplado
     getMatchType(word1, word2) {
-        return dictionaryService.getMatchType(word1, word2);
+        return wordEngine.getMatchType(word1, word2);
     }
 
     /**
@@ -711,7 +731,7 @@ class HostManager {
                     };
                     scoreDelta[playerId] += points;
                     
-                    if (dictionaryService.engine && dictionaryService.engine.debugMode) {
+                    if (wordEngine.debugMode) {
                         console.log(`⭐ ${word} vs otro: tipo=${matchType}, pts=${points}`);
                     }
                 } else {
@@ -754,8 +774,8 @@ class HostManager {
         this.roundEnded = true;
 
         try {
-            // ✅ FIX FASE 3A: Esperar explícitamente a que DictionaryService esté listo
-            if (!dictionaryService.isReady) {
+            // ✅ FIX FASE 5: Esperar explícitamente a que WordEngine esté listo
+            if (!wordEngine.isLoaded) {
                 try {
                     await Promise.race([
                         dictionaryService.initialize(),
@@ -763,9 +783,9 @@ class HostManager {
                             setTimeout(() => reject(new Error('Timeout esperando dictionary service')), 2000)
                         )
                     ]);
-                    debug('⏱️ Dictionary service listo para procesar resultados', null, 'success');
+                    debug('⏱️ Word engine listo para procesar resultados', null, 'success');
                 } catch (err) {
-                    debug(`⚠️ Dictionary service no listo a tiempo, continuando con fallback: ${err.message}`, null, 'warning');
+                    debug(`⚠️ Word engine no listo a tiempo, continuando con fallback: ${err.message}`, null, 'warning');
                     // Continuamos de todas formas - el scoring fallback funciona
                 }
             }
@@ -944,8 +964,7 @@ let hostManager = null;
 
 /**
  * ✅ FIX FASE 2: Flujo de inicialización ahora es async y secuencial
- * ✅ FASE 3A: Usa DictionaryService centralizado
- * ✅ FASE 3C: Usa ModalController para modales
+ * 🔧 FASE 5: Error handling fuerte - rechaza si falla
  */
 async function initHostManager() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -981,4 +1000,4 @@ if (document.readyState === 'loading') {
     initHostManager();
 }
 
-console.log('%c✅ host-manager.js: FASE 3C - Uses ModalController for unified modal management', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js: FASE 5 - Strong error handling, wordEngine decoupling', 'color: #00FF00; font-weight: bold; font-size: 12px');
