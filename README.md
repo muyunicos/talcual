@@ -4,13 +4,13 @@ Juego web multiplayer tipo 100 Argentinos Dicen donde los jugadores deben pensar
 
 ## 📋 Características
 
-- Juego multijugador en tiempo real (3+ jugadores)
-- Sistema de salas con códigos únicos generados desde el diccionario principal
+- Juego multijugador en tiempo real (1+ jugadores)
+- Sistema de salas con códigos únicos generados desde el diccionario principal `app/diccionario.json` usando palabras de la categoria inicial
 - Actualizaciones en tiempo real usando Server-Sent Events (SSE)
 - Interfaz optimizada para Smart TV (host) y móviles (jugadores)
-- Sistema de puntuación basado en coincidencias
-- Personalización con colores para cada jugador
-- Modo desarrollo con debugging y reportes de bugs
+- Sistema de puntuación basado en coincidencias totales o parciales mediante un motor de comparacion de palabras `js/word-comparison.json`
+- Personalización con `Auras` para cada jugador (colores)
+- Archivo .env con valores por defecto del juego
 
 ## 🚀 Instalación
 
@@ -20,22 +20,16 @@ Juego web multiplayer tipo 100 Argentinos Dicen donde los jugadores deben pensar
 - Servidor web (Apache/Nginx)
 - Permisos de escritura en el directorio
 
-### Pasos
-
-1. Clona o descarga el repositorio
-2. Sube los archivos a tu servidor web
-3. Asegúrate que el directorio tenga permisos de escritura (755 o 775)
-4. El sistema creará automáticamente la carpeta `game_states/` para almacenar partidas
-
 ## 🎮 Cómo Jugar
 
 ### Para el Anfitrión
 1. Abre `index.html` en un Smart TV o pantalla grande
 2. Haz clic en "Crear Partida"
-3. Se generará un código de sala único (palabra de 5 letras o menos del diccionario) que puedes modificar
+3. Se seleccionará una categoría inicial aleatoria del menú y se generará un código de sala único (palabra de 5 letras o menos de la categoria seleccionada en el diccionario) que puedes modificar
 4. Los jugadores se unirán usando ese código
-5. Presiona `ENTER` o haz clic en "Iniciar Ronda" cuando todos estén listos (mínimo 3 jugadores)
-6. Presiona `C` para mostrar/ocultar controles durante el juego
+5. Presiona `ENTER` o haz clic en "Iniciar Ronda" cuando todos los jugadores estén listos
+6. Comienza la primer ronda, cada ronda se compone de:
+countdown inicial (tiene)
 
 ### Para Jugadores
 
