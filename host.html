@@ -59,7 +59,7 @@
         <span class="hamburger-line"></span>
     </button>
 
-    <!-- MENÚ HAMBURGUESA HOST -->
+    <!-- MENÚHAMBURGUESA HOST -->
     <nav class="hamburger-menu boot-el session-only" id="hamburger-menu-host" aria-label="Menú de navegación y opciones del host">
         <div class="hamburger-header">Menú</div>
         <button class="hamburger-option" id="hamburger-restart-round">🔄 Reiniciar Ronda</button>
@@ -134,7 +134,7 @@
         </div>
 
         <!-- ÁREA CENTRAL -->
-        <div class="center-stage" id="center-stage" role="main" aria-label="Área principal de juego">
+        <div class="center-stage" id="center-stage" role="main" aria-label="Area principal de juego">
             <div class="status-message" id="status-message" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
             <div class="current-word" id="current-word" style="display: none;">???</div>
             <div class="category-label" id="category-label" style="display: none;">Categoría</div>
@@ -165,8 +165,9 @@
         </div>
     </div>
 
-    <!-- Scripts Modulares (orden importa) -->
-    <!-- ✅ SERVICIOS CENTRALIZADOS Y UTILIDADES (TODO en shared-utils.js) -->
+    <!-- Scripts Modulares (🔧 ORDEN CRÍTICA) -->
+    <!-- 🔧 HOTFIX: word-comparison.js ANTES de shared-utils.js para evitar race condition -->
+    <script src="./js/word-comparison.js"></script>
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
     
@@ -175,7 +176,6 @@
     
     <!-- Sistemas de juego -->
     <script src="./js/aura-system.js"></script>
-    <script src="./js/word-comparison.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/menu-opciones.js"></script>
     

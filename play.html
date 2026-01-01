@@ -115,16 +115,17 @@
     </button>
     <div class="player-name-display" id="player-name-display" aria-label="Tu nombre en el juego">---</div>
 
-    <!-- MENÚ HAMBURGUESA PLAYER (CONTROLADO POR menu-opciones.js) -->
+    <!-- MENÚHAMBURGUESA PLAYER (CONTROLADO POR menu-opciones.js) -->
     <nav class="hamburger-menu" id="hamburger-menu-player" aria-label="Menú de navegación y opciones">
         <div class="hamburger-header">Menú</div>
         <button class="hamburger-option" id="hamburger-customize">✨ Personalizar</button>
-        <button class="hamburger-option hamburger-danger" id="hamburger-abandon">👺 Retirarse</button>
-        <a href="./index.html" class="hamburger-option hamburger-home">❤️ Aportar</a>
+        <button class="hamburger-option hamburger-danger" id="hamburger-abandon">😋 Retirarse</button>
+        <a href="./index.html" class="hamburger-option hamburger-home">ld Aportar</a>
     </nav>
 
-    <!-- Scripts Modulares (orden importa) -->
-    <!-- ✅ SERVICIOS CENTRALIZADOS Y UTILIDADES -->
+    <!-- Scripts Modulares (🔧 ORDEN CRÍTICA) -->
+    <!-- 🔧 HOTFIX: word-comparison.js ANTES de shared-utils.js para evitar race condition -->
+    <script src="./js/word-comparison.js"></script>
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
     
@@ -133,7 +134,6 @@
     
     <!-- Sistemas de juego -->
     <script src="./js/aura-system.js"></script>
-    <script src="./js/word-comparison.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/menu-opciones.js"></script>
     

@@ -2,6 +2,7 @@
  * Modal Controller - Gestión centralizada de modales
  * 
  * 🔧 FASE 5: La pieza faltante del refactor
+ * 🔧 FASE 5-HOTFIX: Use CSS classes instead of inline display manipulation
  * 
  * Responsabilidades:
  * - Mostrar/ocultar modales de forma consistente
@@ -30,7 +31,6 @@ class ModalController {
         this.overlayElement = null;
         this.isOpen = false;
 
-        // Opciones
         this.options = {
             closeOnBackdrop: options.closeOnBackdrop !== false,
             closeOnEsc: options.closeOnEsc !== false,
@@ -44,17 +44,14 @@ class ModalController {
     }
 
     init() {
-        // 🔍 Buscar modal en DOM
         this.modalElement = document.getElementById(this.modalId);
         if (!this.modalElement) {
             console.error(`❌ Modal no encontrado: ${this.modalId}`);
             return;
         }
 
-        // 🔍 Buscar o crear overlay (backdrop)
         this.overlayElement = this.findOrCreateOverlay();
 
-        // 🔧 Event listeners para ESC y backdrop
         if (this.options.closeOnEsc) {
             this.escHandler = (e) => {
                 if (e.key === 'Escape' && this.isOpen) {
@@ -75,14 +72,12 @@ class ModalController {
     }
 
     findOrCreateOverlay() {
-        // 🔍 Intentar encontrar overlay existente
         let overlay = document.querySelector(`#${this.modalId} ~ .modal-overlay`);
         
         if (!overlay) {
             overlay = document.querySelector('.modal-overlay');
         }
 
-        // Si no existe, crear uno
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.className = 'modal-overlay';
@@ -93,10 +88,10 @@ class ModalController {
                 right: 0;
                 bottom: 0;
                 background-color: rgba(0, 0, 0, 0.5);
-                display: none;
                 z-index: 999;
                 opacity: 0;
                 transition: opacity 0.3s ease;
+                visibility: hidden;
             `;
             document.body.appendChild(overlay);
         }
@@ -106,6 +101,7 @@ class ModalController {
 
     /**
      * Abrir modal con animación
+     * 🔧 HOTFIX: Usar clases CSS en lugar de manipulación inline de display
      */
     open() {
         if (this.isOpen) {
@@ -113,7 +109,6 @@ class ModalController {
             return;
         }
 
-        // 🔧 Callback antes de abrir
         if (this.options.onBeforeOpen) {
             try {
                 this.options.onBeforeOpen();
@@ -124,38 +119,31 @@ class ModalController {
 
         this.isOpen = true;
 
-        // Mostrar overlay
         if (this.overlayElement) {
-            this.overlayElement.style.display = 'block';
-            // Trigger reflow para activar transición CSS
+            this.overlayElement.classList.add('active');
             this.overlayElement.offsetHeight;
             this.overlayElement.style.opacity = '1';
+            this.overlayElement.style.visibility = 'visible';
 
             if (this.options.closeOnBackdrop && this.backdropHandler) {
                 this.overlayElement.addEventListener('click', this.backdropHandler);
             }
         }
 
-        // Mostrar modal
         if (this.modalElement) {
-            this.modalElement.style.display = 'block';
             this.modalElement.classList.remove('hidden');
             this.modalElement.classList.add('active');
-            // Trigger reflow para activar transición CSS
             this.modalElement.offsetHeight;
         }
 
-        // Escuchar ESC
         if (this.options.closeOnEsc && this.escHandler) {
             document.addEventListener('keydown', this.escHandler);
         }
 
-        // Prevenir scroll en body
         document.body.style.overflow = 'hidden';
 
         debug(`🔌 Modal abierto: ${this.modalId}`, 'info');
 
-        // 🔧 Callback después de abrir
         if (this.options.onAfterOpen) {
             try {
                 this.options.onAfterOpen();
@@ -167,6 +155,7 @@ class ModalController {
 
     /**
      * Cerrar modal con animación
+     * 🔧 HOTFIX: Usar clases CSS en lugar de manipulación inline de display
      */
     close() {
         if (!this.isOpen) {
@@ -174,7 +163,6 @@ class ModalController {
             return;
         }
 
-        // 🔧 Callback antes de cerrar
         if (this.options.onBeforeClose) {
             try {
                 this.options.onBeforeClose();
@@ -185,46 +173,40 @@ class ModalController {
 
         this.isOpen = false;
 
-        // Ocultar overlay
         if (this.overlayElement) {
+            this.overlayElement.classList.remove('active');
             this.overlayElement.style.opacity = '0';
             
             if (this.options.closeOnBackdrop && this.backdropHandler) {
                 this.overlayElement.removeEventListener('click', this.backdropHandler);
             }
 
-            // Esperar a que termine la transición
             setTimeout(() => {
                 if (this.overlayElement) {
-                    this.overlayElement.style.display = 'none';
+                    this.overlayElement.style.visibility = 'hidden';
                 }
             }, 300);
         }
 
-        // Ocultar modal
         if (this.modalElement) {
             this.modalElement.classList.remove('active');
             this.modalElement.classList.add('hidden');
             
-            // Esperar a que termine la transición CSS
             setTimeout(() => {
                 if (this.modalElement) {
-                    this.modalElement.style.display = 'none';
+                    // No tocar display, dejar que CSS lo maneje
                 }
             }, 300);
         }
 
-        // Dejar de escuchar ESC
         if (this.options.closeOnEsc && this.escHandler) {
             document.removeEventListener('keydown', this.escHandler);
         }
 
-        // Restaurar scroll en body
         document.body.style.overflow = '';
 
         debug(`🔌 Modal cerrado: ${this.modalId}`, 'info');
 
-        // 🔧 Callback después de cerrar
         if (this.options.onAfterClose) {
             try {
                 this.options.onAfterClose();
@@ -234,9 +216,6 @@ class ModalController {
         }
     }
 
-    /**
-     * Toggle modal (abrir/cerrar)
-     */
     toggle() {
         if (this.isOpen) {
             this.close();
@@ -245,20 +224,13 @@ class ModalController {
         }
     }
 
-    /**
-     * Verificar si está abierto
-     */
     getIsOpen() {
         return this.isOpen;
     }
 
-    /**
-     * Limpiar resources
-     */
     destroy() {
         debug(`🧹 Destroying ModalController: ${this.modalId}`, 'info');
 
-        // Remover listeners
         if (this.escHandler) {
             document.removeEventListener('keydown', this.escHandler);
         }
@@ -267,7 +239,6 @@ class ModalController {
             this.overlayElement.removeEventListener('click', this.backdropHandler);
         }
 
-        // Cerrar si estaba abierto
         if (this.isOpen) {
             this.close();
         }
@@ -277,4 +248,4 @@ class ModalController {
     }
 }
 
-console.log('%c✅ modal-controller.js cargado - FASE 5: Centralized modal management', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ modal-controller.js cargado - FASE 5-HOTFIX: CSS-driven modal management', 'color: #00FF00; font-weight: bold; font-size: 12px');
