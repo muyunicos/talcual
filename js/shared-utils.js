@@ -6,6 +6,7 @@
  * 🎯 FASE 2: FIX - Logging y timeout en beforeunload
  * 🎯 FASE 3A: ADD - DictionaryService category-aware methods
  * 🎯 FASE 3B: ADD - ModalController class para gestión unificada de modales
+ * 🔧 FIX: SessionManager improvements - beforeunload, role validation, state tracking
  */
 
 // Global dictionary cache
@@ -172,6 +173,10 @@ class StorageKeys {
     static PLAYER_ID = 'playerId';
     static PLAYER_NAME = 'playerName';
     static PLAYER_COLOR = 'playerColor';
+    
+    // 🔧 FIX: New keys for enhanced state tracking
+    static GAME_STATE = 'gameState';
+    static SESSION_ACTIVE = 'sessionActive';
 }
 
 class StorageManager {
@@ -220,7 +225,8 @@ class StorageManager {
     static isHostSessionActive() {
         const code = this.get(StorageKeys.HOST_GAME_CODE);
         const isHost = this.get(StorageKeys.IS_HOST);
-        return !!(code && isHost === 'true');
+        const sessionActive = this.get(StorageKeys.SESSION_ACTIVE);
+        return !!(code && isHost === 'true' && sessionActive === 'true');
     }
 
     static clearHostSession() {
@@ -228,7 +234,9 @@ class StorageManager {
             StorageKeys.HOST_GAME_CODE,
             StorageKeys.GAME_ID,
             StorageKeys.IS_HOST,
-            StorageKeys.GAME_CATEGORY
+            StorageKeys.GAME_CATEGORY,
+            StorageKeys.SESSION_ACTIVE,
+            StorageKeys.GAME_STATE
         ];
         keys.forEach(k => this.remove(k));
         debug('🧹 Host session cleared', null, 'info');
@@ -239,7 +247,9 @@ class StorageManager {
             StorageKeys.GAME_ID,
             StorageKeys.PLAYER_ID,
             StorageKeys.PLAYER_NAME,
-            StorageKeys.PLAYER_COLOR
+            StorageKeys.PLAYER_COLOR,
+            StorageKeys.SESSION_ACTIVE,
+            StorageKeys.GAME_STATE
         ];
         keys.forEach(k => this.remove(k));
         debug('🧹 Player session cleared', null, 'info');
@@ -735,85 +745,202 @@ function generateRandomLetterCode(length = 4) {
 
 /**
  * SessionManager - Gestión unificada de sesiones (host/player)
- * ✅ CENTRALIZA: localStorage, beforeunload, recuperación de sesión
- * ✅ FASE 2 FIX: Logging y timeout en beforeunload
+ * 
+ * 🔧 FIX: Mejoras implementadas:
+ * 1. beforeunload con confirmación real para sesiones activas
+ * 2. Validación de rol (throw errors si se usan métodos incorrectos)
+ * 3. Tracking de estado de juego (no solo credenciales)
+ * 4. Desconexión graceful con navigator.sendBeacon
  */
 class SessionManager {
     constructor(type = 'player') {
-        this.type = type; // 'host' o 'player'
-        this.manager = null; // Referencia al manager que se registre
+        if (type !== 'host' && type !== 'player') {
+            throw new Error(`Invalid SessionManager type: ${type}. Must be 'host' or 'player'`);
+        }
+        
+        this.type = type;
+        this.manager = null;
+        this.isActiveSession = false;
         this.setupBeforeUnload();
+        
+        debug(`✅ SessionManager created: ${type}`, null, 'success');
     }
 
     /**
-     * ✅ FASE 2 FIX: beforeunload con logging y timeout
+     * 🔧 FIX: beforeunload con confirmación REAL
+     * Solo muestra warning si hay sesión activa
      */
     setupBeforeUnload() {
-        window.addEventListener('beforeunload', () => {
+        // Handler de confirmación
+        this.beforeUnloadHandler = (e) => {
+            // Solo prevenir si hay sesión activa
+            if (!this.isSessionActive()) {
+                return undefined;
+            }
+
+            // Mensaje de confirmación (navegadores modernos ignoran el texto customizado)
+            const confirmationMessage = '¿Estás seguro de que quieres salir? La partida está activa.';
+            
+            e.preventDefault();
+            e.returnValue = confirmationMessage;
+            
+            debug(`⚠️ beforeunload: Usuario intentando salir con sesión activa (${this.type})`, null, 'warn');
+            
+            return confirmationMessage;
+        };
+
+        // Handler de desconexión graceful
+        this.unloadHandler = () => {
+            if (!this.isSessionActive()) return;
+
             try {
-                // ✅ FIX: Agregar logging de inicio
-                debug(`⏹️ beforeunload ejecutado para ${this.type.toUpperCase()}`, null, 'info');
-                
+                // 🔧 FIX: Usar sendBeacon para notificar al servidor
+                const payload = {
+                    action: 'disconnect',
+                    type: this.type,
+                    gameId: StorageManager.get(StorageKeys.GAME_ID),
+                    playerId: StorageManager.get(StorageKeys.PLAYER_ID),
+                    timestamp: Date.now()
+                };
+
+                // sendBeacon es más confiable que fetch en beforeunload
+                if (navigator.sendBeacon) {
+                    const url = new URL('./app/actions.php', window.location.href);
+                    const data = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                    navigator.sendBeacon(url.toString(), data);
+                    debug(`📡 Beacon sent: disconnect (${this.type})`, null, 'info');
+                }
+
+                // Llamar destroy del manager si existe
                 if (this.manager && typeof this.manager.destroy === 'function') {
-                    // ✅ FIX: Timeout de 2000ms para permitir que destroy() se complete
-                    const destroyPromise = Promise.resolve(this.manager.destroy());
-                    
-                    const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => {
-                            reject(new Error('destroy() timeout'));
-                        }, 2000);
-                    });
-                    
-                    Promise.race([destroyPromise, timeoutPromise])
-                        .then(() => {
-                            debug(`✅ destroy() completado para ${this.type.toUpperCase()}`, null, 'success');
-                        })
-                        .catch((err) => {
-                            debug(`⚠️ destroy() timeout o error: ${err.message}`, null, 'warn');
-                        });
+                    this.manager.destroy();
                 }
             } catch (error) {
-                debug(`❌ Error en beforeunload: ${error.message}`, null, 'error');
+                debug(`❌ Error en unload handler: ${error.message}`, null, 'error');
             }
-        });
+        };
+
+        window.addEventListener('beforeunload', this.beforeUnloadHandler);
+        window.addEventListener('unload', this.unloadHandler);
     }
 
+    /**
+     * Registra el manager (host/player) para callbacks
+     */
     registerManager(manager) {
         this.manager = manager;
         debug(`✅ ${this.type.toUpperCase()} manager registrado en SessionManager`, null, 'success');
     }
 
+    /**
+     * 🔧 FIX: Verificación robusta de sesión activa
+     * Ahora chequea también el flag SESSION_ACTIVE
+     */
     isSessionActive() {
         if (this.type === 'host') {
             return StorageManager.isHostSessionActive();
         }
+        
         const gameId = StorageManager.get(StorageKeys.GAME_ID);
         const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
-        return !!(gameId && playerId);
+        const sessionActive = StorageManager.get(StorageKeys.SESSION_ACTIVE);
+        
+        return !!(gameId && playerId && sessionActive === 'true');
     }
 
     /**
-     * Guarda sesión de jugador
+     * 🔧 FIX: Marca sesión como activa
+     */
+    markSessionActive() {
+        StorageManager.set(StorageKeys.SESSION_ACTIVE, 'true');
+        this.isActiveSession = true;
+        debug(`✅ Sesión marcada como activa: ${this.type}`, null, 'success');
+    }
+
+    /**
+     * 🔧 FIX: Marca sesión como inactiva
+     */
+    markSessionInactive() {
+        StorageManager.set(StorageKeys.SESSION_ACTIVE, 'false');
+        this.isActiveSession = false;
+        debug(`ℹ️ Sesión marcada como inactiva: ${this.type}`, null, 'info');
+    }
+
+    /**
+     * 🔧 FIX: Guarda estado del juego (para recuperación)
+     */
+    saveGameState(state) {
+        StorageManager.set(StorageKeys.GAME_STATE, state);
+        debug(`💾 Game state saved for ${this.type}`, state, 'info');
+    }
+
+    /**
+     * 🔧 FIX: Recupera estado del juego
+     */
+    getGameState() {
+        return StorageManager.get(StorageKeys.GAME_STATE, null);
+    }
+
+    /**
+     * 🔧 FIX: Guarda sesión de HOST (con validación de rol)
+     */
+    saveHostSession(gameCode, gameId, category = null) {
+        if (this.type !== 'host') {
+            throw new Error('saveHostSession() can only be called on a HOST SessionManager');
+        }
+
+        StorageManager.set(StorageKeys.HOST_GAME_CODE, gameCode);
+        StorageManager.set(StorageKeys.GAME_ID, gameId);
+        StorageManager.set(StorageKeys.IS_HOST, 'true');
+        
+        if (category) {
+            StorageManager.set(StorageKeys.GAME_CATEGORY, category);
+        }
+        
+        this.markSessionActive();
+        debug(`✅ Host session saved: ${gameCode}`, null, 'success');
+    }
+
+    /**
+     * 🔧 FIX: Guarda sesión de PLAYER (con validación de rol)
      */
     savePlayerSession(gameId, playerId, playerName, playerColor) {
+        if (this.type !== 'player') {
+            throw new Error('savePlayerSession() can only be called on a PLAYER SessionManager');
+        }
+
         StorageManager.set(StorageKeys.GAME_ID, gameId);
         StorageManager.set(StorageKeys.PLAYER_ID, playerId);
         StorageManager.set(StorageKeys.PLAYER_NAME, playerName);
         StorageManager.set(StorageKeys.PLAYER_COLOR, playerColor);
-        debug(`✅ Sesión de jugador guardada: ${playerId}`, null, 'success');
+        
+        this.markSessionActive();
+        debug(`✅ Player session saved: ${playerId}`, null, 'success');
     }
 
     /**
-     * Recupera sesión de jugador
+     * Recupera sesión según el tipo
      */
     recover() {
-        const gameId = StorageManager.get(StorageKeys.GAME_ID);
-        const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
-        const playerName = StorageManager.get(StorageKeys.PLAYER_NAME);
-        const playerColor = StorageManager.get(StorageKeys.PLAYER_COLOR);
+        if (this.type === 'host') {
+            const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
+            const gameId = StorageManager.get(StorageKeys.GAME_ID);
+            const category = StorageManager.get(StorageKeys.GAME_CATEGORY);
+            const gameState = this.getGameState();
 
-        if (gameId && playerId && playerName && playerColor) {
-            return { gameId, playerId, playerName, playerColor };
+            if (gameCode && gameId) {
+                return { gameCode, gameId, category, gameState };
+            }
+        } else {
+            const gameId = StorageManager.get(StorageKeys.GAME_ID);
+            const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
+            const playerName = StorageManager.get(StorageKeys.PLAYER_NAME);
+            const playerColor = StorageManager.get(StorageKeys.PLAYER_COLOR);
+            const gameState = this.getGameState();
+
+            if (gameId && playerId && playerName && playerColor) {
+                return { gameId, playerId, playerName, playerColor, gameState };
+            }
         }
 
         return null;
@@ -823,12 +950,28 @@ class SessionManager {
      * Limpia sesión completamente
      */
     clear() {
+        this.markSessionInactive();
+        
         if (this.type === 'host') {
             StorageManager.clearHostSession();
         } else {
             StorageManager.clearPlayerSession();
         }
+        
         debug(`🧹 ${this.type.toUpperCase()} session cleared`, null, 'info');
+    }
+
+    /**
+     * Destructor para cleanup
+     */
+    destroy() {
+        if (this.beforeUnloadHandler) {
+            window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        }
+        if (this.unloadHandler) {
+            window.removeEventListener('unload', this.unloadHandler);
+        }
+        debug(`🗑️ SessionManager destroyed: ${this.type}`, null, 'info');
     }
 }
 
@@ -1379,5 +1522,6 @@ debug('✅ wordEngineManager aliased a dictionaryService (para compatibilidad)',
 debug('✅ Modal aliased a modalHandler (para UI centralizada)', null, 'success');
 debug('🎯 FASE 3A: DictionaryService con getWordsForCategory() y getRandomWordByCategory()', null, 'success');
 debug('🎪 FASE 3B: ModalController para gestión unificada de modales', null, 'success');
+debug('🔧 FIX: SessionManager - beforeunload, role validation, state tracking', null, 'success');
 
-console.log('%c✅ shared-utils.js - FASE 1 + 2 + 3A + 3B: Servicios centralizados + ModalController', 'color: #10B981; font-weight: bold; font-size: 12px');
+console.log('%c✅ shared-utils.js - FASE 1 + 2 + 3A + 3B + FIX: SessionManager improvements', 'color: #10B981; font-weight: bold; font-size: 12px');
