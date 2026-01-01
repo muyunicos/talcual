@@ -9,27 +9,8 @@
  * - ModalHandler centralizado para modales
  * - SessionManager para persistencia
  * 🎯 FEATURE: Restaurada lógica de selector de categoría
+ * 🔧 FIX: Moved determineUIState to after dependencies load
  */
-
-function determineUIState() {
-    const hasSession = hostSession.isSessionActive();
-    const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
-    const root = document.documentElement;
-
-    if (hasSession && gameCode) {
-        root.classList.add('has-session');
-        root.classList.remove('no-session');
-    } else {
-        root.classList.add('no-session');
-        root.classList.remove('has-session');
-    }
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', determineUIState);
-} else {
-    determineUIState();
-}
 
 class HostManager {
     constructor(gameCode) {
@@ -63,6 +44,24 @@ class HostManager {
         this.loadConfigAndInit();
     }
 
+    /**
+     * 🔧 FIX: Determinar UI state basado en sesión activa
+     * Esta función ahora se llama después de que las dependencias estén listas
+     */
+    determineUIState() {
+        const hasSession = hostSession.isSessionActive();
+        const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
+        const root = document.documentElement;
+
+        if (hasSession && gameCode) {
+            root.classList.add('has-session');
+            root.classList.remove('no-session');
+        } else {
+            root.classList.add('no-session');
+            root.classList.remove('has-session');
+        }
+    }
+
     async loadConfigAndInit() {
         try {
             // 🔧 FASE 5: Manejo de error FUERTE
@@ -81,6 +80,9 @@ class HostManager {
 
             // 🎯 FEATURE: Población del selector de categoría
             await this.populateCategorySelector();
+
+            // 🔧 FIX: Determinar UI state DESPUÉS de que todo esté listo
+            this.determineUIState();
 
             // 🔧 FASE 5: Recuperar sesión con SessionManager
             const sessionData = hostSession.recover();
@@ -723,4 +725,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + strong error handling', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + fixed dependency loading', 'color: #FF00FF; font-weight: bold; font-size: 12px');
