@@ -1,35 +1,365 @@
 /**
  * @file shared-utils.js
- * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS (SessionManager, DictionaryService, ConfigService, ModalHandler, ModalController)
+ * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS
  * 
- * 🎯 FASE 1 COMPLETA: Este archivo centraliza TODA la lógica de dependencias
- * 🎯 FASE 2: FIX - Logging y timeout en beforeunload
- * 🎯 FASE 3A: ADD - DictionaryService category-aware methods
- * 🎯 FASE 3B: ADD - ModalController class para gestión unificada de modales
- * 🔧 FIX: SessionManager improvements - beforeunload, role validation, state tracking
- * 🎪 FIX: ModalController enhancements - focus management, reset, a11y
- * 🔧 FASE 4 FIX: ConfigService - Race condition safeguards + readiness state
+ * 🎯 FASE 1: Centralización de dependencias
+ * 🎯 FASE 2: SessionManager y beforeunload handling
+ * 🎯 FASE 3A: DictionaryService category-aware methods
+ * 🎯 FASE 3B: ModalController para gestión unificada de modales
+ * 🎯 FASE 4: ConfigService race condition safeguards
+ * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
  */
 
-// ... [Keeping all existing code from DEBUGGING through to DictionaryService] ...
+// ============================================================================
+// DEBUGGING & UTILITIES
+// ============================================================================
+
+const DEBUG = true;
+
+function debug(message, data = null, type = 'log') {
+    if (!DEBUG) return;
+    
+    const styles = {
+        log: 'color: #666; font-size: 11px;',
+        info: 'color: #3B82F6; font-weight: bold;',
+        success: 'color: #22C55E; font-weight: bold;',
+        warn: 'color: #F59E0B; font-weight: bold;',
+        error: 'color: #EF4444; font-weight: bold;'
+    };
+
+    console.log(`%c[${type.toUpperCase()}] ${message}`, styles[type] || styles.log);
+    if (data !== null && typeof data === 'object') {
+        console.table(data);
+    } else if (data !== null) {
+        console.log('%cData:', 'font-weight: bold;', data);
+    }
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateTimerDisplay(remainingMs, element, emoji = '⏳') {
+    if (!element) return;
+    if (remainingMs === null || remainingMs === undefined) {
+        element.textContent = `${emoji}`;
+        return;
+    }
+    const seconds = Math.ceil(remainingMs / 1000);
+    element.textContent = `${emoji} ${formatTime(seconds)}`;
+}
+
+function getRemainingTime(startTime, duration) {
+    const nowServer = typeof timeSync !== 'undefined' && timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
+    const elapsed = nowServer - startTime;
+    return Math.max(0, duration - elapsed);
+}
+
+// ============================================================================
+// DOM UTILITIES
+// ============================================================================
+
+function safeGetElement(id) {
+    const el = document.getElementById(id);
+    if (!el && typeof DEBUG !== 'undefined' && DEBUG) {
+        console.warn(`[DOM] Element not found: #${id}`);
+    }
+    return el;
+}
+
+function safeShowElement(el) {
+    if (el) {
+        el.classList.remove('hidden');
+        el.style.display = '';
+    }
+}
+
+function safeHideElement(el) {
+    if (el) {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+    }
+}
+
+function sanitizeText(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================================
+// STORAGE MANAGER & KEYS
+// ============================================================================
+
+const StorageKeys = {
+    GAME_ID: 'gameId',
+    PLAYER_ID: 'playerId',
+    PLAYER_NAME: 'playerName',
+    PLAYER_COLOR: 'playerColor',
+    HOST_GAME_CODE: 'hostGameCode',
+    IS_HOST: 'isHost',
+    SESSION_ACTIVE: 'sessionActive',
+    GAME_CATEGORY: 'gameCategory'
+};
+
+class StorageManager {
+    static set(key, value) {
+        try {
+            localStorage.setItem(key, String(value));
+        } catch (e) {
+            console.error(`[StorageManager] Error escribiendo ${key}:`, e);
+        }
+    }
+
+    static get(key, defaultValue = null) {
+        try {
+            const value = localStorage.getItem(key);
+            return value !== null ? value : defaultValue;
+        } catch (e) {
+            console.error(`[StorageManager] Error leyendo ${key}:`, e);
+            return defaultValue;
+        }
+    }
+
+    static remove(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {
+            console.error(`[StorageManager] Error removiendo ${key}:`, e);
+        }
+    }
+
+    static clear() {
+        try {
+            localStorage.clear();
+        } catch (e) {
+            console.error('[StorageManager] Error limpiando storage:', e);
+        }
+    }
+
+    static isHostSessionActive() {
+        const isHost = StorageManager.get(StorageKeys.IS_HOST) === 'true';
+        const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
+        return isHost && !!gameCode;
+    }
+}
+
+// ============================================================================
+// SESSION MANAGER
+// ============================================================================
+
+class SessionManager {
+    constructor(role) {
+        this.role = role;
+        this.managers = [];  // 🔧 FASE 5: Track managers for cleanup
+    }
+
+    isSessionActive() {
+        if (this.role === 'host') {
+            return StorageManager.isHostSessionActive();
+        } else {
+            const gameId = StorageManager.get(StorageKeys.GAME_ID);
+            const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
+            return !!gameId && !!playerId;
+        }
+    }
+
+    saveHostSession(gameCode, category = null) {
+        StorageManager.set(StorageKeys.HOST_GAME_CODE, gameCode);
+        StorageManager.set(StorageKeys.GAME_ID, gameCode);
+        StorageManager.set(StorageKeys.IS_HOST, 'true');
+        if (category) {
+            StorageManager.set(StorageKeys.GAME_CATEGORY, category);
+        }
+        debug('💾 Sesión host guardada', { gameCode, category }, 'success');
+    }
+
+    savePlayerSession(gameId, playerId, playerName, playerColor) {
+        StorageManager.set(StorageKeys.GAME_ID, gameId);
+        StorageManager.set(StorageKeys.PLAYER_ID, playerId);
+        StorageManager.set(StorageKeys.PLAYER_NAME, playerName);
+        StorageManager.set(StorageKeys.PLAYER_COLOR, playerColor);
+        StorageManager.set(StorageKeys.IS_HOST, 'false');
+        debug('💾 Sesión player guardada', { gameId, playerId, playerName }, 'success');
+    }
+
+    recover() {
+        if (!this.isSessionActive()) return null;
+
+        if (this.role === 'host') {
+            return {
+                gameCode: StorageManager.get(StorageKeys.HOST_GAME_CODE),
+                category: StorageManager.get(StorageKeys.GAME_CATEGORY)
+            };
+        } else {
+            return {
+                gameId: StorageManager.get(StorageKeys.GAME_ID),
+                playerId: StorageManager.get(StorageKeys.PLAYER_ID),
+                playerName: StorageManager.get(StorageKeys.PLAYER_NAME),
+                playerColor: StorageManager.get(StorageKeys.PLAYER_COLOR)
+            };
+        }
+    }
+
+    /**
+     * 🔧 FASE 5: Registrar manager para cleanup automático
+     * Los managers se limpian cuando se limpia la sesión
+     */
+    registerManager(instance) {
+        if (instance && typeof instance.destroy === 'function') {
+            this.managers.push(instance);
+            debug(`📋 Manager registrado (${this.managers.length} total)`, null, 'info');
+        }
+    }
+
+    clear() {
+        debug('🧹 Limpiando sesión...', null, 'info');
+        
+        // 🔧 FASE 5: Cleanup de managers primero
+        this.managers.forEach(manager => {
+            try {
+                manager.destroy?.();
+            } catch (e) {
+                debug(`⚠️  Error limpiando manager: ${e.message}`, null, 'warn');
+            }
+        });
+        this.managers = [];
+
+        // Luego limpiar storage
+        StorageManager.clear();
+        debug('✅ Sesión limpiada completamente', null, 'success');
+    }
+}
+
+// Instancias globales por rol
+const hostSession = new SessionManager('host');
+const playerSession = new SessionManager('player');
+
+// ============================================================================
+// DICTIONARY SERVICE (Datos de palabras)
+// ============================================================================
 
 /**
- * ConfigService - Gestión centralizada de configuración
- * ✅ CENTRALIZA: Carga única de config desde actions.php
- * ✅ ELIMINA REDUNDANCIA: Solo un lugar hace fetch a get_config
- * 🔧 FASE 4 FIX: Race condition safeguards + readiness state tracking
+ * 🔧 FASE 5: DictionaryService - Solo responsable de DATOS
+ * - Cargar categorías y palabras
+ * - Proporcionar datos a WordEngine
+ * - NO contiene lógica de comparación (eso es WordEngine)
+ * 
+ * ✅ Rechaza si falla (no usa fallbacks)
+ */
+class DictionaryService {
+    constructor() {
+        this.dictionary = null;
+        this.categories = [];
+        this.loadPromise = null;
+        this.isReady = false;
+    }
+
+    async initialize() {
+        if (this.isReady) return this.dictionary;
+        if (this.loadPromise) return this.loadPromise;
+
+        this.loadPromise = (async () => {
+            try {
+                const response = await fetch('./dictionary.json', { 
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Dictionary format invalid');
+                }
+
+                this.dictionary = data;
+                this.categories = Object.keys(data).filter(k => Array.isArray(data[k]));
+                this.isReady = true;
+
+                // 🔧 FASE 5: Inicializar WordEngine con datos del diccionario
+                if (typeof wordEngine !== 'undefined' && wordEngine) {
+                    wordEngine.processDictionary(data);
+                }
+
+                debug('📚 Diccionario cargado', { 
+                    categories: this.categories.length,
+                    totalWords: this.getTotalWordCount()
+                }, 'success');
+
+                return this.dictionary;
+            } catch (error) {
+                // 🔧 FASE 5: RECHAZAR en lugar de usar fallback
+                debug(`❌ Error cargando diccionario: ${error.message}`, null, 'error');
+                this.isReady = false;
+                throw error;  // Propagar el error para que app.js lo maneje
+            }
+        })();
+
+        return this.loadPromise;
+    }
+
+    getTotalWordCount() {
+        if (!this.dictionary) return 0;
+        return Object.values(this.dictionary).reduce((sum, words) => {
+            return sum + (Array.isArray(words) ? words.length : 0);
+        }, 0);
+    }
+
+    getCategories() {
+        return [...this.categories];
+    }
+
+    getWordsForCategory(category) {
+        if (!this.dictionary || !this.dictionary[category]) {
+            return [];
+        }
+        const words = this.dictionary[category];
+        return Array.isArray(words) ? [...words] : [];
+    }
+
+    getRandomWord() {
+        if (!this.dictionary) return null;
+        
+        const categories = Object.keys(this.dictionary);
+        if (categories.length === 0) return null;
+
+        const randomCat = categories[Math.floor(Math.random() * categories.length)];
+        const words = this.dictionary[randomCat];
+
+        if (!Array.isArray(words) || words.length === 0) return null;
+
+        return words[Math.floor(Math.random() * words.length)];
+    }
+
+    getRandomWordByCategory(category) {
+        const words = this.getWordsForCategory(category);
+        if (words.length === 0) return null;
+        return words[Math.floor(Math.random() * words.length)];
+    }
+}
+
+const dictionaryService = new DictionaryService();
+
+// ============================================================================
+// CONFIG SERVICE (Configuración del servidor)
+// ============================================================================
+
+/**
+ * 🔧 FASE 5: ConfigService - Carga config desde backend
+ * ✅ Rechaza si falla (no usa fallbacks)
  */
 class ConfigService {
     constructor() {
         this.config = null;
         this.loadPromise = null;
-        this.isReady = false;  // 🔧 NEW: Track readiness state
+        this.isReady = false;
     }
 
-    /**
-     * 🔧 FASE 4: Carga config con safeguards
-     * Garantiza que config esté disponible antes de ser usada
-     */
     async load() {
         if (this.config) {
             this.isReady = true;
@@ -47,43 +377,34 @@ class ConfigService {
                     cache: 'no-store'
                 });
 
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.config) {
-                        this.config = result.config;
-                        this.isReady = true;  // 🔧 Mark ready after success
-                        debug('⚙️ Configuración cargada exitosamente', this.config, 'success');
-                        return this.config;
-                    }
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
 
-                throw new Error('Config response invalid');
-            } catch (error) {
-                debug('⚠️ Config load failed, usando defaults', error, 'warn');
-                // 🔧 Set defaults even on failure
-                this.config = {
-                    default_total_rounds: 3,
-                    min_players: 2,
-                    max_words_per_player: 6,
-                    round_duration: 60000,
-                    default_round_duration: 60
-                };
-                this.isReady = true;  // 🔧 Mark ready with defaults
+                const result = await response.json();
+                
+                if (!result.success || !result.config) {
+                    throw new Error('Config response invalid');
+                }
+
+                this.config = result.config;
+                this.isReady = true;
+
+                debug('⚙️  Configuración cargada', this.config, 'success');
                 return this.config;
+            } catch (error) {
+                // 🔧 FASE 5: RECHAZAR en lugar de usar fallback
+                debug(`❌ Error cargando configuración: ${error.message}`, null, 'error');
+                this.isReady = false;
+                throw error;  // Propagar para que app.js lo maneje
             }
         })();
 
         return this.loadPromise;
     }
 
-    /**
-     * 🔧 FASE 4: Get with safeguard check
-     * Returns value if ready, otherwise uses default
-     * Safe to call even before load() completes
-     */
     get(key, defaultValue = null) {
         if (!this.config) {
-            // Only warn in dev, don't break functionality
             if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.warn(`[ConfigService.get('${key}')] called before load() - using default`);
             }
@@ -92,14 +413,255 @@ class ConfigService {
         return this.config[key] ?? defaultValue;
     }
 
-    /**
-     * 🔧 FASE 4: Check if service is ready
-     * Useful for debugging or conditional logic
-     * @returns {boolean} true if config is loaded
-     */
     isConfigReady() {
         return this.isReady && this.config !== null;
     }
 }
 
-// ... [Rest of file remains unchanged] ...
+const configService = new ConfigService();
+
+// ============================================================================
+// WORD ENGINE (Lógica de comparación - Desacoplado de Dictionary)
+// ============================================================================
+
+/**
+ * 🔧 FASE 5: WordEngine global - Instancia de WordEquivalenceEngine
+ * Desacoplado de DictionaryService
+ * Se inicializa cuando DictionaryService carga datos
+ */
+const wordEngine = new WordEquivalenceEngine();
+
+// ============================================================================
+// MODAL CONTROLLER
+// ============================================================================
+
+/**
+ * ModalController - Gestión centralizada de modales
+ * Encapsula: open, close, backdrop, escape handling, focus management
+ */
+class ModalController {
+    constructor(modalId, options = {}) {
+        this.modalId = modalId;
+        this.modal = document.getElementById(modalId);
+        this.backdrop = this.modal?.querySelector('[data-modal-backdrop]');
+        this.closeButtons = this.modal?.querySelectorAll('[data-modal-close]');
+        
+        this.options = {
+            closeOnBackdrop: options.closeOnBackdrop !== false,
+            closeOnEsc: options.closeOnEsc !== false,
+            onBeforeOpen: options.onBeforeOpen || null,
+            onAfterOpen: options.onAfterOpen || null,
+            onBeforeClose: options.onBeforeClose || null,
+            onAfterClose: options.onAfterClose || null
+        };
+
+        this.isOpen = false;
+        this.previousFocus = null;
+
+        this.init();
+    }
+
+    init() {
+        if (!this.modal) return;
+
+        // Backdrop click
+        if (this.backdrop && this.options.closeOnBackdrop) {
+            this.backdrop.addEventListener('click', () => this.close());
+        }
+
+        // Close buttons
+        this.closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.close());
+        });
+
+        // Escape key
+        if (this.options.closeOnEsc) {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.isOpen) {
+                    this.close();
+                }
+            });
+        }
+    }
+
+    open() {
+        if (!this.modal || this.isOpen) return;
+
+        this.previousFocus = document.activeElement;
+
+        if (this.options.onBeforeOpen) {
+            this.options.onBeforeOpen();
+        }
+
+        this.modal.classList.add('active');
+        this.isOpen = true;
+
+        const firstInput = this.modal.querySelector('input, button, textarea, select');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 100);
+        }
+
+        if (this.options.onAfterOpen) {
+            this.options.onAfterOpen();
+        }
+    }
+
+    close() {
+        if (!this.modal || !this.isOpen) return;
+
+        if (this.options.onBeforeClose) {
+            this.options.onBeforeClose();
+        }
+
+        this.modal.classList.remove('active');
+        this.isOpen = false;
+
+        if (this.previousFocus && typeof this.previousFocus.focus === 'function') {
+            this.previousFocus.focus();
+        }
+
+        if (this.options.onAfterClose) {
+            this.options.onAfterClose();
+        }
+    }
+
+    destroy() {
+        if (!this.modal) return;
+        
+        this.close();
+        this.modal = null;
+        this.backdrop = null;
+        this.closeButtons = null;
+    }
+}
+
+// ============================================================================
+// VALIDATION HELPERS
+// ============================================================================
+
+function isValidGameCode(code) {
+    return code && /^[A-Z0-9]{4,5}$/.test(code);
+}
+
+function isValidPlayerName(name) {
+    return name && name.length >= 2 && name.length <= 20;
+}
+
+function generatePlayerId() {
+    return `player_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function generateRandomAuras(count = 10) {
+    const baseColors = [
+        { name: 'Rojo', hex: '#FF0055' },
+        { name: 'Azul', hex: '#0066FF' },
+        { name: 'Verde', hex: '#00CC44' },
+        { name: 'Morado', hex: '#9933FF' },
+        { name: 'Naranja', hex: '#FF6600' },
+        { name: 'Rosa', hex: '#FF3366' },
+        { name: 'Turquesa', hex: '#00DDDD' },
+        { name: 'Lima', hex: '#CCFF00' },
+        { name: 'Indigo', hex: '#3300FF' },
+        { name: 'Naranja Oscuro', hex: '#CC4400' }
+    ];
+
+    const auras = [];
+    for (let i = 0; i < count && i < baseColors.length; i++) {
+        const color1 = baseColors[i];
+        const color2 = baseColors[(i + 1) % baseColors.length];
+        auras.push({
+            name: color1.name,
+            hex: color1.hex,
+            gradient: `${color1.hex},${color2.hex}`
+        });
+    }
+    return auras;
+}
+
+function renderAuraSelectors(container, auras, selectedHex, onSelect) {
+    if (!container) return;
+
+    container.innerHTML = '';
+    auras.forEach(aura => {
+        const button = document.createElement('button');
+        button.className = 'aura-selector-btn';
+        button.style.background = `linear-gradient(135deg, ${aura.gradient})`;
+        
+        if (aura.hex === selectedHex) {
+            button.classList.add('selected');
+        }
+
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.aura-selector-btn.selected').forEach(b => {
+                b.classList.remove('selected');
+            });
+            button.classList.add('selected');
+            if (typeof onSelect === 'function') {
+                onSelect(aura);
+            }
+        });
+
+        container.appendChild(button);
+    });
+}
+
+function renderAuraSelectorsEdit(container, selectedHex, onSelect) {
+    const auras = generateRandomAuras();
+    renderAuraSelectors(container, auras, selectedHex, onSelect);
+}
+
+function applyColorGradient(colorString) {
+    const root = document.documentElement;
+    if (colorString && colorString.includes(',')) {
+        const [c1, c2] = colorString.split(',').map(c => c.trim());
+        root.style.setProperty('--player-gradient', `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`);
+    }
+}
+
+function savePlayerColor(color) {
+    StorageManager.set(StorageKeys.PLAYER_COLOR, color);
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 2000);
+}
+
+// ============================================================================
+// TIME SYNC HELPER
+// ============================================================================
+
+const timeSync = {
+    offset: 0,
+    isCalibrated: false,
+
+    calibrateWithServerTime(serverNow, roundStartsAt, roundEndsAt, roundDuration) {
+        this.offset = serverNow - Date.now();
+        this.isCalibrated = true;
+        debug(`⏱️  TimeSyncManager calibrated`, { 
+            offset: this.offset,
+            roundDuration
+        }, 'success');
+    },
+
+    getServerTime() {
+        return Date.now() + this.offset;
+    }
+};
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+debug('✅ shared-utils.js loaded successfully', null, 'success');
