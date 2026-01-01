@@ -11,6 +11,7 @@
  * 🔧 FASE 5-HOTFIX: CRITICAL - Remove race condition, restore fallbacks, fix dependencies
  * 🔧 FEATURE: Remove duplicate timeSync + hostSession/debug dependency fix
  * 🔧 FIX: Remove duplicate ModalController (defined in modal-controller.js)
+ * 🔧 FIX: Correct loading order - hostSession must be before host-manager.js usage
  */
 
 // ============================================================================
@@ -150,7 +151,7 @@ class StorageManager {
 }
 
 // ============================================================================
-// SESSION MANAGER
+// SESSION MANAGER (MUST BE BEFORE HOST MANAGER USES IT)
 // ============================================================================
 
 class SessionManager {
@@ -299,7 +300,32 @@ class DictionaryService {
                     throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
                 }
 
-                const validCategories = Object.entries(data).filter(
+                // 🔧 FIX: Handle both flat array and nested category structure
+                let processedData = {};
+                
+                // Check if it's the nested format: { "category": { "hint": [...words] } }
+                const firstKey = Object.keys(data)[0];
+                if (firstKey && typeof data[firstKey] === 'object' && !Array.isArray(data[firstKey])) {
+                    // Nested format - flatten to { "category": [...all words] }
+                    Object.entries(data).forEach(([category, hintsObj]) => {
+                        if (typeof hintsObj === 'object' && !Array.isArray(hintsObj)) {
+                            const allWords = [];
+                            Object.values(hintsObj).forEach(words => {
+                                if (Array.isArray(words)) {
+                                    allWords.push(...words);
+                                }
+                            });
+                            processedData[category] = allWords;
+                        } else if (Array.isArray(hintsObj)) {
+                            processedData[category] = hintsObj;
+                        }
+                    });
+                } else {
+                    // Already flat format
+                    processedData = data;
+                }
+
+                const validCategories = Object.entries(processedData).filter(
                     ([k, v]) => Array.isArray(v) && v.length > 0
                 );
                 
@@ -307,12 +333,12 @@ class DictionaryService {
                     throw new Error('Diccionario vacío o sin categorías válidas');
                 }
 
-                this.dictionary = data;
+                this.dictionary = processedData;
                 this.categories = validCategories.map(([k]) => k);
                 this.isReady = true;
 
                 if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
-                    wordEngine.processDictionary(data);
+                    wordEngine.processDictionary(processedData);
                     debug('🔗 WordEngine inicializado con diccionario', null, 'success');
                 }
 
