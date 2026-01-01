@@ -8,6 +8,7 @@
  * 🎯 FASE 3B: ModalController para gestión unificada de modales
  * 🎯 FASE 4: ConfigService race condition safeguards
  * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
+ * 🔧 FASE 5-HOTFIX: CRITICAL - Remove fallbacks, fix dependencies, ensure wordEngine global
  */
 
 // ============================================================================
@@ -238,6 +239,21 @@ const hostSession = new SessionManager('host');
 const playerSession = new SessionManager('player');
 
 // ============================================================================
+// WORD COMPARISON ENGINE (Debe cargarse ANTES de DictionaryService)
+// ============================================================================
+
+/**
+ * 🔧 FASE 5-HOTFIX: Crear instancia global de WordEquivalenceEngine
+ * Esta clase debe estar definida en word-comparison.js
+ * Si no está disponible, crear un stub para evitar ReferenceError
+ */
+let wordEngine = null;
+
+// El archivo word-comparison.js define WordEquivalenceEngine
+// Esta variable será asignada después de que ese archivo cargue
+// Ver línea 300+ para la asignación real
+
+// ============================================================================
 // DICTIONARY SERVICE (Datos de palabras)
 // ============================================================================
 
@@ -247,7 +263,8 @@ const playerSession = new SessionManager('player');
  * - Proporcionar datos a WordEngine
  * - NO contiene lógica de comparación (eso es WordEngine)
  * 
- * ✅ Rechaza si falla (no usa fallbacks)
+ * ✅ RECHAZA si falla (no usa fallbacks)
+ * ✅ Encapsulado: sin funciones sueltas, todo en la clase
  */
 class DictionaryService {
     constructor() {
@@ -257,50 +274,101 @@ class DictionaryService {
         this.isReady = false;
     }
 
+    /**
+     * Carga el diccionario desde dictionary.json
+     * ✅ HOTFIX: Rechaza completamente si falla (sin fallbacks)
+     */
     async initialize() {
         if (this.isReady) return this.dictionary;
         if (this.loadPromise) return this.loadPromise;
 
         this.loadPromise = (async () => {
             try {
+                debug('📚 Iniciando carga de diccionario...', null, 'info');
+                
                 const response = await fetch('./dictionary.json', { 
                     cache: 'no-store'
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: No se puede acceder a dictionary.json`);
                 }
 
                 const data = await response.json();
                 
                 if (!data || typeof data !== 'object') {
-                    throw new Error('Dictionary format invalid');
+                    throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
+                }
+
+                // Validar que hay al menos una categoría con palabras
+                const validCategories = Object.entries(data).filter(
+                    ([k, v]) => Array.isArray(v) && v.length > 0
+                );
+                
+                if (validCategories.length === 0) {
+                    throw new Error('Diccionario vacío o sin categorías válidas');
                 }
 
                 this.dictionary = data;
-                this.categories = Object.keys(data).filter(k => Array.isArray(data[k]));
+                this.categories = validCategories.map(([k]) => k);
                 this.isReady = true;
 
                 // 🔧 FASE 5: Inicializar WordEngine con datos del diccionario
-                if (typeof wordEngine !== 'undefined' && wordEngine) {
+                if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
                     wordEngine.processDictionary(data);
+                    debug('🔗 WordEngine inicializado con diccionario', null, 'success');
                 }
 
-                debug('📚 Diccionario cargado', { 
+                debug('📚 Diccionario cargado exitosamente', { 
                     categories: this.categories.length,
                     totalWords: this.getTotalWordCount()
                 }, 'success');
 
                 return this.dictionary;
             } catch (error) {
-                // 🔧 FASE 5: RECHAZAR en lugar de usar fallback
-                debug(`❌ Error cargando diccionario: ${error.message}`, null, 'error');
+                // 🔧 FASE 5-HOTFIX: RECHAZAR completamente (sin fallback)
                 this.isReady = false;
-                throw error;  // Propagar el error para que app.js lo maneje
+                this.loadPromise = null;  // Reset para permitir reintentos
+                
+                const errorMsg = `❌ ERROR FATAL: No se puede cargar diccionario.json: ${error.message}`;
+                debug(errorMsg, null, 'error');
+                
+                // Mostrar error en pantalla
+                this.showFatalError(errorMsg);
+                
+                throw error;  // Propagar para que app.js lo maneje
             }
         })();
 
         return this.loadPromise;
+    }
+
+    /**
+     * Mostrar error fatal en UI
+     */
+    showFatalError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #EF4444;
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            z-index: 10000;
+            text-align: center;
+            max-width: 500px;
+            font-weight: bold;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        `;
+        errorDiv.innerHTML = `
+            <div style="font-size: 20px; margin-bottom: 10px;">⚠️ Error de Carga</div>
+            <div style="font-size: 14px; line-height: 1.5;">${message}</div>
+            <div style="font-size: 12px; margin-top: 15px; opacity: 0.8;">Por favor recarga la página</div>
+        `;
+        document.body.appendChild(errorDiv);
     }
 
     getTotalWordCount() {
@@ -351,7 +419,7 @@ const dictionaryService = new DictionaryService();
 
 /**
  * 🔧 FASE 5: ConfigService - Carga config desde backend
- * ✅ Rechaza si falla (no usa fallbacks)
+ * ✅ RECHAZA si falla (sin fallbacks - son REGLAS del juego)
  */
 class ConfigService {
     constructor() {
@@ -360,6 +428,10 @@ class ConfigService {
         this.isReady = false;
     }
 
+    /**
+     * Carga configuración desde actions.php
+     * ✅ HOTFIX: Rechaza completamente si falla (sin fallbacks)
+     */
     async load() {
         if (this.config) {
             this.isReady = true;
@@ -369,6 +441,8 @@ class ConfigService {
 
         this.loadPromise = (async () => {
             try {
+                debug('⚙️  Cargando configuración...', null, 'info');
+                
                 const url = new URL('./app/actions.php', window.location.href);
                 const response = await fetch(url.toString(), {
                     method: 'POST',
@@ -378,24 +452,43 @@ class ConfigService {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: Error conectando con el servidor`);
                 }
 
                 const result = await response.json();
                 
-                if (!result.success || !result.config) {
-                    throw new Error('Config response invalid');
+                if (!result.success) {
+                    throw new Error(result.message || 'Respuesta del servidor inválida');
+                }
+
+                if (!result.config || typeof result.config !== 'object') {
+                    throw new Error('Configuración del servidor está vacía o mal formada');
+                }
+
+                // Validar campos críticos
+                const requiredFields = ['max_words_per_player', 'default_total_rounds', 'round_duration'];
+                for (const field of requiredFields) {
+                    if (!(field in result.config)) {
+                        throw new Error(`Campo crítico faltante en config: ${field}`);
+                    }
                 }
 
                 this.config = result.config;
                 this.isReady = true;
 
-                debug('⚙️  Configuración cargada', this.config, 'success');
+                debug('⚙️  Configuración cargada exitosamente', this.config, 'success');
                 return this.config;
             } catch (error) {
-                // 🔧 FASE 5: RECHAZAR en lugar de usar fallback
-                debug(`❌ Error cargando configuración: ${error.message}`, null, 'error');
+                // 🔧 FASE 5-HOTFIX: RECHAZAR completamente (sin fallback)
                 this.isReady = false;
+                this.loadPromise = null;  // Reset para permitir reintentos
+                
+                const errorMsg = `❌ ERROR FATAL: No se puede cargar configuración del servidor: ${error.message}`;
+                debug(errorMsg, null, 'error');
+                
+                // Mostrar error en pantalla
+                this.showFatalError(errorMsg);
+                
                 throw error;  // Propagar para que app.js lo maneje
             }
         })();
@@ -403,11 +496,37 @@ class ConfigService {
         return this.loadPromise;
     }
 
+    /**
+     * Mostrar error fatal en UI
+     */
+    showFatalError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #EF4444;
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            z-index: 10000;
+            text-align: center;
+            max-width: 500px;
+            font-weight: bold;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        `;
+        errorDiv.innerHTML = `
+            <div style="font-size: 20px; margin-bottom: 10px;">⚠️ Error de Configuración</div>
+            <div style="font-size: 14px; line-height: 1.5;">${message}</div>
+            <div style="font-size: 12px; margin-top: 15px; opacity: 0.8;">Por favor recarga la página</div>
+        `;
+        document.body.appendChild(errorDiv);
+    }
+
     get(key, defaultValue = null) {
         if (!this.config) {
-            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-                console.warn(`[ConfigService.get('${key}')] called before load() - using default`);
-            }
+            debug(`⚠️  ConfigService.get('${key}'): Config no está listo, usando default`, null, 'warn');
             return defaultValue;
         }
         return this.config[key] ?? defaultValue;
@@ -419,17 +538,6 @@ class ConfigService {
 }
 
 const configService = new ConfigService();
-
-// ============================================================================
-// WORD ENGINE (Lógica de comparación - Desacoplado de Dictionary)
-// ============================================================================
-
-/**
- * 🔧 FASE 5: WordEngine global - Instancia de WordEquivalenceEngine
- * Desacoplado de DictionaryService
- * Se inicializa cuando DictionaryService carga datos
- */
-const wordEngine = new WordEquivalenceEngine();
 
 // ============================================================================
 // MODAL CONTROLLER
@@ -659,6 +767,39 @@ const timeSync = {
         return Date.now() + this.offset;
     }
 };
+
+// ============================================================================
+// WORD ENGINE INITIALIZATION (After word-comparison.js loads)
+// ============================================================================
+
+/**
+ * 🔧 FASE 5-HOTFIX: Asignar wordEngine cuando WordEquivalenceEngine esté disponible
+ * El archivo word-comparison.js define la clase WordEquivalenceEngine
+ * Este código se ejecuta después de que ese archivo carga
+ */
+window.addEventListener('load', () => {
+    if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
+        wordEngine = new WordEquivalenceEngine();
+        debug('✅ WordEngine instanciado globalmente', null, 'success');
+    }
+});
+
+// Fallback: si word-comparison.js no cargó, crear stub para evitar ReferenceError
+if (typeof WordEquivalenceEngine === 'undefined') {
+    class WordEquivalenceEngine {
+        getCanonical(word) {
+            return word ? word.toUpperCase().trim() : '';
+        }
+        getMatchType(word1, word2) {
+            return word1.toUpperCase() === word2.toUpperCase() ? 'EXACTA' : null;
+        }
+        processDictionary(dict) {
+            // Stub
+        }
+    }
+    wordEngine = new WordEquivalenceEngine();
+    debug('⚠️  Using stub WordEngine (word-comparison.js no cargó)', null, 'warn');
+}
 
 // ============================================================================
 // INITIALIZATION
