@@ -11,6 +11,7 @@ favicon.ico
 
 # Dictionary
 app/diccionario1.json
+app/diccionario.json
 
 # Logs
 debug.log
