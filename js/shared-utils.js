@@ -2,14 +2,15 @@
  * @file shared-utils.js
  * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS
  * 
- * 🎯 FASE 1: Centralización de dependencias
- * 🎯 FASE 2: SessionManager y beforeunload handling
- * 🎯 FASE 3A: DictionaryService category-aware methods
- * 🎯 FASE 3B: ModalController para gestión unificada de modales
- * 🎯 FASE 4: ConfigService race condition safeguards
+ * 🔧 FASE 1: Centralización de dependencias
+ * 🔧 FASE 2: SessionManager y beforeunload handling
+ * 🔧 FASE 3A: DictionaryService category-aware methods
+ * 🔧 FASE 3B: ModalController para gestión unificada de modales (DEFINED IN modal-controller.js)
+ * 🔧 FASE 4: ConfigService race condition safeguards
  * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
  * 🔧 FASE 5-HOTFIX: CRITICAL - Remove race condition, restore fallbacks, fix dependencies
  * 🔧 FEATURE: Remove duplicate timeSync + hostSession/debug dependency fix
+ * 🔧 FIX: Remove duplicate ModalController (defined in modal-controller.js)
  */
 
 // ============================================================================
@@ -205,10 +206,6 @@ class SessionManager {
         }
     }
 
-    /**
-     * 🔧 FASE 5: Registrar manager para cleanup automático
-     * Los managers se limpian cuando se limpia la sesión
-     */
     registerManager(instance) {
         if (instance && typeof instance.destroy === 'function') {
             this.managers.push(instance);
@@ -219,7 +216,6 @@ class SessionManager {
     clear() {
         debug('🧹 Limpiando sesión...', null, 'info');
         
-        // 🔧 FASE 5: Cleanup de managers primero
         this.managers.forEach(manager => {
             try {
                 manager.destroy?.();
@@ -229,36 +225,25 @@ class SessionManager {
         });
         this.managers = [];
 
-        // Luego limpiar storage
         StorageManager.clear();
         debug('✅ Sesión limpiada completamente', null, 'success');
     }
 }
 
-// Instancias globales por rol
 const hostSession = new SessionManager('host');
 const playerSession = new SessionManager('player');
 
 // ============================================================================
-// WORD COMPARISON ENGINE (Debe cargarse ANTES de DictionaryService)
+// WORD COMPARISON ENGINE
 // ============================================================================
 
-/**
- * 🔧 FASE 5-HOTFIX: Crear instancia global de WordEquivalenceEngine
- * FIX CRÍTICO: Mover fuera del evento window.load para evitar race condition
- * El archivo word-comparison.js define la clase WordEquivalenceEngine
- * Esta será instanciada AQUÍ para que esté disponible en DOMContentLoaded
- */
 let wordEngine = null;
 
-// Intenta instanciar inmediatamente si la clase ya está disponible
-// (Si word-comparison.js fue incluido antes de shared-utils.js en el HTML)
 if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
     wordEngine = new WordEquivalenceEngine();
     debug('✅ WordEngine instanciado inmediatamente en shared-utils.js', null, 'success');
 }
 
-// Fallback: si word-comparison.js NO cargó aún, usar stub
 if (typeof WordEquivalenceEngine === 'undefined') {
     class WordEquivalenceEngine {
         constructor() {
@@ -281,17 +266,9 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 }
 
 // ============================================================================
-// DICTIONARY SERVICE (Datos de palabras)
+// DICTIONARY SERVICE
 // ============================================================================
 
-/**
- * 🔧 FASE 5: DictionaryService - Solo responsable de DATOS
- * - Cargar categorías y palabras
- * - Proporcionar datos a WordEngine
- * - NO contiene lógica de comparación (eso es WordEngine)
- * 
- * ✅ HOTFIX: Restaurar fallbacks mínimos para robustez en producción
- */
 class DictionaryService {
     constructor() {
         this.dictionary = null;
@@ -300,10 +277,6 @@ class DictionaryService {
         this.isReady = false;
     }
 
-    /**
-     * Carga el diccionario desde dictionary.json
-     * 🔧 HOTFIX: Restaurar fallback a valores por defecto para robustez
-     */
     async initialize() {
         if (this.isReady) return this.dictionary;
         if (this.loadPromise) return this.loadPromise;
@@ -326,7 +299,6 @@ class DictionaryService {
                     throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
                 }
 
-                // Validar que hay al menos una categoría con palabras
                 const validCategories = Object.entries(data).filter(
                     ([k, v]) => Array.isArray(v) && v.length > 0
                 );
@@ -339,7 +311,6 @@ class DictionaryService {
                 this.categories = validCategories.map(([k]) => k);
                 this.isReady = true;
 
-                // Inicializar WordEngine con datos del diccionario
                 if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
                     wordEngine.processDictionary(data);
                     debug('🔗 WordEngine inicializado con diccionario', null, 'success');
@@ -352,7 +323,6 @@ class DictionaryService {
 
                 return this.dictionary;
             } catch (error) {
-                // 🔧 HOTFIX: RESTAURAR FALLBACK para robustez
                 console.error("❌ Error cargando diccionario, usando valores por defecto", error);
                 
                 this.dictionary = {
@@ -414,13 +384,9 @@ class DictionaryService {
 const dictionaryService = new DictionaryService();
 
 // ============================================================================
-// CONFIG SERVICE (Configuración del servidor)
+// CONFIG SERVICE
 // ============================================================================
 
-/**
- * 🔧 FASE 5: ConfigService - Carga config desde backend
- * 🔧 HOTFIX: Restaurar fallbacks para robustez en producción
- */
 class ConfigService {
     constructor() {
         this.config = null;
@@ -428,10 +394,6 @@ class ConfigService {
         this.isReady = false;
     }
 
-    /**
-     * Carga configuración desde actions.php
-     * 🔧 HOTFIX: Restaurar fallback a defaults si falla
-     */
     async load() {
         if (this.config) {
             this.isReady = true;
@@ -465,7 +427,6 @@ class ConfigService {
                     throw new Error('Configuración del servidor está vacía o mal formada');
                 }
 
-                // Validar campos críticos
                 const requiredFields = ['max_words_per_player', 'default_total_rounds', 'round_duration'];
                 for (const field of requiredFields) {
                     if (!(field in result.config)) {
@@ -479,7 +440,6 @@ class ConfigService {
                 debug('⚙️  Configuración cargada exitosamente', this.config, 'success');
                 return this.config;
             } catch (error) {
-                // 🔧 HOTFIX: RESTAURAR FALLBACK para robustez
                 console.error("❌ Error cargando configuración, usando valores por defecto", error);
                 
                 this.config = { 
@@ -513,124 +473,6 @@ class ConfigService {
 }
 
 const configService = new ConfigService();
-
-// ============================================================================
-// TIME SYNC MANAGER (USE FROM communication.js)
-// ============================================================================
-
-/**
- * 🔧 FEATURE: Remove duplicate timeSync declaration
- * communication.js already creates a TimeSyncManager instance
- * We reference it here for backward compatibility
- * If communication.js hasn't loaded yet, we'll have a race condition
- * But this is handled by checking typeof before use
- */
-// timeSync is now expected to be from communication.js
-// (See host.html: communication.js loads BEFORE shared-utils.js)
-
-// ============================================================================
-// MODAL CONTROLLER
-// ============================================================================
-
-/**
- * ModalController - Gestión centralizada de modales
- * Encapsula: open, close, backdrop, escape handling, focus management
- */
-class ModalController {
-    constructor(modalId, options = {}) {
-        this.modalId = modalId;
-        this.modal = document.getElementById(modalId);
-        this.backdrop = this.modal?.querySelector('[data-modal-backdrop]');
-        this.closeButtons = this.modal?.querySelectorAll('[data-modal-close]');
-        
-        this.options = {
-            closeOnBackdrop: options.closeOnBackdrop !== false,
-            closeOnEsc: options.closeOnEsc !== false,
-            onBeforeOpen: options.onBeforeOpen || null,
-            onAfterOpen: options.onAfterOpen || null,
-            onBeforeClose: options.onBeforeClose || null,
-            onAfterClose: options.onAfterClose || null
-        };
-
-        this.isOpen = false;
-        this.previousFocus = null;
-
-        this.init();
-    }
-
-    init() {
-        if (!this.modal) return;
-
-        // Backdrop click
-        if (this.backdrop && this.options.closeOnBackdrop) {
-            this.backdrop.addEventListener('click', () => this.close());
-        }
-
-        // Close buttons
-        this.closeButtons.forEach(btn => {
-            btn.addEventListener('click', () => this.close());
-        });
-
-        // Escape key
-        if (this.options.closeOnEsc) {
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && this.isOpen) {
-                    this.close();
-                }
-            });
-        }
-    }
-
-    open() {
-        if (!this.modal || this.isOpen) return;
-
-        this.previousFocus = document.activeElement;
-
-        if (this.options.onBeforeOpen) {
-            this.options.onBeforeOpen();
-        }
-
-        this.modal.classList.add('active');
-        this.isOpen = true;
-
-        const firstInput = this.modal.querySelector('input, button, textarea, select');
-        if (firstInput) {
-            setTimeout(() => firstInput.focus(), 100);
-        }
-
-        if (this.options.onAfterOpen) {
-            this.options.onAfterOpen();
-        }
-    }
-
-    close() {
-        if (!this.modal || !this.isOpen) return;
-
-        if (this.options.onBeforeClose) {
-            this.options.onBeforeClose();
-        }
-
-        this.modal.classList.remove('active');
-        this.isOpen = false;
-
-        if (this.previousFocus && typeof this.previousFocus.focus === 'function') {
-            this.previousFocus.focus();
-        }
-
-        if (this.options.onAfterClose) {
-            this.options.onAfterClose();
-        }
-    }
-
-    destroy() {
-        if (!this.modal) return;
-        
-        this.close();
-        this.modal = null;
-        this.backdrop = null;
-        this.closeButtons = null;
-    }
-}
 
 // ============================================================================
 // VALIDATION HELPERS
@@ -734,9 +576,5 @@ function showNotification(message, type = 'info') {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
-
-// ============================================================================
-// INITIALIZATION
-// ============================================================================
 
 debug('✅ shared-utils.js cargado exitosamente - servicios centralizados listos', null, 'success');
