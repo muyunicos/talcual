@@ -8,6 +8,7 @@
  * - Usa wordEngine desacoplado (no wordEngineManager)
  * - ModalHandler centralizado para modales
  * - SessionManager para persistencia
+ * 🎯 FEATURE: Restaurada lógica de selector de categoría
  */
 
 function determineUIState() {
@@ -55,6 +56,10 @@ class HostManager {
         // 🔧 FASE 5: WordEngine desacoplado
         this.wordEngineReady = false;
 
+        // 🎯 FEATURE: Cacer categorías para selector
+        this.categories = [];
+        this.categoryWordsMap = {};
+
         this.loadConfigAndInit();
     }
 
@@ -73,6 +78,9 @@ class HostManager {
             this.cacheElements();
             this.initializeModals();
             this.attachEventListeners();
+
+            // 🎯 FEATURE: Población del selector de categoría
+            await this.populateCategorySelector();
 
             // 🔧 FASE 5: Recuperar sesión con SessionManager
             const sessionData = hostSession.recover();
@@ -126,6 +134,55 @@ class HostManager {
         }
     }
 
+    // 🎯 FEATURE: Poblar selector de categoría
+    async populateCategorySelector() {
+        try {
+            const categorySelect = safeGetElement('category-select');
+            if (!categorySelect) return;
+
+            this.categories = dictionaryService.getCategories();
+
+            categorySelect.innerHTML = '';
+            this.categories.forEach((cat) => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categorySelect.appendChild(option);
+            });
+
+            if (this.categories.length > 0) {
+                const randomIndex = Math.floor(Math.random() * this.categories.length);
+                categorySelect.value = this.categories[randomIndex];
+                this.updateCodeWithCategoryWord();
+
+                categorySelect.addEventListener('change', () => this.updateCodeWithCategoryWord());
+            }
+
+            debug('📚 Selector de categoría poblado', { total: this.categories.length }, 'success');
+        } catch (error) {
+            debug('⚠️ Error poblando selector de categoría', error, 'warn');
+        }
+    }
+
+    // 🎯 FEATURE: Actualizar código con palabra aleatoria de categoría
+    async updateCodeWithCategoryWord() {
+        try {
+            const categorySelect = safeGetElement('category-select');
+            const inputCode = safeGetElement('input-game-code');
+
+            if (!categorySelect || !inputCode) return;
+
+            const selectedCategory = categorySelect.value;
+            const randomWord = dictionaryService.getRandomWordByCategory(selectedCategory);
+
+            if (randomWord) {
+                inputCode.value = randomWord.slice(0, 5).toUpperCase();
+            }
+        } catch (error) {
+            debug('⚠️ Error actualizando código con palabra', error, 'warn');
+        }
+    }
+
     // 🔧 FASE 5: Delegar a WordEngine desacoplado
     getCanonicalForCompare(word) {
         return wordEngine.getCanonical(word);
@@ -160,6 +217,7 @@ class HostManager {
         this.elements = {
             // Pantalla principal
             startScreen: safeGetElement('start-screen'),
+            categorySelect: safeGetElement('category-select'),
             inputGameCode: safeGetElement('input-game-code'),
             btnCreateGame: safeGetElement('btn-create-game'),
 
@@ -215,6 +273,8 @@ class HostManager {
     }
 
     async createGame() {
+        // 🎯 FEATURE: Obtener categoría del selector
+        const selectedCategory = this.elements.categorySelect?.value || 'general';
         const code = (this.elements.inputGameCode?.value || '').trim().toUpperCase();
 
         if (!isValidGameCode(code)) {
@@ -229,15 +289,18 @@ class HostManager {
 
         try {
             this.gameCode = code;
+            this.currentCategory = selectedCategory;
             this.client = new GameClient(code, code, 'host');
 
-            const result = await this.client.sendAction('create_game', {});
+            const result = await this.client.sendAction('create_game', {
+                category: selectedCategory
+            });
 
             if (result.success) {
-                debug(`✅ Juego creado: ${code}`);
+                debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory})`);
 
                 // 🔧 FASE 5: Usar SessionManager
-                hostSession.saveHostSession(code);
+                hostSession.saveHostSession(code, selectedCategory);
 
                 this.loadGameScreen(result.state || {});
             } else {
@@ -660,4 +723,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 5: Strong error handling, wordEngine decoupling, ModalHandler', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + strong error handling', 'color: #FF00FF; font-weight: bold; font-size: 12px');
