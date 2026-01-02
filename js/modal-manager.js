@@ -1,30 +1,36 @@
 /**
- * Modal Manager - Gestor centralizado de modales con soporte de stack
+ * Modal Manager - Gestor centralizado de modales (3 CAPAS JERÁRQUICAS)
  * 
- * Sistema unificado para renderizar y controlar múltiples modales encimados
- * Soporta 3 tipos: PRIMARY (z: 1000), SECONDARY (z: 2000), MESSAGE (z: 3000)
- * 
- * Los modales se apilan en orden FIFO (First In First Out) y cada nuevo modal
- * se renderiza encima del anterior con z-index incrementado.
+ * Sistema de 3 capas máximas para renderizar y controlar modales encimados
+ * CAPA 1 - PRIMARY:      z-index: 1000 (Modal base del flujo)
+ * CAPA 2 - SECONDARY:    z-index: 1100 (Formularios, opciones)
+ * CAPA 3 - CONFIRMATION: z-index: 1200 (Mensajes de confirmación)
  * 
  * API:
- * ModalManager.show({ type, title, content, buttons, onDismiss })
+ * ModalManager.show({ type: 'primary|secondary|confirmation', title, content, buttons, onDismiss })
  * ModalManager.close()
  * ModalManager.closeAll()
  * ModalManager.isOpen()
  * ModalManager.getStackSize()
+ * ModalManager.getTopModal()
  */
 
 class ModalManager {
     constructor() {
         this.container = null;
-        this.stack = [];        // Pila de modales abiertos
-        this.baseZIndex = 1000; // z-index base
+        this.stack = [];
+        this.baseZIndex = 1000;
 
         this.TYPES = {
-            PRIMARY: 'primary',
-            SECONDARY: 'secondary',
-            MESSAGE: 'message'
+            PRIMARY: 'primary',           // z: 1000
+            SECONDARY: 'secondary',       // z: 1100
+            CONFIRMATION: 'confirmation'  // z: 1200
+        };
+
+        this.Z_INDEX = {
+            primary: 1000,
+            secondary: 1100,
+            confirmation: 1200
         };
 
         this.init();
@@ -35,7 +41,7 @@ class ModalManager {
         if (!this.container) {
             this.createContainer();
         }
-        debug('🎯 ModalManager inicializado (con soporte stack)', 'info');
+        debug('🎯 ModalManager inicializado (3 capas jerárquicas)', 'info');
     }
 
     createContainer() {
@@ -46,8 +52,6 @@ class ModalManager {
 
     show(config) {
         const { type = this.TYPES.SECONDARY, title, content, buttons = [], onDismiss } = config;
-        const stackIndex = this.stack.length;
-        const zIndex = this.baseZIndex + (stackIndex * 100);
 
         const modalData = {
             id: `modal-${Date.now()}-${Math.random()}`,
@@ -56,7 +60,7 @@ class ModalManager {
             content,
             buttons,
             onDismiss,
-            zIndex,
+            zIndex: this.Z_INDEX[type],
             overlay: null,
             overlayClickHandler: null,
             element: null
@@ -66,7 +70,7 @@ class ModalManager {
         this.renderModal(modalData);
         this.openModal(modalData);
 
-        debug(`🎯 Modal abierto [${type}] - Stack size: ${this.stack.length}`, 'info');
+        debug(`🎯 Modal abierto [${type}] - Capas abiertas: ${this.stack.length}/3`, 'info');
     }
 
     renderModal(modalData) {
@@ -138,8 +142,7 @@ class ModalManager {
             modalData.overlay.classList.add('active');
         });
 
-        // Agregar listener al overlay para cerrar al hacer clic fuera del modal
-        if (modalData.type === this.TYPES.MESSAGE || modalData.type === this.TYPES.SECONDARY) {
+        if (modalData.type === this.TYPES.CONFIRMATION || modalData.type === this.TYPES.SECONDARY) {
             modalData.overlayClickHandler = (e) => {
                 if (e.target === modalData.overlay) {
                     this.closeTopModal();
@@ -148,7 +151,6 @@ class ModalManager {
             modalData.overlay.addEventListener('click', modalData.overlayClickHandler);
         }
 
-        // Prevenir scroll en el body si hay cualquier modal abierto
         document.body.style.overflow = 'hidden';
 
         debug(`🎯 Modal renderizado: ${modalData.type} (z-index: ${modalData.zIndex})`, 'debug');
@@ -160,9 +162,8 @@ class ModalManager {
         const modalData = this.stack.pop();
         this.removeModal(modalData);
 
-        debug(`🎯 Modal cerrado [${modalData.type}] - Stack size: ${this.stack.length}`, 'info');
+        debug(`🎯 Modal cerrado [${modalData.type}] - Capas abiertas: ${this.stack.length}`, 'info');
 
-        // Restaurar overflow solo si no hay modales abiertos
         if (this.stack.length === 0) {
             document.body.style.overflow = '';
         }
@@ -199,7 +200,7 @@ class ModalManager {
             this.closeTopModal();
         }
         document.body.style.overflow = '';
-        debug('🎯 Todos los modales cerrados', 'info');
+        debug('🎯 Todas las capas cerradas', 'info');
     }
 
     isOpen() {
@@ -227,4 +228,4 @@ class ModalManager {
 
 const ModalManager_Instance = new ModalManager();
 
-console.log('%c✅ modal-manager.js cargado - Soporte stack de modales múltiples', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ modal-manager.js cargado - 3 capas jerárquicas (PRIMARY, SECONDARY, CONFIRMATION)', 'color: #00FF00; font-weight: bold; font-size: 12px');
