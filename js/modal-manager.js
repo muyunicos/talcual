@@ -1,36 +1,30 @@
 /**
- * Modal Manager - Gestor centralizado de modales
+ * Modal Manager - Gestor centralizado de modales con soporte de stack
  * 
- * Sistema unificado para renderizar y controlar modales dinámicamente
- * Soporta 3 tipos: PRINCIPAL, SECUNDARIO, MENSAJE
+ * Sistema unificado para renderizar y controlar múltiples modales encimados
+ * Soporta 3 tipos: PRIMARY (z: 1000), SECONDARY (z: 2000), MESSAGE (z: 3000)
+ * 
+ * Los modales se apilan en orden FIFO (First In First Out) y cada nuevo modal
+ * se renderiza encima del anterior con z-index incrementado.
  * 
  * API:
  * ModalManager.show({ type, title, content, buttons, onDismiss })
  * ModalManager.close()
+ * ModalManager.closeAll()
  * ModalManager.isOpen()
+ * ModalManager.getStackSize()
  */
 
 class ModalManager {
     constructor() {
         this.container = null;
-        this.overlay = null;
-        this.modal = null;
-        this.currentType = null;
-        this.currentConfig = null;
-        this.onDismissCallback = null;
-        this.isOpenFlag = false;
-        this.overlayClickHandler = null;
+        this.stack = [];        // Pila de modales abiertos
+        this.baseZIndex = 1000; // z-index base
 
         this.TYPES = {
             PRIMARY: 'primary',
             SECONDARY: 'secondary',
             MESSAGE: 'message'
-        };
-
-        this.Z_INDEX = {
-            primary: 1000,
-            secondary: 2000,
-            message: 3000
         };
 
         this.init();
@@ -41,8 +35,7 @@ class ModalManager {
         if (!this.container) {
             this.createContainer();
         }
-
-        debug('🎯 ModalManager inicializado', 'info');
+        debug('🎯 ModalManager inicializado (con soporte stack)', 'info');
     }
 
     createContainer() {
@@ -52,58 +45,65 @@ class ModalManager {
     }
 
     show(config) {
-        if (this.isOpenFlag) {
-            debug('⚠️ Modal ya está abierto', 'warning');
-            return;
-        }
-
         const { type = this.TYPES.SECONDARY, title, content, buttons = [], onDismiss } = config;
+        const stackIndex = this.stack.length;
+        const zIndex = this.baseZIndex + (stackIndex * 100);
 
-        this.currentType = type;
-        this.currentConfig = config;
-        this.onDismissCallback = onDismiss || null;
+        const modalData = {
+            id: `modal-${Date.now()}-${Math.random()}`,
+            type,
+            title,
+            content,
+            buttons,
+            onDismiss,
+            zIndex,
+            overlay: null,
+            overlayClickHandler: null,
+            element: null
+        };
 
-        this.render(type, title, content, buttons);
-        this.open(type);
-        this.isOpenFlag = true;
+        this.stack.push(modalData);
+        this.renderModal(modalData);
+        this.openModal(modalData);
+
+        debug(`🎯 Modal abierto [${type}] - Stack size: ${this.stack.length}`, 'info');
     }
 
-    render(type, title, content, buttons) {
-        this.container.innerHTML = '';
-
+    renderModal(modalData) {
         const overlay = document.createElement('div');
+        overlay.id = modalData.id;
         overlay.className = 'modal-overlay';
-        overlay.dataset.modalType = type;
-        overlay.style.zIndex = this.Z_INDEX[type];
+        overlay.dataset.modalType = modalData.type;
+        overlay.style.zIndex = modalData.zIndex;
 
         const modalContent = document.createElement('div');
         modalContent.className = 'modal-content';
 
-        if (title) {
+        if (modalData.title) {
             const titleEl = document.createElement('div');
             titleEl.className = 'modal-title';
-            titleEl.textContent = title;
+            titleEl.textContent = modalData.title;
             modalContent.appendChild(titleEl);
         }
 
-        if (content) {
+        if (modalData.content) {
             const contentEl = document.createElement('div');
             contentEl.className = 'modal-body';
 
-            if (typeof content === 'string') {
-                contentEl.innerHTML = content;
-            } else if (content instanceof HTMLElement) {
-                contentEl.appendChild(content);
+            if (typeof modalData.content === 'string') {
+                contentEl.innerHTML = modalData.content;
+            } else if (modalData.content instanceof HTMLElement) {
+                contentEl.appendChild(modalData.content);
             }
 
             modalContent.appendChild(contentEl);
         }
 
-        if (buttons.length > 0) {
+        if (modalData.buttons.length > 0) {
             const buttonsContainer = document.createElement('div');
             buttonsContainer.className = 'modal-buttons';
 
-            buttons.forEach((btn) => {
+            modalData.buttons.forEach((btn) => {
                 const button = document.createElement('button');
                 button.className = btn.class || 'btn';
                 button.textContent = btn.label;
@@ -114,7 +114,7 @@ class ModalManager {
                         btn.action();
                     }
                     if (btn.close !== false) {
-                        this.close();
+                        this.closeTopModal();
                     }
                 });
 
@@ -125,82 +125,106 @@ class ModalManager {
         }
 
         overlay.appendChild(modalContent);
-        this.overlay = overlay;
-        this.modal = modalContent;
+        modalData.overlay = overlay;
+        modalData.element = modalContent;
         this.container.appendChild(overlay);
     }
 
-    open(type) {
-        if (!this.overlay) return;
+    openModal(modalData) {
+        if (!modalData.overlay) return;
 
         requestAnimationFrame(() => {
-            this.overlay.classList.remove('hidden');
-            this.overlay.classList.add('active');
+            modalData.overlay.classList.remove('hidden');
+            modalData.overlay.classList.add('active');
         });
 
-        if (type === this.TYPES.MESSAGE || type === this.TYPES.SECONDARY) {
-            this.overlayClickHandler = (e) => {
-                if (e.target === this.overlay) {
-                    this.close();
+        // Agregar listener al overlay para cerrar al hacer clic fuera del modal
+        if (modalData.type === this.TYPES.MESSAGE || modalData.type === this.TYPES.SECONDARY) {
+            modalData.overlayClickHandler = (e) => {
+                if (e.target === modalData.overlay) {
+                    this.closeTopModal();
                 }
             };
-            this.overlay.addEventListener('click', this.overlayClickHandler);
+            modalData.overlay.addEventListener('click', modalData.overlayClickHandler);
         }
 
-        if (type !== this.TYPES.PRIMARY) {
-            document.body.style.overflow = 'hidden';
+        // Prevenir scroll en el body si hay cualquier modal abierto
+        document.body.style.overflow = 'hidden';
+
+        debug(`🎯 Modal renderizado: ${modalData.type} (z-index: ${modalData.zIndex})`, 'debug');
+    }
+
+    closeTopModal() {
+        if (this.stack.length === 0) return;
+
+        const modalData = this.stack.pop();
+        this.removeModal(modalData);
+
+        debug(`🎯 Modal cerrado [${modalData.type}] - Stack size: ${this.stack.length}`, 'info');
+
+        // Restaurar overflow solo si no hay modales abiertos
+        if (this.stack.length === 0) {
+            document.body.style.overflow = '';
+        }
+    }
+
+    removeModal(modalData) {
+        if (modalData.overlay) {
+            if (modalData.overlayClickHandler) {
+                modalData.overlay.removeEventListener('click', modalData.overlayClickHandler);
+                modalData.overlayClickHandler = null;
+            }
+            modalData.overlay.classList.remove('active');
+            modalData.overlay.classList.add('hidden');
+
+            setTimeout(() => {
+                if (modalData.overlay && modalData.overlay.parentNode) {
+                    modalData.overlay.parentNode.removeChild(modalData.overlay);
+                }
+            }, 300);
         }
 
-        debug(`🎯 Modal abierto: ${type}`, 'info');
+        if (modalData.onDismiss) {
+            modalData.onDismiss();
+            modalData.onDismiss = null;
+        }
     }
 
     close() {
-        if (!this.isOpenFlag) return;
+        this.closeTopModal();
+    }
 
-        if (this.overlay) {
-            if (this.overlayClickHandler) {
-                this.overlay.removeEventListener('click', this.overlayClickHandler);
-                this.overlayClickHandler = null;
-            }
-            this.overlay.classList.remove('active');
-            this.overlay.classList.add('hidden');
+    closeAll() {
+        while (this.stack.length > 0) {
+            this.closeTopModal();
         }
-
-        if (this.currentType !== this.TYPES.PRIMARY) {
-            document.body.style.overflow = '';
-        }
-
-        if (this.onDismissCallback) {
-            this.onDismissCallback();
-            this.onDismissCallback = null;
-        }
-
-        this.isOpenFlag = false;
-        this.currentType = null;
-        this.currentConfig = null;
-
-        debug('🎯 Modal cerrado', 'info');
+        document.body.style.overflow = '';
+        debug('🎯 Todos los modales cerrados', 'info');
     }
 
     isOpen() {
-        return this.isOpenFlag;
+        return this.stack.length > 0;
+    }
+
+    getStackSize() {
+        return this.stack.length;
+    }
+
+    getTopModal() {
+        return this.stack.length > 0 ? this.stack[this.stack.length - 1] : null;
     }
 
     destroy() {
-        if (this.overlay && this.overlayClickHandler) {
-            this.overlay.removeEventListener('click', this.overlayClickHandler);
-        }
+        this.closeAll();
         if (this.container) {
             this.container.innerHTML = '';
         }
-        this.overlay = null;
-        this.modal = null;
+        this.stack = [];
         this.container = null;
-        this.overlayClickHandler = null;
         debug('🧹 ModalManager destruido', 'info');
     }
 }
 
 const ModalManager_Instance = new ModalManager();
 
-console.log('%c✅ modal-manager.js cargado - Gestor unificado de modales', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ modal-manager.js cargado - Soporte stack de modales múltiples', 'color: #00FF00; font-weight: bold; font-size: 12px');
