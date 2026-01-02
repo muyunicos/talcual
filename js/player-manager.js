@@ -32,7 +32,6 @@ class PlayerManager {
 
         this.elements = {};
 
-        // ✅ CAMBIO: Inicializar ModalController en constructor
         this.joinModal = null;
         this.editNameModal = null;
     }
@@ -41,21 +40,17 @@ class PlayerManager {
         debug('📃 Inicializando PlayerManager');
         
         try {
-            // 🔧 FASE 5: Manejo de errores fuerte
             await configService.load();
             this.maxWords = configService.get('max_words_per_player', 6);
             
             this.cacheElements();
             
-            // ✅ CAMBIO: Crear ModalControllers después de cachear elementos
             this.initializeModals();
             
             this.attachEventListeners();
 
-            // 🔧 FASE 5: Inicializar WordEngine con manejo de error
             await this.initWordEngine();
 
-            // ✅ CAMBIO: Usar SessionManager para recuperar sesión
             const sessionData = playerSession.recover();
             if (sessionData) {
                 debug('🔄 Recuperando sesión', 'info');
@@ -65,7 +60,6 @@ class PlayerManager {
                 this.showJoinModal();
             }
 
-            // ✅ CAMBIO: SessionManager maneja automáticamente el beforeunload
             playerSession.registerManager(this);
 
             debug('✅ PlayerManager inicializado');
@@ -95,9 +89,7 @@ class PlayerManager {
         document.body.appendChild(errorDiv);
     }
 
-    // ✅ CAMBIO: Método para inicializar ModalControllers
     initializeModals() {
-        // Join game modal
         this.joinModal = new ModalController('modal-join-game', {
             closeOnBackdrop: true,
             closeOnEsc: true,
@@ -105,7 +97,6 @@ class PlayerManager {
                 safeHideElement(this.elements.gameScreen);
             },
             onAfterOpen: () => {
-                // Focus on game code input after modal opens
                 setTimeout(() => {
                     if (this.elements.inputGameCode) {
                         this.elements.inputGameCode.focus();
@@ -114,12 +105,10 @@ class PlayerManager {
             }
         });
 
-        // Edit name modal
         this.editNameModal = new ModalController('modal-edit-name', {
             closeOnBackdrop: true,
             closeOnEsc: true,
             onAfterOpen: () => {
-                // Focus on name input after modal opens
                 if (this.elements.modalNameInput) {
                     this.elements.modalNameInput.focus();
                 }
@@ -127,18 +116,15 @@ class PlayerManager {
         });
     }
 
-    // 🔧 FASE 5: Delegar a WordEngine con manejo de error
     async initWordEngine() {
         try {
             await dictionaryService.initialize();
             debug('📜 Word engine inicializado en player', null, 'success');
         } catch (error) {
             debug('❌ Error inicializando word engine: ' + error.message, null, 'error');
-            // Continuar de todas formas - scoring fallback funciona
         }
     }
 
-    // 🔧 FASE 5: Delegar a WordEngine desacoplado
     getCanonicalForCompare(word) {
         return wordEngine.getCanonical(word);
     }
@@ -242,7 +228,6 @@ class PlayerManager {
     }
 
     showJoinModal() {
-        // ✅ CAMBIO: Usar ModalController centralizado
         this.joinModal.open();
 
         this.availableAuras = generateRandomAuras();
@@ -301,7 +286,6 @@ class PlayerManager {
 
         applyColorGradient(this.playerColor);
 
-        // ✅ CAMBIO: Usar ModalController centralizado
         this.joinModal.close();
         safeShowElement(this.elements.gameScreen);
 
@@ -328,14 +312,14 @@ class PlayerManager {
 
         if (!isValidGameCode(code)) {
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Codigo invalido';
+                this.elements.statusMessage.innerHTML = '⚠️ Código inválido';
             }
             return;
         }
 
         if (!isValidPlayerName(name)) {
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Nombre invalido (2-20 caracteres)';
+                this.elements.statusMessage.innerHTML = '⚠️ Nombre inválido (2-20 caracteres)';
             }
             return;
         }
@@ -344,7 +328,6 @@ class PlayerManager {
         this.playerName = name;
         this.playerId = generatePlayerId();
 
-        // ✅ CAMBIO: Usar SessionManager para guardar
         playerSession.savePlayerSession(this.gameId, this.playerId, this.playerName, this.playerColor);
 
         if (this.elements.btnJoin) {
@@ -379,7 +362,7 @@ class PlayerManager {
         } catch (error) {
             debug('Error uniéndose:', error, 'error');
             if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '❌ Error de conexion';
+                this.elements.statusMessage.innerHTML = '❌ Error de conexión';
             }
             if (this.elements.btnJoin) {
                 this.elements.btnJoin.disabled = false;
@@ -433,7 +416,7 @@ class PlayerManager {
         safeHideElement(this.elements.categoryLabel);
         safeShowElement(this.elements.waitingMessage);
         if (this.elements.waitingMessage) {
-            this.elements.waitingMessage.textContent = 'El anfitrion iniciara la ronda pronto';
+            this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
         }
         safeHideElement(this.elements.wordsInputSection);
         safeHideElement(this.elements.resultsSection);
@@ -530,7 +513,7 @@ class PlayerManager {
             const elapsedSinceStart = nowServer - state.round_starts_at;
             
             if (elapsedSinceStart < countdownDuration) {
-                debug(`⏱️ Countdown aun en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
+                debug(`⏱️ Countdown aún en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
                 await this.showCountdown(state);
             }
         }
@@ -542,7 +525,7 @@ class PlayerManager {
         }
 
         if (this.elements.categoryLabel && state.current_category) {
-            this.elements.categoryLabel.textContent = `Categoria: ${state.current_category}`;
+            this.elements.categoryLabel.textContent = `Categoría: ${state.current_category}`;
             safeShowElement(this.elements.categoryLabel);
         } else {
             safeHideElement(this.elements.categoryLabel);
@@ -567,7 +550,7 @@ class PlayerManager {
             }
 
             if (this.elements.waitingMessage) {
-                this.elements.waitingMessage.textContent = 'Esperando a los demas jugadores...';
+                this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
                 safeShowElement(this.elements.waitingMessage);
             }
             
@@ -580,7 +563,7 @@ class PlayerManager {
             if (this.elements.currentWordInput) {
                 const isAtMax = this.myWords.length >= this.maxWords;
                 this.elements.currentWordInput.disabled = isAtMax;
-                this.elements.currentWordInput.placeholder = isAtMax ? `Maximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
+                this.elements.currentWordInput.placeholder = isAtMax ? `Máximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
             }
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
@@ -622,11 +605,10 @@ class PlayerManager {
         }
 
         if (word.length > COMM_CONFIG.MAX_WORD_LENGTH) {
-            showNotification(`Palabra demasiado larga (maximo ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
+            showNotification(`Palabra demasiado larga (máximo ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
             return;
         }
 
-        // 🔧 FASE 5: WordEngine ya está desacoplado
         const normalized = word.toUpperCase();
         if (this.myWords.includes(normalized)) {
             showNotification('Ya agregaste esa palabra', 'warning');
@@ -712,7 +694,7 @@ class PlayerManager {
             if (this.elements.currentWordInput) {
                 this.elements.currentWordInput.disabled = isAtMax;
                 if (isAtMax) {
-                    this.elements.currentWordInput.placeholder = `Maximo ${this.maxWords} palabras`;
+                    this.elements.currentWordInput.placeholder = `Máximo ${this.maxWords} palabras`;
                 } else {
                     this.elements.currentWordInput.placeholder = 'Ingresa una palabra...';
                 }
@@ -809,7 +791,7 @@ class PlayerManager {
         if (this.elements.currentWordInput) {
             const isAtMax = this.myWords.length >= this.maxWords;
             this.elements.currentWordInput.disabled = isAtMax;
-            this.elements.currentWordInput.placeholder = isAtMax ? `Maximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
+            this.elements.currentWordInput.placeholder = isAtMax ? `Máximo ${this.maxWords} palabras` : 'Ingresa una palabra...';
         }
         if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
         if (this.elements.btnSubmit) {
@@ -848,7 +830,7 @@ class PlayerManager {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
                 }
-                debug('⚠️ No envíé palabras esta ronda', 'warning');
+                debug('⚠️ No envié palabras esta ronda', 'warning');
             } else {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
@@ -866,7 +848,7 @@ class PlayerManager {
                     <div class="result-item ${hasMatch ? 'match' : 'no-match'}">
                         <div class="result-word">${icon} ${sanitizeText(word)}</div>
                         <div class="result-points">+${result.points} puntos</div>
-                        ${hasMatch ? `<div class="result-players">Coincidio con: ${(result.matched_with || []).join(', ')}</div>` : ''}
+                        ${hasMatch ? `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>` : ''}
                     </div>
                 `;
                 roundScore += result.points;
@@ -940,7 +922,6 @@ class PlayerManager {
             this.client = null;
         }
         
-        // ✅ CAMBIO: Destruir ModalControllers
         if (this.joinModal) {
             this.joinModal.destroy();
         }
@@ -982,12 +963,10 @@ class PlayerManager {
             );
         }
         
-        // ✅ CAMBIO: Usar ModalController centralizado
         this.editNameModal.open();
     }
 
     hideEditNameModal() {
-        // ✅ CAMBIO: Usar ModalController centralizado
         this.editNameModal.close();
         this.tempSelectedAura = null;
     }
@@ -996,7 +975,7 @@ class PlayerManager {
         const newName = this.elements.modalNameInput?.value?.trim();
 
         if (!isValidPlayerName(newName)) {
-            showNotification('Nombre invalido (2-20 caracteres)', 'warning');
+            showNotification('Nombre inválido (2-20 caracteres)', 'warning');
             return;
         }
 
@@ -1011,7 +990,6 @@ class PlayerManager {
             savePlayerColor(this.playerColor);
         }
 
-        // ✅ CAMBIO: Usar SessionManager para guardar cambios
         playerSession.savePlayerSession(this.gameId, this.playerId, newName, this.playerColor);
 
         if (this.client) {
@@ -1037,7 +1015,6 @@ class PlayerManager {
         if (this.client) {
             this.client.disconnect();
         }
-        // ✅ CAMBIO: Usar SessionManager para limpiar
         playerSession.clear();
         location.reload();
     }
