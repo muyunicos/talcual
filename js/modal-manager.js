@@ -19,6 +19,7 @@ class ModalManager {
         this.currentConfig = null;
         this.onDismissCallback = null;
         this.isOpenFlag = false;
+        this.overlayClickHandler = null;
 
         this.TYPES = {
             PRIMARY: 'primary',
@@ -41,7 +42,6 @@ class ModalManager {
             this.createContainer();
         }
 
-        this.overlay = this.container.querySelector('.modal-overlay') || this.createOverlay();
         debug('🎯 ModalManager inicializado', 'info');
     }
 
@@ -49,13 +49,6 @@ class ModalManager {
         this.container = document.createElement('div');
         this.container.id = 'modal-manager';
         document.body.appendChild(this.container);
-    }
-
-    createOverlay() {
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay hidden';
-        this.container.appendChild(overlay);
-        return overlay;
     }
 
     show(config) {
@@ -145,18 +138,13 @@ class ModalManager {
             this.overlay.classList.add('active');
         });
 
-        if (type === this.TYPES.MESSAGE) {
-            this.overlay.addEventListener('click', (e) => {
+        if (type === this.TYPES.MESSAGE || type === this.TYPES.SECONDARY) {
+            this.overlayClickHandler = (e) => {
                 if (e.target === this.overlay) {
                     this.close();
                 }
-            });
-        } else if (type === this.TYPES.SECONDARY) {
-            this.overlay.addEventListener('click', (e) => {
-                if (e.target === this.overlay) {
-                    this.close();
-                }
-            });
+            };
+            this.overlay.addEventListener('click', this.overlayClickHandler);
         }
 
         if (type !== this.TYPES.PRIMARY) {
@@ -170,6 +158,10 @@ class ModalManager {
         if (!this.isOpenFlag) return;
 
         if (this.overlay) {
+            if (this.overlayClickHandler) {
+                this.overlay.removeEventListener('click', this.overlayClickHandler);
+                this.overlayClickHandler = null;
+            }
             this.overlay.classList.remove('active');
             this.overlay.classList.add('hidden');
         }
@@ -195,8 +187,8 @@ class ModalManager {
     }
 
     destroy() {
-        if (this.overlay) {
-            this.overlay.removeEventListener('click', null);
+        if (this.overlay && this.overlayClickHandler) {
+            this.overlay.removeEventListener('click', this.overlayClickHandler);
         }
         if (this.container) {
             this.container.innerHTML = '';
@@ -204,6 +196,7 @@ class ModalManager {
         this.overlay = null;
         this.modal = null;
         this.container = null;
+        this.overlayClickHandler = null;
         debug('🧹 ModalManager destruido', 'info');
     }
 }
