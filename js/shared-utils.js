@@ -15,6 +15,7 @@
  * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
  * 🔧 FIX: ConfigService store max_code_length + filter words by length
  * 🔧 FIX: Split dictionary words by pipe delimiter to extract word variants
+ * 🔧 FASE 1: Consolidation - Remove generateRandomAuras stub, eliminate duplicate getRemainingTime
  */
 
 // ============================================================================
@@ -238,15 +239,10 @@ const hostSession = new SessionManager('host');
 const playerSession = new SessionManager('player');
 
 // ============================================================================
-// WORD COMPARISON ENGINE
+// WORD COMPARISON ENGINE - LAZY INITIALIZATION
 // ============================================================================
 
 let wordEngine = null;
-
-if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
-    wordEngine = new WordEquivalenceEngine();
-    debug('✅ WordEngine instanciado inmediatamente en shared-utils.js', null, 'success');
-}
 
 if (typeof WordEquivalenceEngine === 'undefined') {
     class WordEquivalenceEngine {
@@ -267,6 +263,9 @@ if (typeof WordEquivalenceEngine === 'undefined') {
     }
     wordEngine = new WordEquivalenceEngine();
     debug('⚠️  STUB: WordEquivalenceEngine stub creado (word-comparison.js aún no cargó)', null, 'warn');
+} else if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
+    wordEngine = new WordEquivalenceEngine();
+    debug('✅ WordEngine instanciado desde word-comparison.js', null, 'success');
 }
 
 // ============================================================================
@@ -308,8 +307,6 @@ class DictionaryService {
                 const allWords = [];
 
                 if (Array.isArray(value)) {
-                    // Caso: Array de objetos con hints
-                    // [{hint: [words]}, {hint: [words]}, ...]
                     value.forEach(hintObj => {
                         if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
                             Object.values(hintObj).forEach(wordsArray => {
@@ -320,20 +317,16 @@ class DictionaryService {
                         }
                     });
                 } else if (typeof value === 'object' && !Array.isArray(value)) {
-                    // Caso: Objeto directo con hints
-                    // {hint1: [words], hint2: [words]}
                     Object.values(value).forEach(wordsArray => {
                         if (Array.isArray(wordsArray)) {
                             allWords.push(...wordsArray);
                         }
                     });
                 } else if (Array.isArray(value)) {
-                    // Caso: Array directo de palabras
                     allWords.push(...value);
                 }
 
                 if (allWords.length > 0) {
-                    // FIX: Split por pipe (|) y validar que todas sean strings
                     const validWords = allWords
                         .flatMap(w => {
                             if (typeof w === 'string' && w.length > 0) {
@@ -423,7 +416,6 @@ class DictionaryService {
         
         let availableWords = words;
         
-        // FIX #5: Si maxLength se proporciona, filtrar palabras por longitud
         if (maxLength !== null && maxLength > 0) {
             availableWords = words.filter(word => typeof word === 'string' && word.length <= maxLength);
             if (availableWords.length === 0) {
@@ -535,33 +527,6 @@ function generatePlayerId() {
     return `player_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function generateRandomAuras(count = 10) {
-    const baseColors = [
-        { name: 'Rojo', hex: '#FF0055' },
-        { name: 'Azul', hex: '#0066FF' },
-        { name: 'Verde', hex: '#00CC44' },
-        { name: 'Morado', hex: '#9933FF' },
-        { name: 'Naranja', hex: '#FF6600' },
-        { name: 'Rosa', hex: '#FF3366' },
-        { name: 'Turquesa', hex: '#00DDDD' },
-        { name: 'Lima', hex: '#CCFF00' },
-        { name: 'Indigo', hex: '#3300FF' },
-        { name: 'Naranja Oscuro', hex: '#CC4400' }
-    ];
-
-    const auras = [];
-    for (let i = 0; i < count && i < baseColors.length; i++) {
-        const color1 = baseColors[i];
-        const color2 = baseColors[(i + 1) % baseColors.length];
-        auras.push({
-            name: color1.name,
-            hex: color1.hex,
-            gradient: `${color1.hex},${color2.hex}`
-        });
-    }
-    return auras;
-}
-
 function renderAuraSelectors(container, auras, selectedHex, onSelect) {
     if (!container) return;
 
@@ -590,8 +555,12 @@ function renderAuraSelectors(container, auras, selectedHex, onSelect) {
 }
 
 function renderAuraSelectorsEdit(container, selectedHex, onSelect) {
-    const auras = generateRandomAuras();
-    renderAuraSelectors(container, auras, selectedHex, onSelect);
+    if (typeof generateRandomAuras === 'function') {
+        const auras = generateRandomAuras();
+        renderAuraSelectors(container, auras, selectedHex, onSelect);
+    } else {
+        debug('⚠️  generateRandomAuras no disponible (aura-system.js no cargó)', null, 'warn');
+    }
 }
 
 function applyColorGradient(colorString) {
