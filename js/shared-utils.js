@@ -1,13 +1,12 @@
 /**
  * @file shared-utils.js
- * @description Centralización de servicios y utilidades compartidas
+ * @description Centralization of services and shared utilities
  * 
- * 🔧 PHASE 2 (CONSOLIDATED):
- * - NEW: UI namespace with centralized showFatalError()
- * - REMOVED: WordEquivalenceEngine stub (fail-fast if word-comparison.js missing)
- * - GameTimer utility centralized
- * - DictionaryService injects data via processDictionary()
- * - Pipe delimiters handled by WordEngine
+ * 🔧 PHASE 2 (FINAL):
+ * - REMOVED: Stub WordEquivalenceEngine class (fail-fast if word-comparison.js missing)
+ * - GameTimer utility centralized with format() and getRemainingTime()
+ * - DictionaryService loads app/diccionario.json and injects into wordEngine
+ * - Flattens dictionary data for UI prompts
  */
 
 // ============================================================================
@@ -69,39 +68,39 @@ const UI = {
 // ============================================================================
 
 const GameTimer = {
-    formatTime(seconds) {
+    format(seconds) {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     },
 
-    getRemainingTime(startTime, duration) {
+    getRemaining(startTime, duration) {
         const nowServer = typeof timeSync !== 'undefined' && timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
         const elapsed = nowServer - startTime;
         return Math.max(0, duration - elapsed);
     },
 
-    updateTimerDisplay(remainingMs, element, emoji = '⏳') {
+    updateDisplay(remainingMs, element, emoji = '⏳') {
         if (!element) return;
         if (remainingMs === null || remainingMs === undefined) {
             element.textContent = `${emoji}`;
             return;
         }
         const seconds = Math.ceil(remainingMs / 1000);
-        element.textContent = `${emoji} ${this.formatTime(seconds)}`;
+        element.textContent = `${emoji} ${this.format(seconds)}`;
     }
 };
 
 function formatTime(seconds) {
-    return GameTimer.formatTime(seconds);
+    return GameTimer.format(seconds);
 }
 
 function updateTimerDisplay(remainingMs, element, emoji = '⏳') {
-    return GameTimer.updateTimerDisplay(remainingMs, element, emoji);
+    return GameTimer.updateDisplay(remainingMs, element, emoji);
 }
 
 function getRemainingTime(startTime, duration) {
-    return GameTimer.getRemainingTime(startTime, duration);
+    return GameTimer.getRemaining(startTime, duration);
 }
 
 // ============================================================================
@@ -284,8 +283,7 @@ const playerSession = new SessionManager('player');
 let wordEngine = null;
 
 if (typeof WordEquivalenceEngine === 'undefined') {
-    console.error('❌ CRITICAL: WordEquivalenceEngine class not found. Check word-comparison.js loading order');
-    throw new Error('WordEquivalenceEngine not loaded - word-comparison.js must be included before shared-utils.js');
+    throw new Error('❌ CRITICAL: WordEquivalenceEngine not loaded - word-comparison.js must be included before shared-utils.js');
 } else {
     wordEngine = new WordEquivalenceEngine();
     debug('✅ WordEngine instantiated from word-comparison.js', null, 'success');
@@ -297,179 +295,108 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 
 class DictionaryService {
     constructor() {
+        this.rawDictionary = null;
+        this.flattenedWords = [];
         this.categories = [];
         this.isReady = false;
         this.loadPromise = null;
     }
 
-    async loadCategories() {
-        if (this.categories.length > 0) {
-            this.isReady = true;
-            return this.categories;
+    async load() {
+        if (this.isReady) {
+            return { rawDictionary: this.rawDictionary, flattenedWords: this.flattenedWords };
         }
         if (this.loadPromise) return this.loadPromise;
 
         this.loadPromise = (async () => {
-            debug('📚 Cargando categorías desde servidor...', null, 'info');
+            debug('📚 Cargando diccionario desde app/diccionario.json...', null, 'info');
+            
             try {
-                const url = new URL('./app/actions.php', window.location.href);
-                const response = await fetch(url.toString(), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'get_categories' }),
+                const response = await fetch('./app/diccionario.json', { 
                     cache: 'no-store'
                 });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const result = await response.json();
-                if (!result.success || !Array.isArray(result.categories)) {
-                    throw new Error('Respuesta inválida');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: No se puede acceder a app/diccionario.json`);
                 }
-                this.categories = result.categories;
-                this.isReady = true;
-                debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
-                return this.categories;
-            } catch (error) {
-                debug('❌ Error: ' + error.message, null, 'error');
-                throw error;
-            debug('📚 Iniciando carga de diccionario...', null, 'info');
-            
-            const response = await fetch('./app/diccionario.json', { 
-                cache: 'no-store'
-            });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: No se puede acceder a app/diccionario.json`);
-            }
+                const data = await response.json();
+                
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
+                }
 
-            const data = await response.json();
-            
-            if (!data || typeof data !== 'object') {
-                throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
-            }
+                this.rawDictionary = data;
+                this.categories = Object.keys(data).filter(k => {
+                    const v = data[k];
+                    return Array.isArray(v) || typeof v === 'object';
+                });
 
-            this.dictionary = data;
-            this.categories = Object.keys(data).filter(k => Array.isArray(data[k]) || typeof data[k] === 'object');
-            this.isReady = true;
+                if (typeof wordEngine === 'undefined' || !wordEngine) {
+                    throw new Error('WordEngine not available for dictionary injection');
+                }
 
-            if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
                 wordEngine.processDictionary(data);
-                debug('🔗 WordEngine initialized with diccionario.json data', { entriesCount: Object.keys(wordEngine.dictionaryMap).length }, 'success');
-            } else {
-                debug('❌ WordEngine not available for dictionary injection', null, 'error');
-                throw new Error('WordEngine not ready for data injection');
+                debug('🔗 WordEngine initialized with diccionario.json', { entriesCount: Object.keys(wordEngine.dictionaryMap).length }, 'success');
+
+                this.flattenedWords = this._flattenDictionary(data);
+                this.isReady = true;
+
+                debug('📚 Diccionario completamente cargado', { categorias: this.categories.length, palabras: this.flattenedWords.length }, 'success');
+                return { rawDictionary: this.rawDictionary, flattenedWords: this.flattenedWords };
+
+            } catch (error) {
+                debug('❌ Error cargando diccionario: ' + error.message, null, 'error');
+                throw error;
             }
         })();
         return this.loadPromise;
     }
 
-    getTotalWordCount() {
-        if (!this.dictionary) return 0;
-        let count = 0;
+    _flattenDictionary(data) {
+        const words = [];
         
-        Object.values(this.dictionary).forEach(categoryContent => {
-            if (Array.isArray(categoryContent)) {
-                categoryContent.forEach(hintObj => {
-                    if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
-                        Object.values(hintObj).forEach(wordsArray => {
-                            if (Array.isArray(wordsArray)) {
-                                count += wordsArray.length;
+        Object.entries(data).forEach(([category, categoryContent]) => {
+            if (!Array.isArray(categoryContent)) return;
+
+            categoryContent.forEach(hintObj => {
+                if (typeof hintObj !== 'object' || Array.isArray(hintObj)) return;
+
+                Object.entries(hintObj).forEach(([hint, wordsArray]) => {
+                    if (!Array.isArray(wordsArray)) return;
+
+                    wordsArray.forEach(wordEntry => {
+                        if (typeof wordEntry !== 'string' || wordEntry.length === 0) return;
+
+                        if (wordEntry.includes('|')) {
+                            const parts = wordEntry.split('|').map(p => p.trim()).filter(p => p.length > 0);
+                            if (parts.length > 0) {
+                                words.push(parts[0]);
                             }
-                        });
-                    }
+                        } else {
+                            words.push(wordEntry);
+                        }
+                    });
                 });
-            }
+            });
         });
-        
-        return count;
+
+        return [...new Set(words)];
     }
 
     getCategories() {
-        if (!this.isReady) throw new Error('Llamar a loadCategories() primero');
+        if (!this.isReady) throw new Error('Llamar a load() primero');
         return [...this.categories];
     }
 
-    async getCategoryWord(category) {
-        debug(`🔤 Obteniendo palabra: ${category}`, null, 'info');
-        try {
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_category_word', category: category }),
-                cache: 'no-store'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
-            if (!result.success || !result.word) throw new Error(result.message || 'Sin palabra');
-            debug(`✅ Palabra: ${result.word}`, null, 'success');
-            return result.word;
-        } catch (error) {
-            debug('❌ Error: ' + error.message, null, 'error');
-            throw error;
-    getWordsForCategory(category) {
-        if (!this.dictionary || !this.dictionary[category]) {
-            return [];
-        }
-        
-        const categoryContent = this.dictionary[category];
-        const words = [];
-        
-        if (Array.isArray(categoryContent)) {
-            categoryContent.forEach(hintObj => {
-                if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
-                    Object.values(hintObj).forEach(wordsArray => {
-                        if (Array.isArray(wordsArray)) {
-                            words.push(...wordsArray);
-                        }
-                    });
-                }
-            });
-        }
-        
-        return words;
+    getFlattenedWords() {
+        if (!this.isReady) throw new Error('Llamar a load() primero');
+        return [...this.flattenedWords];
     }
 
-    getRandomWord() {
-        if (!this.dictionary) return null;
-        
-        const categories = this.getCategories();
-        if (categories.length === 0) return null;
-
-        const randomCat = categories[Math.floor(Math.random() * categories.length)];
-        const words = this.getWordsForCategory(randomCat);
-
-        if (words.length === 0) return null;
-
-        const randomWord = words[Math.floor(Math.random() * words.length)];
-        
-        if (typeof randomWord !== 'string') {
-            debug(`⚠️  Invalid type in getRandomWord from ${randomCat}:`, typeof randomWord, 'warn');
-            return null;
-        }
-
-        return randomWord;
-    }
-
-    getRandomWordByCategory(category, maxLength = null) {
-        const words = this.getWordsForCategory(category);
-        if (words.length === 0) return null;
-        
-        let availableWords = words;
-        
-        if (maxLength !== null && maxLength > 0) {
-            availableWords = words.filter(word => typeof word === 'string' && word.length <= maxLength);
-            if (availableWords.length === 0) {
-                debug(`⚠️  No words in "${category}" with length ≤ ${maxLength}`, null, 'warn');
-                return null;
-            }
-        }
-        
-        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-        
-        if (typeof randomWord !== 'string') {
-            debug(`⚠️  Invalid type in getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
-            return null;
-        }
+    getTotalWordCount() {
+        if (!this.isReady) return 0;
+        return this.flattenedWords.length;
     }
 }
 
