@@ -8,6 +8,7 @@
  * - Usa wordEngine desacoplado
  * - Manejo de errores fuerte en config/dict
  * - Rechaza Promises si hay error (no fallbacks)
+ * 🔧 FASE 3-OPT: Optimized to use GameTimer centralized utility
  */
 
 class PlayerManager {
@@ -151,7 +152,7 @@ class PlayerManager {
         }
         
         if (this.elements.headerTimer) {
-            updateTimerDisplay(null, this.elements.headerTimer, '⏳');
+            GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
         }
     }
 
@@ -405,9 +406,7 @@ class PlayerManager {
         safeHideElement(this.elements.resultsSection);
         safeHideElement(this.elements.countdownOverlay);
         this.stopTimer();
-        if (this.elements.headerTimer) {
-            updateTimerDisplay(null, this.elements.headerTimer, '⏳');
-        }
+        GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
     }
 
     runPreciseCountdown(roundStartsAt, countdownDuration, onComplete) {
@@ -733,7 +732,7 @@ class PlayerManager {
         if (!this.elements.btnSubmit) return;
         
         if (this.myWords.length === this.maxWords) {
-            this.elements.btnSubmit.textContent = '✍️ ENVIAR';
+            this.elements.btnSubmit.textContent = '✍️ ENVÍAR';
         } else {
             this.elements.btnSubmit.textContent = '✍️ PASO';
         }
@@ -798,9 +797,7 @@ class PlayerManager {
         safeHideElement(this.elements.categoryLabel);
         safeHideElement(this.elements.waitingMessage);
         this.stopTimer();
-        if (this.elements.headerTimer) {
-            updateTimerDisplay(null, this.elements.headerTimer, '⏳');
-        }
+        GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
 
         const me = state.players?.[this.playerId];
         const myResults = me?.round_results;
@@ -872,8 +869,8 @@ class PlayerManager {
             return;
         }
 
-        const remaining = getRemainingTime(state.round_started_at, state.round_duration);
-        updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
+        const remaining = GameTimer.getRemaining(state.round_started_at, state.round_duration);
+        GameTimer.updateDisplay(remaining, this.elements.headerTimer, '⏳');
 
         if (remaining <= 500 && this.gameState.status === 'playing') {
             const me = this.gameState.players?.[this.playerId];
@@ -896,7 +893,7 @@ class PlayerManager {
     }
 
     destroy() {
-        debug('🗗️ Destroying PlayerManager...', 'info');
+        debug('🖗 Destroying PlayerManager...', 'info');
         
         this.stopTimer();
         
@@ -1012,4 +1009,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - FASE 2: UI.showFatalError centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - FASE 3-OPT: Timer utility centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
