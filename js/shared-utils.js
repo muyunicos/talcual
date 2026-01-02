@@ -13,7 +13,7 @@
  * 🔧 FIX: Remove duplicate ModalController (defined in modal-controller.js)
  * 🔧 FIX: Correct loading order - hostSession must be before host-manager.js usage
  * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
- * 🔧 FIX: Dictionary normalization - handle hint object structure correctly
+ * 🔧 FIX: ConfigService store max_code_length + filter words by length
  */
 
 // ============================================================================
@@ -408,11 +408,22 @@ class DictionaryService {
         return randomWord;
     }
 
-    getRandomWordByCategory(category) {
+    getRandomWordByCategory(category, maxLength = null) {
         const words = this.getWordsForCategory(category);
         if (words.length === 0) return null;
         
-        const randomWord = words[Math.floor(Math.random() * words.length)];
+        let availableWords = words;
+        
+        // FIX #5: Si maxLength se proporciona, filtrar palabras por longitud
+        if (maxLength !== null && maxLength > 0) {
+            availableWords = words.filter(word => typeof word === 'string' && word.length <= maxLength);
+            if (availableWords.length === 0) {
+                debug(`⚠️  No hay palabras en "${category}" con longitud ≤ ${maxLength}`, null, 'warn');
+                return null;
+            }
+        }
+        
+        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
         
         if (typeof randomWord !== 'string') {
             debug(`⚠️  Tipo inválido en getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
@@ -468,7 +479,7 @@ class ConfigService {
                 throw new Error('Configuración del servidor está vacía o mal formada');
             }
 
-            const requiredFields = ['round_duration', 'TOTAL_ROUNDS', 'max_words_per_player'];
+            const requiredFields = ['round_duration', 'TOTAL_ROUNDS', 'max_words_per_player', 'max_code_length'];
             for (const field of requiredFields) {
                 if (!(field in result.config)) {
                     throw new Error(`Campo crítico faltante en config: ${field}`);
