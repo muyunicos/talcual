@@ -32,6 +32,37 @@ function loadRawDictionaryJson() {
     return is_array($data) ? $data : [];
 }
 
+function flattenWords($data) {
+    $words = [];
+    
+    if (!is_array($data)) {
+        return $words;
+    }
+
+    array_walk_recursive($data, function($item) use (&$words) {
+        if (is_string($item) && !empty(trim($item))) {
+            $words[] = trim($item);
+        }
+    });
+
+    return $words;
+}
+
+function cleanWordPrompt($rawWord) {
+    if (empty($rawWord)) {
+        return '';
+    }
+    
+    $word = trim($rawWord);
+    
+    if (strpos($word, '|') !== false) {
+        $parts = explode('|', $word);
+        $word = trim($parts[0]);
+    }
+    
+    return $word;
+}
+
 function loadDictionary() {
     static $cache = null;
 
@@ -55,22 +86,26 @@ function loadDictionary() {
 
 function getAllWords() {
     $dict = loadDictionary();
-    $words = [];
+    $rawWords = flattenWords($dict);
+    
+    $cleanedWords = array_map('cleanWordPrompt', $rawWords);
+    $cleanedWords = array_filter($cleanedWords, function($w) { 
+        return !empty($w); 
+    });
 
-    if (isset($dict['categorias'])) {
-        foreach ($dict['categorias'] as $categoria => $palabras) {
-            $words = array_merge($words, $palabras);
-        }
-    }
-
-    return array_unique($words);
+    return array_unique($cleanedWords);
 }
 
 function getWordsByCategory($category) {
     $dict = loadDictionary();
 
-    if (isset($dict['categorias'][$category])) {
-        return $dict['categorias'][$category];
+    if (isset($dict[$category])) {
+        $rawWords = flattenWords($dict[$category]);
+        $cleanedWords = array_map('cleanWordPrompt', $rawWords);
+        $cleanedWords = array_filter($cleanedWords, function($w) { 
+            return !empty($w); 
+        });
+        return array_unique($cleanedWords);
     }
 
     return [];
@@ -79,38 +114,45 @@ function getWordsByCategory($category) {
 function getCategories() {
     $dict = loadDictionary();
 
-    if (isset($dict['categorias'])) {
-        return array_keys($dict['categorias']);
+    if (is_array($dict)) {
+        return array_keys($dict);
     }
 
     return [];
 }
 
-// NUEVO: Obtener palabras de una categoría con filtro de longitud
 function getDictionaryCategoryWords($category, $minLength = 1, $maxLength = null) {
     $words = getWordsByCategory($category);
     if (empty($words)) return [];
+    
     $filtered = array_filter($words, function($word) use ($minLength, $maxLength) {
         $len = mb_strlen($word);
         if ($len < $minLength) return false;
         if ($maxLength !== null && $len > $maxLength) return false;
         return true;
     });
+    
     return array_values($filtered);
 }
 
-// NUEVO: Obtener contexto de ronda (prompt, sinónimos, variantes)
 function getRoundContext($category, $prompt) {
     $words = getDictionaryCategoryWords($category);
+    
     if (empty($words)) {
         return ['prompt' => $prompt, 'synonyms' => [$prompt], 'variants' => [$prompt]];
     }
-    $variants = [$prompt, $prompt . 'S', $prompt . 'A', $prompt . 'O', substr($prompt, 0, -1)];
+    
+    $cleanPrompt = cleanWordPrompt($prompt);
+    $variants = [$cleanPrompt, $cleanPrompt . 'S', $cleanPrompt . 'A', $cleanPrompt . 'O', substr($cleanPrompt, 0, -1)];
     $synonyms = array_slice($words, 0, 10);
-    return ['prompt' => $prompt, 'synonyms' => $synonyms, 'variants' => array_unique(array_filter($variants))];
+    
+    return [
+        'prompt' => $cleanPrompt, 
+        'synonyms' => $synonyms, 
+        'variants' => array_unique(array_filter($variants))
+    ];
 }
 
-// Obtener códigos activos de salas
 function getActiveCodes() {
     $files = glob(GAME_STATES_DIR . '/*.json');
     $codes = [];
@@ -426,21 +468,27 @@ function getDictionaryStats() {
     $dict = loadDictionary();
 
     $stats = [
-        'categorias' => count($dict['categorias'] ?? []),
+        'categorias' => count($dict),
         'total_palabras' => 0,
         'palabras_codigo' => 0,
         'categorias_detalle' => []
     ];
 
-    if (isset($dict['categorias'])) {
-        foreach ($dict['categorias'] as $categoria => $palabras) {
-            $count = count($palabras);
-            $stats['total_palabras'] += $count;
-            $stats['categorias_detalle'][$categoria] = $count;
-            foreach ($palabras as $palabra) {
-                if (mb_strlen($palabra) <= MAX_CODE_LENGTH) {
-                    $stats['palabras_codigo']++;
-                }
+    foreach ($dict as $categoria => $content) {
+        $words = flattenWords([$categoria => $content]);
+        $cleanedWords = array_map('cleanWordPrompt', $words);
+        $cleanedWords = array_filter($cleanedWords, function($w) { 
+            return !empty($w); 
+        });
+        $uniqueWords = array_unique($cleanedWords);
+        
+        $count = count($uniqueWords);
+        $stats['total_palabras'] += $count;
+        $stats['categorias_detalle'][$categoria] = $count;
+        
+        foreach ($uniqueWords as $palabra) {
+            if (mb_strlen($palabra) <= MAX_CODE_LENGTH) {
+                $stats['palabras_codigo']++;
             }
         }
     }
