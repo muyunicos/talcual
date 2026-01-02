@@ -453,7 +453,7 @@ class ConfigService {
                     throw new Error('Configuración del servidor está vacía o mal formada');
                 }
 
-                const requiredFields = ['max_words_per_player', 'default_total_rounds', 'round_duration'];
+                const requiredFields = ['max_words_per_player', 'TOTAL_ROUNDS', 'round_duration'];
                 for (const field of requiredFields) {
                     if (!(field in result.config)) {
                         throw new Error(`Campo crítico faltante en config: ${field}`);
@@ -470,7 +470,7 @@ class ConfigService {
                 
                 this.config = { 
                     max_words_per_player: 6, 
-                    default_total_rounds: 3, 
+                    TOTAL_ROUNDS: 3, 
                     round_duration: 60,
                     default_category: 'general'
                 };

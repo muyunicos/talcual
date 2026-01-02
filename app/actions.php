@@ -217,12 +217,12 @@ try {
                 }
             }
 
-            $totalRounds = intval($input['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS);
-            $roundDuration = intval($input['round_duration'] ?? DEFAULT_ROUND_DURATION);
+            $totalRounds = intval($input['total_rounds'] ?? TOTAL_ROUNDS);
+            $roundDuration = intval($input['round_duration'] ?? ROUND_DURATION);
             $minPlayers = intval($input['min_players'] ?? MIN_PLAYERS);
 
-            if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = DEFAULT_TOTAL_ROUNDS;
-            if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = DEFAULT_ROUND_DURATION;
+            if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = TOTAL_ROUNDS;
+            if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = ROUND_DURATION;
             if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
 
             $selectedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
@@ -243,7 +243,7 @@ try {
                 'round_started_at' => null,
                 'round_starts_at' => null,
                 'round_ends_at' => null,
-                'countdown_duration' => INITIAL_TIMER * 1000,
+                'countdown_duration' => START_COUNTDOWN * 1000,
                 'min_players' => $minPlayers,
                 'round_details' => [],
                 'round_top_words' => [],
@@ -368,19 +368,19 @@ try {
                     $state['used_prompts'] = $picked['used_prompts'] ?? ($state['used_prompts'] ?? []);
                 }
 
-                $duration = intval($input['duration'] ?? $state['round_duration'] ?? DEFAULT_ROUND_DURATION * 1000);
-                $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS);
+                $duration = intval($input['duration'] ?? $state['round_duration'] ?? ROUND_DURATION * 1000);
+                $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? TOTAL_ROUNDS);
 
                 if ($duration < 30000 || $duration > 300000) {
-                    $duration = ($state['round_duration'] ?? DEFAULT_ROUND_DURATION * 1000);
+                    $duration = ($state['round_duration'] ?? ROUND_DURATION * 1000);
                 }
 
                 if ($totalRounds < 1 || $totalRounds > 10) {
-                    $totalRounds = $state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS;
+                    $totalRounds = $state['total_rounds'] ?? TOTAL_ROUNDS;
                 }
 
                 $serverNow = intval(microtime(true) * 1000);
-                $countdownDuration = INITIAL_TIMER * 1000;
+                $countdownDuration = START_COUNTDOWN * 1000;
                 $roundStartsAt = $serverNow;
                 $roundStartedAt = $roundStartsAt + $countdownDuration;
                 $roundEndsAt = $roundStartedAt + $duration;
@@ -516,7 +516,7 @@ try {
 
             $state['last_update'] = time();
 
-            if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? DEFAULT_TOTAL_ROUNDS)) {
+            if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS)) {
                 $state['status'] = 'finished';
                 trackGameAction($gameId, 'game_finished', []);
             } else {
@@ -709,9 +709,9 @@ try {
                 'success' => true,
                 'server_now' => intval(microtime(true) * 1000),
                 'config' => [
-                    'initial_timer' => INITIAL_TIMER,
-                    'default_total_rounds' => DEFAULT_TOTAL_ROUNDS,
-                    'default_round_duration' => DEFAULT_ROUND_DURATION,
+                    'START_COUNTDOWN' => START_COUNTDOWN,
+                    'TOTAL_ROUNDS' => TOTAL_ROUNDS,
+                    'ROUND_DURATION' => ROUND_DURATION,
                     'min_players' => MIN_PLAYERS,
                     'max_players' => MAX_PLAYERS,
                     'max_words_per_player' => MAX_WORDS_PER_PLAYER

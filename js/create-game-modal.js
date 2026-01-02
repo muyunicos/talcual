@@ -134,8 +134,8 @@ class CreateGameModal {
                 action: 'create_game',
                 game_id: customCode,
                 category,
-                total_rounds: configService.get('default_total_rounds', 3),
-                round_duration: configService.get('default_round_duration', 60),
+                total_rounds: configService.get('TOTAL_ROUNDS', 3),
+                round_duration: configService.get('ROUND_DURATION', 60),
                 min_players: configService.get('min_players', 2)
             };
 
