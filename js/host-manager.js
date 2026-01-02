@@ -18,6 +18,7 @@
  * 🔧 PHASE 1: Removed ghost 'start-screen' element from cacheElements
  * 🔧 PHASE 1: Fixed round display - removed duplicate "Ronda" label
  * 🔧 PHASE 3: Settings Modal wired - cached, initialized, events bound
+ * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
  */
 
 class HostManager {
@@ -37,23 +38,18 @@ class HostManager {
         this.roundEnded = false;
 
         this.elements = {};
-
-        this.startGameModal = null;
-        this.categoryModal = null;
-        this.settingsModal = null;
-
         this.wordEngineReady = false;
-
         this.categories = [];
         this.categoryWordsMap = {};
+
+        this.roundsInput = 3;
+        this.durationInput = 60;
+        this.categorySelectValue = '';
+        this.gameCodeInput = '';
 
         this.loadConfigAndInit();
     }
 
-    /**
-     * 🔧 FIX: Determinar UI state basado en sesión activa
-     * Esta función ahora se llama después de que las dependencias estén listas
-     */
     determineUIState() {
         const hasSession = hostSession.isSessionActive();
         const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
@@ -96,10 +92,9 @@ class HostManager {
             debug('✅ Verificación exitosa: ConfigService + DictionaryService + WordEngine listos', null, 'success');
 
             this.cacheElements();
-            this.initializeModals();
             this.attachEventListeners();
 
-            await this.populateCategorySelector();
+            await this.populateCategories();
 
             this.determineUIState();
 
@@ -122,52 +117,30 @@ class HostManager {
         }
     }
 
-    async populateCategorySelector() {
+    async populateCategories() {
         try {
-            const categorySelect = safeGetElement('category-select');
-            if (!categorySelect) return;
-
             this.categories = dictionaryService.getCategories();
-
-            categorySelect.innerHTML = '';
-            this.categories.forEach((cat) => {
-                const option = document.createElement('option');
-                option.value = cat;
-                option.textContent = cat;
-                categorySelect.appendChild(option);
-            });
-
             if (this.categories.length > 0) {
                 const randomIndex = Math.floor(Math.random() * this.categories.length);
-                categorySelect.value = this.categories[randomIndex];
+                this.categorySelectValue = this.categories[randomIndex];
                 this.updateCodeWithCategoryWord();
-
-                categorySelect.addEventListener('change', () => this.updateCodeWithCategoryWord());
             }
-
-            debug('📚 Selector de categoría poblado', { total: this.categories.length }, 'success');
+            debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
         } catch (error) {
-            debug('⚠️  Error poblando selector de categoría: ' + error.message, null, 'warn');
+            debug('⚠️  Error cargando categorías: ' + error.message, null, 'warn');
             throw error;
         }
     }
 
     async updateCodeWithCategoryWord() {
         try {
-            const categorySelect = safeGetElement('category-select');
-            const inputCode = safeGetElement('input-game-code');
-
-            if (!categorySelect || !inputCode) return;
-
-            const selectedCategory = categorySelect.value;
             const maxLength = configService.get('max_code_length', 5);
-            const randomWord = dictionaryService.getRandomWordByCategory(selectedCategory, maxLength);
-
+            const randomWord = dictionaryService.getRandomWordByCategory(this.categorySelectValue, maxLength);
             if (randomWord) {
-                inputCode.value = randomWord.slice(0, maxLength).toUpperCase();
+                this.gameCodeInput = randomWord.slice(0, maxLength).toUpperCase();
             }
         } catch (error) {
-            debug('⚠️  Error actualizando código con palabra: ' + error.message, null, 'warn');
+            debug('⚠️  Error actualizando código: ' + error.message, null, 'warn');
         }
     }
 
@@ -179,40 +152,8 @@ class HostManager {
         return wordEngine.getMatchType(word1, word2);
     }
 
-    initializeModals() {
-        this.startGameModal = new ModalController('modal-start-game', {
-            closeOnBackdrop: false,
-            closeOnEsc: false,
-            onAfterOpen: () => {
-                const inputCode = safeGetElement('input-game-code');
-                if (inputCode) {
-                    inputCode.focus();
-                }
-            }
-        });
-
-        this.categoryModal = new ModalController('modal-category', {
-            closeOnBackdrop: true,
-            closeOnEsc: true
-        });
-
-        this.settingsModal = new ModalController('modal-settings', {
-            closeOnBackdrop: true,
-            closeOnEsc: true
-        });
-    }
-
     cacheElements() {
         this.elements = {
-            categorySelect: safeGetElement('category-select'),
-            inputGameCode: safeGetElement('input-game-code'),
-            btnCreateGame: safeGetElement('btn-create-game'),
-            btnOpenSettingsCreate: safeGetElement('btn-open-settings-create'),
-
-            inputRounds: safeGetElement('input-rounds'),
-            inputDuration: safeGetElement('input-duration'),
-            btnCloseSettings: safeGetElement('btn-close-settings'),
-
             gameScreen: safeGetElement('game-screen'),
             headerCode: safeGetElement('header-code'),
             headerRound: safeGetElement('header-round'),
@@ -223,45 +164,19 @@ class HostManager {
             countdownOverlay: safeGetElement('countdown-overlay'),
             countdownNumber: safeGetElement('countdown-number'),
             statusMessage: safeGetElement('status-message'),
-
             btnStartRound: safeGetElement('btn-start-round'),
             btnSelectCategory: safeGetElement('btn-select-category'),
-            btnEndGame: safeGetElement('btn-end-game'),
-
-            categoryInput: safeGetElement('category-input'),
-            btnConfirmCategory: safeGetElement('btn-confirm-category')
+            btnEndGame: safeGetElement('btn-end-game')
         };
     }
 
     attachEventListeners() {
-        if (this.elements.btnCreateGame) {
-            this.elements.btnCreateGame.addEventListener('click', () => this.createGame());
-        }
-
-        if (this.elements.inputGameCode) {
-            this.elements.inputGameCode.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.createGame();
-            });
-        }
-
-        if (this.elements.btnOpenSettingsCreate) {
-            this.elements.btnOpenSettingsCreate.addEventListener('click', () => this.openSettings());
-        }
-
-        if (this.elements.btnCloseSettings) {
-            this.elements.btnCloseSettings.addEventListener('click', () => this.settingsModal.close());
-        }
-
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.addEventListener('click', () => this.startRound());
         }
 
         if (this.elements.btnSelectCategory) {
             this.elements.btnSelectCategory.addEventListener('click', () => this.showCategoryModal());
-        }
-
-        if (this.elements.btnConfirmCategory) {
-            this.elements.btnConfirmCategory.addEventListener('click', () => this.setCategory());
         }
 
         if (this.elements.btnEndGame) {
@@ -272,23 +187,145 @@ class HostManager {
         if (btnHamburgerSettings) {
             btnHamburgerSettings.addEventListener('click', () => {
                 const hamburgerMenu = safeGetElement('hamburger-menu-host');
-                if (hamburgerMenu) hamburgerMenu.classList.remove('active');
-                this.openSettings();
+                if (hamburgerMenu) hamburgerMenu.classList.remove('menu-open');
+                this.showSettingsModal();
             });
         }
     }
 
-    openSettings() {
-        if (this.settingsModal) {
-            this.settingsModal.open();
-        }
+    buildStartScreenContent() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <div class="input-group">
+                <label class="input-label" for="modal-category-select">Categoría Inicial</label>
+                <select id="modal-category-select" class="input-field"></select>
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="modal-game-code">Código de Sala</label>
+                <input type="text" id="modal-game-code" class="input-field"
+                       placeholder="EJ: ABC123" maxlength="6" autocomplete="off">
+            </div>
+        `;
+
+        const categorySelect = container.querySelector('#modal-category-select');
+        const gameCodeInput = container.querySelector('#modal-game-code');
+
+        this.categories.forEach((cat) => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categorySelect.appendChild(option);
+        });
+
+        categorySelect.value = this.categorySelectValue;
+        gameCodeInput.value = this.gameCodeInput;
+
+        categorySelect.addEventListener('change', (e) => {
+            this.categorySelectValue = e.target.value;
+            this.updateCodeWithCategoryWord();
+            gameCodeInput.value = this.gameCodeInput;
+        });
+
+        gameCodeInput.addEventListener('input', (e) => {
+            this.gameCodeInput = e.target.value.toUpperCase();
+        });
+
+        gameCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.createGame();
+        });
+
+        return container;
+    }
+
+    buildSettingsContent() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <div class="input-group">
+                <label class="input-label" for="modal-rounds">Rondas</label>
+                <input type="number" id="modal-rounds" class="input-field"
+                       min="1" max="10" value="${this.roundsInput}">
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="modal-duration">Duración por Ronda (seg)</label>
+                <input type="number" id="modal-duration" class="input-field"
+                       min="10" max="300" value="${this.durationInput}">
+            </div>
+        `;
+
+        const roundsInput = container.querySelector('#modal-rounds');
+        const durationInput = container.querySelector('#modal-duration');
+
+        roundsInput.addEventListener('change', (e) => {
+            this.roundsInput = parseInt(e.target.value, 10);
+        });
+
+        durationInput.addEventListener('change', (e) => {
+            this.durationInput = parseInt(e.target.value, 10);
+        });
+
+        return container;
+    }
+
+    buildCategoryContent() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <div class="input-group">
+                <label class="input-label" for="modal-category-input">Categoría</label>
+                <input type="text" id="modal-category-input" class="input-field"
+                       placeholder="Escribe una categoría (ej: Películas, Animales, Países)"
+                       maxlength="50">
+            </div>
+        `;
+        return container;
+    }
+
+    showStartScreen() {
+        const content = this.buildStartScreenContent();
+
+        ModalManager_Instance.show({
+            type: 'primary',
+            title: 'Nueva Partida',
+            content: content,
+            buttons: [
+                { label: '🎮 Crear Juego', class: 'btn-modal-primary', action: () => this.createGame(), close: false },
+                { label: '⚡ Opciones', class: 'btn-secondary', action: () => this.showSettingsModal(), close: false }
+            ]
+        });
+    }
+
+    showSettingsModal() {
+        const content = this.buildSettingsContent();
+
+        ModalManager_Instance.show({
+            type: 'secondary',
+            title: '⚡ Configuración de Juego',
+            content: content,
+            buttons: [
+                { label: 'Cerrar', class: 'btn', action: null, close: true }
+            ]
+        });
+    }
+
+    showCategoryModal() {
+        const content = this.buildCategoryContent();
+        const categoryInput = content.querySelector('#modal-category-input');
+
+        ModalManager_Instance.show({
+            type: 'secondary',
+            title: '📚 Seleccionar Categoría',
+            content: content,
+            buttons: [
+                { label: 'Cancelar', class: 'btn', action: null, close: true },
+                { label: 'Confirmar', class: 'btn-modal-primary', action: () => this.setCategory(categoryInput.value), close: false }
+            ]
+        });
     }
 
     async createGame() {
-        const selectedCategory = this.elements.categorySelect?.value || 'general';
-        const code = (this.elements.inputGameCode?.value || '').trim().toUpperCase();
-        const rounds = parseInt(this.elements.inputRounds?.value || 3, 10);
-        const duration = parseInt(this.elements.inputDuration?.value || 60, 10);
+        const code = this.gameCodeInput.trim().toUpperCase();
+        const selectedCategory = this.categorySelectValue;
+        const rounds = this.roundsInput;
+        const duration = this.durationInput;
 
         if (!isValidGameCode(code)) {
             showNotification('⚠️  Código inválido', 'warning');
@@ -303,11 +340,6 @@ class HostManager {
         if (duration < 10 || duration > 300) {
             showNotification('⚠️  Duración debe estar entre 10 y 300 segundos', 'warning');
             return;
-        }
-
-        if (this.elements.btnCreateGame) {
-            this.elements.btnCreateGame.disabled = true;
-            this.elements.btnCreateGame.textContent = 'Creando...';
         }
 
         try {
@@ -327,30 +359,18 @@ class HostManager {
 
                 hostSession.saveHostSession(code, selectedCategory);
 
+                ModalManager_Instance.close();
                 this.loadGameScreen(result.state || {});
             } else {
-                if (this.elements.btnCreateGame) {
-                    this.elements.btnCreateGame.disabled = false;
-                    this.elements.btnCreateGame.textContent = '🎮 Crear Juego';
-                }
                 showNotification('❌ ' + (result.message || 'Error al crear juego'), 'error');
             }
         } catch (error) {
             debug('Error creando juego:', error, 'error');
-            if (this.elements.btnCreateGame) {
-                this.elements.btnCreateGame.disabled = false;
-                this.elements.btnCreateGame.textContent = '🎮 Crear Juego';
-            }
             showNotification('❌ Error de conexión', 'error');
         }
     }
 
-    showStartScreen() {
-        this.startGameModal.open();
-    }
-
     loadGameScreen(state) {
-        this.startGameModal.close();
         safeShowElement(this.elements.gameScreen);
 
         if (this.elements.headerCode) {
@@ -611,14 +631,10 @@ class HostManager {
         }
     }
 
-    showCategoryModal() {
-        this.categoryModal.open();
-    }
+    async setCategory(category) {
+        const cat = (category || '').trim();
 
-    async setCategory() {
-        const category = (this.elements.categoryInput?.value || '').trim();
-
-        if (!category || category.length > COMM_CONFIG.MAX_CATEGORY_LENGTH) {
+        if (!cat || cat.length > COMM_CONFIG.MAX_CATEGORY_LENGTH) {
             showNotification('⚠️ Categoría inválida', 'warning');
             return;
         }
@@ -626,14 +642,14 @@ class HostManager {
         if (!this.client) return;
 
         try {
-            const result = await this.client.sendAction('set_category', { category });
+            const result = await this.client.sendAction('set_category', { category: cat });
 
             if (result.success) {
-                debug(`✅ Categoría establecida: ${category}`, null, 'success');
-                this.currentCategory = category;
+                debug(`✅ Categoría establecida: ${cat}`, null, 'success');
+                this.currentCategory = cat;
 
-                this.categoryModal.close();
-                showNotification(`📂 Categoría: ${category}`, 'success');
+                ModalManager_Instance.close();
+                showNotification(`📂 Categoría: ${cat}`, 'success');
             } else {
                 showNotification('❌ Error estableciendo categoría', 'error');
             }
@@ -702,16 +718,6 @@ class HostManager {
             this.client = null;
         }
 
-        if (this.startGameModal) {
-            this.startGameModal.destroy();
-        }
-        if (this.categoryModal) {
-            this.categoryModal.destroy();
-        }
-        if (this.settingsModal) {
-            this.settingsModal.destroy();
-        }
-
         this.currentPlayers = [];
         this.gameState = null;
         this.elements = {};
@@ -739,4 +745,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - PHASE 3: Settings Modal fully integrated', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - PHASE 6: ModalManager integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
