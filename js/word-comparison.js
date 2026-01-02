@@ -1,11 +1,12 @@
 /**
- * Word Comparison Engine V8 - Scoring Variable por Tipo de Coincidencia
+ * Word Comparison Engine V9 - Passive Logic Engine
  * 
- * Cambios FASE 3:
- * - Eliminar fetch() automático de sinonimos.json
- * - Aceptar datos directamente desde dictionaryService
- * - Mantener backward compatibility con areEquivalent()
- * - Permite asignar puntos diferentes: EXACTA=10, PLURAL=8, GENERO=5, SINONIMO=5
+ * PHASE 2 Changes:
+ * - REMOVED: async init(jsonUrl) and fetch calls - engine is now PASSIVE
+ * - ADDED: loadSynonymGroups(groups) accepts array of arrays of strings
+ * - Backward compatibility: processDictionary still supported
+ * - NO external I/O - strictly calculation-based
+ * - Data is INJECTED from DictionaryService
  */
 
 class WordEquivalenceEngine {
@@ -16,24 +17,13 @@ class WordEquivalenceEngine {
         this.debugMode = false;
     }
 
-    processDictionary(data) {
-        if (!data || typeof data !== 'object') {
-            console.error('❌ processDictionary: datos inválidos');
+    loadSynonymGroups(groups) {
+        if (!Array.isArray(groups)) {
+            console.error('❌ loadSynonymGroups: expected array of synonym groups');
             return;
         }
 
-        if (Array.isArray(data)) {
-            this.processLegacyFormat(data);
-        } else if (typeof data === 'object') {
-            this.processModernFormat(data);
-        }
-
-        this.isLoaded = true;
-        console.log('✅ Motor listo. Entradas en diccionario:', Object.keys(this.dictionaryMap).length);
-    }
-
-    processLegacyFormat(data) {
-        data.forEach(group => {
+        groups.forEach(group => {
             if (!Array.isArray(group) || group.length === 0) return;
 
             let canonicalRaw = group[0];
@@ -67,6 +57,25 @@ class WordEquivalenceEngine {
                 }
             });
         });
+
+        this.isLoaded = true;
+        console.log('✅ Synonym groups loaded. Dictionary entries:', Object.keys(this.dictionaryMap).length);
+    }
+
+    processDictionary(data) {
+        if (!data || typeof data !== 'object') {
+            console.error('❌ processDictionary: invalid data');
+            return;
+        }
+
+        if (Array.isArray(data)) {
+            this.loadSynonymGroups(data);
+        } else if (typeof data === 'object') {
+            this.processModernFormat(data);
+        }
+
+        this.isLoaded = true;
+        console.log('✅ Dictionary processed. Entries:', Object.keys(this.dictionaryMap).length);
     }
 
     processModernFormat(data) {
@@ -203,7 +212,7 @@ class WordEquivalenceEngine {
         }
 
         if (this.debugMode && root1.length > 2 && root2.length > 2) {
-            console.log(`❌ areEquivalentLocally("${word1}", "${word2}"): stems no coinciden "${root1}" !== "${root2}"`);
+            console.log(`❌ areEquivalentLocally("${word1}", "${word2}"): stems don't match "${root1}" !== "${root2}"`);
         }
 
         return false;
@@ -227,7 +236,7 @@ class WordEquivalenceEngine {
         const matchType = this.getMatchType(word1, word2);
         
         if (this.debugMode && matchType) {
-            console.log(`🎯 areEquivalentWithType("${word1}", "${word2}"): tipo=${matchType}`);
+            console.log(`🎯 areEquivalentWithType("${word1}", "${word2}"): type=${matchType}`);
         }
         
         return {
@@ -251,7 +260,7 @@ class WordEquivalenceEngine {
             if (!id2) id2 = this.dictionaryMap[this.getStem(n2)];
 
             if (id1 && id2 && id1 === id2) {
-                if (this.debugMode) console.log(`✅ areEquivalent (dict): "${word1}" == "${word2}" (por diccionario)`);
+                if (this.debugMode) console.log(`✅ areEquivalent (dict): "${word1}" == "${word2}" (by dictionary)`);
                 return true;
             }
 
@@ -278,7 +287,7 @@ class WordEquivalenceEngine {
                 return true;
             }
         } else {
-            if (this.debugMode) console.log(`⚠️  Diccionario no cargado, usando fallback local para "${word1}" vs "${word2}"`);
+            if (this.debugMode) console.log(`⚠️  Dictionary not loaded, using local fallback for "${word1}" vs "${word2}"`);
             return this.areEquivalentLocally(word1, word2);
         }
 
@@ -293,7 +302,7 @@ class WordEquivalenceEngine {
 
     enableDebug() {
         this.debugMode = true;
-        console.log('%c🔧 Word Equivalence Engine en modo DEBUG', 'color: #FF6600; font-weight: bold');
+        console.log('%c🔧 Word Equivalence Engine in DEBUG mode', 'color: #FF6600; font-weight: bold');
     }
 
     disableDebug() {
