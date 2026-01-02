@@ -3,6 +3,7 @@
  * 
  * 🔧 FASE 5: La pieza faltante del refactor
  * 🔧 FASE 5-HOTFIX: Use CSS classes instead of inline display manipulation
+ * 🔧 FASE 4-HOTFIX: Prevenir duplicación de listeners
  * 
  * Responsabilidades:
  * - Mostrar/ocultar modales de forma consistente
@@ -11,17 +12,7 @@
  * - Gestionar el estado (abierto/cerrado)
  * - Permitir cierre por ESC o backdrop
  * - Evitar manipulación repetida de DOM
- * 
- * Uso:
- *   const modal = new ModalController('modal-id', {
- *       closeOnBackdrop: true,
- *       closeOnEsc: true,
- *       onBeforeOpen: () => { ... },
- *       onAfterOpen: () => { ... }
- *   });
- *   
- *   modal.open();
- *   modal.close();
+ * - Evitar duplicación de event listeners
  */
 
 class ModalController {
@@ -39,6 +30,11 @@ class ModalController {
             onBeforeClose: options.onBeforeClose || null,
             onAfterClose: options.onAfterClose || null
         };
+
+        this.escHandler = null;
+        this.backdropHandler = null;
+        this.escListenerAttached = false;
+        this.backdropListenerAttached = false;
 
         this.init();
     }
@@ -99,10 +95,6 @@ class ModalController {
         return overlay;
     }
 
-    /**
-     * Abrir modal con animación
-     * 🔧 HOTFIX: Usar clases CSS en lugar de manipulación inline de display
-     */
     open() {
         if (this.isOpen) {
             debug(`⚠️ Modal ya está abierto: ${this.modalId}`, 'warning');
@@ -125,8 +117,9 @@ class ModalController {
             this.overlayElement.style.opacity = '1';
             this.overlayElement.style.visibility = 'visible';
 
-            if (this.options.closeOnBackdrop && this.backdropHandler) {
+            if (this.options.closeOnBackdrop && this.backdropHandler && !this.backdropListenerAttached) {
                 this.overlayElement.addEventListener('click', this.backdropHandler);
+                this.backdropListenerAttached = true;
             }
         }
 
@@ -136,8 +129,9 @@ class ModalController {
             this.modalElement.offsetHeight;
         }
 
-        if (this.options.closeOnEsc && this.escHandler) {
+        if (this.options.closeOnEsc && this.escHandler && !this.escListenerAttached) {
             document.addEventListener('keydown', this.escHandler);
+            this.escListenerAttached = true;
         }
 
         document.body.style.overflow = 'hidden';
@@ -153,10 +147,6 @@ class ModalController {
         }
     }
 
-    /**
-     * Cerrar modal con animación
-     * 🔧 HOTFIX: Usar clases CSS en lugar de manipulación inline de display
-     */
     close() {
         if (!this.isOpen) {
             debug(`⚠️ Modal ya está cerrado: ${this.modalId}`, 'warning');
@@ -177,8 +167,9 @@ class ModalController {
             this.overlayElement.classList.remove('active');
             this.overlayElement.style.opacity = '0';
             
-            if (this.options.closeOnBackdrop && this.backdropHandler) {
+            if (this.options.closeOnBackdrop && this.backdropHandler && this.backdropListenerAttached) {
                 this.overlayElement.removeEventListener('click', this.backdropHandler);
+                this.backdropListenerAttached = false;
             }
 
             setTimeout(() => {
@@ -191,16 +182,11 @@ class ModalController {
         if (this.modalElement) {
             this.modalElement.classList.remove('active');
             this.modalElement.classList.add('hidden');
-            
-            setTimeout(() => {
-                if (this.modalElement) {
-                    // No tocar display, dejar que CSS lo maneje
-                }
-            }, 300);
         }
 
-        if (this.options.closeOnEsc && this.escHandler) {
+        if (this.options.closeOnEsc && this.escHandler && this.escListenerAttached) {
             document.removeEventListener('keydown', this.escHandler);
+            this.escListenerAttached = false;
         }
 
         document.body.style.overflow = '';
@@ -231,12 +217,14 @@ class ModalController {
     destroy() {
         debug(`🧹 Destroying ModalController: ${this.modalId}`, 'info');
 
-        if (this.escHandler) {
+        if (this.escHandler && this.escListenerAttached) {
             document.removeEventListener('keydown', this.escHandler);
+            this.escListenerAttached = false;
         }
 
-        if (this.overlayElement && this.backdropHandler) {
+        if (this.overlayElement && this.backdropHandler && this.backdropListenerAttached) {
             this.overlayElement.removeEventListener('click', this.backdropHandler);
+            this.backdropListenerAttached = false;
         }
 
         if (this.isOpen) {
@@ -245,7 +233,9 @@ class ModalController {
 
         this.modalElement = null;
         this.overlayElement = null;
+        this.escHandler = null;
+        this.backdropHandler = null;
     }
 }
 
-console.log('%c✅ modal-controller.js cargado - FASE 5-HOTFIX: CSS-driven modal management', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ modal-controller.js cargado - FASE 4-HOTFIX: Prevención de duplicación de listeners', 'color: #00FF00; font-weight: bold; font-size: 12px');

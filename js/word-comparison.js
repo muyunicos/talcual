@@ -9,6 +9,15 @@
  * - Permite asignar puntos diferentes: EXACTA=10, PLURAL=8, GENERO=5, SINONIMO=5
  * - NUEVO: setRoundContext() para inyectar contexto de ronda desde servidor
  * - NUEVO: areEquivalent() prioriza round_context sobre diccionario global
+ * Word Comparison Engine V10 - Passive Logic Engine (PHASE 2 REVISED)
+ * 
+ * PHASE 2 (REVISED) Changes:
+ * - REMOVED: async init(jsonUrl) - no I/O at all
+ * - REFACTORED: processDictionary(data) handles diccionario.json structure
+ *   Expects: Object -> Categories -> Array[Objects] -> Hints -> Array[Strings]
+ *   With pipe syntax: "Cine|Cinema" -> canonical ID is "Cine"
+ * - Pipe parsing: "A|B|C" -> all mapped to first item as canonical
+ * - Data is INJECTED from DictionaryService - engine is passive
  */
 
 class WordEquivalenceEngine {
@@ -20,23 +29,91 @@ class WordEquivalenceEngine {
         this.roundContext = null;
     }
 
-    async init(jsonUrl = '/js/sinonimos.json') {
-        try {
-            const response = await fetch(jsonUrl);
-            if (!response.ok) throw new Error('Error cargando JSON');
-            const data = await response.json();
-            this.processDictionary(data);
-            this.isLoaded = true;
-            console.log('✅ Motor listo. Palabras estrictas protegidas:', this.strictGenderSet.size, 'Entradas en diccionario:', Object.keys(this.dictionaryMap).length);
-        } catch (error) {
-            console.error('⚠️ Error cargando diccionario en WordEquivalenceEngine:', error);
-            this.isLoaded = false;
+    processDictionary(data) {
+        if (!data || typeof data !== 'object') {
+            console.error('❌ processDictionary: invalid data');
+            return;
+        }
+
+        this.dictionaryMap = {};
+        this.strictGenderSet.clear();
+
+        if (Array.isArray(data)) {
+            this.processLegacyFormat(data);
+        } else {
+            this.processModernFormat(data);
+        }
+
+        this.isLoaded = true;
+        console.log('✅ WordEngine ready. Dictionary entries:', Object.keys(this.dictionaryMap).length);
+    }
+
+    processModernFormat(data) {
+        Object.entries(data).forEach(([category, categoryContent]) => {
+            if (!Array.isArray(categoryContent)) return;
+
+            categoryContent.forEach(hintObj => {
+                if (typeof hintObj !== 'object' || Array.isArray(hintObj)) return;
+
+                Object.entries(hintObj).forEach(([hint, words]) => {
+                    if (!Array.isArray(words)) return;
+
+                    words.forEach(wordEntry => {
+                        if (typeof wordEntry !== 'string' || wordEntry.length === 0) return;
+
+                        if (wordEntry.includes('|')) {
+                            this.processPipeDelimitedEntry(wordEntry, category);
+                        } else {
+                            this.registerWord(wordEntry, wordEntry, category);
+                        }
+                    });
+                });
+            });
+        });
+    }
+
+    processPipeDelimitedEntry(entry, category) {
+        const parts = entry.split('|')
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+
+        if (parts.length === 0) return;
+
+        const canonical = parts[0];
+
+        parts.forEach(word => {
+            this.registerWord(word, canonical, category);
+        });
+    }
+
+    registerWord(word, canonical, category) {
+        if (!word || typeof word !== 'string') return;
+
+        let cleanWord = word;
+        let isStrict = false;
+
+        if (cleanWord.endsWith('.')) {
+            isStrict = true;
+            cleanWord = cleanWord.slice(0, -1);
+        }
+
+        const norm = this.normalize(cleanWord);
+        if (!norm) return;
+
+        if (isStrict) {
+            this.strictGenderSet.add(norm);
+        }
+
+        const canonicalNorm = this.normalize(canonical);
+        this.dictionaryMap[norm] = canonicalNorm || canonical;
+
+        const stem = this.getStem(norm);
+        if (stem !== norm && !this.dictionaryMap[stem]) {
+            this.dictionaryMap[stem] = canonicalNorm || canonical;
         }
     }
 
-    processDictionary(data) {
-        if (!Array.isArray(data)) return;
-
+    processLegacyFormat(data) {
         data.forEach(group => {
             if (!Array.isArray(group) || group.length === 0) return;
 
@@ -203,7 +280,7 @@ class WordEquivalenceEngine {
         }
 
         if (this.debugMode && root1.length > 2 && root2.length > 2) {
-            console.log(`❌ areEquivalentLocally("${word1}", "${word2}"): stems no coinciden "${root1}" !== "${root2}"`);
+            console.log(`❌ areEquivalentLocally("${word1}", "${word2}"): stems don't match "${root1}" !== "${root2}"`);
         }
 
         return false;
@@ -214,11 +291,11 @@ class WordEquivalenceEngine {
         if (!n) return '';
 
         let id = this.dictionaryMap[n];
-        if (id) return this.normalize(id);
+        if (id) return id;
 
         const stem = this.getStem(n);
         id = this.dictionaryMap[stem];
-        if (id) return this.normalize(id);
+        if (id) return id;
 
         return stem.length > 0 ? stem : n;
     }
@@ -227,7 +304,7 @@ class WordEquivalenceEngine {
         const matchType = this.getMatchType(word1, word2);
         
         if (this.debugMode && matchType) {
-            console.log(`🎯 areEquivalentWithType("${word1}", "${word2}"): tipo=${matchType}`);
+            console.log(`🎯 areEquivalentWithType("${word1}", "${word2}"): type=${matchType}`);
         }
         
         return {
@@ -262,7 +339,7 @@ class WordEquivalenceEngine {
             if (!id2) id2 = this.dictionaryMap[this.getStem(n2)];
 
             if (id1 && id2 && id1 === id2) {
-                if (this.debugMode) console.log(`✅ areEquivalent (dict): "${word1}" == "${word2}"`);
+                if (this.debugMode) console.log(`✅ areEquivalent (dict): "${word1}" == "${word2}" (by canonical)`);
                 return true;
             }
 
@@ -270,14 +347,14 @@ class WordEquivalenceEngine {
             const root2 = this.getStem(n2);
 
             if (id1) {
-                const dictRoot = this.getStem(this.normalize(id1));
+                const dictRoot = this.getStem(id1);
                 if (dictRoot === root2) {
                     if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}"`);
                     return true;
                 }
             }
             if (id2) {
-                const dictRoot = this.getStem(this.normalize(id2));
+                const dictRoot = this.getStem(id2);
                 if (dictRoot === root1) {
                     if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}"`);
                     return true;
@@ -289,7 +366,7 @@ class WordEquivalenceEngine {
                 return true;
             }
         } else {
-            if (this.debugMode) console.log(`⚠️  Diccionario no cargado, usando fallback local para "${word1}" vs "${word2}"`);
+            if (this.debugMode) console.log(`⚠️  Dictionary not loaded, using local fallback for "${word1}" vs "${word2}"`);
             return this.areEquivalentLocally(word1, word2);
         }
 
@@ -304,7 +381,7 @@ class WordEquivalenceEngine {
 
     enableDebug() {
         this.debugMode = true;
-        console.log('%c🔧 Word Equivalence Engine en modo DEBUG', 'color: #FF6600; font-weight: bold');
+        console.log('%c🔧 Word Equivalence Engine in DEBUG mode', 'color: #FF6600; font-weight: bold');
     }
 
     disableDebug() {

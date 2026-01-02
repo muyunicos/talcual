@@ -3,15 +3,17 @@
  * Maneja: timer, categoría, ranking, panel tabs
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  * 
- * 🔧 REFACTORIZADO FASE 5:
- * - Manejo de errores FUERTE (rechaza Promises, no fallbacks)
- * - Usa wordEngine desacoplado (no wordEngineManager)
+ * 🔧 REFACTORIZADO FASE 2:
+ * - Elimina método showFatalError() duplicado
+ * - Usa UI.showFatalError() centralizado de shared-utils.js
  * - ModalHandler centralizado para modales
  * - SessionManager para persistencia
  * 🎯 FEATURE: Restaurada lógica de selector de categoría
  * 🔧 FIX: Moved determineUIState to after dependencies load
  * 🔧 FIX: Remove fallbacks - fail-fast dev mode for v1.0
  * 🔧 FIX: Ensure dictionaryService.initialize() executed before operations
+ * 🔧 FASE 3-CORE: Espera a que dictionaryService Y configService estén listos
+ * 🔧 FASE 3-CORE: WordEngine ya está configurado por DictionaryService.initialize()
  */
 
 class HostManager {
@@ -63,16 +65,30 @@ class HostManager {
 
     async loadConfigAndInit() {
         try {
-            debug('⏳ Cargando configuración...', null, 'info');
-            await configService.load();
-            debug('✅ Config cargada', null, 'info');
+            debug('⏳ Cargando configuración y diccionario...', null, 'info');
+            
+            const [configResult, dictResult] = await Promise.all([
+                configService.load(),
+                dictionaryService.initialize()
+            ]);
 
-            debug('⏳ Inicializando diccionario...', null, 'info');
-            await dictionaryService.initialize();
-            debug('✅ Diccionario inicializado', null, 'info');
+            debug('✅ ConfigService listo', null, 'success');
+            debug('✅ DictionaryService listo + WordEngine inicializado', null, 'success');
+
+            if (!configService.isConfigReady()) {
+                throw new Error('ConfigService no está en estado ready');
+            }
+
+            if (!dictionaryService.isReady) {
+                throw new Error('DictionaryService no está en estado ready');
+            }
+
+            if (!wordEngine || !wordEngine.isLoaded) {
+                throw new Error('WordEngine no fue inicializado por DictionaryService');
+            }
 
             this.wordEngineReady = true;
-            debug('✅ WordEngine listo', null, 'info');
+            debug('✅ Verificación exitosa: ConfigService + DictionaryService + WordEngine listos', null, 'success');
 
             this.cacheElements();
             this.initializeModals();
@@ -96,31 +112,9 @@ class HostManager {
             debug('✅ HostManager inicializado completamente', null, 'success');
         } catch (error) {
             debug('❌ Error fatal en loadConfigAndInit: ' + error.message, null, 'error');
-            this.showFatalError(`Error de inicialización: ${error.message}`);
+            UI.showFatalError(`Error de inicialización: ${error.message}`);
             throw error;
         }
-    }
-
-    showFatalError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'fatal-error';
-        errorDiv.textContent = message;
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #EF4444;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            z-index: 9999;
-            text-align: center;
-            font-weight: bold;
-            max-width: 80%;
-            word-wrap: break-word;
-        `;
-        document.body.appendChild(errorDiv);
     }
 
     async populateCategorySelector() {
@@ -692,4 +686,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + fail-fast dev mode + Dictionary initialization guarantee', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 2: UI.showFatalError centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');

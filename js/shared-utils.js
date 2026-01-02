@@ -1,21 +1,13 @@
 /**
  * @file shared-utils.js
- * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS
+ * @description Centralización de servicios y utilidades compartidas
  * 
- * 🔧 FASE 1: Centralización de dependencias
- * 🔧 FASE 2: SessionManager y beforeunload handling
- * 🔧 FASE 3A: DictionaryService category-aware methods
- * 🔧 FASE 3B: ModalController para gestión unificada de modales (DEFINED IN modal-controller.js)
- * 🔧 FASE 4: ConfigService race condition safeguards
- * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
- * 🔧 FASE 5-HOTFIX: CRITICAL - Remove race condition, restore fallbacks, fix dependencies
- * 🔧 FEATURE: Remove duplicate timeSync + hostSession/debug dependency fix
- * 🔧 FIX: Remove duplicate ModalController (defined in modal-controller.js)
- * 🔧 FIX: Correct loading order - hostSession must be before host-manager.js usage
- * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
- * 🔧 FIX: ConfigService store max_code_length + filter words by length
- * 🔧 FIX: Split dictionary words by pipe delimiter to extract word variants
- * 🔧 REFACTOR: Server-Side Source of Truth - API-driven DictionaryService
+ * 🔧 PHASE 2 (CONSOLIDATED):
+ * - NEW: UI namespace with centralized showFatalError()
+ * - REMOVED: WordEquivalenceEngine stub (fail-fast if word-comparison.js missing)
+ * - GameTimer utility centralized
+ * - DictionaryService injects data via processDictionary()
+ * - Pipe delimiters handled by WordEngine
  */
 
 // ============================================================================
@@ -43,26 +35,73 @@ function debug(message, data = null, type = 'log') {
     }
 }
 
+// ============================================================================
+// UI NAMESPACE - CENTRALIZED ERROR DISPLAY
+// ============================================================================
+
+const UI = {
+    showFatalError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'fatal-error';
+        errorDiv.textContent = message;
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #EF4444;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            text-align: center;
+            font-weight: bold;
+            max-width: 80%;
+            word-wrap: break-word;
+        `;
+        document.body.appendChild(errorDiv);
+        console.error('❌ FATAL ERROR:', message);
+    }
+};
+
+// ============================================================================
+// GAME TIMER UTILITY - CENTRALIZED
+// ============================================================================
+
+const GameTimer = {
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    },
+
+    getRemainingTime(startTime, duration) {
+        const nowServer = typeof timeSync !== 'undefined' && timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
+        const elapsed = nowServer - startTime;
+        return Math.max(0, duration - elapsed);
+    },
+
+    updateTimerDisplay(remainingMs, element, emoji = '⏳') {
+        if (!element) return;
+        if (remainingMs === null || remainingMs === undefined) {
+            element.textContent = `${emoji}`;
+            return;
+        }
+        const seconds = Math.ceil(remainingMs / 1000);
+        element.textContent = `${emoji} ${this.formatTime(seconds)}`;
+    }
+};
+
 function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return GameTimer.formatTime(seconds);
 }
 
 function updateTimerDisplay(remainingMs, element, emoji = '⏳') {
-    if (!element) return;
-    if (remainingMs === null || remainingMs === undefined) {
-        element.textContent = `${emoji}`;
-        return;
-    }
-    const seconds = Math.ceil(remainingMs / 1000);
-    element.textContent = `${emoji} ${formatTime(seconds)}`;
+    return GameTimer.updateTimerDisplay(remainingMs, element, emoji);
 }
 
 function getRemainingTime(startTime, duration) {
-    const nowServer = typeof timeSync !== 'undefined' && timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
-    const elapsed = nowServer - startTime;
-    return Math.max(0, duration - elapsed);
+    return GameTimer.getRemainingTime(startTime, duration);
 }
 
 // ============================================================================
@@ -239,39 +278,21 @@ const hostSession = new SessionManager('host');
 const playerSession = new SessionManager('player');
 
 // ============================================================================
-// WORD COMPARISON ENGINE
+// WORD EQUIVALENCE ENGINE - FAIL-FAST (NO STUB)
 // ============================================================================
 
 let wordEngine = null;
 
-if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
-    wordEngine = new WordEquivalenceEngine();
-    debug('✅ WordEngine instanciado inmediatamente en shared-utils.js', null, 'success');
-}
-
 if (typeof WordEquivalenceEngine === 'undefined') {
-    class WordEquivalenceEngine {
-        constructor() {
-            this.dictionary = null;
-            this.thesaurus = null;
-            this.wordClassifications = null;
-        }
-        getCanonical(word) {
-            return word ? word.toUpperCase().trim() : '';
-        }
-        getMatchType(word1, word2) {
-            return word1.toUpperCase() === word2.toUpperCase() ? 'EXACTA' : null;
-        }
-        processDictionary(dict) {
-            this.dictionary = dict;
-        }
-    }
+    console.error('❌ CRITICAL: WordEquivalenceEngine class not found. Check word-comparison.js loading order');
+    throw new Error('WordEquivalenceEngine not loaded - word-comparison.js must be included before shared-utils.js');
+} else {
     wordEngine = new WordEquivalenceEngine();
-    debug('⚠️  STUB: WordEquivalenceEngine stub creado (word-comparison.js aún no cargó)', null, 'warn');
+    debug('✅ WordEngine instantiated from word-comparison.js', null, 'success');
 }
 
 // ============================================================================
-// DICTIONARY SERVICE - API-DRIVEN
+// DICTIONARY SERVICE - SINGLE SOURCE OF TRUTH
 // ============================================================================
 
 class DictionaryService {
@@ -310,9 +331,56 @@ class DictionaryService {
             } catch (error) {
                 debug('❌ Error: ' + error.message, null, 'error');
                 throw error;
+            debug('📚 Iniciando carga de diccionario...', null, 'info');
+            
+            const response = await fetch('./app/diccionario.json', { 
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: No se puede acceder a app/diccionario.json`);
+            }
+
+            const data = await response.json();
+            
+            if (!data || typeof data !== 'object') {
+                throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
+            }
+
+            this.dictionary = data;
+            this.categories = Object.keys(data).filter(k => Array.isArray(data[k]) || typeof data[k] === 'object');
+            this.isReady = true;
+
+            if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
+                wordEngine.processDictionary(data);
+                debug('🔗 WordEngine initialized with diccionario.json data', { entriesCount: Object.keys(wordEngine.dictionaryMap).length }, 'success');
+            } else {
+                debug('❌ WordEngine not available for dictionary injection', null, 'error');
+                throw new Error('WordEngine not ready for data injection');
             }
         })();
         return this.loadPromise;
+    }
+
+    getTotalWordCount() {
+        if (!this.dictionary) return 0;
+        let count = 0;
+        
+        Object.values(this.dictionary).forEach(categoryContent => {
+            if (Array.isArray(categoryContent)) {
+                categoryContent.forEach(hintObj => {
+                    if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
+                        Object.values(hintObj).forEach(wordsArray => {
+                            if (Array.isArray(wordsArray)) {
+                                count += wordsArray.length;
+                            }
+                        });
+                    }
+                });
+            }
+        });
+        
+        return count;
     }
 
     getCategories() {
@@ -338,6 +406,69 @@ class DictionaryService {
         } catch (error) {
             debug('❌ Error: ' + error.message, null, 'error');
             throw error;
+    getWordsForCategory(category) {
+        if (!this.dictionary || !this.dictionary[category]) {
+            return [];
+        }
+        
+        const categoryContent = this.dictionary[category];
+        const words = [];
+        
+        if (Array.isArray(categoryContent)) {
+            categoryContent.forEach(hintObj => {
+                if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
+                    Object.values(hintObj).forEach(wordsArray => {
+                        if (Array.isArray(wordsArray)) {
+                            words.push(...wordsArray);
+                        }
+                    });
+                }
+            });
+        }
+        
+        return words;
+    }
+
+    getRandomWord() {
+        if (!this.dictionary) return null;
+        
+        const categories = this.getCategories();
+        if (categories.length === 0) return null;
+
+        const randomCat = categories[Math.floor(Math.random() * categories.length)];
+        const words = this.getWordsForCategory(randomCat);
+
+        if (words.length === 0) return null;
+
+        const randomWord = words[Math.floor(Math.random() * words.length)];
+        
+        if (typeof randomWord !== 'string') {
+            debug(`⚠️  Invalid type in getRandomWord from ${randomCat}:`, typeof randomWord, 'warn');
+            return null;
+        }
+
+        return randomWord;
+    }
+
+    getRandomWordByCategory(category, maxLength = null) {
+        const words = this.getWordsForCategory(category);
+        if (words.length === 0) return null;
+        
+        let availableWords = words;
+        
+        if (maxLength !== null && maxLength > 0) {
+            availableWords = words.filter(word => typeof word === 'string' && word.length <= maxLength);
+            if (availableWords.length === 0) {
+                debug(`⚠️  No words in "${category}" with length ≤ ${maxLength}`, null, 'warn');
+                return null;
+            }
+        }
+        
+        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+        
+        if (typeof randomWord !== 'string') {
+            debug(`⚠️  Invalid type in getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
+            return null;
         }
     }
 }
@@ -374,23 +505,23 @@ class ConfigService {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Error conectando con el servidor`);
+                throw new Error(`HTTP ${response.status}: Error connecting to server`);
             }
 
             const result = await response.json();
             
             if (!result.success) {
-                throw new Error(result.message || 'Respuesta del servidor inválida');
+                throw new Error(result.message || 'Invalid server response');
             }
 
             if (!result.config || typeof result.config !== 'object') {
-                throw new Error('Configuración del servidor está vacía o mal formada');
+                throw new Error('Server config is empty or malformed');
             }
 
             const requiredFields = ['round_duration', 'TOTAL_ROUNDS', 'max_words_per_player', 'max_code_length'];
             for (const field of requiredFields) {
                 if (!(field in result.config)) {
-                    throw new Error(`Campo crítico faltante en config: ${field}`);
+                    throw new Error(`Critical config field missing: ${field}`);
                 }
             }
 
@@ -406,7 +537,7 @@ class ConfigService {
 
     get(key, defaultValue = null) {
         if (!this.config) {
-            throw new Error(`ConfigService.get('${key}'): Config no está listo`);
+            throw new Error(`ConfigService.get('${key}'): Config not ready`);
         }
         return this.config[key] ?? defaultValue;
     }
@@ -432,33 +563,6 @@ function isValidPlayerName(name) {
 
 function generatePlayerId() {
     return `player_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function generateRandomAuras(count = 10) {
-    const baseColors = [
-        { name: 'Rojo', hex: '#FF0055' },
-        { name: 'Azul', hex: '#0066FF' },
-        { name: 'Verde', hex: '#00CC44' },
-        { name: 'Morado', hex: '#9933FF' },
-        { name: 'Naranja', hex: '#FF6600' },
-        { name: 'Rosa', hex: '#FF3366' },
-        { name: 'Turquesa', hex: '#00DDDD' },
-        { name: 'Lima', hex: '#CCFF00' },
-        { name: 'Indigo', hex: '#3300FF' },
-        { name: 'Naranja Oscuro', hex: '#CC4400' }
-    ];
-
-    const auras = [];
-    for (let i = 0; i < count && i < baseColors.length; i++) {
-        const color1 = baseColors[i];
-        const color2 = baseColors[(i + 1) % baseColors.length];
-        auras.push({
-            name: color1.name,
-            hex: color1.hex,
-            gradient: `${color1.hex},${color2.hex}`
-        });
-    }
-    return auras;
 }
 
 function renderAuraSelectors(container, auras, selectedHex, onSelect) {
@@ -489,8 +593,12 @@ function renderAuraSelectors(container, auras, selectedHex, onSelect) {
 }
 
 function renderAuraSelectorsEdit(container, selectedHex, onSelect) {
-    const auras = generateRandomAuras();
-    renderAuraSelectors(container, auras, selectedHex, onSelect);
+    if (typeof generateRandomAuras === 'function') {
+        const auras = generateRandomAuras();
+        renderAuraSelectors(container, auras, selectedHex, onSelect);
+    } else {
+        debug('⚠️  generateRandomAuras not available (aura-system.js not loaded)', null, 'warn');
+    }
 }
 
 function applyColorGradient(colorString) {
@@ -521,4 +629,4 @@ function showNotification(message, type = 'info') {
     }, 2000);
 }
 
-debug('✅ shared-utils.js cargado exitosamente - servicios centralizados listos', null, 'success');
+debug('✅ shared-utils.js cargado exitosamente - UI namespace + servicios centralizados listos', null, 'success');

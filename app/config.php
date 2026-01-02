@@ -1,9 +1,6 @@
 <?php
-// Configuración del juego
-
 require_once __DIR__ . '/settings.php';
 
-// Crear directorio si no existe
 if (!is_dir(GAME_STATES_DIR)) {
     $mkdir_result = @mkdir(GAME_STATES_DIR, 0755, true);
     if (!$mkdir_result) {
@@ -11,7 +8,6 @@ if (!is_dir(GAME_STATES_DIR)) {
     }
 }
 
-// Logging seguro
 function logMessage($message, $level = 'INFO') {
     if (!DEV_MODE && $level === 'DEBUG') return;
     
@@ -23,39 +19,40 @@ function logMessage($message, $level = 'INFO') {
     }
 }
 
-// Cargar diccionario (con caché)
+function loadRawDictionaryJson() {
+    $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
+
+    if (!file_exists($file)) {
+        return [];
+    }
+
+    $raw = @file_get_contents($file);
+    $data = json_decode($raw ?: '', true);
+
+    return is_array($data) ? $data : [];
+}
+
 function loadDictionary() {
     static $cache = null;
 
     if ($cache === null) {
-        $file = DICTIONARY_FILE;
+        $data = loadRawDictionaryJson();
 
-        if (!file_exists($file)) {
-            logMessage('Diccionario no encontrado, usando fallback', 'WARNING');
-            return [
-                'categorias' => [
-                    'GENERAL' => ['CASA', 'SOL', 'MAR', 'LUNA', 'NUBE']
-                ]
-            ];
-        }
-
-        $json = file_get_contents($file);
-        $cache = json_decode($json, true);
-
-        if (!$cache) {
-            logMessage('Error decodificando diccionario: ' . json_last_error_msg(), 'ERROR');
+        if (empty($data)) {
+            logMessage('Diccionario vacío o no encontrado, usando fallback', 'WARNING');
             $cache = [
                 'categorias' => [
                     'GENERAL' => ['CASA', 'SOL', 'MAR', 'LUNA', 'NUBE']
                 ]
             ];
+        } else {
+            $cache = $data;
         }
     }
 
     return $cache;
 }
 
-// Obtener todas las palabras (para el juego)
 function getAllWords() {
     $dict = loadDictionary();
     $words = [];
@@ -66,11 +63,9 @@ function getAllWords() {
         }
     }
 
-    // Eliminar duplicados (no ordenar, es innecesario para random - MEJORA #17)
     return array_unique($words);
 }
 
-// Obtener palabras de una categoría específica
 function getWordsByCategory($category) {
     $dict = loadDictionary();
 
@@ -81,7 +76,6 @@ function getWordsByCategory($category) {
     return [];
 }
 
-// Obtener todas las categorías disponibles
 function getCategories() {
     $dict = loadDictionary();
 
@@ -123,11 +117,9 @@ function getActiveCodes() {
 
     if ($files) {
         foreach ($files as $file) {
-            // Verificar que el archivo no sea muy viejo
             if (time() - filemtime($file) < MAX_GAME_AGE) {
                 $codes[] = pathinfo($file, PATHINFO_FILENAME);
             } else {
-                // Eliminar archivos viejos
                 @unlink($file);
             }
         }
@@ -136,28 +128,24 @@ function getActiveCodes() {
     return $codes;
 }
 
-// Generar código de sala automáticamente desde diccionario (MEJORA: usar palabras ≤30 letras)
 function generateGameCode() {
     $allWords = getAllWords();
     
-    // Filtrar palabras de 5 letras o menos
     $shortWords = array_filter($allWords, function($w) {
-        return mb_strlen($w) <= MAX_CODE_LENGTH;
+        $length = mb_strlen($w);
+        return $length >= 3 && $length <= MAX_CODE_LENGTH;
     });
     
-    // Si no hay palabras cortas, fallback a palabras de hasta 6 letras
     if (empty($shortWords)) {
         $shortWords = array_filter($allWords, function($w) {
-            return mb_strlen($w) <= 6;
+            return mb_strlen($w) <= MAX_CODE_LENGTH;
         });
     }
     
-    // Filtrar códigos no usados
     $usedCodes = getActiveCodes();
     $freeCodes = array_diff($shortWords, $usedCodes);
 
     if (empty($freeCodes)) {
-        // Fallback: Generar código aleatorio
         $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         do {
             $code = '';
@@ -166,32 +154,40 @@ function generateGameCode() {
             }
         } while (in_array($code, $usedCodes));
 
+        if (mb_strlen($code) > MAX_CODE_LENGTH) {
+            logMessage('[WARNING] Código generado excede MAX_CODE_LENGTH: ' . $code . ' (longitud: ' . mb_strlen($code) . ')', 'WARNING');
+            $code = substr($code, 0, MAX_CODE_LENGTH);
+        }
+        
         return $code;
     }
 
     $freeCodes = array_values($freeCodes);
-    return $freeCodes[array_rand($freeCodes)];
+    $selected = $freeCodes[array_rand($freeCodes)];
+    
+    if (mb_strlen($selected) > MAX_CODE_LENGTH) {
+        logMessage('[WARNING] Palabra seleccionada excede MAX_CODE_LENGTH: ' . $selected, 'WARNING');
+        $selected = substr($selected, 0, MAX_CODE_LENGTH);
+    }
+    
+    return $selected;
 }
 
-// Sanitizar y validar código de sala (MEJORA #1: Seguridad)
 function sanitizeGameId($gameId) {
     if (empty($gameId)) return null;
     
-    // Solo permitir letras y números, máximo 6 caracteres
     $clean = preg_replace('/[^A-Z0-9]/', '', strtoupper($gameId));
     
-    if (strlen($clean) < 3 || strlen($clean) > 6) {
+    if (strlen($clean) < 3 || strlen($clean) > MAX_CODE_LENGTH) {
         return null;
     }
     
     return $clean;
 }
 
-// Sanitizar player ID (MEJORA #1: Seguridad)
 function sanitizePlayerId($playerId) {
     if (empty($playerId)) return null;
     
-    // Solo permitir caracteres alfanuméricos y guíón bajo
     $clean = preg_replace('/[^a-zA-Z0-9_]/', '', $playerId);
     
     if (strlen($clean) < 5 || strlen($clean) > 50) {
@@ -201,11 +197,9 @@ function sanitizePlayerId($playerId) {
     return $clean;
 }
 
-// Validar color de jugador (MEJORA #7: Validación de colores)
 function validatePlayerColor($color) {
     if (empty($color)) return null;
     
-    // Formato esperado: "#RRGGBB,#RRGGBB"
     $parts = explode(',', $color);
     
     if (count($parts) !== 2) return null;
@@ -219,8 +213,6 @@ function validatePlayerColor($color) {
     return $color;
 }
 
-// Guardar estado del juego con lock mejorado (MEJORA #2: Race conditions)
-// FIX #41: Validaciones robustas de directorio para resolver HTTP 500
 function saveGameState($gameId, $state) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) {
@@ -228,7 +220,11 @@ function saveGameState($gameId, $state) {
         return false;
     }
     
-    // ============ NUEVA VALIDACIÓN: Verificar directorio ============
+    if (strlen($gameId) > MAX_CODE_LENGTH) {
+        logMessage('[ERROR] gameId excede MAX_CODE_LENGTH: ' . $gameId . ' (longitud: ' . strlen($gameId) . ')', 'ERROR');
+        return false;
+    }
+    
     if (!is_dir(GAME_STATES_DIR)) {
         logMessage('[WARN] game_states no existe. Intentando crear...', 'WARNING');
         if (!@mkdir(GAME_STATES_DIR, 0755, true)) {
@@ -237,20 +233,17 @@ function saveGameState($gameId, $state) {
         }
     }
     
-    // ============ NUEVA VALIDACIÓN: Verificar permisos ============
     if (!is_writable(GAME_STATES_DIR)) {
         logMessage('[ERROR] Directorio NO tiene permisos de escritura: ' . GAME_STATES_DIR . ' | Permisos: ' . substr(sprintf('%o', fileperms(GAME_STATES_DIR)), -4), 'ERROR');
         return false;
     }
     
-    // Agregar versión del estado (MEJORA #13)
     $state['_version'] = 1;
     $state['_updated_at'] = time();
     
     $file = GAME_STATES_DIR . '/' . $gameId . '.json';
     $lockFile = $file . '.lock';
     
-    // Obtener lock exclusivo
     $lock = @fopen($lockFile, 'c+');
     if (!$lock) {
         logMessage('[ERROR] No se pudo abrir lockfile: ' . $lockFile . ' (Permisos: ' . substr(sprintf('%o', @fileperms(dirname($lockFile))), -4) . ')', 'ERROR');
@@ -264,7 +257,6 @@ function saveGameState($gameId, $state) {
     }
     
     try {
-        // Forzar objetos vacíos como objetos JSON
         $json = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 
         if ($json === false) {
@@ -272,9 +264,8 @@ function saveGameState($gameId, $state) {
             return false;
         }
         
-        // ============ NUEVA VALIDACIÓN: Verificar tamaño ============
         $jsonSize = strlen($json);
-        if ($jsonSize > 1000000) { // 1MB máximo
+        if ($jsonSize > 1000000) {
             logMessage('[ERROR] JSON demasiado grande: ' . $jsonSize . ' bytes', 'ERROR');
             return false;
         }
@@ -286,7 +277,6 @@ function saveGameState($gameId, $state) {
             return false;
         }
         
-        // ============ NUEVA VALIDACIÓN: Verificar que se escribió correctamente ============
         if (!file_exists($file)) {
             logMessage('[ERROR] Archivo no existe después de escribir: ' . $file, 'ERROR');
             return false;
@@ -298,7 +288,6 @@ function saveGameState($gameId, $state) {
             return false;
         }
         
-        // Registrar en analytics (MEJORA #10)
         trackGameAction($gameId, 'state_updated', ['players' => count($state['players'] ?? []), 'status' => $state['status'] ?? 'unknown']);
         
         logMessage('[SUCCESS] Estado guardado para ' . $gameId . ' | Size: ' . $fileSize . ' bytes', 'DEBUG');
@@ -311,11 +300,15 @@ function saveGameState($gameId, $state) {
     }
 }
 
-// Cargar estado del juego con lock (MEJORA #2: Race conditions)
 function loadGameState($gameId) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) {
         logMessage('[ERROR] Intento de cargar con gameId inválido', 'ERROR');
+        return null;
+    }
+    
+    if (strlen($gameId) > MAX_CODE_LENGTH) {
+        logMessage('[ERROR] gameId excede MAX_CODE_LENGTH en loadGameState: ' . $gameId, 'ERROR');
         return null;
     }
     
@@ -326,7 +319,6 @@ function loadGameState($gameId) {
         return null;
     }
 
-    // Verificar que no sea muy viejo
     if (time() - filemtime($file) > MAX_GAME_AGE) {
         logMessage('[INFO] Archivo antiguo eliminado: ' . $gameId, 'INFO');
         @unlink($file);
@@ -346,16 +338,13 @@ function loadGameState($gameId) {
         return null;
     }
 
-    // Migración de versiones si es necesario (MEJORA #13)
     if (!isset($state['_version'])) {
         $state['_version'] = 0;
-        // Aquí podrías agregar lógica de migración
     }
 
     return $state;
 }
 
-// Eliminar estados de juego viejos (MEJORA #16: Mejorado)
 function cleanupOldGames() {
     $files = glob(GAME_STATES_DIR . '/*.json');
     $deleted = 0;
@@ -371,11 +360,10 @@ function cleanupOldGames() {
         }
     }
     
-    // Limpiar locks huérfanos
     $locks = glob(GAME_STATES_DIR . '/*.lock');
     if ($locks) {
         foreach ($locks as $lock) {
-            if (time() - filemtime($lock) > 300) { // 5 minutos
+            if (time() - filemtime($lock) > 300) {
                 @unlink($lock);
             }
         }
@@ -384,7 +372,6 @@ function cleanupOldGames() {
     return $deleted;
 }
 
-// Seleccionar palabra aleatoria del juego
 function getRandomWord() {
     $words = getAllWords();
 
@@ -396,7 +383,6 @@ function getRandomWord() {
     return $words[array_rand($words)];
 }
 
-// Seleccionar palabra aleatoria de una categoría
 function getRandomWordFromCategory($category) {
     $words = getWordsByCategory($category);
     if (empty($words)) {
@@ -405,8 +391,6 @@ function getRandomWordFromCategory($category) {
     return $words[array_rand($words)];
 }
 
-// NUEVO: Seleccionar palabra aleatoria de una categoría con filtro de longitud máxima
-// FIX #5: Consistencia código ≠ prompt - asegurar que palabras de categoría sean ≤ MAX_CODE_LENGTH
 function getRandomWordByCategoryFiltered($category, $maxLength = null) {
     if ($maxLength === null) {
         $maxLength = MAX_CODE_LENGTH;
@@ -433,6 +417,7 @@ function getRandomWordByCategoryFiltered($category, $maxLength = null) {
 function gameExists($gameId) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) return false;
+    if (strlen($gameId) > MAX_CODE_LENGTH) return false;
     $file = GAME_STATES_DIR . '/' . $gameId . '.json';
     return file_exists($file) && (time() - filemtime($file) < MAX_GAME_AGE);
 }
