@@ -6,6 +6,7 @@
  * 🔧 FASE 2: SessionManager y beforeunload handling
  * 🔧 FASE 3A: DictionaryService category-aware methods
  * 🔧 FASE 3B: ModalController para gestión unificada de modales (DEFINED IN modal-controller.js)
+ * 🔧 FASE 3-CORE: WordEngine recibe datos DIRECTAMENTE de DictionaryService (sin fetch)
  * 🔧 FASE 4: ConfigService race condition safeguards
  * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
  * 🔧 FASE 5-HOTFIX: CRITICAL - Remove race condition, restore fallbacks, fix dependencies
@@ -250,6 +251,7 @@ if (typeof WordEquivalenceEngine === 'undefined') {
             this.dictionary = null;
             this.thesaurus = null;
             this.wordClassifications = null;
+            this.isLoaded = false;
         }
         getCanonical(word) {
             return word ? word.toUpperCase().trim() : '';
@@ -259,6 +261,10 @@ if (typeof WordEquivalenceEngine === 'undefined') {
         }
         processDictionary(dict) {
             this.dictionary = dict;
+            this.isLoaded = true;
+        }
+        areEquivalent(word1, word2) {
+            return word1.toUpperCase() === word2.toUpperCase();
         }
     }
     wordEngine = new WordEquivalenceEngine();
@@ -269,7 +275,7 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 }
 
 // ============================================================================
-// DICTIONARY SERVICE - NO FALLBACKS
+// DICTIONARY SERVICE - INICIALIZA Y CONFIGURA WORDENGINE
 // ============================================================================
 
 class DictionaryService {
@@ -356,7 +362,9 @@ class DictionaryService {
 
             if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
                 wordEngine.processDictionary(processedData);
-                debug('🔗 WordEngine inicializado con diccionario', null, 'success');
+                debug('🔗 WordEngine inicializado con diccionario desde DictionaryService', { entriesCount: Object.keys(processedData).length }, 'success');
+            } else {
+                debug('⚠️  WordEngine no disponible para inicializar', null, 'warn');
             }
 
             debug('📚 Diccionario cargado exitosamente', { 
