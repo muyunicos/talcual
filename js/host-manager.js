@@ -17,6 +17,7 @@
  * 🔧 FASE 3-OPT: Optimized manager to consume GameTimer centralized utility
  * 🔧 PHASE 1: Removed ghost 'start-screen' element from cacheElements
  * 🔧 PHASE 1: Fixed round display - removed duplicate "Ronda" label
+ * 🔧 PHASE 3: Settings Modal wired - cached, initialized, events bound
  */
 
 class HostManager {
@@ -39,6 +40,7 @@ class HostManager {
 
         this.startGameModal = null;
         this.categoryModal = null;
+        this.settingsModal = null;
 
         this.wordEngineReady = false;
 
@@ -193,6 +195,11 @@ class HostManager {
             closeOnBackdrop: true,
             closeOnEsc: true
         });
+
+        this.settingsModal = new ModalController('modal-settings', {
+            closeOnBackdrop: true,
+            closeOnEsc: true
+        });
     }
 
     cacheElements() {
@@ -200,6 +207,11 @@ class HostManager {
             categorySelect: safeGetElement('category-select'),
             inputGameCode: safeGetElement('input-game-code'),
             btnCreateGame: safeGetElement('btn-create-game'),
+            btnOpenSettingsCreate: safeGetElement('btn-open-settings-create'),
+
+            inputRounds: safeGetElement('input-rounds'),
+            inputDuration: safeGetElement('input-duration'),
+            btnCloseSettings: safeGetElement('btn-close-settings'),
 
             gameScreen: safeGetElement('game-screen'),
             headerCode: safeGetElement('header-code'),
@@ -232,6 +244,14 @@ class HostManager {
             });
         }
 
+        if (this.elements.btnOpenSettingsCreate) {
+            this.elements.btnOpenSettingsCreate.addEventListener('click', () => this.openSettings());
+        }
+
+        if (this.elements.btnCloseSettings) {
+            this.elements.btnCloseSettings.addEventListener('click', () => this.settingsModal.close());
+        }
+
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.addEventListener('click', () => this.startRound());
         }
@@ -247,14 +267,41 @@ class HostManager {
         if (this.elements.btnEndGame) {
             this.elements.btnEndGame.addEventListener('click', () => this.endGame());
         }
+
+        const btnHamburgerSettings = safeGetElement('hamburger-settings');
+        if (btnHamburgerSettings) {
+            btnHamburgerSettings.addEventListener('click', () => {
+                const hamburgerMenu = safeGetElement('hamburger-menu-host');
+                if (hamburgerMenu) hamburgerMenu.classList.remove('active');
+                this.openSettings();
+            });
+        }
+    }
+
+    openSettings() {
+        if (this.settingsModal) {
+            this.settingsModal.open();
+        }
     }
 
     async createGame() {
         const selectedCategory = this.elements.categorySelect?.value || 'general';
         const code = (this.elements.inputGameCode?.value || '').trim().toUpperCase();
+        const rounds = parseInt(this.elements.inputRounds?.value || 3, 10);
+        const duration = parseInt(this.elements.inputDuration?.value || 60, 10);
 
         if (!isValidGameCode(code)) {
             showNotification('⚠️  Código inválido', 'warning');
+            return;
+        }
+
+        if (rounds < 1 || rounds > 10) {
+            showNotification('⚠️  Rondas deben estar entre 1 y 10', 'warning');
+            return;
+        }
+
+        if (duration < 10 || duration > 300) {
+            showNotification('⚠️  Duración debe estar entre 10 y 300 segundos', 'warning');
             return;
         }
 
@@ -266,14 +313,17 @@ class HostManager {
         try {
             this.gameCode = code;
             this.currentCategory = selectedCategory;
+            this.totalRounds = rounds;
             this.client = new GameClient(code, code, 'host');
 
             const result = await this.client.sendAction('create_game', {
-                category: selectedCategory
+                category: selectedCategory,
+                total_rounds: rounds,
+                round_duration: duration
             });
 
             if (result.success) {
-                debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory})`, null, 'success');
+                debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory}, Rondas: ${rounds}, Duración: ${duration}s)`, null, 'success');
 
                 hostSession.saveHostSession(code, selectedCategory);
 
@@ -658,6 +708,9 @@ class HostManager {
         if (this.categoryModal) {
             this.categoryModal.destroy();
         }
+        if (this.settingsModal) {
+            this.settingsModal.destroy();
+        }
 
         this.currentPlayers = [];
         this.gameState = null;
@@ -686,4 +739,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - PHASE 1: Removed ghost element + Fixed round display', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - PHASE 3: Settings Modal fully integrated', 'color: #FF00FF; font-weight: bold; font-size: 12px');
