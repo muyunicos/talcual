@@ -12,6 +12,8 @@
  * 🔧 FIX: Moved determineUIState to after dependencies load
  * 🔧 FIX: Remove fallbacks - fail-fast dev mode for v1.0
  * 🔧 FIX: Ensure dictionaryService.initialize() executed before operations
+ * 🔧 FASE 3-CORE: Espera a que dictionaryService Y configService estén listos
+ * 🔧 FASE 3-CORE: WordEngine ya está configurado por DictionaryService.initialize()
  */
 
 class HostManager {
@@ -63,16 +65,30 @@ class HostManager {
 
     async loadConfigAndInit() {
         try {
-            debug('⏳ Cargando configuración...', null, 'info');
-            await configService.load();
-            debug('✅ Config cargada', null, 'info');
+            debug('⏳ Cargando configuración y diccionario...', null, 'info');
+            
+            const [configResult, dictResult] = await Promise.all([
+                configService.load(),
+                dictionaryService.initialize()
+            ]);
 
-            debug('⏳ Inicializando diccionario...', null, 'info');
-            await dictionaryService.initialize();
-            debug('✅ Diccionario inicializado', null, 'info');
+            debug('✅ ConfigService listo', null, 'success');
+            debug('✅ DictionaryService listo + WordEngine inicializado', null, 'success');
+
+            if (!configService.isConfigReady()) {
+                throw new Error('ConfigService no está en estado ready');
+            }
+
+            if (!dictionaryService.isReady) {
+                throw new Error('DictionaryService no está en estado ready');
+            }
+
+            if (!wordEngine || !wordEngine.isLoaded) {
+                throw new Error('WordEngine no fue inicializado por DictionaryService');
+            }
 
             this.wordEngineReady = true;
-            debug('✅ WordEngine listo', null, 'info');
+            debug('✅ Verificación exitosa: ConfigService + DictionaryService + WordEngine listos', null, 'success');
 
             this.cacheElements();
             this.initializeModals();
@@ -692,4 +708,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + fail-fast dev mode + Dictionary initialization guarantee', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 3-CORE: Espera Promise.all(configService, dictionaryService) + WordEngine sync', 'color: #FF00FF; font-weight: bold; font-size: 12px');
