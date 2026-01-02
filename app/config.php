@@ -19,31 +19,34 @@ function logMessage($message, $level = 'INFO') {
     }
 }
 
+function loadRawDictionaryJson() {
+    $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
+
+    if (!file_exists($file)) {
+        return [];
+    }
+
+    $raw = @file_get_contents($file);
+    $data = json_decode($raw ?: '', true);
+
+    return is_array($data) ? $data : [];
+}
+
 function loadDictionary() {
     static $cache = null;
 
     if ($cache === null) {
-        $file = DICTIONARY_FILE;
+        $data = loadRawDictionaryJson();
 
-        if (!file_exists($file)) {
-            logMessage('Diccionario no encontrado, usando fallback', 'WARNING');
-            return [
-                'categorias' => [
-                    'GENERAL' => ['CASA', 'SOL', 'MAR', 'LUNA', 'NUBE']
-                ]
-            ];
-        }
-
-        $json = file_get_contents($file);
-        $cache = json_decode($json, true);
-
-        if (!$cache) {
-            logMessage('Error decodificando diccionario: ' . json_last_error_msg(), 'ERROR');
+        if (empty($data)) {
+            logMessage('Diccionario vacío o no encontrado, usando fallback', 'WARNING');
             $cache = [
                 'categorias' => [
                     'GENERAL' => ['CASA', 'SOL', 'MAR', 'LUNA', 'NUBE']
                 ]
             ];
+        } else {
+            $cache = $data;
         }
     }
 
