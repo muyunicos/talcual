@@ -1,20 +1,23 @@
 /**
  * Word Comparison Engine V8 - Scoring Variable por Tipo de Coincidencia
+ * + Round Context Support para Server-Side Source of Truth
  * 
  * Cambios:
  * - Agregar getMatchType() para identificar tipo de coincidencia
  * - Agregar areEquivalentWithType() que retorna {match: bool, type: string}
  * - Backward compatible con areEquivalent()
  * - Permite asignar puntos diferentes: EXACTA=10, PLURAL=8, GENERO=5, SINONIMO=5
+ * - NUEVO: setRoundContext() para inyectar contexto de ronda desde servidor
+ * - NUEVO: areEquivalent() prioriza round_context sobre diccionario global
  */
 
 class WordEquivalenceEngine {
     constructor() {
         this.dictionaryMap = {};
-        // Aquí guardaremos las palabras que NO deben perder su vocal final
         this.strictGenderSet = new Set();
         this.isLoaded = false;
-        this.debugMode = false;  // Para auditar comparaciones
+        this.debugMode = false;
+        this.roundContext = null;
     }
 
     async init(jsonUrl = '/js/sinonimos.json') {
@@ -37,10 +40,8 @@ class WordEquivalenceEngine {
         data.forEach(group => {
             if (!Array.isArray(group) || group.length === 0) return;
 
-            // Procesamos la primera palabra para saber si es el ID canónico
             let canonicalRaw = group[0];
 
-            // Si la canónica tiene punto, la limpiamos para usarla de ID
             if (canonicalRaw.endsWith('.')) {
                 canonicalRaw = canonicalRaw.slice(0, -1);
             }
@@ -49,25 +50,20 @@ class WordEquivalenceEngine {
                 let cleanWord = word;
                 let isStrict = false;
 
-                // 1. DETECTAR EL PUNTO (.)
                 if (cleanWord.endsWith('.')) {
                     isStrict = true;
-                    cleanWord = cleanWord.slice(0, -1); // Quitamos el punto
+                    cleanWord = cleanWord.slice(0, -1);
                 }
 
                 const norm = this.normalize(cleanWord);
                 if (!norm) return;
 
-                // 2. GUARDAR EN LA LISTA DE PROTECCIÓN
                 if (isStrict) {
                     this.strictGenderSet.add(norm);
                 }
 
-                // 3. MAPEAR
                 this.dictionaryMap[norm] = canonicalRaw;
 
-                // Mapeamos también la raíz para búsquedas flexibles
-                // OJO: Al generar el stem inicial, respetamos si es estricta o no
                 const stem = this.getStem(norm);
                 if (stem !== norm) {
                     if (!this.dictionaryMap[stem]) {
@@ -85,54 +81,36 @@ class WordEquivalenceEngine {
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toUpperCase()
-            .replace(/[^A-Z0-9]/g, ''); // Borra puntos y simbolos del INPUT del usuario
+            .replace(/[^A-Z0-9]/g, '');
     }
 
-    /**
-     * Obtiene la raíz, respetando palabras protegidas (con punto).
-     * Maneja: plurales, diminutivos, género.
-     */
     getStem(word) {
         let stem = word;
 
-        // 1. Limpieza de Plurales en -CIÓN (ACCIONES -> ACCIÓN)
         if (stem.endsWith('CION')) {
-            stem = stem.slice(0, -2); // ACCIÓN -> ACCIÓN (sin cambio intencional, respeta ó)
+            stem = stem.slice(0, -2);
         }
-        // Plurales generales (S, ES)
         else if (stem.endsWith('CES')) {
-            stem = stem.slice(0, -3) + 'Z'; // VOCES -> VOZ
+            stem = stem.slice(0, -3) + 'Z';
         }
         else if (stem.endsWith('ES') && stem.length > 4) {
-            // Plural compuesto (RESTAURANTE + S = RESTAURANTES)
             const base = stem.slice(0, -2);
-            // Solo si el base termina en consonante o vocal que típicamente agrega -ES
             if (!base.match(/[AEIOU]$/)) {
                 stem = base;
             }
         }
         else if (stem.endsWith('S') && stem.length > 3) {
-            // Plural simple (PENA -> PENAS)
             stem = stem.slice(0, -1);
         }
 
-        // 2. Limpieza de Diminutivos (Gatito -> Gat, Gatita -> Gat)
         stem = stem.replace(/(C)?IT[AO]$/, '');
-        stem = stem.replace(/[AO]CH[AO]$/, ''); // Muchach@
-        stem = stem.replace(/[AO]LL[AO]$/, ''); // Vaquill@
+        stem = stem.replace(/[AO]CH[AO]$/, '');
+        stem = stem.replace(/[AO]LL[AO]$/, '');
 
-        // --- LA MAGIA DEL PUNTO ---
-        // Antes de cortar la vocal final (Género), chequeamos si esta palabra
-        // está en la lista de "strictGenderSet" (la que cargamos con puntos).
         if (this.strictGenderSet.has(stem)) {
-            // ¡ALTO! Es una palabra protegida (ej: PENA.)
-            // Devolvemos "PENA" tal cual, sin cortar la A.
             return stem;
         }
 
-        // 3. Limpieza de Vocal Final de Género (Solo si NO es estricta)
-        // LOCA -> LOC, LOCO -> LOC
-        // BEBE -> BEB
         if (stem.length > 2) {
             const last = stem.slice(-1);
             if (['A', 'E', 'O'].includes(last)) {
@@ -142,28 +120,36 @@ class WordEquivalenceEngine {
         return stem;
     }
 
-    /**
-     * Identifica el tipo de coincidencia entre dos palabras.
-     * Retorna: 'EXACTA' | 'PLURAL' | 'GENERO' | 'SINONIMO' | null
-     */
+    setRoundContext(context) {
+        if (!context || typeof context !== 'object') {
+            this.roundContext = null;
+            return;
+        }
+        this.roundContext = {
+            prompt: (context.prompt || '').toUpperCase().trim(),
+            synonyms: Array.isArray(context.synonyms) ? context.synonyms.map(w => this.normalize(w)) : [],
+            variants: Array.isArray(context.variants) ? context.variants.map(w => this.normalize(w)) : []
+        };
+        if (this.debugMode) console.log('%c📦 Round Context', 'color: #00DD00; font-weight: bold;', this.roundContext);
+    }
+
+    getRoundContext() {
+        return this.roundContext;
+    }
+
     getMatchType(word1, word2) {
         const n1 = this.normalize(word1);
         const n2 = this.normalize(word2);
 
         if (!n1 || !n2) return null;
 
-        // 1. EXACTA: Idénticas
         if (n1 === n2) return 'EXACTA';
 
-        // 2. Obtener stems para análisis
         const stem1 = this.getStem(n1);
         const stem2 = this.getStem(n2);
 
-        // Si no coinciden stems, no hay coincidencia
         if (stem1 !== stem2) return null;
 
-        // 3. PLURAL: Diferencia es solo -S o -ES o diminutivo
-        // Ej: BEBE vs BEBES, GATO vs GATOS, GATITO vs GATO
         const isPluralLike = (word) => {
             return word.endsWith('S') || 
                    word.endsWith('ES') || 
@@ -176,7 +162,6 @@ class WordEquivalenceEngine {
             return 'PLURAL';
         }
 
-        // 4. GENERO: Diferencia es solo la vocal final (A/O/E)
         const last1 = n1.slice(-1);
         const last2 = n2.slice(-1);
         const isGenderVowel = (v) => ['A', 'E', 'O'].includes(v);
@@ -185,7 +170,6 @@ class WordEquivalenceEngine {
             return 'GENERO';
         }
 
-        // 5. SINONIMO: En el diccionario con IDs diferentes
         if (this.isLoaded) {
             let id1 = this.dictionaryMap[n1];
             let id2 = this.dictionaryMap[n2];
@@ -198,14 +182,9 @@ class WordEquivalenceEngine {
             }
         }
 
-        // 6. Por defecto, si los stems coinciden
         return 'SIMILAR';
     }
 
-    /**
-     * Comparación LOCAL: Sin diccionario, solo por raíces derivadas.
-     * Útil cuando el diccionario aún no ha cargado.
-     */
     areEquivalentLocally(word1, word2) {
         const n1 = this.normalize(word1);
         const n2 = this.normalize(word2);
@@ -230,36 +209,22 @@ class WordEquivalenceEngine {
         return false;
     }
 
-    /**
-     * Devuelve una clave canónica para agrupar resultados.
-     * Si está en el diccionario (exacto o por stem), devuelve el ID canónico.
-     * Si no está, devuelve la palabra con su raíz (normalizada).
-     */
     getCanonical(word) {
         const n = this.normalize(word);
         if (!n) return '';
 
-        // Búsqueda 1: Exacta en diccionario
         let id = this.dictionaryMap[n];
         if (id) return this.normalize(id);
 
-        // Búsqueda 2: Por stem en diccionario
         const stem = this.getStem(n);
         id = this.dictionaryMap[stem];
         if (id) return this.normalize(id);
 
-        // Fallback 3: Si no está en diccionario, devolver la raíz
-        // Esto asegura que BEBE, BEBES, BEBÉ todos mapeen a "BEB"
         return stem.length > 0 ? stem : n;
     }
 
-    /**
-     * Comparación con tipo de coincidencia.
-     * Retorna {match: boolean, type: string | null}
-     */
     areEquivalentWithType(word1, word2) {
         const matchType = this.getMatchType(word1, word2);
-        const match = matchType !== null && matchType !== 'EXACTA'.replace(/^.../, '');
         
         if (this.debugMode && matchType) {
             console.log(`🎯 areEquivalentWithType("${word1}", "${word2}"): tipo=${matchType}`);
@@ -271,9 +236,6 @@ class WordEquivalenceEngine {
         };
     }
 
-    /**
-     * Comparación completa: Usa diccionario si está listo, sino usa fallback local.
-     */
     areEquivalent(word1, word2) {
         const n1 = this.normalize(word1);
         const n2 = this.normalize(word2);
@@ -281,48 +243,52 @@ class WordEquivalenceEngine {
         if (!n1 || !n2) return false;
         if (n1 === n2) return true;
 
-        // Si el diccionario está cargado, usarlo
+        if (this.roundContext && this.roundContext.synonyms.length > 0) {
+            const inSynonyms = this.roundContext.synonyms.includes(n1) || this.roundContext.synonyms.includes(n2);
+            const inVariants = this.roundContext.variants.includes(n1) || this.roundContext.variants.includes(n2);
+            if (inSynonyms || inVariants) {
+                if (this.debugMode) console.log(`✅ areEquivalent (roundContext): "${word1}" ~ "${word2}"`);
+                return true;
+            }
+            if (this.debugMode) console.log(`❌ areEquivalent (roundContext): "${word1}" ≠ "${word2}"`);
+            return false;
+        }
+
         if (this.isLoaded && Object.keys(this.dictionaryMap).length > 0) {
-            // Búsqueda Inteligente (Dict -> Stem)
             let id1 = this.dictionaryMap[n1];
             let id2 = this.dictionaryMap[n2];
 
-            // Si no está exacto, buscamos por su Stem
             if (!id1) id1 = this.dictionaryMap[this.getStem(n1)];
             if (!id2) id2 = this.dictionaryMap[this.getStem(n2)];
 
             if (id1 && id2 && id1 === id2) {
-                if (this.debugMode) console.log(`✅ areEquivalent (dict): "${word1}" == "${word2}" (por diccionario)`);
+                if (this.debugMode) console.log(`✅ areEquivalent (dict): "${word1}" == "${word2}"`);
                 return true;
             }
 
-            // Comparación manual de raíces
             const root1 = this.getStem(n1);
             const root2 = this.getStem(n2);
 
-            // Cruce Dict vs Raíz
             if (id1) {
                 const dictRoot = this.getStem(this.normalize(id1));
                 if (dictRoot === root2) {
-                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}" (dict stem match)`);
+                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}"`);
                     return true;
                 }
             }
             if (id2) {
                 const dictRoot = this.getStem(this.normalize(id2));
                 if (dictRoot === root1) {
-                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}" (dict stem match)`);
+                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}"`);
                     return true;
                 }
             }
 
-            // Comparación Final de raíces
             if (root1 === root2 && root1.length > 2) {
-                if (this.debugMode) console.log(`✅ areEquivalent (root): "${word1}" == "${word2}" (roots "${root1}" == "${root2}")`);
+                if (this.debugMode) console.log(`✅ areEquivalent (root): "${word1}" == "${word2}"`);
                 return true;
             }
         } else {
-            // Fallback: Sin diccionario, usar comparación local
             if (this.debugMode) console.log(`⚠️  Diccionario no cargado, usando fallback local para "${word1}" vs "${word2}"`);
             return this.areEquivalentLocally(word1, word2);
         }
@@ -330,15 +296,12 @@ class WordEquivalenceEngine {
         if (this.debugMode) {
             const root1 = this.getStem(n1);
             const root2 = this.getStem(n2);
-            console.log(`❌ areEquivalent: "${word1}" != "${word2}" (stems: "${root1}" != "${root2}")`);
+            console.log(`❌ areEquivalent: "${word1}" != "${word2}"`);
         }
 
         return false;
     }
 
-    /**
-     * Habilitar logs de auditoría para debugging.
-     */
     enableDebug() {
         this.debugMode = true;
         console.log('%c🔧 Word Equivalence Engine en modo DEBUG', 'color: #FF6600; font-weight: bold');

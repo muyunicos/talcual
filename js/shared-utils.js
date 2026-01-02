@@ -15,6 +15,7 @@
  * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
  * 🔧 FIX: ConfigService store max_code_length + filter words by length
  * 🔧 FIX: Split dictionary words by pipe delimiter to extract word variants
+ * 🔧 REFACTOR: Server-Side Source of Truth - API-driven DictionaryService
  */
 
 // ============================================================================
@@ -270,183 +271,81 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 }
 
 // ============================================================================
-// DICTIONARY SERVICE - NO FALLBACKS
+// DICTIONARY SERVICE - API-DRIVEN
 // ============================================================================
 
 class DictionaryService {
     constructor() {
-        this.dictionary = null;
         this.categories = [];
-        this.loadPromise = null;
         this.isReady = false;
+        this.loadPromise = null;
     }
 
-    async initialize() {
-        if (this.isReady) return this.dictionary;
+    async loadCategories() {
+        if (this.categories.length > 0) {
+            this.isReady = true;
+            return this.categories;
+        }
         if (this.loadPromise) return this.loadPromise;
 
         this.loadPromise = (async () => {
-            debug('📚 Iniciando carga de diccionario...', null, 'info');
-            
-            const response = await fetch('./app/diccionario.json', { 
-                cache: 'no-store'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: No se puede acceder a app/diccionario.json`);
-            }
-
-            const data = await response.json();
-            
-            if (!data || typeof data !== 'object') {
-                throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
-            }
-
-            let processedData = {};
-            
-            Object.entries(data).forEach(([category, value]) => {
-                const allWords = [];
-
-                if (Array.isArray(value)) {
-                    // Caso: Array de objetos con hints
-                    // [{hint: [words]}, {hint: [words]}, ...]
-                    value.forEach(hintObj => {
-                        if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
-                            Object.values(hintObj).forEach(wordsArray => {
-                                if (Array.isArray(wordsArray)) {
-                                    allWords.push(...wordsArray);
-                                }
-                            });
-                        }
-                    });
-                } else if (typeof value === 'object' && !Array.isArray(value)) {
-                    // Caso: Objeto directo con hints
-                    // {hint1: [words], hint2: [words]}
-                    Object.values(value).forEach(wordsArray => {
-                        if (Array.isArray(wordsArray)) {
-                            allWords.push(...wordsArray);
-                        }
-                    });
-                } else if (Array.isArray(value)) {
-                    // Caso: Array directo de palabras
-                    allWords.push(...value);
+            debug('📚 Cargando categorías desde servidor...', null, 'info');
+            try {
+                const url = new URL('./app/actions.php', window.location.href);
+                const response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_categories' }),
+                    cache: 'no-store'
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (!result.success || !Array.isArray(result.categories)) {
+                    throw new Error('Respuesta inválida');
                 }
-
-                if (allWords.length > 0) {
-                    // FIX: Split por pipe (|) y validar que todas sean strings
-                    const validWords = allWords
-                        .flatMap(w => {
-                            if (typeof w === 'string' && w.length > 0) {
-                                return w.split('|').map(part => part.trim()).filter(p => p.length > 0);
-                            }
-                            return [];
-                        })
-                        .filter(w => typeof w === 'string' && w.length > 0);
-                    
-                    if (validWords.length > 0) {
-                        processedData[category] = validWords;
-                    }
-                }
-            });
-
-            const validCategories = Object.entries(processedData).filter(
-                ([k, v]) => Array.isArray(v) && v.length > 0
-            );
-            
-            if (validCategories.length === 0) {
-                throw new Error('Diccionario vacío o sin categorías válidas');
+                this.categories = result.categories;
+                this.isReady = true;
+                debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
+                return this.categories;
+            } catch (error) {
+                debug('❌ Error: ' + error.message, null, 'error');
+                throw error;
             }
-
-            this.dictionary = processedData;
-            this.categories = validCategories.map(([k]) => k);
-            this.isReady = true;
-
-            if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
-                wordEngine.processDictionary(processedData);
-                debug('🔗 WordEngine inicializado con diccionario', null, 'success');
-            }
-
-            debug('📚 Diccionario cargado exitosamente', { 
-                categories: this.categories.length,
-                totalWords: this.getTotalWordCount()
-            }, 'success');
-
-            return this.dictionary;
         })();
-
         return this.loadPromise;
     }
 
-    getTotalWordCount() {
-        if (!this.dictionary) return 0;
-        return Object.values(this.dictionary).reduce((sum, words) => {
-            return sum + (Array.isArray(words) ? words.length : 0);
-        }, 0);
-    }
-
     getCategories() {
+        if (!this.isReady) throw new Error('Llamar a loadCategories() primero');
         return [...this.categories];
     }
 
-    getWordsForCategory(category) {
-        if (!this.dictionary || !this.dictionary[category]) {
-            return [];
+    async getCategoryWord(category) {
+        debug(`🔤 Obteniendo palabra: ${category}`, null, 'info');
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_category_word', category: category }),
+                cache: 'no-store'
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            if (!result.success || !result.word) throw new Error(result.message || 'Sin palabra');
+            debug(`✅ Palabra: ${result.word}`, null, 'success');
+            return result.word;
+        } catch (error) {
+            debug('❌ Error: ' + error.message, null, 'error');
+            throw error;
         }
-        const words = this.dictionary[category];
-        return Array.isArray(words) ? [...words] : [];
-    }
-
-    getRandomWord() {
-        if (!this.dictionary) return null;
-        
-        const categories = Object.keys(this.dictionary);
-        if (categories.length === 0) return null;
-
-        const randomCat = categories[Math.floor(Math.random() * categories.length)];
-        const words = this.dictionary[randomCat];
-
-        if (!Array.isArray(words) || words.length === 0) return null;
-
-        const randomWord = words[Math.floor(Math.random() * words.length)];
-        
-        if (typeof randomWord !== 'string') {
-            debug(`⚠️  Tipo inválido en getRandomWord de ${randomCat}:`, typeof randomWord, 'warn');
-            return null;
-        }
-
-        return randomWord;
-    }
-
-    getRandomWordByCategory(category, maxLength = null) {
-        const words = this.getWordsForCategory(category);
-        if (words.length === 0) return null;
-        
-        let availableWords = words;
-        
-        // FIX #5: Si maxLength se proporciona, filtrar palabras por longitud
-        if (maxLength !== null && maxLength > 0) {
-            availableWords = words.filter(word => typeof word === 'string' && word.length <= maxLength);
-            if (availableWords.length === 0) {
-                debug(`⚠️  No hay palabras en "${category}" con longitud ≤ ${maxLength}`, null, 'warn');
-                return null;
-            }
-        }
-        
-        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-        
-        if (typeof randomWord !== 'string') {
-            debug(`⚠️  Tipo inválido en getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
-            return null;
-        }
-
-        return randomWord;
     }
 }
 
 const dictionaryService = new DictionaryService();
 
 // ============================================================================
-// CONFIG SERVICE - NO FALLBACKS
+// CONFIG SERVICE
 // ============================================================================
 
 class ConfigService {
