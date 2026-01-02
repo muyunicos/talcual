@@ -709,12 +709,12 @@ try {
                 'success' => true,
                 'server_now' => intval(microtime(true) * 1000),
                 'config' => [
-                    'START_COUNTDOWN' => START_COUNTDOWN,
+                    'round_duration' => ROUND_DURATION,
                     'TOTAL_ROUNDS' => TOTAL_ROUNDS,
-                    'ROUND_DURATION' => ROUND_DURATION,
+                    'max_words_per_player' => MAX_WORDS_PER_PLAYER,
                     'min_players' => MIN_PLAYERS,
                     'max_players' => MAX_PLAYERS,
-                    'max_words_per_player' => MAX_WORDS_PER_PLAYER
+                    'start_countdown' => START_COUNTDOWN
                 ]
             ];
             break;
