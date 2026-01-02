@@ -381,6 +381,31 @@ function getRandomWordFromCategory($category) {
     return $words[array_rand($words)];
 }
 
+// NUEVO: Seleccionar palabra aleatoria de una categoría con filtro de longitud máxima
+// FIX #5: Consistencia código ≠ prompt - asegurar que palabras de categoría sean ≤ MAX_CODE_LENGTH
+function getRandomWordByCategoryFiltered($category, $maxLength = null) {
+    if ($maxLength === null) {
+        $maxLength = MAX_CODE_LENGTH;
+    }
+
+    $words = getWordsByCategory($category);
+    if (empty($words)) {
+        return null;
+    }
+
+    $filtered = array_filter($words, function($word) use ($maxLength) {
+        return mb_strlen($word) <= $maxLength;
+    });
+
+    if (empty($filtered)) {
+        logMessage("[WARN] No hay palabras en '{$category}' con longitud ≤ {$maxLength}", 'WARNING');
+        return null;
+    }
+
+    $filtered = array_values($filtered);
+    return $filtered[array_rand($filtered)];
+}
+
 function gameExists($gameId) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) return false;
