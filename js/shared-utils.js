@@ -1,22 +1,12 @@
 /**
  * @file shared-utils.js
- * @description Utilidades compartidas + SERVICIOS CENTRALIZADOS
+ * @description Centralización de servicios y utilidades compartidas
  * 
- * 🔧 FASE 1: Centralización de dependencias
- * 🔧 FASE 2: SessionManager y beforeunload handling
- * 🔧 FASE 3A: DictionaryService category-aware methods
- * 🔧 FASE 3B: ModalController para gestión unificada de modales (DEFINED IN modal-controller.js)
- * 🔧 FASE 3-CORE: WordEngine recibe datos DIRECTAMENTE de DictionaryService (sin fetch)
- * 🔧 FASE 4: ConfigService race condition safeguards
- * 🔧 FASE 5: Cleanup, error handling fuerte, desacoplamiento WordEngine
- * 🔧 FASE 5-HOTFIX: CRITICAL - Remove race condition, restore fallbacks, fix dependencies
- * 🔧 FEATURE: Remove duplicate timeSync + hostSession/debug dependency fix
- * 🔧 FIX: Remove duplicate ModalController (defined in modal-controller.js)
- * 🔧 FIX: Correct loading order - hostSession must be before host-manager.js usage
- * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
- * 🔧 FIX: ConfigService store max_code_length + filter words by length
- * 🔧 FIX: Split dictionary words by pipe delimiter to extract word variants
- * 🔧 FASE 1: Consolidation - Remove generateRandomAuras stub, eliminate duplicate getRemainingTime
+ * 🔧 PHASE 2 (NEW):
+ * - DictionaryService EXTRAE sinónimos cuando encuentra pipe delimiter
+ * - WordEquivalenceEngine recibe datos INYECTADOS (no fetch)
+ * - GameTimer centraliza formatTime y getRemainingTime
+ * - Dependency safety: verificar wordEngine antes de usar
  */
 
 // ============================================================================
@@ -44,26 +34,44 @@ function debug(message, data = null, type = 'log') {
     }
 }
 
+// ============================================================================
+// GAME TIMER UTILITY - CENTRALIZED
+// ============================================================================
+
+const GameTimer = {
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    },
+
+    getRemainingTime(startTime, duration) {
+        const nowServer = typeof timeSync !== 'undefined' && timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
+        const elapsed = nowServer - startTime;
+        return Math.max(0, duration - elapsed);
+    },
+
+    updateTimerDisplay(remainingMs, element, emoji = '⏳') {
+        if (!element) return;
+        if (remainingMs === null || remainingMs === undefined) {
+            element.textContent = `${emoji}`;
+            return;
+        }
+        const seconds = Math.ceil(remainingMs / 1000);
+        element.textContent = `${emoji} ${this.formatTime(seconds)}`;
+    }
+};
+
 function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return GameTimer.formatTime(seconds);
 }
 
 function updateTimerDisplay(remainingMs, element, emoji = '⏳') {
-    if (!element) return;
-    if (remainingMs === null || remainingMs === undefined) {
-        element.textContent = `${emoji}`;
-        return;
-    }
-    const seconds = Math.ceil(remainingMs / 1000);
-    element.textContent = `${emoji} ${formatTime(seconds)}`;
+    return GameTimer.updateTimerDisplay(remainingMs, element, emoji);
 }
 
 function getRemainingTime(startTime, duration) {
-    const nowServer = typeof timeSync !== 'undefined' && timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
-    const elapsed = nowServer - startTime;
-    return Math.max(0, duration - elapsed);
+    return GameTimer.getRemainingTime(startTime, duration);
 }
 
 // ============================================================================
@@ -240,7 +248,7 @@ const hostSession = new SessionManager('host');
 const playerSession = new SessionManager('player');
 
 // ============================================================================
-// WORD COMPARISON ENGINE - LAZY INITIALIZATION
+// WORD EQUIVALENCE ENGINE - LAZY INITIALIZATION
 // ============================================================================
 
 let wordEngine = null;
@@ -263,6 +271,9 @@ if (typeof WordEquivalenceEngine === 'undefined') {
             this.dictionary = dict;
             this.isLoaded = true;
         }
+        loadSynonymGroups(groups) {
+            this.processDictionary(groups);
+        }
         areEquivalent(word1, word2) {
             return word1.toUpperCase() === word2.toUpperCase();
         }
@@ -275,12 +286,13 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 }
 
 // ============================================================================
-// DICTIONARY SERVICE - INICIALIZA Y CONFIGURA WORDENGINE
+// DICTIONARY SERVICE - SINGLE SOURCE OF TRUTH
 // ============================================================================
 
 class DictionaryService {
     constructor() {
         this.dictionary = null;
+        this.synonymGroups = [];
         this.categories = [];
         this.loadPromise = null;
         this.isReady = false;
@@ -308,6 +320,7 @@ class DictionaryService {
             }
 
             let processedData = {};
+            const extractedSynonymGroups = [];
             
             Object.entries(data).forEach(([category, value]) => {
                 const allWords = [];
@@ -333,14 +346,24 @@ class DictionaryService {
                 }
 
                 if (allWords.length > 0) {
-                    const validWords = allWords
-                        .flatMap(w => {
-                            if (typeof w === 'string' && w.length > 0) {
-                                return w.split('|').map(part => part.trim()).filter(p => p.length > 0);
+                    const validWords = [];
+                    
+                    allWords.forEach(w => {
+                        if (typeof w === 'string' && w.length > 0) {
+                            if (w.includes('|')) {
+                                const synonymGroup = w.split('|')
+                                    .map(part => part.trim())
+                                    .filter(p => p.length > 0);
+                                
+                                if (synonymGroup.length > 0) {
+                                    extractedSynonymGroups.push(synonymGroup);
+                                    validWords.push(...synonymGroup);
+                                }
+                            } else {
+                                validWords.push(w);
                             }
-                            return [];
-                        })
-                        .filter(w => typeof w === 'string' && w.length > 0);
+                        }
+                    });
                     
                     if (validWords.length > 0) {
                         processedData[category] = validWords;
@@ -357,19 +380,26 @@ class DictionaryService {
             }
 
             this.dictionary = processedData;
+            this.synonymGroups = extractedSynonymGroups;
             this.categories = validCategories.map(([k]) => k);
             this.isReady = true;
 
+            if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.loadSynonymGroups === 'function') {
+                wordEngine.loadSynonymGroups(extractedSynonymGroups);
+                debug('🔗 WordEngine inicializado con synonym groups desde DictionaryService', { groupsCount: extractedSynonymGroups.length }, 'success');
+            } else {
+                debug('⚠️  WordEngine no disponible para inicializar synonym groups', null, 'warn');
+            }
+
             if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
                 wordEngine.processDictionary(processedData);
-                debug('🔗 WordEngine inicializado con diccionario desde DictionaryService', { entriesCount: Object.keys(processedData).length }, 'success');
-            } else {
-                debug('⚠️  WordEngine no disponible para inicializar', null, 'warn');
+                debug('🔗 WordEngine procesó diccionario flat desde DictionaryService', { entriesCount: Object.keys(processedData).length }, 'success');
             }
 
             debug('📚 Diccionario cargado exitosamente', { 
                 categories: this.categories.length,
-                totalWords: this.getTotalWordCount()
+                totalWords: this.getTotalWordCount(),
+                synonymGroups: extractedSynonymGroups.length
             }, 'success');
 
             return this.dictionary;
