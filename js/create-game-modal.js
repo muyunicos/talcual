@@ -1,6 +1,6 @@
 /**
  * Create Game Modal - Modal para crear nuevas partidas
- * Maneja: Ui para crear partida
+ * Maneja: UI para crear partida
  * 
  * ✅ REFACTORIZADO FASE 3C:
  * - Usa ModalController para gestión centralizada de modales
@@ -18,26 +18,23 @@ class CreateGameModal {
         this.statusMessage = document.getElementById('status-message');
 
         this.categories = [];
-        this.categoryWordsMap = {}; // Cache: category -> [words]
+        this.categoryWordsMap = {};
 
         this.init();
     }
 
     async init() {
         try {
-            // ✅ CAMBIO: Crear ModalController para el modal
             this.modalController = new ModalController('modal-create-game', {
                 closeOnBackdrop: true,
                 closeOnEsc: true,
                 onBeforeOpen: () => {
-                    // Reset form when modal opens
                     this.selectRandomCategory();
                     this.customCodeInput.value = '';
                     this.statusMessage.style.display = 'none';
                 }
             });
 
-            // ✅ CAMBIO: Usar servicios centralizados
             await dictionaryService.initialize();
             await configService.load();
 
@@ -82,7 +79,6 @@ class CreateGameModal {
         const selectedCategory = this.categorySelect.value;
         
         try {
-            // Obtener una palabra random para esta categoría
             const randomWord = await dictionaryService.getRandomWord();
             
             if (randomWord) {
@@ -90,34 +86,6 @@ class CreateGameModal {
             }
         } catch (error) {
             debug('Error obteniendo palabra para categoría', error, 'warn');
-        }
-    }
-
-    initializeHostManager() {
-        if (typeof initHostManager === 'function') {
-            debug('Llamando initHostManager()', null, 'info');
-            try {
-                initHostManager();
-            } catch (error) {
-                debug('initHostManager() falló', error, 'error');
-                this.handleHostManagerError();
-            }
-        } else {
-            debug('initHostManager no disponible, usando fallback', null, 'warn');
-            this.handleHostManagerError();
-        }
-    }
-
-    handleHostManagerError() {
-        debug('Redireccionando a host.html', null, 'info');
-        const gameCode = document.querySelector('[data-game-code]')?.dataset.gameCode ||
-                        localStorage.getItem('hostGameCode') ||
-                        document.querySelector('#code-sticker-value')?.textContent;
-        
-        if (gameCode) {
-            window.location.href = `./host.html?code=${encodeURIComponent(gameCode)}`;
-        } else {
-            this.showMessage('Error inicializando host', 'error');
         }
     }
 
@@ -129,7 +97,6 @@ class CreateGameModal {
             const category = this.categorySelect.value;
             const customCode = this.customCodeInput.value.trim().toUpperCase() || null;
 
-            // ✅ CAMBIO: Usar ConfigService
             const payload = {
                 action: 'create_game',
                 game_id: customCode,
@@ -176,10 +143,6 @@ class CreateGameModal {
             if (typeof determineUIState === 'function') {
                 determineUIState();
             }
-
-            setTimeout(() => {
-                this.initializeHostManager();
-            }, 100);
         } catch (error) {
             debug('Error creando partida', error, 'error');
             
