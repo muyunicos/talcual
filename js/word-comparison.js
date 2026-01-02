@@ -1,21 +1,11 @@
 /**
- * Word Comparison Engine V8 - Scoring Variable por Tipo de Coincidencia
- * + Round Context Support para Server-Side Source of Truth
- * 
- * Cambios:
- * - Agregar getMatchType() para identificar tipo de coincidencia
- * - Agregar areEquivalentWithType() que retorna {match: bool, type: string}
- * - Backward compatible con areEquivalent()
- * - Permite asignar puntos diferentes: EXACTA=10, PLURAL=8, GENERO=5, SINONIMO=5
- * - NUEVO: setRoundContext() para inyectar contexto de ronda desde servidor
- * - NUEVO: areEquivalent() prioriza round_context sobre diccionario global
- * Word Comparison Engine V10 - Passive Logic Engine (PHASE 2 REVISED)
- * 
- * PHASE 2 (REVISED) Changes:
+ * Word Comparison Engine V10 - Passive Logic Engine (PHASE 2 FINAL)
+ *
+ * PHASE 2 Changes:
  * - REMOVED: async init(jsonUrl) - no I/O at all
  * - REFACTORED: processDictionary(data) handles diccionario.json structure
  *   Expects: Object -> Categories -> Array[Objects] -> Hints -> Array[Strings]
- *   With pipe syntax: "Cine|Cinema" -> canonical ID is "Cine"
+ *   With pipe syntax: "Cine|Cinema" -> canonical ID is first part "Cine"
  * - Pipe parsing: "A|B|C" -> all mapped to first item as canonical
  * - Data is INJECTED from DictionaryService - engine is passive
  */
