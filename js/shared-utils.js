@@ -2,11 +2,11 @@
  * @file shared-utils.js
  * @description Centralización de servicios y utilidades compartidas
  * 
- * 🔧 PHASE 2 (NEW):
- * - DictionaryService EXTRAE sinónimos cuando encuentra pipe delimiter
- * - WordEquivalenceEngine recibe datos INYECTADOS (no fetch)
- * - GameTimer centraliza formatTime y getRemainingTime
- * - Dependency safety: verificar wordEngine antes de usar
+ * 🔧 PHASE 2 (REVISED):
+ * - REMOVED: WordEquivalenceEngine stub (fail-fast if word-comparison.js missing)
+ * - NEW: GameTimer utility centralized
+ * - DictionaryService injects data via processDictionary()
+ * - Pipe delimiters handled by WordEngine
  */
 
 // ============================================================================
@@ -35,7 +35,7 @@ function debug(message, data = null, type = 'log') {
 }
 
 // ============================================================================
-// GAME TIMER UTILITY - CENTRALIZED
+// GAME TIMER UTILITY - CENTRALIZED (NEW)
 // ============================================================================
 
 const GameTimer = {
@@ -248,41 +248,17 @@ const hostSession = new SessionManager('host');
 const playerSession = new SessionManager('player');
 
 // ============================================================================
-// WORD EQUIVALENCE ENGINE - LAZY INITIALIZATION
+// WORD EQUIVALENCE ENGINE - ASSUMED TO BE LOADED (FAIL-FAST)
 // ============================================================================
 
 let wordEngine = null;
 
 if (typeof WordEquivalenceEngine === 'undefined') {
-    class WordEquivalenceEngine {
-        constructor() {
-            this.dictionary = null;
-            this.thesaurus = null;
-            this.wordClassifications = null;
-            this.isLoaded = false;
-        }
-        getCanonical(word) {
-            return word ? word.toUpperCase().trim() : '';
-        }
-        getMatchType(word1, word2) {
-            return word1.toUpperCase() === word2.toUpperCase() ? 'EXACTA' : null;
-        }
-        processDictionary(dict) {
-            this.dictionary = dict;
-            this.isLoaded = true;
-        }
-        loadSynonymGroups(groups) {
-            this.processDictionary(groups);
-        }
-        areEquivalent(word1, word2) {
-            return word1.toUpperCase() === word2.toUpperCase();
-        }
-    }
+    console.error('❌ CRITICAL: WordEquivalenceEngine class not found. Check word-comparison.js loading order');
+    throw new Error('WordEquivalenceEngine not loaded - word-comparison.js must be included before shared-utils.js');
+} else {
     wordEngine = new WordEquivalenceEngine();
-    debug('⚠️  STUB: WordEquivalenceEngine stub creado (word-comparison.js aún no cargó)', null, 'warn');
-} else if (typeof WordEquivalenceEngine !== 'undefined' && !wordEngine) {
-    wordEngine = new WordEquivalenceEngine();
-    debug('✅ WordEngine instanciado desde word-comparison.js', null, 'success');
+    debug('✅ WordEngine instantiated from word-comparison.js', null, 'success');
 }
 
 // ============================================================================
@@ -292,7 +268,6 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 class DictionaryService {
     constructor() {
         this.dictionary = null;
-        this.synonymGroups = [];
         this.categories = [];
         this.loadPromise = null;
         this.isReady = false;
@@ -319,87 +294,21 @@ class DictionaryService {
                 throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
             }
 
-            let processedData = {};
-            const extractedSynonymGroups = [];
-            
-            Object.entries(data).forEach(([category, value]) => {
-                const allWords = [];
-
-                if (Array.isArray(value)) {
-                    value.forEach(hintObj => {
-                        if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
-                            Object.values(hintObj).forEach(wordsArray => {
-                                if (Array.isArray(wordsArray)) {
-                                    allWords.push(...wordsArray);
-                                }
-                            });
-                        }
-                    });
-                } else if (typeof value === 'object' && !Array.isArray(value)) {
-                    Object.values(value).forEach(wordsArray => {
-                        if (Array.isArray(wordsArray)) {
-                            allWords.push(...wordsArray);
-                        }
-                    });
-                } else if (Array.isArray(value)) {
-                    allWords.push(...value);
-                }
-
-                if (allWords.length > 0) {
-                    const validWords = [];
-                    
-                    allWords.forEach(w => {
-                        if (typeof w === 'string' && w.length > 0) {
-                            if (w.includes('|')) {
-                                const synonymGroup = w.split('|')
-                                    .map(part => part.trim())
-                                    .filter(p => p.length > 0);
-                                
-                                if (synonymGroup.length > 0) {
-                                    extractedSynonymGroups.push(synonymGroup);
-                                    validWords.push(...synonymGroup);
-                                }
-                            } else {
-                                validWords.push(w);
-                            }
-                        }
-                    });
-                    
-                    if (validWords.length > 0) {
-                        processedData[category] = validWords;
-                    }
-                }
-            });
-
-            const validCategories = Object.entries(processedData).filter(
-                ([k, v]) => Array.isArray(v) && v.length > 0
-            );
-            
-            if (validCategories.length === 0) {
-                throw new Error('Diccionario vacío o sin categorías válidas');
-            }
-
-            this.dictionary = processedData;
-            this.synonymGroups = extractedSynonymGroups;
-            this.categories = validCategories.map(([k]) => k);
+            this.dictionary = data;
+            this.categories = Object.keys(data).filter(k => Array.isArray(data[k]) || typeof data[k] === 'object');
             this.isReady = true;
 
-            if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.loadSynonymGroups === 'function') {
-                wordEngine.loadSynonymGroups(extractedSynonymGroups);
-                debug('🔗 WordEngine inicializado con synonym groups desde DictionaryService', { groupsCount: extractedSynonymGroups.length }, 'success');
-            } else {
-                debug('⚠️  WordEngine no disponible para inicializar synonym groups', null, 'warn');
-            }
-
             if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
-                wordEngine.processDictionary(processedData);
-                debug('🔗 WordEngine procesó diccionario flat desde DictionaryService', { entriesCount: Object.keys(processedData).length }, 'success');
+                wordEngine.processDictionary(data);
+                debug('🔗 WordEngine initialized with diccionario.json data', { entriesCount: Object.keys(wordEngine.dictionaryMap).length }, 'success');
+            } else {
+                debug('❌ WordEngine not available for dictionary injection', null, 'error');
+                throw new Error('WordEngine not ready for data injection');
             }
 
             debug('📚 Diccionario cargado exitosamente', { 
                 categories: this.categories.length,
-                totalWords: this.getTotalWordCount(),
-                synonymGroups: extractedSynonymGroups.length
+                totalWords: this.getTotalWordCount()
             }, 'success');
 
             return this.dictionary;
@@ -410,9 +319,23 @@ class DictionaryService {
 
     getTotalWordCount() {
         if (!this.dictionary) return 0;
-        return Object.values(this.dictionary).reduce((sum, words) => {
-            return sum + (Array.isArray(words) ? words.length : 0);
-        }, 0);
+        let count = 0;
+        
+        Object.values(this.dictionary).forEach(categoryContent => {
+            if (Array.isArray(categoryContent)) {
+                categoryContent.forEach(hintObj => {
+                    if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
+                        Object.values(hintObj).forEach(wordsArray => {
+                            if (Array.isArray(wordsArray)) {
+                                count += wordsArray.length;
+                            }
+                        });
+                    }
+                });
+            }
+        });
+        
+        return count;
     }
 
     getCategories() {
@@ -423,25 +346,40 @@ class DictionaryService {
         if (!this.dictionary || !this.dictionary[category]) {
             return [];
         }
-        const words = this.dictionary[category];
-        return Array.isArray(words) ? [...words] : [];
+        
+        const categoryContent = this.dictionary[category];
+        const words = [];
+        
+        if (Array.isArray(categoryContent)) {
+            categoryContent.forEach(hintObj => {
+                if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
+                    Object.values(hintObj).forEach(wordsArray => {
+                        if (Array.isArray(wordsArray)) {
+                            words.push(...wordsArray);
+                        }
+                    });
+                }
+            });
+        }
+        
+        return words;
     }
 
     getRandomWord() {
         if (!this.dictionary) return null;
         
-        const categories = Object.keys(this.dictionary);
+        const categories = this.getCategories();
         if (categories.length === 0) return null;
 
         const randomCat = categories[Math.floor(Math.random() * categories.length)];
-        const words = this.dictionary[randomCat];
+        const words = this.getWordsForCategory(randomCat);
 
-        if (!Array.isArray(words) || words.length === 0) return null;
+        if (words.length === 0) return null;
 
         const randomWord = words[Math.floor(Math.random() * words.length)];
         
         if (typeof randomWord !== 'string') {
-            debug(`⚠️  Tipo inválido en getRandomWord de ${randomCat}:`, typeof randomWord, 'warn');
+            debug(`⚠️  Invalid type in getRandomWord from ${randomCat}:`, typeof randomWord, 'warn');
             return null;
         }
 
@@ -457,7 +395,7 @@ class DictionaryService {
         if (maxLength !== null && maxLength > 0) {
             availableWords = words.filter(word => typeof word === 'string' && word.length <= maxLength);
             if (availableWords.length === 0) {
-                debug(`⚠️  No hay palabras en "${category}" con longitud ≤ ${maxLength}`, null, 'warn');
+                debug(`⚠️  No words in "${category}" with length ≤ ${maxLength}`, null, 'warn');
                 return null;
             }
         }
@@ -465,7 +403,7 @@ class DictionaryService {
         const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
         
         if (typeof randomWord !== 'string') {
-            debug(`⚠️  Tipo inválido en getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
+            debug(`⚠️  Invalid type in getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
             return null;
         }
 
@@ -505,23 +443,23 @@ class ConfigService {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Error conectando con el servidor`);
+                throw new Error(`HTTP ${response.status}: Error connecting to server`);
             }
 
             const result = await response.json();
             
             if (!result.success) {
-                throw new Error(result.message || 'Respuesta del servidor inválida');
+                throw new Error(result.message || 'Invalid server response');
             }
 
             if (!result.config || typeof result.config !== 'object') {
-                throw new Error('Configuración del servidor está vacía o mal formada');
+                throw new Error('Server config is empty or malformed');
             }
 
             const requiredFields = ['round_duration', 'TOTAL_ROUNDS', 'max_words_per_player', 'max_code_length'];
             for (const field of requiredFields) {
                 if (!(field in result.config)) {
-                    throw new Error(`Campo crítico faltante en config: ${field}`);
+                    throw new Error(`Critical config field missing: ${field}`);
                 }
             }
 
@@ -537,7 +475,7 @@ class ConfigService {
 
     get(key, defaultValue = null) {
         if (!this.config) {
-            throw new Error(`ConfigService.get('${key}'): Config no está listo`);
+            throw new Error(`ConfigService.get('${key}'): Config not ready`);
         }
         return this.config[key] ?? defaultValue;
     }
@@ -597,7 +535,7 @@ function renderAuraSelectorsEdit(container, selectedHex, onSelect) {
         const auras = generateRandomAuras();
         renderAuraSelectors(container, auras, selectedHex, onSelect);
     } else {
-        debug('⚠️  generateRandomAuras no disponible (aura-system.js no cargó)', null, 'warn');
+        debug('⚠️  generateRandomAuras not available (aura-system.js not loaded)', null, 'warn');
     }
 }
 
