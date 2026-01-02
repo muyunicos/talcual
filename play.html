@@ -12,32 +12,7 @@
     <link rel="stylesheet" href="./css/5-animations.css">
 </head>
 <body>
-    <div class="modal-overlay" id="modal-join-game">
-        <div class="modal-content">
-            <div class="modal-title">Unirse a una Partida</div>
-            
-            <div class="input-group">
-                <label class="input-label" for="input-game-code">Código de Sala</label>
-                <input type="text" id="input-game-code" class="input-field" 
-                       placeholder="Ej: CASA" maxlength="6" autocomplete="off">
-            </div>
-
-            <div class="input-group">
-                <label class="input-label" for="input-player-name">Tu Nombre</label>
-                <input type="text" id="input-player-name" class="input-field" 
-                       placeholder="" maxlength="20" autocomplete="on">
-            </div>
-
-            <div class="input-group">
-                <label class="input-label">✨ Elige tu Aura</label>
-                <div class="aura-selector" id="color-selector"></div>
-            </div>
-
-            <button class="btn-modal-primary" id="btn-join">¡A Jugar!</button>
-            
-            <div id="status-message" class="status-message-modal"></div>
-        </div>
-    </div>
+    <div id="modal-manager"></div>
 
     <div class="game-screen" id="game-screen" style="display: none;">
         <div class="player-layout">
@@ -86,23 +61,6 @@
         <div class="countdown-number" id="countdown-number" aria-atomic="true"></div>
     </div>
 
-    <div class="modal-overlay" id="modal-edit-name" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-title">Cambiar Nombre</div>
-            <input type="text" id="modal-name-input" class="input-field" maxlength="20" autocomplete="off" aria-label="Nuevo nombre">
-            
-            <div class="input-group" style="margin-top: 15px;">
-                <label class="input-label">✨ Tu Aura</label>
-                <div class="aura-selector" id="aura-selector-edit"></div>
-            </div>
-            
-            <div class="modal-buttons">
-                <button class="btn" id="modal-btn-cancel">Cancelar</button>
-                <button class="btn-modal-primary" id="modal-btn-save">Guardar</button>
-            </div>
-        </div>
-    </div>
-
     <button class="btn-hamburger" id="btn-hamburger-player" aria-label="Abrir menú de opciones">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
@@ -121,6 +79,7 @@
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
     <script src="./js/modal-controller.js"></script>
+    <script src="./js/modal-manager.js"></script>
     <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/menu-opciones.js"></script>
