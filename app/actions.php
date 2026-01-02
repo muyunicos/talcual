@@ -207,6 +207,51 @@ try {
 
     switch ($action) {
 
+        case 'get_categories':
+            try {
+                $categories = getCategories();
+                if (empty($categories)) {
+                    $response = ['success' => false, 'message' => 'No hay categorías'];
+                } else {
+                    $response = [
+                        'success' => true,
+                        'server_now' => intval(microtime(true) * 1000),
+                        'categories' => $categories
+                    ];
+                }
+            } catch (Exception $e) {
+                $response = ['success' => false, 'message' => 'Error del servidor'];
+            }
+            break;
+
+        case 'get_category_word':
+            try {
+                $category = isset($input['category']) ? trim((string)$input['category']) : null;
+                if (!$category) {
+                    $response = ['success' => false, 'message' => 'category requerida'];
+                    break;
+                }
+                $availableCategories = getCategories();
+                if (!in_array($category, $availableCategories)) {
+                    $response = ['success' => false, 'message' => 'Categoría no válida'];
+                    break;
+                }
+                $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+                if (!$word) {
+                    $response = ['success' => false, 'message' => 'No hay palabras en esa categoría'];
+                    break;
+                }
+                $response = [
+                    'success' => true,
+                    'server_now' => intval(microtime(true) * 1000),
+                    'category' => $category,
+                    'word' => $word
+                ];
+            } catch (Exception $e) {
+                $response = ['success' => false, 'message' => 'Error del servidor'];
+            }
+            break;
+
         case 'create_game':
             if (!$gameId || strlen($gameId) < 3) {
                 $gameId = generateGameCode();
@@ -248,7 +293,8 @@ try {
                 'round_details' => [],
                 'round_top_words' => [],
                 'game_history' => [],
-                'last_update' => time()
+                'last_update' => time(),
+                'round_context' => null
             ];
 
             if (saveGameState($gameId, $state)) {
@@ -397,6 +443,8 @@ try {
                 $state['round_ends_at'] = $roundEndsAt;
                 $state['last_update'] = time();
 
+                $state['round_context'] = getRoundContext($preferredCategory, $prompt);
+
                 foreach ($state['players'] as $pId => $player) {
                     if (!empty($player['disconnected'])) {
                         continue;
@@ -518,9 +566,11 @@ try {
 
             if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS)) {
                 $state['status'] = 'finished';
+                $state['round_context'] = null;
                 trackGameAction($gameId, 'game_finished', []);
             } else {
                 $state['status'] = 'round_ended';
+                $state['round_context'] = null;
             }
 
             $state['round_started_at'] = null;
@@ -572,6 +622,7 @@ try {
             $state['round_ends_at'] = null;
             $state['countdown_duration'] = null;
             $state['round_top_words'] = [];
+            $state['round_context'] = null;
             $state['last_update'] = time();
 
             if (saveGameState($gameId, $state)) {

@@ -92,6 +92,30 @@ function getCategories() {
     return [];
 }
 
+// NUEVO: Obtener palabras de una categoría con filtro de longitud
+function getDictionaryCategoryWords($category, $minLength = 1, $maxLength = null) {
+    $words = getWordsByCategory($category);
+    if (empty($words)) return [];
+    $filtered = array_filter($words, function($word) use ($minLength, $maxLength) {
+        $len = mb_strlen($word);
+        if ($len < $minLength) return false;
+        if ($maxLength !== null && $len > $maxLength) return false;
+        return true;
+    });
+    return array_values($filtered);
+}
+
+// NUEVO: Obtener contexto de ronda (prompt, sinónimos, variantes)
+function getRoundContext($category, $prompt) {
+    $words = getDictionaryCategoryWords($category);
+    if (empty($words)) {
+        return ['prompt' => $prompt, 'synonyms' => [$prompt], 'variants' => [$prompt]];
+    }
+    $variants = [$prompt, $prompt . 'S', $prompt . 'A', $prompt . 'O', substr($prompt, 0, -1)];
+    $synonyms = array_slice($words, 0, 10);
+    return ['prompt' => $prompt, 'synonyms' => $synonyms, 'variants' => array_unique(array_filter($variants))];
+}
+
 // Obtener códigos activos de salas
 function getActiveCodes() {
     $files = glob(GAME_STATES_DIR . '/*.json');
