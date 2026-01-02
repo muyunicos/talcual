@@ -64,70 +64,7 @@
         <a href="./index.html" class="hamburger-option hamburger-home">🌠 Inicio</a>
     </nav>
 
-    <div class="modal-overlay boot-el nosession-only" id="modal-start-game">
-        <div class="modal-content">
-            <div class="modal-title">Nueva Partida</div>
-
-            <div class="input-group">
-                <label class="input-label" for="category-select">Categoría Inicial</label>
-                <select id="category-select" class="input-field" aria-label="Seleccionar categoría para la partida"></select>
-            </div>
-
-            <div class="input-group">
-                <label class="input-label" for="input-game-code">Código de Sala</label>
-                <input type="text" id="input-game-code" class="input-field"
-                       placeholder="EJ: ABC123" maxlength="6" autocomplete="off" aria-label="Código para la sala">
-            </div>
-
-            <button class="btn-modal-primary" id="btn-create-game">
-                🎮 Crear Juego
-            </button>
-
-            <button class="btn-secondary" id="btn-open-settings-create">⚡ Opciones</button>
-
-            <div id="status-message" class="status-message-modal"></div>
-        </div>
-    </div>
-
-    <div class="modal-overlay boot-el" id="modal-settings" style="display: none; z-index: 2000;">
-        <div class="modal-content">
-            <div class="modal-title">⚡ Configuración de Juego</div>
-
-            <div class="input-group">
-                <label class="input-label" for="input-rounds">Rondas</label>
-                <input type="number" id="input-rounds" class="input-field"
-                       min="1" max="10" value="3" aria-label="Número de rondas">
-            </div>
-
-            <div class="input-group">
-                <label class="input-label" for="input-duration">Duración por Ronda (seg)</label>
-                <input type="number" id="input-duration" class="input-field"
-                       min="10" max="300" value="60" aria-label="Duración de cada ronda en segundos">
-            </div>
-
-            <div class="modal-buttons">
-                <button class="btn" id="btn-close-settings">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay boot-el" id="modal-category" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-title">📚 Seleccionar Categoría</div>
-
-            <div class="input-group">
-                <label class="input-label" for="category-input">Categoría</label>
-                <input type="text" id="category-input" class="input-field"
-                       placeholder="Escribe una categoría (ej: Películas, Animales, Países)" 
-                       maxlength="50" aria-label="Nombre de la categoría">
-            </div>
-
-            <div class="modal-buttons">
-                <button class="btn" id="btn-cancel-category">Cancelar</button>
-                <button class="btn-modal-primary" id="btn-confirm-category">Confirmar</button>
-            </div>
-        </div>
-    </div>
+    <div id="modal-manager"></div>
 
     <div class="logo-floating boot-el" id="logo-floating">
         <img src="/images/icon.webp" alt="TalCual Party Logo">
@@ -183,6 +120,7 @@
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
     <script src="./js/modal-controller.js"></script>
+    <script src="./js/modal-manager.js"></script>
     <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/menu-opciones.js"></script>
