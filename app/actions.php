@@ -712,6 +712,7 @@ try {
                     'round_duration' => ROUND_DURATION,
                     'TOTAL_ROUNDS' => TOTAL_ROUNDS,
                     'max_words_per_player' => MAX_WORDS_PER_PLAYER,
+                    'max_code_length' => MAX_CODE_LENGTH,
                     'min_players' => MIN_PLAYERS,
                     'max_players' => MAX_PLAYERS,
                     'start_countdown' => START_COUNTDOWN
