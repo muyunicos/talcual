@@ -1,44 +1,51 @@
 /**
- * EJEMPLOS DE USO - ModalManager (Con soporte de STACK)
+ * EJEMPLOS DE USO - ModalManager (3 CAPAS JERÁRQUICAS)
  * 
  * Este archivo documenta cómo usar el ModalManager_Instance desde diferentes contextos
- * El ModalManager ahora soporta múltiples modales encimados en una pila (stack)
+ * El ModalManager soporta 3 capas máximas:
+ * - PRIMARY (z-index: 1000): Modal base del flujo
+ * - SECONDARY (z-index: 1100): Formularios, opciones, menús
+ * - CONFIRMATION (z-index: 1200): Mensajes de confirmación
  * 
  * NO DEBE SER IMPORTADO EN PRODUCCIÓN - SÓLO PARA REFERENCIA
- * 
- * El ModalManager es un gestor centralizado de modales que soporta 3 tipos:
- * - PRIMARY: Modal principal (z-index: 1000 + offset de stack)
- * - SECONDARY: Modal secundario (z-index: 1000 + offset de stack)
- * - MESSAGE: Modal de mensaje (z-index: 1000 + offset de stack)
  */
 
 
 // ============================================================
-// CONCEPTO: STACK DE MODALES
+// CONCEPTO: 3 CAPAS JERÁRQUICAS
 // ============================================================
 /*
-El ModalManager ahora funciona con una PILA (stack) de modales:
+El ModalManager funciona con 3 CAPAS máximas, NO es un stack ilimitado:
 
-1. Primer modal (Crear Partida)     z-index: 1000
-2. Segundo modal (Opciones)         z-index: 1100  <- encima del primero
-3. Tercer modal (Confirmar salida)  z-index: 1200  <- encima de todos
+CAPAS ABIERTAS    VISIBLE              Z-INDEX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1 capa:           PRIMARY              1000
 
-Cuando cierras el tercer modal, vuelves al segundo.
-Cuando cierras el segundo, vuelves al primero.
-Cuando cierras el primero, vuelves a la pantalla principal.
+2 capas:          SECONDARY            1100
+                  (PRIMARY detrás)
 
-z-index se calcula: baseZIndex (1000) + (stackIndex * 100)
+3 capas:          CONFIRMATION         1200
+                  (SECONDARY detrás)
+                  (PRIMARY más atrás)
+
+
+Cada tipo de modal tiene un z-index FIJO:
+- PRIMARY:      SIEMPRE 1000
+- SECONDARY:    SIEMPRE 1100
+- CONFIRMATION: SIEMPRE 1200
+
+No puedes tener 2 PRIMARY o 2 SECONDARY simultáneamente.
 */
 
 
 // ============================================================
-// 1. MODAL SIMPLE CON CONTENIDO DE TEXTO
+// 1. MODAL PRIMARY - BASE DEL FLUJO
 // ============================================================
-function exampleSimpleModal() {
+function examplePrimaryModal() {
     ModalManager_Instance.show({
-        type: 'secondary',
-        title: '📄 Título del Modal',
-        content: 'Este es un contenido simple de texto',
+        type: 'primary',
+        title: '🎯 Modal Principal',
+        content: 'Este es el modal base del flujo (z: 1000)',
         buttons: [
             { label: 'Cerrar', class: 'btn', action: null, close: true }
         ]
@@ -47,278 +54,238 @@ function exampleSimpleModal() {
 
 
 // ============================================================
-// 2. MODAL CON CONTENIDO HTML/ELEMENTO
+// 2. MODAL SECONDARY - SOBRE PRIMARY
 // ============================================================
-function exampleHtmlModal() {
-    const contentElement = document.createElement('div');
-    contentElement.innerHTML = `
-        <div style="padding: 10px;">
-            <p>⚠️ Este es un modal con contenido HTML personalizado</p>
-            <strong>Puedes agregar cualquier estructura HTML aquí</strong>
-        </div>
-    `;
+function exampleSecondaryModal() {
+    // Primero abre PRIMARY
+    ModalManager_Instance.show({
+        type: 'primary',
+        title: '🎯 Principal',
+        content: 'Haz click en "Opciones"',
+        buttons: [
+            { label: 'Opciones', class: 'btn', action: exampleSecondaryModalLayer, close: false },
+            { label: 'Cerrar', class: 'btn', action: null, close: true }
+        ]
+    });
+}
 
+function exampleSecondaryModalLayer() {
+    // Luego abre SECONDARY encima
     ModalManager_Instance.show({
         type: 'secondary',
-        title: 'Modal con HTML',
-        content: contentElement,
+        title: '⚙️ Opciones',
+        content: 'Este modal está encima del PRIMARY (z: 1100)',
         buttons: [
-            { label: 'Cancelar', class: 'btn', action: null, close: true },
-            { label: 'Continuar', class: 'btn-modal-primary', action: () => {
-                console.log('Acción ejecutada');
-            }, close: true }
+            { label: 'Volver', class: 'btn', action: null, close: true }
         ]
     });
 }
 
 
 // ============================================================
-// 3. MODAL CON FORMULARIO Y VALIDACIÓN
+// 3. MODAL CONFIRMATION - SOBRE TODOS
 // ============================================================
-function exampleFormModal() {
-    const formElement = document.createElement('div');
-    formElement.innerHTML = `
-        <div class="input-group">
-            <label class="input-label" for="modal-input-name">Tu Nombre</label>
-            <input type="text" id="modal-input-name" class="input-field" 
-                   placeholder="Ingresa tu nombre">
-        </div>
-        <div class="input-group">
-            <label class="input-label" for="modal-input-email">Tu Email</label>
-            <input type="email" id="modal-input-email" class="input-field" 
-                   placeholder="tu@email.com">
-        </div>
-    `;
-
+function exampleConfirmationModal() {
     ModalManager_Instance.show({
-        type: 'secondary',
-        title: '📄 Completa tu perfil',
-        content: formElement,
+        type: 'primary',
+        title: '🎯 Principal',
+        content: 'Haz click en "Confirmar"',
         buttons: [
-            { label: 'Cancelar', class: 'btn', action: null, close: true },
-            { label: 'Guardar', class: 'btn-modal-primary', action: () => {
-                const name = document.querySelector('#modal-input-name').value;
-                const email = document.querySelector('#modal-input-email').value;
-                
-                if (!name || !email) {
-                    showNotification('Completa todos los campos', 'warning');
-                    return;
-                }
-                
-                console.log('Guardado:', { name, email });
-                showNotification('Datos guardados correctamente', 'success');
-            }, close: true }
+            { label: 'Confirmar', class: 'btn', action: showConfirmLayer, close: false },
+            { label: 'Cerrar', class: 'btn', action: null, close: true }
+        ]
+    });
+}
+
+function showConfirmLayer() {
+    ModalManager_Instance.show({
+        type: 'confirmation',
+        title: '⚠️ Confirmar',
+        content: '¿Estás seguro? Este modal está encima de todos (z: 1200)',
+        buttons: [
+            { label: 'No', class: 'btn', action: null, close: true },
+            { label: 'Sí', class: 'btn-modal-primary', action: null, close: true }
         ]
     });
 }
 
 
 // ============================================================
-// 4. MODAL DE MENSAJE (DESAPARECE AL HACER CLIC)
+// 4. LAS 3 CAPAS JUNTAS
 // ============================================================
-function exampleMessageModal() {
-    const message = document.createElement('div');
-    message.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <h2>🎉 ¡Felicitaciones!</h2>
-            <p>Tu acción se completó exitosamente</p>
-        </div>
-    `;
-
+function exampleAllThreeLayers() {
+    // CAPA 1: PRIMARY
     ModalManager_Instance.show({
-        type: 'message',
-        title: 'Exito',
-        content: message,
+        type: 'primary',
+        title: '🎯 Crear Partida',
+        content: 'Modal base - Haz click en "Opciones"',
         buttons: [
-            { label: 'Entendido', class: 'btn-modal-primary', action: null, close: true }
+            { label: 'Opciones', class: 'btn', action: openSecondaryLayer, close: false },
+            { label: 'Cerrar', class: 'btn', action: null, close: true }
+        ]
+    });
+}
+
+function openSecondaryLayer() {
+    // CAPA 2: SECONDARY
+    ModalManager_Instance.show({
+        type: 'secondary',
+        title: '⚙️ Opciones',
+        content: 'Modal intermedio - Haz click en "Confirmar"',
+        buttons: [
+            { label: 'Confirmar', class: 'btn', action: openConfirmationLayer, close: false },
+            { label: 'Volver', class: 'btn', action: null, close: true }
+        ]
+    });
+}
+
+function openConfirmationLayer() {
+    // CAPA 3: CONFIRMATION
+    ModalManager_Instance.show({
+        type: 'confirmation',
+        title: '⚠️ ¿Terminar Partida?',
+        content: 'Las 3 capas están abiertas. Cierra este para volver al anterior.',
+        buttons: [
+            { label: 'Ver Opciones', class: 'btn', action: openSecondaryLayer, close: false },
+            { label: 'No', class: 'btn', action: null, close: true },
+            { label: 'Sí', class: 'btn-modal-primary', action: null, close: true }
         ]
     });
 }
 
 
 // ============================================================
-// 5. MODAL CON CALLBACK AL CERRAR
+// 5. FLUJO CON CALLBACKS
 // ============================================================
-function exampleModalWithCallback() {
+function exampleWithCallbacks() {
     ModalManager_Instance.show({
-        type: 'secondary',
-        title: '🎯 Modal con Callback',
-        content: 'Este modal ejecutará una acción al cerrarse',
+        type: 'primary',
+        title: '🎯 Test Callbacks',
+        content: 'Este modal ejecutará callbacks al cerrar',
         buttons: [
             { label: 'Cerrar', class: 'btn', action: null, close: true }
         ],
         onDismiss: () => {
-            console.log('Modal cerrado - ejecutando callback');
-            showNotification('🎯 Modal cerrado', 'info');
+            console.log('🎯 PRIMARY modal cerrado');
+            showNotification('PRIMARY cerrado', 'info');
         }
     });
 }
 
 
 // ============================================================
-// 6. MODAL SIN BOTONEs (SÓLO CERRAR AL HACER CLIC EN OVERLAY)
+// 6. VERIFICAR ESTADO
 // ============================================================
-function exampleNoButtonsModal() {
-    const content = document.createElement('div');
-    content.innerHTML = `
-        <div style="text-align: center;">
-            <p>📄 Haz clic fuera del modal para cerrarlo</p>
-        </div>
-    `;
-
-    ModalManager_Instance.show({
-        type: 'secondary',
-        title: 'Modal sin Botones',
-        content: content,
-        buttons: []
-    });
-}
-
-
-// ============================================================
-// 7. MODAL CON ACCIÓN SIN CIERRE
-// ============================================================
-function exampleActionNoClose() {
-    ModalManager_Instance.show({
-        type: 'secondary',
-        title: '📋 Procesando...',
-        content: 'Esta acción no cierra el modal automáticamente',
-        buttons: [
-            { 
-                label: 'Procesar', 
-                class: 'btn-modal-primary', 
-                action: async () => {
-                    console.log('Procesando...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    console.log('Completado');
-                    ModalManager_Instance.close();
-                }, 
-                close: false
-            },
-            { label: 'Cancelar', class: 'btn', action: null, close: true }
-        ]
-    });
-}
-
-
-// ============================================================
-// 8. VERIFICAR ESTADO DEL MODAL
-// ============================================================
-function exampleCheckModalState() {
-    console.log('Está abierto:', ModalManager_Instance.isOpen());
-    console.log('Cantidad de modales:', ModalManager_Instance.getStackSize());
+function exampleCheckState() {
+    console.log('🎯 Está abierto:', ModalManager_Instance.isOpen());
+    console.log('🎯 Capas abiertas:', ModalManager_Instance.getStackSize());
+    console.log('🎯 (Máximo: 3 capas)');
     
     if (ModalManager_Instance.isOpen()) {
         const topModal = ModalManager_Instance.getTopModal();
-        console.log('Modal en top:', topModal);
+        console.log('🎯 Capa superior:', topModal.type);
     }
 }
 
 
 // ============================================================
-// 9. CERRAR MODAL PROGRAMATICAMENTE
+// 7. CERRAR PROGRAMATICAMENTE
 // ============================================================
 function exampleProgrammaticClose() {
     ModalManager_Instance.show({
-        type: 'secondary',
-        title: 'Cerrar Programaticamente',
+        type: 'primary',
+        title: '🎯 Auto-close',
         content: 'Este modal se cerrará en 3 segundos',
         buttons: []
     });
 
     setTimeout(() => {
         ModalManager_Instance.close();
-        showNotification('Modal cerrado programaticamente', 'info');
+        showNotification('🎯 Modal cerrado automáticamente', 'info');
     }, 3000);
 }
 
 
 // ============================================================
-// 10. CASO DE USO REAL: FLUJO CON STACK
-// ============================================================
-/*
-CSO: Usuario intenta salir de una partida activa
-
-Flujo esperado:
-1. Click en "Salir"
-2. Se abre Modal de Confirmación ("Quieres terminar?")
-3. Usuario hace click en "Ver Opciones"
-4. Se abre Modal de Opciones ENCIMA del anterior
-5. Usuario hace click en "Volver"
-6. Se cierra Modal de Opciones y vuelve al de Confirmación
-7. Usuario hace click en "Sí, terminar"
-8. Se cierra Modal de Confirmación y se ejecuta la acción
-*/
-
-function exampleRealWorldStack() {
-    // PASO 1: Modal de confirmación al intentar salir
-    const showExitConfirmation = () => {
-        ModalManager_Instance.show({
-            type: 'message',
-            title: '⚠️ Salir de la Partida',
-            content: 'La partida seguirá activa. ¿Quieres terminarla?',
-            buttons: [
-                { 
-                    label: 'Ver Opciones', 
-                    class: 'btn', 
-                    action: showOptionsModal, 
-                    close: false  // No cierra, abre otro modal
-                },
-                { label: 'No', class: 'btn', action: null, close: true },
-                { 
-                    label: 'Sí, Terminar', 
-                    class: 'btn-modal-danger', 
-                    action: () => {
-                        console.log('Terminando partida...');
-                        // Aquí va la lógica de salida
-                    }, 
-                    close: true 
-                }
-            ]
-        });
-    };
-
-    // PASO 2: Modal de opciones que se abre ENCIMA
-    const showOptionsModal = () => {
-        const options = document.createElement('div');
-        options.innerHTML = `
-            <div style="padding: 15px;">
-                <p><strong>🎮 Opciones Disponibles:</strong></p>
-                <ul>
-                    <li>🔊 Volumen</li>
-                    <li>🌟 Tema</li>
-                    <li>📄 Guardar Progreso</li>
-                </ul>
-            </div>
-        `;
-
-        ModalManager_Instance.show({
-            type: 'secondary',
-            title: '🎮 Opciones',
-            content: options,
-            buttons: [
-                { label: 'Volver', class: 'btn-modal-primary', action: null, close: true }
-            ]
-        });
-    };
-
-    // Iniciar el flujo
-    showExitConfirmation();
-}
-
-
-// ============================================================
-// 11. CERRAR TODOS LOS MODALES
+// 8. CERRAR TODAS LAS CAPAS
 // ============================================================
 function exampleCloseAll() {
-    console.log('Cerrando todos los modales...');
-    ModalManager_Instance.closeAll();
-    showNotification('Todos los modales cerrados', 'info');
+    // Abre 3 capas
+    ModalManager_Instance.show({
+        type: 'primary',
+        title: '🎯 Capa 1',
+        buttons: [{ label: 'Abrir Capa 2', class: 'btn', action: () => {
+            ModalManager_Instance.show({
+                type: 'secondary',
+                title: '⚙️ Capa 2',
+                buttons: [{ label: 'Abrir Capa 3', class: 'btn', action: () => {
+                    ModalManager_Instance.show({
+                        type: 'confirmation',
+                        title: '⚠️ Capa 3',
+                        buttons: [{ label: 'Cerrar Todo', class: 'btn', action: () => {
+                            ModalManager_Instance.closeAll();
+                        }, close: false }]
+                    });
+                }, close: false }]
+            });
+        }, close: false }]
+    });
 }
 
 
 // ============================================================
-// TIPOS Y ESTILOS DE BOTONES DISPONIBLES
+// 9. CASO DE USO REAL: TU FLUJO
+// ============================================================
+function exampleRealWorldFlow() {
+    const showCreateGameModal = () => {
+        ModalManager_Instance.show({
+            type: 'primary',
+            title: '🎮 Crear Partida',
+            content: '<div>Código: XXX<br>Nombre: Jugador</div>',
+            buttons: [
+                { label: 'Crear', class: 'btn-modal-primary', action: null, close: false },
+                { label: 'Opciones', class: 'btn', action: showOptionsModal, close: false },
+                { label: 'Cancelar', class: 'btn', action: null, close: true }
+            ]
+        });
+    };
+
+    const showOptionsModal = () => {
+        // CAPA 2: Se abre SOBRE PRIMARY
+        ModalManager_Instance.show({
+            type: 'secondary',
+            title: '⚙️ Opciones',
+            content: '<div>🔊 Volumen<br>🌟 Tema<br>📄 Guardar</div>',
+            buttons: [
+                { label: 'Atrás', class: 'btn', action: null, close: true }
+            ]
+        });
+    };
+
+    const showExitConfirmation = () => {
+        // CAPA 3: Se abre SOBRE TODO
+        ModalManager_Instance.show({
+            type: 'confirmation',
+            title: '⚠️ Salir',
+            content: 'La partida seguirá activa. ¿Quieres terminarla?',
+            buttons: [
+                { label: 'Ver Opciones', class: 'btn', action: showOptionsModal, close: false },
+                { label: 'No', class: 'btn', action: null, close: true },
+                { label: 'Sí, Terminar', class: 'btn-modal-danger', action: () => {
+                    console.log('🎮 Partida terminada');
+                }, close: true }
+            ]
+        });
+    };
+
+    // Iniciar flujo
+    showCreateGameModal();
+    console.log('🎮 Flujo iniciado - Haz click en "Opciones" o "Cancelar"');
+}
+
+
+// ============================================================
+// TIPOS DE BOTONES DISPONIBLES
 // ============================================================
 /*
 Clases de botón disponibles:
@@ -331,23 +298,61 @@ Propiedades del botón:
 - label: string - Texto del botón
 - class: string - Clase CSS
 - action: function|null - Función a ejecutar (null = no hace nada)
-- close: boolean - Si es true, cierra el modal después de la acción
-
-NOTA: Si action abre otro modal sin cerrar (close: false),
-se creará un stack de modales encimados.
+- close: boolean - Si es true, cierra la capa después de la acción
 */
 
 
 // ============================================================
-// MÉTODOS DISPONIBLES DEL ModalManager
+// API DISPONIBLE
 // ============================================================
 /*
-ModalManager_Instance.show(config)     - Abre un nuevo modal
-ModalManager_Instance.close()           - Cierra el modal superior
-ModalManager_Instance.closeAll()        - Cierra todos los modales
-ModalManager_Instance.isOpen()          - Devuelve true si hay modales abiertos
-ModalManager_Instance.getStackSize()    - Devuelve cantidad de modales abiertos
-ModalManager_Instance.getTopModal()     - Devuelve el modal superior (o null)
+ÉTODOS DEL ModalManager:
+
+ModalManager_Instance.show(config)
+  Abre un nuevo modal en una de las 3 capas
+  type: 'primary' | 'secondary' | 'confirmation'
+  Si ya existe un modal de ese tipo, se reemplaza
+
+ModalManager_Instance.close()
+  Cierra la capa superior (TOP)
+  Si hay 3 capas, cierra la CONFIRMATION
+  Si hay 2 capas, cierra la SECONDARY
+  Si hay 1 capa, cierra la PRIMARY
+
+ModalManager_Instance.closeAll()
+  Cierra TODAS las capas de una vez
+
+ModalManager_Instance.isOpen()
+  Devuelve true si hay al menos una capa abierta
+  Devuelve false si no hay ninguna
+
+ModalManager_Instance.getStackSize()
+  Devuelve la cantidad de capas abiertas
+  Posibles valores: 0, 1, 2, 3
+
+ModalManager_Instance.getTopModal()
+  Devuelve la capa superior (o null si no hay ninguna)
+  Retorna el objeto {id, type, title, content, ...}
 */
 
-console.log('%c📄 examples-modal-usage.js cargado - Stack de modales totalmente funcional', 'color: #FFAA00; font-weight: bold; font-size: 12px');
+
+// ============================================================
+// LÓGICA DE CAPAS
+// ============================================================
+/*
+Cuando abres una capa que ya existe:
+
+Ejemplo:
+1. Abres PRIMARY (stack size: 1)
+2. Abres SECONDARY (stack size: 2)
+3. Abres PRIMARY nuevamente
+   -> Reemplaza el PRIMARY anterior (stack size: 2)
+   -> Ahora visible: PRIMARY (nuevo)
+   -> Detrás: SECONDARY
+   -> CONFIRMATION no existe
+
+Esto permite actualizar modales sin cerrar los que están debajo.
+*/
+
+
+console.log('%c📄 examples-modal-usage.js cargado - 3 capas jerárquicas (PRIMARY, SECONDARY, CONFIRMATION)', 'color: #FFAA00; font-weight: bold; font-size: 12px');
