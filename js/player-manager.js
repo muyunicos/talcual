@@ -2,8 +2,10 @@
  * Player Manager - Gestión de jugador en partida
  * Maneja: unión, palabras, timer, resultados
  * 
- * 🔧 REFACTORIZADO FASE 5:
- * - Usa wordEngine desacoplado (no wordEngineManager)
+ * 🔧 REFACTORIZADO FASE 2:
+ * - Elimina método showFatalError() duplicado
+ * - Usa UI.showFatalError() centralizado de shared-utils.js
+ * - Usa wordEngine desacoplado
  * - Manejo de errores fuerte en config/dict
  * - Rechaza Promises si hay error (no fallbacks)
  */
@@ -65,28 +67,9 @@ class PlayerManager {
             debug('✅ PlayerManager inicializado');
         } catch (error) {
             debug('❌ Error inicializando PlayerManager: ' + error.message, null, 'error');
-            this.showFatalError('Error de inicialización. Por favor recarga la página.');
+            UI.showFatalError('Error de inicialización. Por favor recarga la página.');
             throw error;
         }
-    }
-
-    showFatalError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'fatal-error';
-        errorDiv.textContent = message;
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #EF4444;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            z-index: 9999;
-            text-align: center;
-        `;
-        document.body.appendChild(errorDiv);
     }
 
     initializeModals() {
@@ -546,7 +529,7 @@ class PlayerManager {
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
                 this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = 'ὄd LISTO';
+                this.elements.btnSubmit.textContent = 'ἷ4d LISTO';
             }
 
             if (this.elements.waitingMessage) {
@@ -830,7 +813,7 @@ class PlayerManager {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
                 }
-                debug('⚠️ No envié palabras esta ronda', 'warning');
+                debug('⚠️ No envíné palabras esta ronda', 'warning');
             } else {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
@@ -913,7 +896,7 @@ class PlayerManager {
     }
 
     destroy() {
-        debug('🗸 Destroying PlayerManager...', 'info');
+        debug('🗗️ Destroying PlayerManager...', 'info');
         
         this.stopTimer();
         
@@ -1029,4 +1012,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - FASE 5: Strong error handling, wordEngine decoupling', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - FASE 2: UI.showFatalError centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
