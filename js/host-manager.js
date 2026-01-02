@@ -14,6 +14,7 @@
  * 🔧 FIX: Ensure dictionaryService.initialize() executed before operations
  * 🔧 FASE 3-CORE: Espera a que dictionaryService Y configService estén listos
  * 🔧 FASE 3-CORE: WordEngine ya está configurado por DictionaryService.initialize()
+ * 🔧 FASE 3-OPT: Optimized manager to consume GameTimer centralized utility
  */
 
 class HostManager {
@@ -414,9 +415,7 @@ class HostManager {
         }
 
         this.stopTimer();
-        if (this.elements.headerTimer) {
-            updateTimerDisplay(null, this.elements.headerTimer, '⏳');
-        }
+        GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
     }
 
     showPlayingState(state) {
@@ -610,8 +609,8 @@ class HostManager {
             return;
         }
 
-        const remaining = getRemainingTime(state.round_started_at, state.round_duration);
-        updateTimerDisplay(remaining, this.elements.headerTimer, '⏳');
+        const remaining = GameTimer.getRemaining(state.round_started_at, state.round_duration);
+        GameTimer.updateDisplay(remaining, this.elements.headerTimer, '⏳');
     }
 
     stopTimer() {
@@ -686,4 +685,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 2: UI.showFatalError centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 3-OPT: Timer utility centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
