@@ -10,6 +10,7 @@
  * - SessionManager para persistencia
  * 🎯 FEATURE: Restaurada lógica de selector de categoría
  * 🔧 FIX: Moved determineUIState to after dependencies load
+ * 🔧 FIX: Remove fallbacks - fail-fast dev mode for v1.0
  */
 
 class HostManager {
@@ -30,14 +31,11 @@ class HostManager {
 
         this.elements = {};
 
-        // 🔧 FASE 5: ModalHandler para cada modal
         this.startGameModal = null;
         this.categoryModal = null;
 
-        // 🔧 FASE 5: WordEngine desacoplado
         this.wordEngineReady = false;
 
-        // 🎯 FEATURE: Cacer categorías para selector
         this.categories = [];
         this.categoryWordsMap = {};
 
@@ -64,12 +62,10 @@ class HostManager {
 
     async loadConfigAndInit() {
         try {
-            // 🔧 FASE 5: Manejo de error FUERTE
             debug('⏳ Cargando configuración...', 'info');
             await configService.load();
             debug('✅ Config cargada', 'info');
 
-            // Espera a que el diccionario esté listo
             debug('⏳ Inicializando diccionario...', 'info');
             await this.initWordEngine();
             debug('✅ WordEngine listo', 'info');
@@ -78,13 +74,10 @@ class HostManager {
             this.initializeModals();
             this.attachEventListeners();
 
-            // 🎯 FEATURE: Población del selector de categoría
             await this.populateCategorySelector();
 
-            // 🔧 FIX: Determinar UI state DESPUÉS de que todo esté listo
             this.determineUIState();
 
-            // 🔧 FASE 5: Recuperar sesión con SessionManager
             const sessionData = hostSession.recover();
             if (sessionData) {
                 debug('🔄 Recuperando sesión de host', 'info');
@@ -98,8 +91,8 @@ class HostManager {
 
             debug('✅ HostManager inicializado completamente');
         } catch (error) {
-            debug('❌ Error en loadConfigAndInit: ' + error.message, null, 'error');
-            this.showFatalError('Error de inicialización. Por favor recarga la página.');
+            debug('❌ Error fatal en loadConfigAndInit: ' + error.message, null, 'error');
+            this.showFatalError(`Error de inicialización: ${error.message}`);
             throw error;
         }
     }
@@ -120,23 +113,18 @@ class HostManager {
             z-index: 9999;
             text-align: center;
             font-weight: bold;
+            max-width: 80%;
+            word-wrap: break-word;
         `;
         document.body.appendChild(errorDiv);
     }
 
-    // 🔧 FASE 5: WordEngine desacoplado
     async initWordEngine() {
-        try {
-            await dictionaryService.initialize();
-            this.wordEngineReady = true;
-            debug('📚 Word engine inicializado en host', null, 'success');
-        } catch (error) {
-            debug('❌ Error inicializando word engine: ' + error.message, null, 'error');
-            // No abortamos; el scoring fallback sigue funcionando
-        }
+        await dictionaryService.initialize();
+        this.wordEngineReady = true;
+        debug('📚 Word engine inicializado en host', null, 'success');
     }
 
-    // 🎯 FEATURE: Poblar selector de categoría
     async populateCategorySelector() {
         try {
             const categorySelect = safeGetElement('category-select');
@@ -162,11 +150,11 @@ class HostManager {
 
             debug('📚 Selector de categoría poblado', { total: this.categories.length }, 'success');
         } catch (error) {
-            debug('⚠️ Error poblando selector de categoría', error, 'warn');
+            debug('⚠️  Error poblando selector de categoría: ' + error.message, null, 'warn');
+            throw error;
         }
     }
 
-    // 🎯 FEATURE: Actualizar código con palabra aleatoria de categoría
     async updateCodeWithCategoryWord() {
         try {
             const categorySelect = safeGetElement('category-select');
@@ -181,11 +169,10 @@ class HostManager {
                 inputCode.value = randomWord.slice(0, 5).toUpperCase();
             }
         } catch (error) {
-            debug('⚠️ Error actualizando código con palabra', error, 'warn');
+            debug('⚠️  Error actualizando código con palabra: ' + error.message, null, 'warn');
         }
     }
 
-    // 🔧 FASE 5: Delegar a WordEngine desacoplado
     getCanonicalForCompare(word) {
         return wordEngine.getCanonical(word);
     }
@@ -194,9 +181,7 @@ class HostManager {
         return wordEngine.getMatchType(word1, word2);
     }
 
-    // 🔧 FASE 5: Inicializar ModalHandlers
     initializeModals() {
-        // Modal de inicio de juego
         this.startGameModal = new ModalController('modal-start-game', {
             closeOnBackdrop: false,
             closeOnEsc: false,
@@ -208,7 +193,6 @@ class HostManager {
             }
         });
 
-        // Modal de selección de categoría
         this.categoryModal = new ModalController('modal-category', {
             closeOnBackdrop: true,
             closeOnEsc: true
@@ -217,13 +201,11 @@ class HostManager {
 
     cacheElements() {
         this.elements = {
-            // Pantalla principal
             startScreen: safeGetElement('start-screen'),
             categorySelect: safeGetElement('category-select'),
             inputGameCode: safeGetElement('input-game-code'),
             btnCreateGame: safeGetElement('btn-create-game'),
 
-            // Pantalla de juego
             gameScreen: safeGetElement('game-screen'),
             headerCode: safeGetElement('header-code'),
             headerRound: safeGetElement('header-round'),
@@ -235,12 +217,10 @@ class HostManager {
             countdownNumber: safeGetElement('countdown-number'),
             statusMessage: safeGetElement('status-message'),
 
-            // Botones de control
             btnStartRound: safeGetElement('btn-start-round'),
             btnSelectCategory: safeGetElement('btn-select-category'),
             btnEndGame: safeGetElement('btn-end-game'),
 
-            // Modal inputs
             categoryInput: safeGetElement('category-input'),
             btnConfirmCategory: safeGetElement('btn-confirm-category')
         };
@@ -275,12 +255,11 @@ class HostManager {
     }
 
     async createGame() {
-        // 🎯 FEATURE: Obtener categoría del selector
         const selectedCategory = this.elements.categorySelect?.value || 'general';
         const code = (this.elements.inputGameCode?.value || '').trim().toUpperCase();
 
         if (!isValidGameCode(code)) {
-            showNotification('⚠️ Código inválido', 'warning');
+            showNotification('⚠️  Código inválido', 'warning');
             return;
         }
 
@@ -301,7 +280,6 @@ class HostManager {
             if (result.success) {
                 debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory})`);
 
-                // 🔧 FASE 5: Usar SessionManager
                 hostSession.saveHostSession(code, selectedCategory);
 
                 this.loadGameScreen(result.state || {});
@@ -323,12 +301,10 @@ class HostManager {
     }
 
     showStartScreen() {
-        // 🔧 FASE 5: Usar ModalController
         this.startGameModal.open();
     }
 
     loadGameScreen(state) {
-        // 🔧 FASE 5: Usar ModalController para cerrar
         this.startGameModal.close();
         safeShowElement(this.elements.gameScreen);
 
@@ -355,7 +331,7 @@ class HostManager {
                 return;
             }
 
-            debug('⚠️ No se pudo recuperar sesión');
+            debug('⚠️  No se pudo recuperar sesión');
             hostSession.clear();
             this.showStartScreen();
         } catch (error) {
@@ -367,7 +343,7 @@ class HostManager {
 
     handleStateUpdate(state) {
         this.gameState = state;
-        debug('📊 Estado actualizado:', state.status);
+        debug('📈 Estado actualizado:', state.status);
 
         if (state.server_now && state.round_starts_at && !timeSync.isCalibrated) {
             timeSync.calibrateWithServerTime(
@@ -378,14 +354,12 @@ class HostManager {
             );
         }
 
-        // Actualizar info de ronda
         if (this.elements.headerRound) {
             const round = state.round || 0;
             const total = state.total_rounds || 3;
             this.elements.headerRound.textContent = `Ronda ${round}/${total}`;
         }
 
-        // Actualizar lista de jugadores
         this.updatePlayersList(state);
 
         switch (state.status) {
@@ -537,7 +511,6 @@ class HostManager {
                 debug('✅ Ronda iniciada');
                 const state = result.state;
 
-                // Esperar el countdown
                 if (state.round_starts_at) {
                     const nowServer = timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
                     const countdownDuration = state.countdown_duration || 4000;
@@ -596,7 +569,6 @@ class HostManager {
     }
 
     showCategoryModal() {
-        // 🔧 FASE 5: Usar ModalController
         this.categoryModal.open();
     }
 
@@ -617,7 +589,6 @@ class HostManager {
                 debug(`✅ Categoría establecida: ${category}`);
                 this.currentCategory = category;
 
-                // 🔧 FASE 5: Usar ModalController para cerrar
                 this.categoryModal.close();
                 showNotification(`📂 Categoría: ${category}`, 'success');
             } else {
@@ -671,7 +642,6 @@ class HostManager {
             await this.client.sendAction('end_game', {});
             debug('✅ Juego terminado');
 
-            // 🔧 FASE 5: Usar SessionManager para limpiar
             hostSession.clear();
             location.reload();
         } catch (error) {
@@ -689,7 +659,6 @@ class HostManager {
             this.client = null;
         }
 
-        // 🔧 FASE 5: Destruir ModalControllers
         if (this.startGameModal) {
             this.startGameModal.destroy();
         }
@@ -711,7 +680,6 @@ class HostManager {
         if (this.client) {
             this.client.disconnect();
         }
-        // 🔧 FASE 5: Usar SessionManager
         hostSession.clear();
         location.reload();
     }
@@ -725,4 +693,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + fixed dependency loading', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + fail-fast dev mode', 'color: #FF00FF; font-weight: bold; font-size: 12px');
