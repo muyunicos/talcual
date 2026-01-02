@@ -14,6 +14,7 @@
  * 🔧 FIX: Correct loading order - hostSession must be before host-manager.js usage
  * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
  * 🔧 FIX: ConfigService store max_code_length + filter words by length
+ * 🔧 FIX: Split dictionary words by pipe delimiter to extract word variants
  */
 
 // ============================================================================
@@ -332,8 +333,16 @@ class DictionaryService {
                 }
 
                 if (allWords.length > 0) {
-                    // Validar que todas sean strings (y no objetos)
-                    const validWords = allWords.filter(w => typeof w === 'string' && w.length > 0);
+                    // FIX: Split por pipe (|) y validar que todas sean strings
+                    const validWords = allWords
+                        .flatMap(w => {
+                            if (typeof w === 'string' && w.length > 0) {
+                                return w.split('|').map(part => part.trim()).filter(p => p.length > 0);
+                            }
+                            return [];
+                        })
+                        .filter(w => typeof w === 'string' && w.length > 0);
+                    
                     if (validWords.length > 0) {
                         processedData[category] = validWords;
                     }
