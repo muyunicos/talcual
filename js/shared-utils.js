@@ -13,6 +13,7 @@
  * 🔧 FIX: Remove duplicate ModalController (defined in modal-controller.js)
  * 🔧 FIX: Correct loading order - hostSession must be before host-manager.js usage
  * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
+ * 🔧 FIX: Dictionary normalization - handle hint object structure correctly
  */
 
 // ============================================================================
@@ -302,24 +303,42 @@ class DictionaryService {
 
             let processedData = {};
             
-            const firstKey = Object.keys(data)[0];
-            if (firstKey && typeof data[firstKey] === 'object' && !Array.isArray(data[firstKey])) {
-                Object.entries(data).forEach(([category, hintsObj]) => {
-                    if (typeof hintsObj === 'object' && !Array.isArray(hintsObj)) {
-                        const allWords = [];
-                        Object.values(hintsObj).forEach(words => {
-                            if (Array.isArray(words)) {
-                                allWords.push(...words);
-                            }
-                        });
-                        processedData[category] = allWords;
-                    } else if (Array.isArray(hintsObj)) {
-                        processedData[category] = hintsObj;
+            Object.entries(data).forEach(([category, value]) => {
+                const allWords = [];
+
+                if (Array.isArray(value)) {
+                    // Caso: Array de objetos con hints
+                    // [{hint: [words]}, {hint: [words]}, ...]
+                    value.forEach(hintObj => {
+                        if (typeof hintObj === 'object' && !Array.isArray(hintObj)) {
+                            Object.values(hintObj).forEach(wordsArray => {
+                                if (Array.isArray(wordsArray)) {
+                                    allWords.push(...wordsArray);
+                                }
+                            });
+                        }
+                    });
+                } else if (typeof value === 'object' && !Array.isArray(value)) {
+                    // Caso: Objeto directo con hints
+                    // {hint1: [words], hint2: [words]}
+                    Object.values(value).forEach(wordsArray => {
+                        if (Array.isArray(wordsArray)) {
+                            allWords.push(...wordsArray);
+                        }
+                    });
+                } else if (Array.isArray(value)) {
+                    // Caso: Array directo de palabras
+                    allWords.push(...value);
+                }
+
+                if (allWords.length > 0) {
+                    // Validar que todas sean strings (y no objetos)
+                    const validWords = allWords.filter(w => typeof w === 'string' && w.length > 0);
+                    if (validWords.length > 0) {
+                        processedData[category] = validWords;
                     }
-                });
-            } else {
-                processedData = data;
-            }
+                }
+            });
 
             const validCategories = Object.entries(processedData).filter(
                 ([k, v]) => Array.isArray(v) && v.length > 0
@@ -379,13 +398,28 @@ class DictionaryService {
 
         if (!Array.isArray(words) || words.length === 0) return null;
 
-        return words[Math.floor(Math.random() * words.length)];
+        const randomWord = words[Math.floor(Math.random() * words.length)];
+        
+        if (typeof randomWord !== 'string') {
+            debug(`⚠️  Tipo inválido en getRandomWord de ${randomCat}:`, typeof randomWord, 'warn');
+            return null;
+        }
+
+        return randomWord;
     }
 
     getRandomWordByCategory(category) {
         const words = this.getWordsForCategory(category);
         if (words.length === 0) return null;
-        return words[Math.floor(Math.random() * words.length)];
+        
+        const randomWord = words[Math.floor(Math.random() * words.length)];
+        
+        if (typeof randomWord !== 'string') {
+            debug(`⚠️  Tipo inválido en getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
+            return null;
+        }
+
+        return randomWord;
     }
 }
 
