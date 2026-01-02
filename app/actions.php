@@ -78,19 +78,6 @@ function checkRateLimit() {
     }
 }
 
-function loadRawDictionaryJson() {
-    $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
-
-    if (!file_exists($file)) {
-        return [];
-    }
-
-    $raw = @file_get_contents($file);
-    $data = json_decode($raw ?: '', true);
-
-    return is_array($data) ? $data : [];
-}
-
 function getPromptPoolFromDictionary($preferredCategory = null) {
     $data = loadRawDictionaryJson();
 
@@ -396,7 +383,7 @@ function handleStartRound($input) {
         logMessage('[ERROR] start_round: saveGameState falló para ' . $gameId, 'ERROR');
         return [
             'success' => false,
-            'message' => 'Error guardando estado del juego. Intenta nuevamente.'
+            'message' => 'Error guardando estado del juego. Inténtalo nuevamente.'
         ];
     }
 }
