@@ -83,7 +83,31 @@
                 🎮 Crear Juego
             </button>
 
+            <button class="btn-secondary" id="btn-open-settings-create">⚡ Opciones</button>
+
             <div id="status-message" class="status-message-modal"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay boot-el" id="modal-settings" style="display: none; z-index: 2000;">
+        <div class="modal-content">
+            <div class="modal-title">⚡ Configuración de Juego</div>
+
+            <div class="input-group">
+                <label class="input-label" for="input-rounds">Rondas</label>
+                <input type="number" id="input-rounds" class="input-field"
+                       min="1" max="10" value="3" aria-label="Número de rondas">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label" for="input-duration">Duración por Ronda (seg)</label>
+                <input type="number" id="input-duration" class="input-field"
+                       min="10" max="300" value="60" aria-label="Duración de cada ronda en segundos">
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn" id="btn-close-settings">Cerrar</button>
+            </div>
         </div>
     </div>
 
