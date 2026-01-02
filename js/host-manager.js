@@ -11,6 +11,7 @@
  * 🎯 FEATURE: Restaurada lógica de selector de categoría
  * 🔧 FIX: Moved determineUIState to after dependencies load
  * 🔧 FIX: Remove fallbacks - fail-fast dev mode for v1.0
+ * 🔧 FIX: Ensure dictionaryService.initialize() executed before operations
  */
 
 class HostManager {
@@ -62,13 +63,16 @@ class HostManager {
 
     async loadConfigAndInit() {
         try {
-            debug('⏳ Cargando configuración...', 'info');
+            debug('⏳ Cargando configuración...', null, 'info');
             await configService.load();
-            debug('✅ Config cargada', 'info');
+            debug('✅ Config cargada', null, 'info');
 
-            debug('⏳ Inicializando diccionario...', 'info');
-            await this.initWordEngine();
-            debug('✅ WordEngine listo', 'info');
+            debug('⏳ Inicializando diccionario...', null, 'info');
+            await dictionaryService.initialize();
+            debug('✅ Diccionario inicializado', null, 'info');
+
+            this.wordEngineReady = true;
+            debug('✅ WordEngine listo', null, 'info');
 
             this.cacheElements();
             this.initializeModals();
@@ -80,16 +84,16 @@ class HostManager {
 
             const sessionData = hostSession.recover();
             if (sessionData) {
-                debug('🔄 Recuperando sesión de host', 'info');
+                debug('🔄 Recuperando sesión de host', null, 'info');
                 this.resumeGame(sessionData.gameCode);
             } else {
-                debug('💡 Mostrando pantalla inicial', 'info');
+                debug('💡 Mostrando pantalla inicial', null, 'info');
                 this.showStartScreen();
             }
 
             hostSession.registerManager(this);
 
-            debug('✅ HostManager inicializado completamente');
+            debug('✅ HostManager inicializado completamente', null, 'success');
         } catch (error) {
             debug('❌ Error fatal en loadConfigAndInit: ' + error.message, null, 'error');
             this.showFatalError(`Error de inicialización: ${error.message}`);
@@ -117,12 +121,6 @@ class HostManager {
             word-wrap: break-word;
         `;
         document.body.appendChild(errorDiv);
-    }
-
-    async initWordEngine() {
-        await dictionaryService.initialize();
-        this.wordEngineReady = true;
-        debug('📚 Word engine inicializado en host', null, 'success');
     }
 
     async populateCategorySelector() {
@@ -163,10 +161,11 @@ class HostManager {
             if (!categorySelect || !inputCode) return;
 
             const selectedCategory = categorySelect.value;
-            const randomWord = dictionaryService.getRandomWordByCategory(selectedCategory);
+            const maxLength = configService.get('max_code_length', 5);
+            const randomWord = dictionaryService.getRandomWordByCategory(selectedCategory, maxLength);
 
             if (randomWord) {
-                inputCode.value = randomWord.slice(0, 5).toUpperCase();
+                inputCode.value = randomWord.slice(0, maxLength).toUpperCase();
             }
         } catch (error) {
             debug('⚠️  Error actualizando código con palabra: ' + error.message, null, 'warn');
@@ -278,7 +277,7 @@ class HostManager {
             });
 
             if (result.success) {
-                debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory})`);
+                debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory})`, null, 'success');
 
                 hostSession.saveHostSession(code, selectedCategory);
 
@@ -326,12 +325,12 @@ class HostManager {
             const result = await this.client.sendAction('get_state');
 
             if (result.success && result.state) {
-                debug('✅ Sesión recuperada');
+                debug('✅ Sesión recuperada', null, 'success');
                 this.loadGameScreen(result.state);
                 return;
             }
 
-            debug('⚠️  No se pudo recuperar sesión');
+            debug('⚠️  No se pudo recuperar sesión', null, 'warn');
             hostSession.clear();
             this.showStartScreen();
         } catch (error) {
@@ -343,7 +342,7 @@ class HostManager {
 
     handleStateUpdate(state) {
         this.gameState = state;
-        debug('📈 Estado actualizado:', state.status);
+        debug('📈 Estado actualizado:', null, 'debug');
 
         if (state.server_now && state.round_starts_at && !timeSync.isCalibrated) {
             timeSync.calibrateWithServerTime(
@@ -456,7 +455,7 @@ class HostManager {
     }
 
     async showCountdown(state) {
-        debug('⏱️ Iniciando countdown para host', 'debug');
+        debug('⏱️ Iniciando countdown para host', null, 'debug');
         const countdownDuration = state.countdown_duration || 4000;
 
         safeShowElement(this.elements.countdownOverlay);
@@ -497,7 +496,7 @@ class HostManager {
     async startRound() {
         if (!this.client) return;
 
-        debug('🎮 Iniciando ronda...', 'info');
+        debug('🎮 Iniciando ronda...', null, 'info');
 
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.disabled = true;
@@ -508,7 +507,7 @@ class HostManager {
             const result = await this.client.sendAction('start_round', {});
 
             if (result.success && result.state) {
-                debug('✅ Ronda iniciada');
+                debug('✅ Ronda iniciada', null, 'success');
                 const state = result.state;
 
                 if (state.round_starts_at) {
@@ -586,7 +585,7 @@ class HostManager {
             const result = await this.client.sendAction('set_category', { category });
 
             if (result.success) {
-                debug(`✅ Categoría establecida: ${category}`);
+                debug(`✅ Categoría establecida: ${category}`, null, 'success');
                 this.currentCategory = category;
 
                 this.categoryModal.close();
@@ -640,7 +639,7 @@ class HostManager {
 
         try {
             await this.client.sendAction('end_game', {});
-            debug('✅ Juego terminado');
+            debug('✅ Juego terminado', null, 'success');
 
             hostSession.clear();
             location.reload();
@@ -650,7 +649,7 @@ class HostManager {
     }
 
     destroy() {
-        debug('🧹 Destroying HostManager...', 'info');
+        debug('🧹 Destroying HostManager...', null, 'info');
 
         this.stopTimer();
 
@@ -693,4 +692,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + fail-fast dev mode', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 5-FEATURE: Category selector integration + fail-fast dev mode + Dictionary initialization guarantee', 'color: #FF00FF; font-weight: bold; font-size: 12px');
