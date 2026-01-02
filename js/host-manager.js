@@ -15,6 +15,8 @@
  * 🔧 FASE 3-CORE: Espera a que dictionaryService Y configService estén listos
  * 🔧 FASE 3-CORE: WordEngine ya está configurado por DictionaryService.initialize()
  * 🔧 FASE 3-OPT: Optimized manager to consume GameTimer centralized utility
+ * 🔧 PHASE 1: Removed ghost 'start-screen' element from cacheElements
+ * 🔧 PHASE 1: Fixed round display - removed duplicate "Ronda" label
  */
 
 class HostManager {
@@ -70,7 +72,7 @@ class HostManager {
             
             const [configResult, dictResult] = await Promise.all([
                 configService.load(),
-                dictionaryService.initialize()
+                dictionaryService.load()
             ]);
 
             debug('✅ ConfigService listo', null, 'success');
@@ -195,7 +197,6 @@ class HostManager {
 
     cacheElements() {
         this.elements = {
-            startScreen: safeGetElement('start-screen'),
             categorySelect: safeGetElement('category-select'),
             inputGameCode: safeGetElement('input-game-code'),
             btnCreateGame: safeGetElement('btn-create-game'),
@@ -351,7 +352,7 @@ class HostManager {
         if (this.elements.headerRound) {
             const round = state.round || 0;
             const total = state.total_rounds || 3;
-            this.elements.headerRound.textContent = `Ronda ${round}/${total}`;
+            this.elements.headerRound.textContent = `${round}/${total}`;
         }
 
         this.updatePlayersList(state);
@@ -685,4 +686,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 3-OPT: Timer utility centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - PHASE 1: Removed ghost element + Fixed round display', 'color: #FF00FF; font-weight: bold; font-size: 12px');
