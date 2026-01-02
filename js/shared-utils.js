@@ -2,9 +2,10 @@
  * @file shared-utils.js
  * @description Centralización de servicios y utilidades compartidas
  * 
- * 🔧 PHASE 2 (REVISED):
+ * 🔧 PHASE 2 (CONSOLIDATED):
+ * - NEW: UI namespace with centralized showFatalError()
  * - REMOVED: WordEquivalenceEngine stub (fail-fast if word-comparison.js missing)
- * - NEW: GameTimer utility centralized
+ * - GameTimer utility centralized
  * - DictionaryService injects data via processDictionary()
  * - Pipe delimiters handled by WordEngine
  */
@@ -35,7 +36,36 @@ function debug(message, data = null, type = 'log') {
 }
 
 // ============================================================================
-// GAME TIMER UTILITY - CENTRALIZED (NEW)
+// UI NAMESPACE - CENTRALIZED ERROR DISPLAY
+// ============================================================================
+
+const UI = {
+    showFatalError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'fatal-error';
+        errorDiv.textContent = message;
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #EF4444;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            text-align: center;
+            font-weight: bold;
+            max-width: 80%;
+            word-wrap: break-word;
+        `;
+        document.body.appendChild(errorDiv);
+        console.error('❌ FATAL ERROR:', message);
+    }
+};
+
+// ============================================================================
+// GAME TIMER UTILITY - CENTRALIZED
 // ============================================================================
 
 const GameTimer = {
@@ -248,7 +278,7 @@ const hostSession = new SessionManager('host');
 const playerSession = new SessionManager('player');
 
 // ============================================================================
-// WORD EQUIVALENCE ENGINE - ASSUMED TO BE LOADED (FAIL-FAST)
+// WORD EQUIVALENCE ENGINE - FAIL-FAST (NO STUB)
 // ============================================================================
 
 let wordEngine = null;
@@ -567,4 +597,4 @@ function showNotification(message, type = 'info') {
     }, 2000);
 }
 
-debug('✅ shared-utils.js cargado exitosamente - servicios centralizados listos', null, 'success');
+debug('✅ shared-utils.js cargado exitosamente - UI namespace + servicios centralizados listos', null, 'success');
