@@ -3,9 +3,9 @@
  * Maneja: timer, categoría, ranking, panel tabs
  * (Lógica del menú hamburguesa ahora en menu-opciones.js)
  * 
- * 🔧 REFACTORIZADO FASE 5:
- * - Manejo de errores FUERTE (rechaza Promises, no fallbacks)
- * - Usa wordEngine desacoplado (no wordEngineManager)
+ * 🔧 REFACTORIZADO FASE 2:
+ * - Elimina método showFatalError() duplicado
+ * - Usa UI.showFatalError() centralizado de shared-utils.js
  * - ModalHandler centralizado para modales
  * - SessionManager para persistencia
  * 🎯 FEATURE: Restaurada lógica de selector de categoría
@@ -112,31 +112,9 @@ class HostManager {
             debug('✅ HostManager inicializado completamente', null, 'success');
         } catch (error) {
             debug('❌ Error fatal en loadConfigAndInit: ' + error.message, null, 'error');
-            this.showFatalError(`Error de inicialización: ${error.message}`);
+            UI.showFatalError(`Error de inicialización: ${error.message}`);
             throw error;
         }
-    }
-
-    showFatalError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'fatal-error';
-        errorDiv.textContent = message;
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #EF4444;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            z-index: 9999;
-            text-align: center;
-            font-weight: bold;
-            max-width: 80%;
-            word-wrap: break-word;
-        `;
-        document.body.appendChild(errorDiv);
     }
 
     async populateCategorySelector() {
@@ -708,4 +686,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - FASE 3-CORE: Espera Promise.all(configService, dictionaryService) + WordEngine sync', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - FASE 2: UI.showFatalError centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
