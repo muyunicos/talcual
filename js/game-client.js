@@ -422,16 +422,6 @@ class GameClient {
   }
 }
 
-function getRemainingTime(startTimestamp, duration) {
-  if (typeof timeSync !== 'undefined' && timeSync && timeSync.isCalibrated) {
-    return timeSync.getRemainingTime(startTimestamp, duration);
-  }
-  
-  const now = Date.now();
-  const elapsed = now - startTimestamp;
-  return Math.max(0, duration - elapsed);
-}
-
 function showNotification(message, type = 'info') {
   console.log(`[${type.toUpperCase()}] ${message}`);
 }
