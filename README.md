@@ -1,79 +1,98 @@
 # 🎯 TalCual Party
 
-Juego web multiplayer tipo 100 Argentinos Dicen donde los jugadores deben pensar palabras que coincidan con las de los demás para ganar puntos.
+**TalCual Party** es un juego web multijugador en tiempo real inspirado en mecánicas de coincidencia mental (tipo *100 Argentinos Dicen*). El objetivo es sincronizar tu mente con la de los demás: debes escribir palabras que coincidan con las de los otros jugadores para sumar puntos.
 
-## 📋 Características
+> **Estado:** En desarrollo (Versión 1.0)
 
-- Juego multijugador en tiempo real (1+ jugadores)
-- Sistema de salas con códigos únicos generados desde el diccionario principal `app/diccionario.json` usando palabras de la categoria inicial
-- Actualizaciones en tiempo real usando Server-Sent Events (SSE)
-- Interfaz optimizada para Smart TV (host) y móviles (jugadores)
-- Sistema de puntuación basado en coincidencias totales o parciales mediante un motor de comparacion de palabras `js/word-comparison.json`
-- Personalización con `Auras` para cada jugador (colores)
-- Archivo .env con valores por defecto del juego
+## 📋 Características Principales
 
-## 🚀 Instalación
+- **Multijugador Real-Time:** Soporte para múltiples jugadores (1+) conectados simultáneamente.
+- **Salas Semánticas:** Los códigos de sala son únicos y se generan usando palabras reales del diccionario (`app/diccionario.json`) basadas en la categoría seleccionada.
+- **Tecnología SSE:** Actualizaciones en tiempo real mediante *Server-Sent Events*, optimizando la comunicación sin la sobrecarga de WebSockets.
+- **Interfaz Híbrida:** Optimizada para **Smart TV** (Vista Anfitrión/Host) y **Móviles** (Controlador de Jugador).
+- **Motor de Coincidencias:** Sistema inteligente de puntuación (`js/word-comparison.js`) que detecta coincidencias totales o parciales (género, plurales, sinónimos).
+- **Personalización:** Sistema de **Auras** (gradientes de color) para identificar a cada jugador.
+- **Configuración Total:** Control granular de las mecánicas y el servidor mediante archivo `.env`.
 
-### Requisitos
+## ⚙️ Configuración (.env)
 
-- PHP 7.4 o superior
-- Servidor web (Apache/Nginx)
-- Permisos de escritura en el directorio
+El juego es altamente personalizable. Puedes ajustar desde la duración de las rondas hasta el rendimiento del servidor editando el archivo `.env`.
 
-## 🎮 Cómo Jugar
+### 🎮 Mecánicas de Juego
+| Variable | Descripción | Default |
+| :--- | :--- | :--- |
+| `MIN_PLAYERS` | Mínimo de jugadores para poder iniciar una ronda. | `2` |
+| `MAX_PLAYERS` | Capacidad máxima de la sala. | `20` |
+| `ROUND_DURATION` | Duración total de la ronda (en segundos). | `120` |
+| `TOTAL_ROUNDS` | Cantidad de rondas antes de mostrar la tabla final. | `5` |
+| `START_COUNTDOWN` | Tiempo de cuenta regresiva antes de empezar. | `5` |
+| `HURRY_UP_THRESHOLD` | Tiempo al que baja el reloj al activar "Remate". | `10` |
+| `MAX_WORDS_PER_PLAYER` | Máximo de palabras que un jugador puede enviar. | `6` |
+| `MAX_WORD_LENGTH` | Longitud máxima permitida por palabra. | `30` |
+| `MAX_CODE_LENGTH` | Longitud máxima para los códigos de sala generados. | `6` |
 
-### Para el Anfitrión
-1. Abre `index.html` en un Smart TV o pantalla grande
-2. Haz clic en "Crear Partida"
-3. Se seleccionará una categoría inicial aleatoria del menú y se generará un código de sala único (palabra de 5 letras o menos de la categoria seleccionada en el diccionario) que puedes modificar
-4. Los jugadores se unirán usando ese código
-5. Presiona `ENTER` o haz clic en "Iniciar Ronda" cuando todos los jugadores estén listos
-6. Al comenzar cada ronda el Anfitrión puede decidir terminar la ronda antes de tiempo con el botón "Remate" que cambia el temporizador a todos y lo BAJA unicamente a HURRY_UP_THRESHOLD
-7. Al finalizar todas las rondas, el anfitrion puede decidir iniciar una nueva con una nueva categoria (el codigo de sala permanece igual durante toda la sesion de juego)
+### 🛠️ Sistema y Mantenimiento
+| Variable | Descripción | Default |
+| :--- | :--- | :--- |
+| `DEV_MODE` | Activa logs detallados para depuración (`true`/`false`). | `true` |
+| `MAX_GAME_AGE` | Tiempo (segundos) tras el cual una partida inactiva se borra. | `86400` |
+| `CLEANUP_PROBABILITY` | Probabilidad (0-1) de ejecutar limpieza en cada petición. | `0.05` |
+| `SSE_TIMEOUT` | Tiempo máximo de conexión para eventos SSE. | `900` |
+| `SSE_HEARTBEAT_INTERVAL` | Frecuencia de "latidos" para mantener la conexión viva. | `15` |
 
-### Para Jugadores
+## 🎮 Guía de Juego
 
-1. Abre `index.html` en tu celular o navegador
-2. Haz clic en "Unirse"
-3. Ingresa el código de sala mostrado en la TV
-4. Elige tu nombre (2-20 caracteres) y podes seleccionar tu Aura favorita
-5. Espera a que el anfitrión inicie la ronda, y aguarda el countdow inicial (START_COUNTDOWN)
-6. Escribe una palabra relacionada con la consigna mostrada y enviala, cada palabra enviada luego puede aditarse antes de finalizar el tiempo de la ronda
-7. Envía tus respuestas antes de que termine el tiempo con el boton "Terminé/Paso" (el mismo botón dice "Paso" cuando no hay respuestas, "Terminé" cuando hay almenos una palabra en la lista)
-8. Ganas puntos por cada palabra que coincida totalmente o parcialmente con otros jugadores (basado en similtudes como género, pluralidad, sinónimos predefinidos)
-9. Al final de cada ronda podes ver cuantos puntos sumo cada palabra
-10. al finalizar la ultima ronda podes ver la tabla completa de coincidencias para conocer con quienes coincidiste y si alguna de tus respuestas coincidió en el rankig mundial
+### 📺 Para el Anfitrión (Host)
+1. Abre `index.html` en un Smart TV o monitor grande.
+2. Haz clic en **"Crear Partida"**.
+3. El sistema elegirá una **Categoría** al azar y generará un código de sala único (basado en una palabra de esa categoría). *Puedes modificar el código si lo deseas*.
+4. Espera a que los jugadores se unan.
+5. Cuando todos estén listos, presiona `ENTER` o haz clic en **"Iniciar Ronda"**.
+6. **Botón Remate:** Durante la ronda, si el juego se estanca, puedes usar el botón "Remate". Esto bajará el temporizador inmediatamente a `HURRY_UP_THRESHOLD` segundos para presionar a los jugadores.
+7. Al finalizar la partida, puedes iniciar una nueva con otra categoría (manteniendo el mismo código de sala).
 
-### Composición de cada ronda de la partida
-1. Comienza con el countdown (es un tiempo predefinido para dar tiempo a todos a estar sincronizados) el countdown muestra en cada pantalla encima de la interfaz en medio de la pantalla el mensaje "preparados?" y luego 3,2,1 en los ultimos 3 segundos del countdown.
-2. Al finalizar el countdows comienza la ronda y el temporizador de juego (arriba en el medio de cada pantalla) se setea en ek tiempo definido.
-3. cada respuesta que envia el jugador se verifica del lado del cliente en busca de similtudes con otras palabras ingresadas por el mismo jugador para evitar palabras repetidas en la lista del jugador (si la palabra esta repetida o es similar a otra, se muestra el mensaje "probá con otra! 😅")
-4. una vez que el jugador alcanzo el limite de palabras del juego (MAX_WORDS_PER_PLAYER) no podra enviar nuevas palabras pero seguira teniendo la posibilidad de cambiar alguna ya escrita
-5. para cambiar una palabra durante la partida el jugador puede tocar en el lapiz a la derecha de una palabra, al hacerlo, la palabra se elimina de la lista y aparece escrita en el campo de ingreso para que el jugador la modifique y vuelva a enviar
-6. el jugador puede usar el boton "Terminé/Paso" para finalizar su turno durante cualquier momento de la ronda.
-7. cuando el jugador termina su turno ya no puede ver sus palabras y debe esperar a que se termine el tiempo o bien todos terminen su turno para ver los resultados de la ronda
-8. si queda solo un jugador que no termino su turno, este es sancionado en caso de que el temporizador sea mayor al tiempo de remate (HURRY_UP_THRESHOLD), y entonces se reducira el tiempo a HURRY_UP_THRESHOLD para terminar la ronda antes de tiempo
-9 si al terminarse el temporizador algun jugador no terminó de enviar una palabra, esta se valida y se envia automaticamente (si es valida)
-10 al finalizar la ronda el host se encarga de ver los resultados y calcular los puntos, tras tener los resultados les avisa a los clientes
-11 los clientes muestran sus puntos al final de la ronda
-12 al final de la partida se muestra una tabla mas completa en el host con los resultados
-13 el anfitrion puede seleccionar el boton "nuevo juego!" que abre el modal para elegir categoria (el campo de codigo de sala esta deshabilitado ya que no se puede cambiar durante el juego)
-14 para finalizar el juego el anfitrion debe elegir la opcion "terminar partida" del menu inferior
+### 📱 Para los Jugadores
+1. Abre `index.html` en tu celular o navegador.
+2. Haz clic en **"Unirse"**.
+3. Ingresa el código de sala que ves en la TV.
+4. Elige tu **Nombre** y selecciona tu **Aura** favorita.
+5. Espera el inicio. Verás una cuenta regresiva (`START_COUNTDOWN`).
+6. **Juego:** Escribe palabras relacionadas con la consigna.
+   - Puedes **editar** una palabra enviada tocando el icono del lápiz ✏️.
+   - Si terminas antes de tiempo, usa el botón **"Terminé/Paso"**.
+7. Al final, verás tus puntos y la tabla de coincidencias completa.
 
-### Menu de opciones
-esta son las opciones disponibles en el menu:
-*
-*
-*
-*
-*reiniciar ronda (solo en host, la ronda actual se anula, aparece nuevamente el boton "Iniciar Ronda")
-*Configuracion (en host muestra opciones de la partida como numero minimo de jugadores, numero maximo, cantidad de rondas, duracion de la ronda, tiempo de remate, tiempo de countdows inicial, y activar o desactivar el remate automatico al quedar un jugador) (en el jugador, puede cambiar su nombre y aura)
-*Salir (en host termina la partida y vuelve al index, todos los jugadores son expulsados de la sala automaticamente) (si lo toca un jugador desde play.html este es expulsado al index y desaparece del host)
+## ⏳ Dinámica de la Ronda (Paso a Paso)
+
+1. **Countdown Sincronizado:** Al iniciar, todas las pantallas muestran el mensaje "¿Preparados?" seguido de un conteo de 3, 2, 1.
+2. **Tiempo de Juego:** El temporizador se ajusta al tiempo definido y comienza la ronda.
+3. **Validación en Cliente:** A medida que escribes, el sistema verifica que no repitas palabras o uses términos muy similares ("¡Probá con otra! 😅").
+4. **Límite de Palabras:** Al llegar a `MAX_WORDS_PER_PLAYER`, el input se bloquea. Solo podrás editar las palabras ya escritas o enviar tu turno.
+5. **Edición:** Tocar el lápiz elimina la palabra de la lista y la devuelve al campo de texto para que puedas corregirla y volver a enviarla.
+6. **Finalización Voluntaria:** El botón "Terminé/Paso" cambia de estado. Si la lista está vacía dice "Paso", si tiene palabras dice "Terminé". Al pulsarlo, finalizas tu turno.
+7. **Sanción / Remate Automático:** Si queda un solo jugador activo y el tiempo restante es mayor al de remate, el reloj se reduce automáticamente a `HURRY_UP_THRESHOLD` segundos.
+8. **Envío Automático:** Si el tiempo llega a 0 y tenías una palabra escrita en el input sin enviar, esta se valida y se envía automáticamente.
+9. **Cálculo de Puntos:** El Host procesa las respuestas, busca coincidencias y notifica los resultados a los clientes.
+
+## 🛠️ Menú de Opciones
+
+El juego cuenta con un menú hamburguesa con opciones específicas según el rol:
+
+### En el Host
+* **Configuración:** Ajustes de partida (mín/máx jugadores, duración, remate automático, etc.).
+* **Reiniciar Ronda:** Anula el progreso de la ronda actual y permite volver a jugar la misma ronda desde cero.
+* **Reiniciar Partida:** Borra todo el progreso acumulado y comienza de nuevo desde la Ronda 1.
+* **Elegir Categoría:** Finaliza la partida actual y abre el selector de categorías para comenzar un nuevo juego sin desconectar a los jugadores.
+* **Salir:** Cierra la sala, desconecta a todos los jugadores y vuelve al inicio.
+
+### En el Jugador
+* **Personalizar:** Permite cambiar el nombre de usuario y el Aura.
+* **Retirarse:** Abandona la partida actual y regresa al inicio (el jugador desaparece de la lista del Host).
 
 ## 🤝 Contribuciones
 
-Este es un proyecto personal, pero las sugerencias son bienvenidas a través de issues o pull requests.
+Este es un proyecto personal en desarrollo. Las sugerencias son bienvenidas a través de Issues o Pull Requests.
 
-## 📧 Contacto
+## 📧 Créditos
 
-Desarrollado por Jonatan Pintos - [GitHub](https://github.com/muyunicos)
+Desarrollado por **Jonatan Pintos** - [GitHub](https://github.com/muyunicos)
