@@ -12,6 +12,7 @@
  * 🔧 FEATURE: Remove duplicate timeSync + hostSession/debug dependency fix
  * 🔧 FIX: Remove duplicate ModalController (defined in modal-controller.js)
  * 🔧 FIX: Correct loading order - hostSession must be before host-manager.js usage
+ * 🔧 FIX: Remove all fallbacks - Fail-fast development for v1.0
  */
 
 // ============================================================================
@@ -157,7 +158,7 @@ class StorageManager {
 class SessionManager {
     constructor(role) {
         this.role = role;
-        this.managers = [];  // 🔧 FASE 5: Track managers for cleanup
+        this.managers = [];
     }
 
     isSessionActive() {
@@ -267,7 +268,7 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 }
 
 // ============================================================================
-// DICTIONARY SERVICE
+// DICTIONARY SERVICE - NO FALLBACKS
 // ============================================================================
 
 class DictionaryService {
@@ -283,85 +284,66 @@ class DictionaryService {
         if (this.loadPromise) return this.loadPromise;
 
         this.loadPromise = (async () => {
-            try {
-                debug('📚 Iniciando carga de diccionario...', null, 'info');
-                
-                const response = await fetch('./dictionary.json', { 
-                    cache: 'no-store'
-                });
+            debug('📚 Iniciando carga de diccionario...', null, 'info');
+            
+            const response = await fetch('./app/diccionario.json', { 
+                cache: 'no-store'
+            });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: No se puede acceder a dictionary.json`);
-                }
-
-                const data = await response.json();
-                
-                if (!data || typeof data !== 'object') {
-                    throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
-                }
-
-                // 🔧 FIX: Handle both flat array and nested category structure
-                let processedData = {};
-                
-                // Check if it's the nested format: { "category": { "hint": [...words] } }
-                const firstKey = Object.keys(data)[0];
-                if (firstKey && typeof data[firstKey] === 'object' && !Array.isArray(data[firstKey])) {
-                    // Nested format - flatten to { "category": [...all words] }
-                    Object.entries(data).forEach(([category, hintsObj]) => {
-                        if (typeof hintsObj === 'object' && !Array.isArray(hintsObj)) {
-                            const allWords = [];
-                            Object.values(hintsObj).forEach(words => {
-                                if (Array.isArray(words)) {
-                                    allWords.push(...words);
-                                }
-                            });
-                            processedData[category] = allWords;
-                        } else if (Array.isArray(hintsObj)) {
-                            processedData[category] = hintsObj;
-                        }
-                    });
-                } else {
-                    // Already flat format
-                    processedData = data;
-                }
-
-                const validCategories = Object.entries(processedData).filter(
-                    ([k, v]) => Array.isArray(v) && v.length > 0
-                );
-                
-                if (validCategories.length === 0) {
-                    throw new Error('Diccionario vacío o sin categorías válidas');
-                }
-
-                this.dictionary = processedData;
-                this.categories = validCategories.map(([k]) => k);
-                this.isReady = true;
-
-                if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
-                    wordEngine.processDictionary(processedData);
-                    debug('🔗 WordEngine inicializado con diccionario', null, 'success');
-                }
-
-                debug('📚 Diccionario cargado exitosamente', { 
-                    categories: this.categories.length,
-                    totalWords: this.getTotalWordCount()
-                }, 'success');
-
-                return this.dictionary;
-            } catch (error) {
-                console.error("❌ Error cargando diccionario, usando valores por defecto", error);
-                
-                this.dictionary = {
-                    'general': ['PALABRA', 'JUEGO', 'PALABRA'],
-                    'animales': ['GATO', 'PERRO', 'PAJARO']
-                };
-                this.categories = ['general', 'animales'];
-                this.isReady = true;
-                this.loadPromise = null;
-                
-                debug('⚠️  Diccionario: usando fallback por defecto', null, 'warn');
-                return this.dictionary;
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: No se puede acceder a app/diccionario.json`);
             }
+
+            const data = await response.json();
+            
+            if (!data || typeof data !== 'object') {
+                throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
+            }
+
+            let processedData = {};
+            
+            const firstKey = Object.keys(data)[0];
+            if (firstKey && typeof data[firstKey] === 'object' && !Array.isArray(data[firstKey])) {
+                Object.entries(data).forEach(([category, hintsObj]) => {
+                    if (typeof hintsObj === 'object' && !Array.isArray(hintsObj)) {
+                        const allWords = [];
+                        Object.values(hintsObj).forEach(words => {
+                            if (Array.isArray(words)) {
+                                allWords.push(...words);
+                            }
+                        });
+                        processedData[category] = allWords;
+                    } else if (Array.isArray(hintsObj)) {
+                        processedData[category] = hintsObj;
+                    }
+                });
+            } else {
+                processedData = data;
+            }
+
+            const validCategories = Object.entries(processedData).filter(
+                ([k, v]) => Array.isArray(v) && v.length > 0
+            );
+            
+            if (validCategories.length === 0) {
+                throw new Error('Diccionario vacío o sin categorías válidas');
+            }
+
+            this.dictionary = processedData;
+            this.categories = validCategories.map(([k]) => k);
+            this.isReady = true;
+
+            if (typeof wordEngine !== 'undefined' && wordEngine && typeof wordEngine.processDictionary === 'function') {
+                wordEngine.processDictionary(processedData);
+                debug('🔗 WordEngine inicializado con diccionario', null, 'success');
+            }
+
+            debug('📚 Diccionario cargado exitosamente', { 
+                categories: this.categories.length,
+                totalWords: this.getTotalWordCount()
+            }, 'success');
+
+            return this.dictionary;
         })();
 
         return this.loadPromise;
@@ -410,7 +392,7 @@ class DictionaryService {
 const dictionaryService = new DictionaryService();
 
 // ============================================================================
-// CONFIG SERVICE
+// CONFIG SERVICE - NO FALLBACKS
 // ============================================================================
 
 class ConfigService {
@@ -428,58 +410,42 @@ class ConfigService {
         if (this.loadPromise) return this.loadPromise;
 
         this.loadPromise = (async () => {
-            try {
-                debug('⚙️  Cargando configuración...', null, 'info');
-                
-                const url = new URL('./app/actions.php', window.location.href);
-                const response = await fetch(url.toString(), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'get_config' }),
-                    cache: 'no-store'
-                });
+            debug('⚙️  Cargando configuración...', null, 'info');
+            
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_config' }),
+                cache: 'no-store'
+            });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: Error conectando con el servidor`);
-                }
-
-                const result = await response.json();
-                
-                if (!result.success) {
-                    throw new Error(result.message || 'Respuesta del servidor inválida');
-                }
-
-                if (!result.config || typeof result.config !== 'object') {
-                    throw new Error('Configuración del servidor está vacía o mal formada');
-                }
-
-                const requiredFields = ['max_words_per_player', 'TOTAL_ROUNDS', 'round_duration'];
-                for (const field of requiredFields) {
-                    if (!(field in result.config)) {
-                        throw new Error(`Campo crítico faltante en config: ${field}`);
-                    }
-                }
-
-                this.config = result.config;
-                this.isReady = true;
-
-                debug('⚙️  Configuración cargada exitosamente', this.config, 'success');
-                return this.config;
-            } catch (error) {
-                console.error("❌ Error cargando configuración, usando valores por defecto", error);
-                
-                this.config = { 
-                    max_words_per_player: 6, 
-                    TOTAL_ROUNDS: 3, 
-                    round_duration: 60,
-                    default_category: 'general'
-                };
-                this.isReady = true;
-                this.loadPromise = null;
-                
-                debug('⚠️  Configuración: usando fallback por defecto', null, 'warn');
-                return this.config;
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Error conectando con el servidor`);
             }
+
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.message || 'Respuesta del servidor inválida');
+            }
+
+            if (!result.config || typeof result.config !== 'object') {
+                throw new Error('Configuración del servidor está vacía o mal formada');
+            }
+
+            const requiredFields = ['round_duration', 'TOTAL_ROUNDS', 'max_words_per_player'];
+            for (const field of requiredFields) {
+                if (!(field in result.config)) {
+                    throw new Error(`Campo crítico faltante en config: ${field}`);
+                }
+            }
+
+            this.config = result.config;
+            this.isReady = true;
+
+            debug('⚙️  Configuración cargada exitosamente', this.config, 'success');
+            return this.config;
         })();
 
         return this.loadPromise;
@@ -487,8 +453,7 @@ class ConfigService {
 
     get(key, defaultValue = null) {
         if (!this.config) {
-            debug(`⚠️  ConfigService.get('${key}'): Config no está listo, usando default`, null, 'warn');
-            return defaultValue;
+            throw new Error(`ConfigService.get('${key}'): Config no está listo`);
         }
         return this.config[key] ?? defaultValue;
     }
