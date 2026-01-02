@@ -10,13 +10,11 @@
     <link rel="stylesheet" href="./css/3-host.css">
     <link rel="stylesheet" href="./css/5-animations.css">
 
-    <!-- Boot UI: detecta sesión antes del render -->
     <script>
         (function () {
             var root = document.documentElement;
             root.classList.add('is-booting');
 
-            // Detectar sesión del host
             try {
                 var params = new URLSearchParams(window.location.search);
                 var code = params.get('code') || localStorage.getItem('hostGameCode');
@@ -29,7 +27,6 @@
                 root.classList.add('no-session');
             }
 
-            // Precargar fondo
             (function () {
                 var img = new Image();
                 img.src = '/images/bg.webp';
@@ -52,14 +49,12 @@
     </script>
 </head>
 <body>
-    <!-- BOTÓN HAMBURGUESA (DELANTE DE MODALES) -->
     <button class="btn-hamburger boot-el" id="btn-hamburger-host" aria-label="Abrir menú de opciones">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
     </button>
 
-    <!-- MENÚHAMBURGUESA HOST -->
     <nav class="hamburger-menu boot-el session-only" id="hamburger-menu-host" aria-label="Menú de navegación y opciones del host">
         <div class="hamburger-header">Menú</div>
         <button class="hamburger-option" id="hamburger-restart-round">🔄 Reiniciar Ronda</button>
@@ -69,7 +64,6 @@
         <a href="./index.html" class="hamburger-option hamburger-home">🌠 Inicio</a>
     </nav>
 
-    <!-- MODAL CREAR JUEGO -->
     <div class="modal-overlay boot-el nosession-only" id="modal-start-game">
         <div class="modal-content">
             <div class="modal-title">Nueva Partida</div>
@@ -93,7 +87,6 @@
         </div>
     </div>
 
-    <!-- MODAL SELECCIÓN DE CATEGORÍA -->
     <div class="modal-overlay boot-el" id="modal-category" style="display: none;">
         <div class="modal-content">
             <div class="modal-title">📚 Seleccionar Categoría</div>
@@ -112,25 +105,20 @@
         </div>
     </div>
 
-    <!-- LOGO FLOTANTE -->
     <div class="logo-floating boot-el" id="logo-floating">
         <img src="/images/icon.webp" alt="TalCual Party Logo">
     </div>
 
-    <!-- PANTALLA DE HOST -->
     <div class="game-screen boot-el session-only" id="game-screen" style="display: none;">
-        <!-- COUNTDOWN OVERLAY (Mostrado durante START_COUNTDOWN antes de que comience la ronda) -->
         <div class="countdown-overlay" id="countdown-overlay" role="status" aria-live="assertive" aria-label="Contador regresivo antes de comenzar ronda">
             <div class="countdown-number" id="countdown-number" aria-atomic="true">3</div>
         </div>
 
-        <!-- CÓDIGO DE SALA -->
         <div class="code-sticker-floating" aria-label="Código de sala actual">
             <div class="code-sticker-label">Código</div>
             <div class="code-sticker-value" id="header-code" aria-atomic="true">----</div>
         </div>
 
-        <!-- HEADER CON TEMPORIZADOR -->
         <div class="tv-header">
             <div class="timer-container">
                 <div class="round-info" aria-live="polite" aria-label="Información de ronda">Ronda <span id="header-round">0</span>/3</div>
@@ -138,7 +126,6 @@
             </div>
         </div>
 
-        <!-- ÁREA CENTRAL -->
         <div class="center-stage" id="center-stage" role="main" aria-label="Area principal de juego">
             <div class="status-message" id="status-message" aria-live="polite" aria-atomic="true">Esperando jugadores...</div>
             <div class="current-word" id="current-word" style="display: none;">???</div>
@@ -146,7 +133,6 @@
             <button class="btn-start" id="btn-start-round" style="display: none;" aria-label="Botón para iniciar la ronda">🎮 Iniciar Ronda</button>
         </div>
 
-        <!-- PANEL LATERAL FLOTANTE -->
         <div class="floating-side-panel" id="floating-side-panel" role="complementary" aria-label="Panel lateral con ranking">
             <div class="category-sticker" id="category-sticker" aria-label="Categoría actual">Sin categoría</div>
 
@@ -163,28 +149,19 @@
             </div>
         </div>
 
-        <!-- BOTONES DE CONTROL -->
         <div class="control-buttons" style="display: none;">
             <button class="btn" id="btn-select-category" aria-label="Seleccionar categoría para esta ronda">📚 Categoría</button>
             <button class="btn" id="btn-end-game" aria-label="Terminar el juego">🚫 Terminar</button>
         </div>
     </div>
 
-    <!-- Scripts Modulares (🔧 ORDEN CRÍTICA) -->
-    <!-- 🔧 HOTFIX: word-comparison.js ANTES de shared-utils.js para evitar race condition -->
     <script src="./js/word-comparison.js"></script>
     <script src="./js/communication.js"></script>
     <script src="./js/shared-utils.js"></script>
-    
-    <!-- 🔧 FASE 5: ModalController (DEBE ESTAR ANTES QUE LOS MANAGERS) -->
     <script src="./js/modal-controller.js"></script>
-    
-    <!-- Sistemas de juego -->
     <script src="./js/aura-system.js"></script>
     <script src="./js/game-client.js"></script>
     <script src="./js/menu-opciones.js"></script>
-    
-    <!-- Gestor principal del host -->
     <script src="./js/host-manager.js"></script>
 </body>
 </html>
