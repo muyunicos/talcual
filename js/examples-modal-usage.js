@@ -1,14 +1,34 @@
 /**
- * EXEMPLOS DE USO - ModalManager
+ * EJEMPLOS DE USO - ModalManager (Con soporte de STACK)
  * 
  * Este archivo documenta cómo usar el ModalManager_Instance desde diferentes contextos
+ * El ModalManager ahora soporta múltiples modales encimados en una pila (stack)
+ * 
  * NO DEBE SER IMPORTADO EN PRODUCCIÓN - SÓLO PARA REFERENCIA
  * 
  * El ModalManager es un gestor centralizado de modales que soporta 3 tipos:
- * - PRIMARY: Modal principal (z-index: 1000)
- * - SECONDARY: Modal secundario (z-index: 2000)
- * - MESSAGE: Modal de mensaje (z-index: 3000)
+ * - PRIMARY: Modal principal (z-index: 1000 + offset de stack)
+ * - SECONDARY: Modal secundario (z-index: 1000 + offset de stack)
+ * - MESSAGE: Modal de mensaje (z-index: 1000 + offset de stack)
  */
+
+
+// ============================================================
+// CONCEPTO: STACK DE MODALES
+// ============================================================
+/*
+El ModalManager ahora funciona con una PILA (stack) de modales:
+
+1. Primer modal (Crear Partida)     z-index: 1000
+2. Segundo modal (Opciones)         z-index: 1100  <- encima del primero
+3. Tercer modal (Confirmar salida)  z-index: 1200  <- encima de todos
+
+Cuando cierras el tercer modal, vuelves al segundo.
+Cuando cierras el segundo, vuelves al primero.
+Cuando cierras el primero, vuelves a la pantalla principal.
+
+z-index se calcula: baseZIndex (1000) + (stackIndex * 100)
+*/
 
 
 // ============================================================
@@ -182,15 +202,15 @@ function exampleActionNoClose() {
 
 
 // ============================================================
-// 8. VERIFICAR SI UN MODAL ESTÁ ABIERTO
+// 8. VERIFICAR ESTADO DEL MODAL
 // ============================================================
-function exampleCheckIfOpen() {
+function exampleCheckModalState() {
+    console.log('Está abierto:', ModalManager_Instance.isOpen());
+    console.log('Cantidad de modales:', ModalManager_Instance.getStackSize());
+    
     if (ModalManager_Instance.isOpen()) {
-        console.log('✅ Hay un modal abierto');
-        ModalManager_Instance.close();
-    } else {
-        console.log('❌ No hay modal abierto');
-        exampleSimpleModal();
+        const topModal = ModalManager_Instance.getTopModal();
+        console.log('Modal en top:', topModal);
     }
 }
 
@@ -214,50 +234,91 @@ function exampleProgrammaticClose() {
 
 
 // ============================================================
-// 10. ENCADENAR MODALES
+// 10. CASO DE USO REAL: FLUJO CON STACK
 // ============================================================
-function exampleChainedModals() {
-    const firstModal = () => {
-        ModalManager_Instance.show({
-            type: 'secondary',
-            title: 'Primer Modal',
-            content: 'Abre el segundo modal',
-            buttons: [
-                { label: 'Siguiente', class: 'btn-modal-primary', action: secondModal, close: true },
-                { label: 'Cancelar', class: 'btn', action: null, close: true }
-            ]
-        });
-    };
+/*
+CSO: Usuario intenta salir de una partida activa
 
-    const secondModal = () => {
-        ModalManager_Instance.show({
-            type: 'secondary',
-            title: 'Segundo Modal',
-            content: 'Abre el tercer modal',
-            buttons: [
-                { label: 'Siguiente', class: 'btn-modal-primary', action: thirdModal, close: true },
-                { label: 'Volver', class: 'btn', action: firstModal, close: true }
-            ]
-        });
-    };
+Flujo esperado:
+1. Click en "Salir"
+2. Se abre Modal de Confirmación ("Quieres terminar?")
+3. Usuario hace click en "Ver Opciones"
+4. Se abre Modal de Opciones ENCIMA del anterior
+5. Usuario hace click en "Volver"
+6. Se cierra Modal de Opciones y vuelve al de Confirmación
+7. Usuario hace click en "Sí, terminar"
+8. Se cierra Modal de Confirmación y se ejecuta la acción
+*/
 
-    const thirdModal = () => {
+function exampleRealWorldStack() {
+    // PASO 1: Modal de confirmación al intentar salir
+    const showExitConfirmation = () => {
         ModalManager_Instance.show({
             type: 'message',
-            title: '🌟 Completado!',
-            content: 'Has llegado al final',
+            title: '⚠️ Salir de la Partida',
+            content: 'La partida seguirá activa. ¿Quieres terminarla?',
             buttons: [
-                { label: 'Cerrar', class: 'btn-modal-primary', action: null, close: true }
+                { 
+                    label: 'Ver Opciones', 
+                    class: 'btn', 
+                    action: showOptionsModal, 
+                    close: false  // No cierra, abre otro modal
+                },
+                { label: 'No', class: 'btn', action: null, close: true },
+                { 
+                    label: 'Sí, Terminar', 
+                    class: 'btn-modal-danger', 
+                    action: () => {
+                        console.log('Terminando partida...');
+                        // Aquí va la lógica de salida
+                    }, 
+                    close: true 
+                }
             ]
         });
     };
 
-    firstModal();
+    // PASO 2: Modal de opciones que se abre ENCIMA
+    const showOptionsModal = () => {
+        const options = document.createElement('div');
+        options.innerHTML = `
+            <div style="padding: 15px;">
+                <p><strong>🎮 Opciones Disponibles:</strong></p>
+                <ul>
+                    <li>🔊 Volumen</li>
+                    <li>🌟 Tema</li>
+                    <li>📄 Guardar Progreso</li>
+                </ul>
+            </div>
+        `;
+
+        ModalManager_Instance.show({
+            type: 'secondary',
+            title: '🎮 Opciones',
+            content: options,
+            buttons: [
+                { label: 'Volver', class: 'btn-modal-primary', action: null, close: true }
+            ]
+        });
+    };
+
+    // Iniciar el flujo
+    showExitConfirmation();
 }
 
 
 // ============================================================
-// TIPOS Y ESTILOS DE BOTONEs DISPONIBLES
+// 11. CERRAR TODOS LOS MODALES
+// ============================================================
+function exampleCloseAll() {
+    console.log('Cerrando todos los modales...');
+    ModalManager_Instance.closeAll();
+    showNotification('Todos los modales cerrados', 'info');
+}
+
+
+// ============================================================
+// TIPOS Y ESTILOS DE BOTONES DISPONIBLES
 // ============================================================
 /*
 Clases de botón disponibles:
@@ -271,7 +332,22 @@ Propiedades del botón:
 - class: string - Clase CSS
 - action: function|null - Función a ejecutar (null = no hace nada)
 - close: boolean - Si es true, cierra el modal después de la acción
+
+NOTA: Si action abre otro modal sin cerrar (close: false),
+se creará un stack de modales encimados.
 */
 
 
-console.log('%c📄 examples-modal-usage.js cargado - Solo para referencia', 'color: #FFAA00; font-weight: bold; font-size: 12px');
+// ============================================================
+// MÉTODOS DISPONIBLES DEL ModalManager
+// ============================================================
+/*
+ModalManager_Instance.show(config)     - Abre un nuevo modal
+ModalManager_Instance.close()           - Cierra el modal superior
+ModalManager_Instance.closeAll()        - Cierra todos los modales
+ModalManager_Instance.isOpen()          - Devuelve true si hay modales abiertos
+ModalManager_Instance.getStackSize()    - Devuelve cantidad de modales abiertos
+ModalManager_Instance.getTopModal()     - Devuelve el modal superior (o null)
+*/
+
+console.log('%c📄 examples-modal-usage.js cargado - Stack de modales totalmente funcional', 'color: #FFAA00; font-weight: bold; font-size: 12px');
