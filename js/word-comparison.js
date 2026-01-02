@@ -1,4 +1,14 @@
 /**
+ * Word Comparison Engine V8 - Scoring Variable por Tipo de Coincidencia
+ * + Round Context Support para Server-Side Source of Truth
+ * 
+ * Cambios:
+ * - Agregar getMatchType() para identificar tipo de coincidencia
+ * - Agregar areEquivalentWithType() que retorna {match: bool, type: string}
+ * - Backward compatible con areEquivalent()
+ * - Permite asignar puntos diferentes: EXACTA=10, PLURAL=8, GENERO=5, SINONIMO=5
+ * - NUEVO: setRoundContext() para inyectar contexto de ronda desde servidor
+ * - NUEVO: areEquivalent() prioriza round_context sobre diccionario global
  * Word Comparison Engine V10 - Passive Logic Engine (PHASE 2 REVISED)
  * 
  * PHASE 2 (REVISED) Changes:
@@ -16,6 +26,7 @@ class WordEquivalenceEngine {
         this.strictGenderSet = new Set();
         this.isLoaded = false;
         this.debugMode = false;
+        this.roundContext = null;
     }
 
     processDictionary(data) {
@@ -107,6 +118,7 @@ class WordEquivalenceEngine {
             if (!Array.isArray(group) || group.length === 0) return;
 
             let canonicalRaw = group[0];
+
             if (canonicalRaw.endsWith('.')) {
                 canonicalRaw = canonicalRaw.slice(0, -1);
             }
@@ -183,6 +195,23 @@ class WordEquivalenceEngine {
             }
         }
         return stem;
+    }
+
+    setRoundContext(context) {
+        if (!context || typeof context !== 'object') {
+            this.roundContext = null;
+            return;
+        }
+        this.roundContext = {
+            prompt: (context.prompt || '').toUpperCase().trim(),
+            synonyms: Array.isArray(context.synonyms) ? context.synonyms.map(w => this.normalize(w)) : [],
+            variants: Array.isArray(context.variants) ? context.variants.map(w => this.normalize(w)) : []
+        };
+        if (this.debugMode) console.log('%c📦 Round Context', 'color: #00DD00; font-weight: bold;', this.roundContext);
+    }
+
+    getRoundContext() {
+        return this.roundContext;
     }
 
     getMatchType(word1, word2) {
@@ -291,6 +320,17 @@ class WordEquivalenceEngine {
         if (!n1 || !n2) return false;
         if (n1 === n2) return true;
 
+        if (this.roundContext && this.roundContext.synonyms.length > 0) {
+            const inSynonyms = this.roundContext.synonyms.includes(n1) || this.roundContext.synonyms.includes(n2);
+            const inVariants = this.roundContext.variants.includes(n1) || this.roundContext.variants.includes(n2);
+            if (inSynonyms || inVariants) {
+                if (this.debugMode) console.log(`✅ areEquivalent (roundContext): "${word1}" ~ "${word2}"`);
+                return true;
+            }
+            if (this.debugMode) console.log(`❌ areEquivalent (roundContext): "${word1}" ≠ "${word2}"`);
+            return false;
+        }
+
         if (this.isLoaded && Object.keys(this.dictionaryMap).length > 0) {
             let id1 = this.dictionaryMap[n1];
             let id2 = this.dictionaryMap[n2];
@@ -309,20 +349,20 @@ class WordEquivalenceEngine {
             if (id1) {
                 const dictRoot = this.getStem(id1);
                 if (dictRoot === root2) {
-                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}" (dict stem match)`);
+                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}"`);
                     return true;
                 }
             }
             if (id2) {
                 const dictRoot = this.getStem(id2);
                 if (dictRoot === root1) {
-                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}" (dict stem match)`);
+                    if (this.debugMode) console.log(`✅ areEquivalent (dict-stem): "${word1}" == "${word2}"`);
                     return true;
                 }
             }
 
             if (root1 === root2 && root1.length > 2) {
-                if (this.debugMode) console.log(`✅ areEquivalent (root): "${word1}" == "${word2}" (roots "${root1}" == "${root2}")`);
+                if (this.debugMode) console.log(`✅ areEquivalent (root): "${word1}" == "${word2}"`);
                 return true;
             }
         } else {
@@ -333,7 +373,7 @@ class WordEquivalenceEngine {
         if (this.debugMode) {
             const root1 = this.getStem(n1);
             const root2 = this.getStem(n2);
-            console.log(`❌ areEquivalent: "${word1}" != "${word2}" (stems: "${root1}" != "${root2}")`);
+            console.log(`❌ areEquivalent: "${word1}" != "${word2}"`);
         }
 
         return false;

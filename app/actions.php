@@ -247,6 +247,95 @@ function handleJoinGame($input) {
         return ['success' => false, 'message' => 'Juego no encontrado'];
     }
 
+        case 'get_categories':
+            try {
+                $categories = getCategories();
+                if (empty($categories)) {
+                    $response = ['success' => false, 'message' => 'No hay categorías'];
+                } else {
+                    $response = [
+                        'success' => true,
+                        'server_now' => intval(microtime(true) * 1000),
+                        'categories' => $categories
+                    ];
+                }
+            } catch (Exception $e) {
+                $response = ['success' => false, 'message' => 'Error del servidor'];
+            }
+            break;
+
+        case 'get_category_word':
+            try {
+                $category = isset($input['category']) ? trim((string)$input['category']) : null;
+                if (!$category) {
+                    $response = ['success' => false, 'message' => 'category requerida'];
+                    break;
+                }
+                $availableCategories = getCategories();
+                if (!in_array($category, $availableCategories)) {
+                    $response = ['success' => false, 'message' => 'Categoría no válida'];
+                    break;
+                }
+                $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+                if (!$word) {
+                    $response = ['success' => false, 'message' => 'No hay palabras en esa categoría'];
+                    break;
+                }
+                $response = [
+                    'success' => true,
+                    'server_now' => intval(microtime(true) * 1000),
+                    'category' => $category,
+                    'word' => $word
+                ];
+            } catch (Exception $e) {
+                $response = ['success' => false, 'message' => 'Error del servidor'];
+            }
+            break;
+
+        case 'create_game':
+            if (!$gameId || strlen($gameId) < 3) {
+                $gameId = generateGameCode();
+            } else {
+                $existingState = loadGameState($gameId);
+                if ($existingState) {
+                    $gameId = generateGameCode();
+                }
+            }
+
+            $totalRounds = intval($input['total_rounds'] ?? TOTAL_ROUNDS);
+            $roundDuration = intval($input['round_duration'] ?? ROUND_DURATION);
+            $minPlayers = intval($input['min_players'] ?? MIN_PLAYERS);
+
+            if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = TOTAL_ROUNDS;
+            if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = ROUND_DURATION;
+            if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
+
+            $selectedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
+            if ($selectedCategory === '') $selectedCategory = null;
+
+            $serverNow = intval(microtime(true) * 1000);
+            $state = [
+                'game_id' => $gameId,
+                'players' => [],
+                'round' => 0,
+                'total_rounds' => $totalRounds,
+                'status' => 'waiting',
+                'current_word' => null,
+                'current_category' => null,
+                'selected_category' => $selectedCategory,
+                'used_prompts' => [],
+                'round_duration' => $roundDuration * 1000,
+                'round_started_at' => null,
+                'round_starts_at' => null,
+                'round_ends_at' => null,
+                'countdown_duration' => START_COUNTDOWN * 1000,
+                'min_players' => $minPlayers,
+                'round_details' => [],
+                'round_top_words' => [],
+                'game_history' => [],
+                'last_update' => time(),
+                'round_context' => null
+            ];
     $playerName = trim($input['name'] ?? 'Jugador');
     $playerColor = validatePlayerColor($input['color'] ?? null);
 
@@ -402,6 +491,34 @@ function handleSubmitAnswers($input) {
         return ['success' => false, 'message' => 'Jugador no encontrado'];
     }
 
+                $serverNow = intval(microtime(true) * 1000);
+                $countdownDuration = START_COUNTDOWN * 1000;
+                $roundStartsAt = $serverNow;
+                $roundStartedAt = $roundStartsAt + $countdownDuration;
+                $roundEndsAt = $roundStartedAt + $duration;
+
+                $state['round']++;
+                $state['status'] = 'playing';
+                $state['current_word'] = $prompt;
+                $state['current_category'] = $preferredCategory;
+                $state['round_duration'] = $duration;
+                $state['total_rounds'] = $totalRounds;
+                $state['countdown_duration'] = $countdownDuration;
+                $state['round_starts_at'] = $roundStartsAt;
+                $state['round_started_at'] = $roundStartedAt;
+                $state['round_ends_at'] = $roundEndsAt;
+                $state['last_update'] = time();
+
+                $state['round_context'] = getRoundContext($preferredCategory, $prompt);
+
+                foreach ($state['players'] as $pId => $player) {
+                    if (!empty($player['disconnected'])) {
+                        continue;
+                    }
+                    $state['players'][$pId]['status'] = 'playing';
+                    $state['players'][$pId]['answers'] = [];
+                    $state['players'][$pId]['round_results'] = [];
+                }
     if ($state['status'] !== 'playing') {
         return ['success' => false, 'message' => 'No hay ronda activa'];
     }
@@ -505,6 +622,14 @@ function handleEndRound($input) {
 function handleResetGame($input) {
     $gameId = sanitizeGameId($input['game_id'] ?? null);
 
+            if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS)) {
+                $state['status'] = 'finished';
+                $state['round_context'] = null;
+                trackGameAction($gameId, 'game_finished', []);
+            } else {
+                $state['status'] = 'round_ended';
+                $state['round_context'] = null;
+            }
     if (!$gameId) {
         return ['success' => false, 'message' => 'game_id requerido'];
     }
@@ -548,6 +673,29 @@ function handleResetGame($input) {
     return ['success' => false, 'message' => 'Error al reiniciar juego'];
 }
 
+            $state['round'] = 0;
+            $state['status'] = 'waiting';
+            $state['current_word'] = null;
+            $state['current_category'] = null;
+            $state['round_started_at'] = null;
+            $state['round_starts_at'] = null;
+            $state['round_ends_at'] = null;
+            $state['countdown_duration'] = null;
+            $state['round_top_words'] = [];
+            $state['round_context'] = null;
+            $state['last_update'] = time();
+
+            if (saveGameState($gameId, $state)) {
+                trackGameAction($gameId, 'game_reset', []);
+                notifyGameChanged($gameId);
+                $response = [
+                    'success' => true,
+                    'message' => 'Juego reiniciado',
+                    'server_now' => intval(microtime(true) * 1000),
+                    'state' => $state
+                ];
+            }
+            break;
 function handleLeaveGame($input) {
     $gameId = sanitizeGameId($input['game_id'] ?? null);
     $playerId = sanitizePlayerId($input['player_id'] ?? null);

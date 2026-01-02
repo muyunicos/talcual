@@ -297,17 +297,40 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 
 class DictionaryService {
     constructor() {
-        this.dictionary = null;
         this.categories = [];
-        this.loadPromise = null;
         this.isReady = false;
+        this.loadPromise = null;
     }
 
-    async initialize() {
-        if (this.isReady) return this.dictionary;
+    async loadCategories() {
+        if (this.categories.length > 0) {
+            this.isReady = true;
+            return this.categories;
+        }
         if (this.loadPromise) return this.loadPromise;
 
         this.loadPromise = (async () => {
+            debug('📚 Cargando categorías desde servidor...', null, 'info');
+            try {
+                const url = new URL('./app/actions.php', window.location.href);
+                const response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_categories' }),
+                    cache: 'no-store'
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (!result.success || !Array.isArray(result.categories)) {
+                    throw new Error('Respuesta inválida');
+                }
+                this.categories = result.categories;
+                this.isReady = true;
+                debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
+                return this.categories;
+            } catch (error) {
+                debug('❌ Error: ' + error.message, null, 'error');
+                throw error;
             debug('📚 Iniciando carga de diccionario...', null, 'info');
             
             const response = await fetch('./app/diccionario.json', { 
@@ -335,15 +358,7 @@ class DictionaryService {
                 debug('❌ WordEngine not available for dictionary injection', null, 'error');
                 throw new Error('WordEngine not ready for data injection');
             }
-
-            debug('📚 Diccionario cargado exitosamente', { 
-                categories: this.categories.length,
-                totalWords: this.getTotalWordCount()
-            }, 'success');
-
-            return this.dictionary;
         })();
-
         return this.loadPromise;
     }
 
@@ -369,9 +384,28 @@ class DictionaryService {
     }
 
     getCategories() {
+        if (!this.isReady) throw new Error('Llamar a loadCategories() primero');
         return [...this.categories];
     }
 
+    async getCategoryWord(category) {
+        debug(`🔤 Obteniendo palabra: ${category}`, null, 'info');
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_category_word', category: category }),
+                cache: 'no-store'
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            if (!result.success || !result.word) throw new Error(result.message || 'Sin palabra');
+            debug(`✅ Palabra: ${result.word}`, null, 'success');
+            return result.word;
+        } catch (error) {
+            debug('❌ Error: ' + error.message, null, 'error');
+            throw error;
     getWordsForCategory(category) {
         if (!this.dictionary || !this.dictionary[category]) {
             return [];
@@ -436,15 +470,13 @@ class DictionaryService {
             debug(`⚠️  Invalid type in getRandomWordByCategory(${category}):`, typeof randomWord, 'warn');
             return null;
         }
-
-        return randomWord;
     }
 }
 
 const dictionaryService = new DictionaryService();
 
 // ============================================================================
-// CONFIG SERVICE - NO FALLBACKS
+// CONFIG SERVICE
 // ============================================================================
 
 class ConfigService {
