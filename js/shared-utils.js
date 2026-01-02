@@ -481,7 +481,7 @@ const configService = new ConfigService();
 // ============================================================================
 
 function isValidGameCode(code) {
-    return code && /^[A-Z0-9]{4,5}$/.test(code);
+    return code && /^[A-Z0-9]{3,6}$/.test(code);
 }
 
 function isValidPlayerName(name) {
