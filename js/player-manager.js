@@ -9,6 +9,7 @@
  * - Manejo de errores fuerte en config/dict
  * - Rechaza Promises si hay error (no fallbacks)
  * 🔧 FASE 3-OPT: Optimized to use GameTimer centralized utility
+ * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
  */
 
 class PlayerManager {
@@ -23,7 +24,6 @@ class PlayerManager {
         this.maxWords = 6;
         this.isReady = false;
         this.timerInterval = null;
-        this.countdownTimeout = null;
         this.countdownRAFId = null;
 
         this.lastWordsUpdateTime = 0;
@@ -34,9 +34,6 @@ class PlayerManager {
         this.tempSelectedAura = null;
 
         this.elements = {};
-
-        this.joinModal = null;
-        this.editNameModal = null;
     }
 
     async initialize() {
@@ -47,9 +44,6 @@ class PlayerManager {
             this.maxWords = configService.get('max_words_per_player', 6);
             
             this.cacheElements();
-            
-            this.initializeModals();
-            
             this.attachEventListeners();
 
             await this.initWordEngine();
@@ -73,33 +67,6 @@ class PlayerManager {
         }
     }
 
-    initializeModals() {
-        this.joinModal = new ModalController('modal-join-game', {
-            closeOnBackdrop: true,
-            closeOnEsc: true,
-            onBeforeOpen: () => {
-                safeHideElement(this.elements.gameScreen);
-            },
-            onAfterOpen: () => {
-                setTimeout(() => {
-                    if (this.elements.inputGameCode) {
-                        this.elements.inputGameCode.focus();
-                    }
-                }, 100);
-            }
-        });
-
-        this.editNameModal = new ModalController('modal-edit-name', {
-            closeOnBackdrop: true,
-            closeOnEsc: true,
-            onAfterOpen: () => {
-                if (this.elements.modalNameInput) {
-                    this.elements.modalNameInput.focus();
-                }
-            }
-        });
-    }
-
     async initWordEngine() {
         try {
             await dictionaryService.initialize();
@@ -116,16 +83,10 @@ class PlayerManager {
     cacheElements() {
         this.elements = {
             gameScreen: safeGetElement('game-screen'),
-            inputGameCode: safeGetElement('input-game-code'),
-            inputPlayerName: safeGetElement('input-player-name'),
-            btnJoin: safeGetElement('btn-join'),
-            colorSelector: safeGetElement('color-selector'),
-            statusMessage: document.querySelector('#modal-join-game #status-message'),
             headerRound: safeGetElement('header-round'),
             headerTimer: safeGetElement('header-timer'),
             headerCode: safeGetElement('header-code'),
             playerScore: safeGetElement('player-score'),
-            statusCard: safeGetElement('status-card'),
             categoryLabel: safeGetElement('category-label'),
             currentWord: safeGetElement('current-word'),
             waitingMessage: safeGetElement('waiting-message'),
@@ -140,11 +101,7 @@ class PlayerManager {
             resultsSection: safeGetElement('results-section'),
             countdownOverlay: safeGetElement('countdown-overlay'),
             countdownNumber: safeGetElement('countdown-number'),
-            playerNameDisplay: safeGetElement('player-name-display'),
-            modalNameInput: safeGetElement('modal-name-input'),
-            modalBtnCancel: safeGetElement('modal-btn-cancel'),
-            modalBtnSave: safeGetElement('modal-btn-save'),
-            auraSelectorEdit: safeGetElement('aura-selector-edit')
+            playerNameDisplay: safeGetElement('player-name-display')
         };
 
         if (this.elements.maxWordsDisplay) {
@@ -157,22 +114,6 @@ class PlayerManager {
     }
 
     attachEventListeners() {
-        if (this.elements.btnJoin) {
-            this.elements.btnJoin.addEventListener('click', () => this.joinGame());
-        }
-
-        if (this.elements.inputGameCode) {
-            this.elements.inputGameCode.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.elements.inputPlayerName.focus();
-            });
-        }
-
-        if (this.elements.inputPlayerName) {
-            this.elements.inputPlayerName.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.joinGame();
-            });
-        }
-
         if (this.elements.btnAddWord) {
             this.elements.btnAddWord.addEventListener('click', () => this.addWord());
         }
@@ -201,35 +142,102 @@ class PlayerManager {
                 this.exitGame();
             });
         }
+    }
 
-        if (this.elements.modalBtnCancel) {
-            this.elements.modalBtnCancel.addEventListener('click', () => this.hideEditNameModal());
-        }
+    buildJoinContent() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <div class="input-group">
+                <label class="input-label" for="modal-join-code">Código de Sala</label>
+                <input type="text" id="modal-join-code" class="input-field" 
+                       placeholder="Ej: CASA" maxlength="6" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="modal-join-name">Tu Nombre</label>
+                <input type="text" id="modal-join-name" class="input-field" 
+                       placeholder="" maxlength="20" autocomplete="on">
+            </div>
+            <div class="input-group">
+                <label class="input-label">✨ Elige tu Aura</label>
+                <div class="aura-selector" id="modal-aura-selector"></div>
+            </div>
+        `;
 
-        if (this.elements.modalBtnSave) {
-            this.elements.modalBtnSave.addEventListener('click', () => this.saveNewName());
-        }
+        const codeInput = container.querySelector('#modal-join-code');
+        const nameInput = container.querySelector('#modal-join-name');
+        const auraSelector = container.querySelector('#modal-aura-selector');
+
+        this.availableAuras = generateRandomAuras();
+        const randomAura = this.availableAuras[Math.floor(Math.random() * this.availableAuras.length)];
+
+        renderAuraSelectors(
+            auraSelector,
+            this.availableAuras,
+            randomAura.hex,
+            (aura) => {
+                this.playerColor = aura.hex;
+                this.selectedAura = aura;
+            }
+        );
+        this.playerColor = randomAura.hex;
+        this.selectedAura = randomAura;
+
+        codeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') nameInput.focus();
+        });
+
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.joinGame(codeInput.value, nameInput.value);
+        });
+
+        return container;
+    }
+
+    buildEditNameContent() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <div class="input-group">
+                <label class="input-label" for="modal-edit-name">Nuevo Nombre</label>
+                <input type="text" id="modal-edit-name" class="input-field" maxlength="20" autocomplete="off">
+            </div>
+            <div class="input-group" style="margin-top: 15px;">
+                <label class="input-label">✨ Tu Aura</label>
+                <div class="aura-selector" id="modal-edit-aura"></div>
+            </div>
+        `;
+
+        const nameInput = container.querySelector('#modal-edit-name');
+        const auraSelector = container.querySelector('#modal-edit-aura');
+
+        nameInput.value = this.playerName;
+        this.tempSelectedAura = this.playerColor;
+
+        renderAuraSelectorsEdit(
+            auraSelector,
+            this.playerColor,
+            (aura) => {
+                this.tempSelectedAura = aura.hex;
+            }
+        );
+
+        return container;
     }
 
     showJoinModal() {
-        this.joinModal.open();
+        const content = this.buildJoinContent();
 
-        this.availableAuras = generateRandomAuras();
-
-        if (this.elements.colorSelector) {
-            const randomAura = this.availableAuras[Math.floor(Math.random() * this.availableAuras.length)];
-            renderAuraSelectors(
-                this.elements.colorSelector,
-                this.availableAuras,
-                randomAura.hex,
-                (aura) => {
-                    this.playerColor = aura.hex;
-                    this.selectedAura = aura;
-                }
-            );
-            this.playerColor = randomAura.hex;
-            this.selectedAura = randomAura;
-        }
+        ModalManager_Instance.show({
+            type: 'primary',
+            title: 'Unirse a una Partida',
+            content: content,
+            buttons: [
+                { label: '¡A Jugar!', class: 'btn-modal-primary', action: () => {
+                    const codeInput = document.querySelector('#modal-join-code');
+                    const nameInput = document.querySelector('#modal-join-name');
+                    this.joinGame(codeInput.value, nameInput.value);
+                }, close: false }
+            ]
+        });
     }
 
     async recoverSession(gameId, playerId, playerName, playerColor) {
@@ -270,7 +278,7 @@ class PlayerManager {
 
         applyColorGradient(this.playerColor);
 
-        this.joinModal.close();
+        ModalManager_Instance.close();
         safeShowElement(this.elements.gameScreen);
 
         if (this.elements.headerCode) this.elements.headerCode.textContent = this.gameId;
@@ -283,45 +291,30 @@ class PlayerManager {
         this.handleStateUpdate(state);
     }
 
-    async joinGame() {
-        const code = this.elements.inputGameCode?.value?.trim().toUpperCase();
-        const name = this.elements.inputPlayerName?.value?.trim();
+    async joinGame(code, name) {
+        const gameCode = (code || '').trim().toUpperCase();
+        const playerName = (name || '').trim();
 
         if (!this.playerColor) {
-            if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Selecciona un aura';
-            }
+            showNotification('⚠️ Selecciona un aura', 'warning');
             return;
         }
 
-        if (!isValidGameCode(code)) {
-            if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Código inválido';
-            }
+        if (!isValidGameCode(gameCode)) {
+            showNotification('⚠️ Código inválido', 'warning');
             return;
         }
 
-        if (!isValidPlayerName(name)) {
-            if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '⚠️ Nombre inválido (2-20 caracteres)';
-            }
+        if (!isValidPlayerName(playerName)) {
+            showNotification('⚠️ Nombre inválido (2-20 caracteres)', 'warning');
             return;
         }
 
-        this.gameId = code;
-        this.playerName = name;
+        this.gameId = gameCode;
+        this.playerName = playerName;
         this.playerId = generatePlayerId();
 
         playerSession.savePlayerSession(this.gameId, this.playerId, this.playerName, this.playerColor);
-
-        if (this.elements.btnJoin) {
-            this.elements.btnJoin.disabled = true;
-            this.elements.btnJoin.textContent = 'Conectando...';
-        }
-
-        if (this.elements.statusMessage) {
-            this.elements.statusMessage.innerHTML = '⏳ Conectando...';
-        }
 
         try {
             this.client = new GameClient(this.gameId, this.playerId, 'player');
@@ -335,23 +328,11 @@ class PlayerManager {
                 debug(`✅ Conectado a juego: ${this.gameId}`);
                 this.loadGameScreen(result.state || {});
             } else {
-                if (this.elements.statusMessage) {
-                    this.elements.statusMessage.innerHTML = '❌ ' + (result.message || 'Error');
-                }
-                if (this.elements.btnJoin) {
-                    this.elements.btnJoin.disabled = false;
-                    this.elements.btnJoin.textContent = '🎮 ¡Jugar!';
-                }
+                showNotification('❌ ' + (result.message || 'Error'), 'error');
             }
         } catch (error) {
             debug('Error uniéndose:', error, 'error');
-            if (this.elements.statusMessage) {
-                this.elements.statusMessage.innerHTML = '❌ Error de conexión';
-            }
-            if (this.elements.btnJoin) {
-                this.elements.btnJoin.disabled = false;
-                this.elements.btnJoin.textContent = '🎮 ¡Jugar!';
-            }
+            showNotification('❌ Error de conexión', 'error');
         }
     }
 
@@ -902,13 +883,6 @@ class PlayerManager {
             this.client = null;
         }
         
-        if (this.joinModal) {
-            this.joinModal.destroy();
-        }
-        if (this.editNameModal) {
-            this.editNameModal.destroy();
-        }
-        
         this.myWords = [];
         this.gameState = null;
         this.elements = {};
@@ -927,41 +901,33 @@ class PlayerManager {
     }
 
     showEditNameModal() {
-        if (this.elements.modalNameInput) {
-            this.elements.modalNameInput.value = this.playerName;
-        }
-        
-        this.tempSelectedAura = this.playerColor;
-        
-        if (this.elements.auraSelectorEdit) {
-            renderAuraSelectorsEdit(
-                this.elements.auraSelectorEdit,
-                this.playerColor,
-                (aura) => {
-                    this.tempSelectedAura = aura.hex;
-                }
-            );
-        }
-        
-        this.editNameModal.open();
+        const content = this.buildEditNameContent();
+
+        ModalManager_Instance.show({
+            type: 'secondary',
+            title: 'Cambiar Nombre',
+            content: content,
+            buttons: [
+                { label: 'Cancelar', class: 'btn', action: null, close: true },
+                { label: 'Guardar', class: 'btn-modal-primary', action: () => {
+                    const nameInput = document.querySelector('#modal-edit-name');
+                    this.saveNewName(nameInput.value);
+                }, close: false }
+            ]
+        });
     }
 
-    hideEditNameModal() {
-        this.editNameModal.close();
-        this.tempSelectedAura = null;
-    }
+    async saveNewName(newName) {
+        const trimmedName = (newName || '').trim();
 
-    async saveNewName() {
-        const newName = this.elements.modalNameInput?.value?.trim();
-
-        if (!isValidPlayerName(newName)) {
+        if (!isValidPlayerName(trimmedName)) {
             showNotification('Nombre inválido (2-20 caracteres)', 'warning');
             return;
         }
 
-        this.playerName = newName;
+        this.playerName = trimmedName;
         if (this.elements.playerNameDisplay) {
-            this.elements.playerNameDisplay.textContent = newName;
+            this.elements.playerNameDisplay.textContent = trimmedName;
         }
 
         if (this.tempSelectedAura && this.tempSelectedAura !== this.playerColor) {
@@ -970,11 +936,11 @@ class PlayerManager {
             savePlayerColor(this.playerColor);
         }
 
-        playerSession.savePlayerSession(this.gameId, this.playerId, newName, this.playerColor);
+        playerSession.savePlayerSession(this.gameId, this.playerId, trimmedName, this.playerColor);
 
         if (this.client) {
             try {
-                await this.client.sendAction('update_player_name', { name: newName });
+                await this.client.sendAction('update_player_name', { name: trimmedName });
                 if (this.tempSelectedAura) {
                     await this.client.sendAction('update_player_color', { color: this.tempSelectedAura });
                 }
@@ -983,7 +949,7 @@ class PlayerManager {
             }
         }
 
-        this.hideEditNameModal();
+        ModalManager_Instance.close();
     }
 
     handleConnectionLost() {
@@ -1009,4 +975,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - FASE 3-OPT: Timer utility centralizado', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - PHASE 6: ModalManager integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
