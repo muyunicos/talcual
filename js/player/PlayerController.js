@@ -12,6 +12,8 @@ class PlayerManager extends BaseController {
 
     this.lastWordsUpdateTime = 0;
     this.wordsUpdatePending = false;
+    
+    this.lastTypingTime = 0;
 
     this.view = null;
   }
@@ -48,7 +50,7 @@ class PlayerManager extends BaseController {
   }
 
   async initialize() {
-    debug('📃 Inicializando PlayerManager');
+    debug('📋 Inicializando PlayerManager');
     
     try {
       await configService.load();
@@ -83,6 +85,7 @@ class PlayerManager extends BaseController {
     this.view.bindKeyPressInInput(() => this.addWord());
     this.view.bindSubmit(() => this.handleFinishButton());
     this.view.bindJoinGame((code, name) => this.joinGame(code, name));
+    this.view.bindTypingOnInput(() => this.scheduleTypingEvent());
   }
 
   showJoinModal() {
@@ -270,12 +273,35 @@ class PlayerManager extends BaseController {
     }
   }
 
+  scheduleTypingEvent() {
+    const now = Date.now();
+    const timeSinceLastTyping = now - this.lastTypingTime;
+    const typingThrottleMs = 2000;
+
+    if (timeSinceLastTyping >= typingThrottleMs) {
+      this.sendTypingEvent();
+    }
+  }
+
+  async sendTypingEvent() {
+    if (!this.client || !this.gameId || !this.playerId) return;
+
+    this.lastTypingTime = Date.now();
+
+    try {
+      await this.client.sendAction('typing', {});
+      debug('🗣️ Typing event enviado', null, 'debug');
+    } catch (error) {
+      debug('Error enviando typing event:', error, 'debug');
+    }
+  }
+
   async addWord() {
     const word = this.view.getInputValue();
     if (!word) return;
 
     if (this.myWords.length >= this.maxWords) {
-      showNotification(`🗒️ Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
+      showNotification(`📃 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
       return;
     }
 
@@ -309,7 +335,7 @@ class PlayerManager extends BaseController {
     this.view.focusInput();
 
     if (this.myWords.length === this.maxWords) {
-      debug(`🗒️ Máximo de palabras alcanzado (${this.maxWords})`, 'info');
+      debug(`📃 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
       this.updateInputAndButtons();
     }
   }
