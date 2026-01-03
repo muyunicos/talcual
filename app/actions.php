@@ -218,6 +218,17 @@ function handleCreateGame($input) {
     
     $state = $initialState;
 
+    $promptData = pickNonRepeatingPrompt($state, $requestedCategory);
+    $state['current_prompt'] = $promptData['prompt'];
+    $state['current_category'] = $promptData['category'] ?: 'Sin categoría';
+    $state['used_prompts'] = $promptData['used_prompts'];
+    
+    $card = getTopicCard($promptData['category'] ?: getCategories()[0] ?? null);
+    $state['roundData'] = [
+        'roundQuestion' => $promptData['prompt'],
+        'commonAnswers' => $card['answers']
+    ];
+
     if (saveGameState($gameId, $state)) {
         trackGameAction($gameId, 'game_created', []);
         notifyGameChanged($gameId, true);
