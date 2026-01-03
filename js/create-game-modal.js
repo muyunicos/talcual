@@ -2,43 +2,38 @@
  * Create Game Modal - Modal para crear nuevas partidas
  * Maneja: UI para crear partida
  * 
- * ✅ REFACTORIZADO FASE 1:
- * - Usa ModalManager_Instance para gestión centralizada de modales
- * - Usa DictionaryService para carga de categorías
- * - Usa ConfigService para configuración
- * - SOLO responsable de UI
+ * 🔧 SERVER-SIDE FIRST (Phase 4):
+ * - Calls dictionaryService.fetchGameCandidates()
+ * - Pre-fills modal with random candidate (category/code pair)
+ * - When user changes category, auto-updates code to match
+ * - Sends ONLY game_id + category to backend
  */
 
 class CreateGameModal {
     constructor() {
         this.btnCreate = document.getElementById('btn-create-game');
-        this.categorySelect = document.getElementById('category-select');
-        this.customCodeInput = document.getElementById('custom-code');
         this.statusMessage = document.getElementById('status-message');
 
-        this.categories = [];
-        this.categoryWordsMap = {};
+        this.gameCandidates = [];
+        this.selectedCandidate = null;
 
         this.init();
     }
 
     async init() {
         try {
-            await dictionaryService.initialize();
             await configService.load();
+            await dictionaryService.fetchGameCandidates();
 
-            this.categories = await dictionaryService.getCategories();
-            this.populateCategorySelect(this.categories);
+            this.gameCandidates = dictionaryService.gameCandidates;
+
+            if (this.gameCandidates.length === 0) {
+                throw new Error('No hay candidatos disponibles');
+            }
 
             this.btnCreate.addEventListener('click', () => this.handleCreateClick());
-            this.categorySelect.addEventListener('change', () => this.updateCodeWithCategoryWord());
 
-            this.customCodeInput.addEventListener('input', (e) => {
-                e.target.value = e.target.value.trim().toUpperCase().slice(0, 5);
-            });
-
-            this.selectRandomCategory();
-            debug('✅ CreateGameModal inicializado', null, 'success');
+            debug('✅ CreateGameModal inicializado', { candidatos: this.gameCandidates.length }, 'success');
         } catch (error) {
             debug('❌ Error inicializando CreateGameModal', error, 'error');
             this.showMessage('Error inicializando modal', 'error');
@@ -46,22 +41,55 @@ class CreateGameModal {
         }
     }
 
+    getCategories() {
+        const categories = new Set();
+        this.gameCandidates.forEach(c => categories.add(c.category));
+        return Array.from(categories).sort();
+    }
+
+    getCandidateForCategory(category) {
+        const matching = this.gameCandidates.filter(c => c.category === category);
+        if (matching.length === 0) return null;
+        return matching[Math.floor(Math.random() * matching.length)];
+    }
+
+    selectRandomCandidate() {
+        if (this.gameCandidates.length === 0) return null;
+        const randomIndex = Math.floor(Math.random() * this.gameCandidates.length);
+        this.selectedCandidate = { ...this.gameCandidates[randomIndex] };
+        return this.selectedCandidate;
+    }
+
+    updateCandidateFromCategory(category) {
+        const candidate = this.getCandidateForCategory(category);
+        if (candidate) {
+            this.selectedCandidate = { ...candidate };
+        }
+    }
+
     openModal() {
-        this.selectRandomCategory();
-        this.customCodeInput.value = '';
-        this.statusMessage.style.display = 'none';
+        this.selectRandomCandidate();
+        const categories = this.getCategories();
+        const selectedCategory = this.selectedCandidate?.category || categories[0];
+        const selectedCode = this.selectedCandidate?.code || '';
+
+        const categoryOptions = categories.map(cat => 
+            `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
+        ).join('');
 
         const formHTML = `
             <div class="input-group">
-                <label class="input-label" for="category-select">Categoría</label>
-                <select id="category-select" class="input-field">
-                    ${this.categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                <label class="input-label" for="category-select-modal">Categoría</label>
+                <select id="category-select-modal" class="input-field">
+                    ${categoryOptions}
                 </select>
             </div>
             <div class="input-group">
-                <label class="input-label" for="custom-code">Código personalizado (opcional)</label>
-                <input type="text" id="custom-code" class="input-field" placeholder="Máx. 5 caracteres" maxlength="5">
-                <p class="custom-code-info">Si no completas, se generará automáticamente</p>
+                <label class="input-label" for="code-display-modal">Código de Sala</label>
+                <div id="code-display-modal" class="input-field code-display" style="background: var(--color-secondary); padding: 12px; border-radius: 6px; font-weight: bold; letter-spacing: 2px; text-align: center; font-size: 18px;">
+                    ${selectedCode}
+                </div>
+                <p class="custom-code-info">Código generado automáticamente por el servidor</p>
             </div>
         `;
 
@@ -85,31 +113,21 @@ class CreateGameModal {
             ],
             onDismiss: () => {
                 debug('Modal cerrado por el usuario', null, 'info');
+            },
+            onOpen: () => {
+                const categorySelect = document.getElementById('category-select-modal');
+                const codeDisplay = document.getElementById('code-display-modal');
+
+                if (categorySelect) {
+                    categorySelect.addEventListener('change', (e) => {
+                        this.updateCandidateFromCategory(e.target.value);
+                        if (codeDisplay && this.selectedCandidate) {
+                            codeDisplay.textContent = this.selectedCandidate.code;
+                        }
+                    });
+                }
             }
         });
-    }
-
-    populateCategorySelect(categories) {
-        // Ya no necesario si el select se genera dinámicamente
-        // Pero se mantiene por compatibilidad
-    }
-
-    selectRandomCategory() {
-        if (this.categories.length === 0) return;
-        const randomIndex = Math.floor(Math.random() * this.categories.length);
-        const selectedCategory = this.categories[randomIndex];
-        return selectedCategory;
-    }
-
-    async updateCodeWithCategoryWord() {
-        try {
-            const randomWord = await dictionaryService.getRandomWord();
-            if (randomWord) {
-                return randomWord.slice(0, 5);
-            }
-        } catch (error) {
-            debug('Error obteniendo palabra para categoría', error, 'warn');
-        }
     }
 
     async handleCreateClick() {
@@ -117,18 +135,19 @@ class CreateGameModal {
         this.showMessage('Creando partida...', 'info');
         
         try {
-            const categorySelect = document.getElementById('category-select');
-            const customCodeInput = document.getElementById('custom-code');
-            
-            const category = categorySelect?.value || this.selectRandomCategory();
-            const customCode = (customCodeInput?.value || '').trim().toUpperCase() || null;
+            if (!this.selectedCandidate || !this.selectedCandidate.code) {
+                throw new Error('No hay código seleccionado');
+            }
+
+            const gameId = this.selectedCandidate.code;
+            const category = this.selectedCandidate.category;
 
             const payload = {
                 action: 'create_game',
-                game_id: customCode,
+                game_id: gameId,
                 category,
                 total_rounds: configService.get('TOTAL_ROUNDS', 3),
-                round_duration: configService.get('ROUND_DURATION', 60),
+                round_duration: configService.get('round_duration', 60),
                 min_players: configService.get('min_players', 2)
             };
 
@@ -151,16 +170,11 @@ class CreateGameModal {
             
             const result = await response.json();
             
-            if (!result || !result.game_id) {
-                throw new Error('Invalid response: missing game_id');
+            if (!result.success || !result.game_id) {
+                throw new Error(result.message || 'Invalid response: missing game_id');
             }
 
-            const gameId = result.game_id;
-
-            StorageManager.set(StorageKeys.HOST_GAME_CODE, gameId);
-            StorageManager.set(StorageKeys.GAME_ID, gameId);
-            StorageManager.set(StorageKeys.IS_HOST, 'true');
-            StorageManager.set(StorageKeys.GAME_CATEGORY, category);
+            hostSession.saveHostSession(result.game_id, category);
 
             this.showMessage('Partida creada. Inicializando...', 'success');
 
@@ -177,7 +191,7 @@ class CreateGameModal {
             if (error.name === 'AbortError') {
                 this.showMessage('Timeout: La solicitud tardó demasiado', 'error');
             } else {
-                this.showMessage('Error creando partida', 'error');
+                this.showMessage(error.message || 'Error creando partida', 'error');
             }
         } finally {
             this.btnCreate.disabled = false;
@@ -203,4 +217,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ create-game-modal.js - REFACTORIZADO FASE 1: Usa ModalManager_Instance', 'color: #0066FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ create-game-modal.js - SERVER-SIDE FIRST: fetchGameCandidates() + auto-select code', 'color: #0066FF; font-weight: bold; font-size: 12px');
