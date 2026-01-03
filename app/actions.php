@@ -195,13 +195,14 @@ function handleCreateGame($input) {
     if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
 
     $serverNow = intval(microtime(true) * 1000);
-    $state = [
+    
+    $initialState = [
         'game_id' => $gameId,
         'players' => [],
         'round' => 0,
         'total_rounds' => $totalRounds,
         'status' => 'waiting',
-        'current_word' => null,
+        'current_prompt' => null,
         'current_category' => null,
         'selected_category' => $requestedCategory,
         'used_prompts' => [],
@@ -217,6 +218,17 @@ function handleCreateGame($input) {
         'round_context' => null,
         'last_update' => time()
     ];
+    
+    $picked = pickNonRepeatingPrompt($initialState, $requestedCategory);
+    $initialPrompt = (string)($picked['prompt'] ?? 'JUEGO');
+    $initialCategory = $picked['category'] ?? $requestedCategory ?? 'Sin categoría';
+    $initialState['used_prompts'] = $picked['used_prompts'] ?? [];
+    
+    $initialState['current_prompt'] = $initialPrompt;
+    $initialState['current_category'] = $initialCategory;
+    $initialState['round_context'] = getRoundContext($initialCategory, $initialPrompt);
+    
+    $state = $initialState;
 
     if (saveGameState($gameId, $state)) {
         trackGameAction($gameId, 'game_created', []);
@@ -351,7 +363,7 @@ function handleStartRound($input) {
 
     $state['round']++;
     $state['status'] = 'playing';
-    $state['current_word'] = $prompt;
+    $state['current_prompt'] = $prompt;
     $state['current_category'] = $preferredCategory;
     $state['round_duration'] = $duration;
     $state['total_rounds'] = $totalRounds;
@@ -528,7 +540,7 @@ function handleResetGame($input) {
 
     $state['round'] = 0;
     $state['status'] = 'waiting';
-    $state['current_word'] = null;
+    $state['current_prompt'] = null;
     $state['current_category'] = null;
     $state['round_started_at'] = null;
     $state['round_starts_at'] = null;
