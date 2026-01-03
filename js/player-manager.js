@@ -11,6 +11,7 @@
  * 🔧 FASE 3-OPT: Optimized to use GameTimer centralized utility
  * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
  * 🔧 PHASE 7-MINIDICT: Elimina carga de diccionario completo, usa solo roundContext
+ * 🔧 PHASE 8-JIT: Just-in-time dictionary loading from start_round (mini-dict per round)
  */
 
 class PlayerManager {
@@ -461,9 +462,11 @@ class PlayerManager {
             return;
         }
 
-        if (state.roundData) {
+        if (state.roundData && state.roundData.validMatches) {
             initializeWordEngineFromRound(state.roundData);
             debug('📚 Mini-diccionario cargado desde roundData', 'info');
+        } else {
+            debug('⚠️ No hay roundData.validMatches en estado', 'warning');
         }
 
         if (state.round_starts_at) {
@@ -971,4 +974,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - PHASE 7: Mini-dictionary integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - PHASE 8: Just-in-time mini-dictionary (from start_round)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
