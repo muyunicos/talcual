@@ -2,11 +2,6 @@
  * @file communication.js
  * @description Sistema centralizado de comunicacion SSE para TalCual
  * Define tipos de eventos y constantes de comunicacion.
- * 
- * SECURITY NOTE: All input validation must be performed both client-side
- * and server-side. This file defines validation constants for consistency.
- * 
- * PHASE 2 SYNC: COMM_CONFIG values synchronized with server via ConfigService
  */
 
 const EVENT_TYPES = {

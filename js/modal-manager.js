@@ -1,18 +1,5 @@
 /**
  * Modal Manager - Gestor centralizado de modales (3 CAPAS JERÁRQUICAS)
- * 
- * Sistema de 3 capas máximas para renderizar y controlar modales encimados
- * CAPA 1 - PRIMARY:      z-index: 1000 (Modal base del flujo)
- * CAPA 2 - SECONDARY:    z-index: 1100 (Formularios, opciones)
- * CAPA 3 - CONFIRMATION: z-index: 1200 (Mensajes de confirmación)
- * 
- * API:
- * ModalManager.show({ type: 'primary|secondary|confirmation', title, content, buttons, onDismiss })
- * ModalManager.close()
- * ModalManager.closeAll()
- * ModalManager.isOpen()
- * ModalManager.getStackSize()
- * ModalManager.getTopModal()
  */
 
 class ModalManager {
@@ -22,9 +9,9 @@ class ModalManager {
         this.baseZIndex = 1000;
 
         this.TYPES = {
-            PRIMARY: 'primary',           // z: 1000
-            SECONDARY: 'secondary',       // z: 1100
-            CONFIRMATION: 'confirmation'  // z: 1200
+            PRIMARY: 'primary',
+            SECONDARY: 'secondary',
+            CONFIRMATION: 'confirmation'
         };
 
         this.Z_INDEX = {

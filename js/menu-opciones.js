@@ -1,10 +1,5 @@
 /**
  * Menu Opciones Handler
- * Centraliza la lógica de apertura/cierre del menú hamburguesa para host y player
- * - Arranca siempre cerrado
- * - Toggle al click del botón
- * - Cierra al hacer click afuera
- * - Cierra al seleccionar una opción
  */
 
 class MenuOpcionesHandler {

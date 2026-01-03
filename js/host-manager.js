@@ -1,27 +1,5 @@
 /**
  * Host Manager - Gestión de partida en host
- * Maneja: timer, categoría, ranking, panel tabs
- * (Lógica del menú hamburguesa ahora en menu-opciones.js)
- * 
- * 🔧 REFACTORIZADO FASE 2:
- * - Elimina método showFatalError() duplicado
- * - Usa UI.showFatalError() centralizado de shared-utils.js
- * - ModalHandler centralizado para modales
- * - SessionManager para persistencia
- * - ConfigService.load() + syncCommConfigWithServer() para sincronización
- * 🎯 FEATURE: Restaurada lógica de selector de categoría
- * 🔧 FIX: Moved determineUIState to after dependencies load
- * 🔧 FIX: Remove fallbacks - fail-fast dev mode for v1.0
- * 🔧 FASE 3-CORE: Espera a que configService esté listo
- * 🔧 FASE 3-OPT: Optimized manager to consume GameTimer centralized utility
- * 🔧 PHASE 1: Removed ghost 'start-screen' element from cacheElements
- * 🔧 PHASE 1: Fixed round display - removed duplicate "Ronda" label
- * 🔧 PHASE 3: Settings Modal wired - cached, initialized, events bound
- * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
- * 🔧 PHASE 2-SYNC: ConfigService + COMM_CONFIG sync after load
- * 🎯 FEATURE: Hurry Up (Remate) implemented - reduces round timer to threshold
- * 🔧 PHASE 7-SHIMMED: Refactored to use gameCandidates via shimmed methods
- * 🔧 PHASE 8-SERVER: Removed dictionaryService.load() - all dictionary logic server-side
  */
 
 class HostManager {

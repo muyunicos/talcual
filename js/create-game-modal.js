@@ -1,12 +1,6 @@
 /**
  * Create Game Modal - Modal para crear nuevas partidas
  * Maneja: UI para crear partida
- * 
- * 🔧 SERVER-SIDE FIRST (Phase 4):
- * - Calls dictionaryService.fetchGameCandidates()
- * - Pre-fills modal with random candidate (category/code pair)
- * - When user changes category, auto-updates code to match
- * - Sends ONLY game_id + category to backend
  */
 
 class CreateGameModal {
