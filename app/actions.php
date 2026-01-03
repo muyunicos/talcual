@@ -637,7 +637,10 @@ function handleGetConfig() {
             'max_code_length' => MAX_CODE_LENGTH,
             'min_players' => MIN_PLAYERS,
             'max_players' => MAX_PLAYERS,
-            'start_countdown' => START_COUNTDOWN
+            'start_countdown' => START_COUNTDOWN,
+            'max_word_length' => MAX_WORD_LENGTH,
+            'min_player_name_length' => 2,
+            'max_player_name_length' => 20
         ]
     ];
 }
