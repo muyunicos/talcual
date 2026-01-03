@@ -1,6 +1,5 @@
 /**
  * Create Game Modal - Modal para crear nuevas partidas
- * Maneja: UI para crear partida
  */
 
 class CreateGameModal {
@@ -211,4 +210,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ create-game-modal.js - SERVER-SIDE FIRST: fetchGameCandidates() + auto-select code', 'color: #0066FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ create-game-modal.js', 'color: #0066FF; font-weight: bold; font-size: 12px');

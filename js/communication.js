@@ -239,4 +239,4 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-console.log('%c✅ communication.js cargado - TimeSyncManager + COMM_CONFIG (awaiting syncCommConfigWithServer)', 'color: #10B981; font-weight: bold');
+console.log('%c✅ communication.js', 'color: #10B981; font-weight: bold');

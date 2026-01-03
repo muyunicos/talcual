@@ -1,17 +1,5 @@
 /**
  * Player Manager - Gestión de jugador en partida
- * Maneja: unión, palabras, timer, resultados
- * 
- * 🔧 REFACTORIZADO FASE 2:
- * - Elimina método showFatalError() duplicado
- * - Usa UI.showFatalError() centralizado de shared-utils.js
- * - Usa wordEngine desacoplado
- * - Manejo de errores fuerte en config/dict
- * - Rechaza Promises si hay error (no fallbacks)
- * 🔧 FASE 3-OPT: Optimized to use GameTimer centralized utility
- * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
- * 🔧 PHASE 7-MINIDICT: Elimina carga de diccionario completo, usa solo roundContext
- * 🔧 PHASE 8-JIT: Just-in-time dictionary loading from start_round (mini-dict per round)
  */
 
 class PlayerManager {
@@ -974,4 +962,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - PHASE 8: Just-in-time mini-dictionary (from start_round)', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');

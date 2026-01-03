@@ -1,5 +1,5 @@
 /**
- * Modal Manager - Gestor centralizado de modales (3 CAPAS JERÁRQUICAS)
+ * Modal Manager - Gestor centralizado de modales
  */
 
 class ModalManager {
@@ -28,7 +28,7 @@ class ModalManager {
         if (!this.container) {
             this.createContainer();
         }
-        debug('🎯 ModalManager inicializado (3 capas jerárquicas)', 'info');
+        debug('🎯 ModalManager inicializado', 'info');
     }
 
     createContainer() {
@@ -215,4 +215,4 @@ class ModalManager {
 
 const ModalManager_Instance = new ModalManager();
 
-console.log('%c✅ modal-manager.js cargado - 3 capas jerárquicas (PRIMARY, SECONDARY, CONFIRMATION)', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ modal-manager.js', 'color: #00FF00; font-weight: bold; font-size: 12px');

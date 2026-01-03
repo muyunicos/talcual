@@ -1,13 +1,5 @@
 /**
- * Word Comparison Engine V11 - Passive Logic Engine (PHASE 2 CLEAN)
- *
- * PHASE 2 Changes:
- * - REMOVED: processLegacyFormat() - legacy array format support
- * - SIMPLIFIED: processDictionary() - only processes modern format (diccionario.json structure)
- * - PURIFIED: 100% synchronous, passive, no I/O, no initialization overhead
- * - Data is INJECTED from DictionaryService - engine is read-only except for processDictionary()
- * - ADDED: reset() method to clear state between rounds
- * - PHASE 3: initializeFromRoundContext() for mini-dictionary (only round answers)
+ * Word Comparison Engine
  */
 
 class WordEquivalenceEngine {

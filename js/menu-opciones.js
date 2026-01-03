@@ -107,4 +107,4 @@ if (document.readyState === 'loading') {
     }
 }
 
-console.log('%c✅ menu-opciones.js cargado', 'color: #22C55E; font-weight: bold; font-size: 12px');
+console.log('%c✅ menu-opciones.js', 'color: #22C55E; font-weight: bold; font-size: 12px');

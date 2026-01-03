@@ -244,4 +244,4 @@ const ConfigService = {
     }
 };
 
-console.log('%c✅ shared-utils.js loaded', 'color: #00aa00; font-weight: bold');
+console.log('%c✅ shared-utils.js', 'color: #00aa00; font-weight: bold');

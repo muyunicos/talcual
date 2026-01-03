@@ -767,4 +767,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - Removed dictionaryService dependency, server-side only', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');
