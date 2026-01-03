@@ -70,6 +70,10 @@ class WordEquivalenceEngine {
         console.log('🔄 WordEngine reset - state cleared');
     }
 
+    isReady() {
+        return this.isLoaded;
+    }
+
     processModernFormat(data) {
         Object.entries(data).forEach(([category, categoryContent]) => {
             if (!Array.isArray(categoryContent)) return;
