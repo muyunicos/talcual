@@ -27,17 +27,12 @@
     <script src="js/shared-utils.js"></script>
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const hasStorageManager = (typeof StorageManager !== 'undefined' && typeof StorageKeys !== 'undefined');
-            const gameId = hasStorageManager ? StorageManager.get(StorageKeys.GAME_ID) : localStorage.getItem('gameId');
-            const playerId = hasStorageManager ? StorageManager.get(StorageKeys.PLAYER_ID) : localStorage.getItem('playerId');
-            const isHostValue = hasStorageManager ? StorageManager.get(StorageKeys.IS_HOST) : localStorage.getItem('isHost');
-            const isHost = isHostValue === 'true';
-            if (gameId) {                
-                if (isHost) {
-                    window.location.href = 'host.html';
-                } else if (playerId) {
-                    window.location.href = 'play.html';
-                }
+            const gameId = StorageManager.get(StorageKeys.GAME_ID);
+            const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
+            const isHost = StorageManager.get(StorageKeys.IS_HOST) === 'true';
+
+            if (gameId) {
+                window.location.href = isHost ? 'host.html' : 'play.html';
             }
         });
     </script>
