@@ -6,6 +6,7 @@ class BaseController {
         this.gameState = {};
         this.elements = {};
         this.auraModule = new AuraModule();
+        this.hurryUpActive = false;
     }
 
     getStorageKeys() {
@@ -47,6 +48,13 @@ class BaseController {
 
     applyPlayerAura(colorStr) {
         this.auraModule.applyColorGradient(colorStr);
+    }
+
+    setTimerHurryUp(isActive) {
+        this.hurryUpActive = isActive;
+        if (this.elements.headerTimer) {
+            this.elements.headerTimer.classList.toggle('tc-timer--hurry', isActive);
+        }
     }
 
     startContinuousTimer(state, onTick = null) {
@@ -92,6 +100,7 @@ class BaseController {
             cancelAnimationFrame(this.countdownRAFId);
             this.countdownRAFId = null;
         }
+        this.setTimerHurryUp(false);
     }
 
     runCountdown(roundStartsAt, countdownDuration, onComplete) {
