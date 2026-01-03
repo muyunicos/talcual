@@ -2,9 +2,10 @@
  * @file shared-utils.js
  * @description Centralization of services and shared utilities
  * 
- * 🔧 PHASE 2 (FINAL):
- * - REMOVED: Stub WordEquivalenceEngine class (fail-fast if word-comparison.js missing)
- * - GameTimer utility centralized with format() and getRemainingTime()
+ * 🔧 PHASE 2 (FINAL) - AUDITED:
+ * - VERIFIED: DictionaryService.load() has robust error handling
+ * - VERIFIED: Data injection to wordEngine is safe (try-catch protected)
+ * - VERIFIED: No references to removed methods (processLegacyFormat)
  * - DictionaryService loads app/diccionario.json and injects into wordEngine
  * - Flattens dictionary data for UI prompts
  */
@@ -257,7 +258,7 @@ class SessionManager {
     }
 
     clear() {
-        debug('🧹 Limpiando sesión...', null, 'info');
+        debug('📑 Limpiando sesión...', null, 'info');
         
         this.managers.forEach(manager => {
             try {
@@ -397,6 +398,13 @@ class DictionaryService {
     getTotalWordCount() {
         if (!this.isReady) return 0;
         return this.flattenedWords.length;
+    }
+
+    async getRandomWord() {
+        if (!this.isReady) await this.load();
+        if (this.flattenedWords.length === 0) return null;
+        const randomIndex = Math.floor(Math.random() * this.flattenedWords.length);
+        return this.flattenedWords[randomIndex];
     }
 }
 
