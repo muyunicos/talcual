@@ -59,6 +59,12 @@ class PlayerView {
     }
   }
 
+  bindInputEvent(handler) {
+    if (this.elements.currentWordInput) {
+      this.elements.currentWordInput.addEventListener('input', () => handler());
+    }
+  }
+
   bindSubmit(handler) {
     if (this.elements.btnSubmit) {
       this.elements.btnSubmit.addEventListener('click', () => handler());
