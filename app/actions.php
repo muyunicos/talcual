@@ -17,28 +17,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-function notifyGameChanged($gameId, $data = null) {
+function notifyGameChanged($gameId, $data = null, $isHostOnly = false) {
     $notifyAll = GAME_STATES_DIR . '/' . $gameId . '_all.json';
     $notifyHost = GAME_STATES_DIR . '/' . $gameId . '_host.json';
 
     if ($data === null) {
-        $allCounter = 0;
-        if (file_exists($notifyAll)) {
-            $content = @file_get_contents($notifyAll);
-            if ($content) {
-                $decoded = @json_decode($content, true);
-                if (is_array($decoded) && isset($decoded['counter'])) {
-                    $allCounter = (int)$decoded['counter'];
-                } elseif (is_numeric($content)) {
-                    $allCounter = (int)$content;
-                }
-            }
-        }
-        $allCounter++;
-        @file_put_contents($notifyAll, (string)$allCounter, LOCK_EX);
+        $event = 'sync';
+        $eventData = [];
     } else {
-        $notification = array_merge(['timestamp' => microtime(true)], (array)$data);
-        @file_put_contents($notifyAll, json_encode($notification), LOCK_EX);
+        $event = isset($data['event']) ? $data['event'] : 'update';
+        $eventData = array_diff_key($data, ['event' => null]);
+    }
+
+    $notification = [
+        'event' => $event,
+        'data' => $eventData,
+        'ts' => microtime(true)
+    ];
+
+    $notificationJson = json_encode($notification, JSON_UNESCAPED_UNICODE);
+
+    @file_put_contents($notifyHost, $notificationJson, LOCK_EX);
+
+    if (!$isHostOnly) {
+        @file_put_contents($notifyAll, $notificationJson, LOCK_EX);
     }
 }
 
@@ -122,7 +124,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($result['game_id']);
+            notifyGameChanged($result['game_id'], ['event' => 'sync'], true);
             break;
 
         case 'join_game':
@@ -143,7 +145,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'player_joined', 'player_id' => $playerId]);
+            notifyGameChanged($gameId, ['event' => 'player_joined', 'player_id' => $playerId, 'player_name' => $playerName]);
             break;
 
         case 'start_round':
@@ -165,7 +167,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'round_started', 'round' => $result['state']['round']]);
+            notifyGameChanged($gameId, ['event' => 'sync']);
             break;
 
         case 'submit_answers':
@@ -186,7 +188,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'answers_submitted', 'player_id' => $playerId, 'count' => $result['valid_answers']]);
+            notifyGameChanged($gameId, ['event' => 'player_ready', 'player_id' => $playerId, 'answer_count' => $result['valid_answers']]);
             break;
 
         case 'end_round':
@@ -207,7 +209,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'round_ended']);
+            notifyGameChanged($gameId, ['event' => 'sync']);
             break;
 
         case 'update_round_timer':
@@ -226,7 +228,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'timer_updated']);
+            notifyGameChanged($gameId, ['event' => 'timer_updated', 'new_end_time' => $newEndTime], true);
             break;
 
         case 'reset_game':
@@ -243,7 +245,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId);
+            notifyGameChanged($gameId, ['event' => 'sync']);
             break;
 
         case 'leave_game':
@@ -279,7 +281,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'player_updated']);
+            notifyGameChanged($gameId, ['event' => 'player_updated', 'player_id' => $playerId]);
             break;
 
         case 'update_player_color':
@@ -299,7 +301,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'player_updated']);
+            notifyGameChanged($gameId, ['event' => 'player_updated', 'player_id' => $playerId]);
             break;
 
         case 'get_state':
