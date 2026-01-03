@@ -151,19 +151,6 @@ class HostManager extends BaseController {
         if (this.elements.btnEndGame) {
             this.elements.btnEndGame.addEventListener('click', () => this.endGame());
         }
-
-        const btnHamburgerSettings = safeGetElement('hamburger-settings');
-        if (btnHamburgerSettings) {
-            btnHamburgerSettings.addEventListener('click', () => {
-                const hamburgerMenu = safeGetElement('hamburger-menu-host');
-                if (hamburgerMenu) hamburgerMenu.classList.remove('menu-open');
-                if (window.settingsModal) {
-                    window.settingsModal.openModal('normal');
-                } else {
-                    debug('⚠️ SettingsModal no está disponible', null, 'warn');
-                }
-            });
-        }
     }
 
     showStartScreen() {
