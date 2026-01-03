@@ -1,7 +1,3 @@
-/**
- * Player Manager - Gestión de jugador en partida
- */
-
 class PlayerManager {
     constructor() {
         this.gameId = null;
@@ -26,6 +22,37 @@ class PlayerManager {
         this.elements = {};
     }
 
+    hasActiveSession() {
+        return !!StorageManager.get(StorageKeys.PLAYER_ID);
+    }
+
+    recoverSession() {
+        const gameId = StorageManager.get(StorageKeys.PLAYER_GAME_CODE);
+        const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
+        const playerName = StorageManager.get(StorageKeys.PLAYER_NAME);
+        const playerColor = StorageManager.get(StorageKeys.PLAYER_COLOR);
+        
+        return (gameId && playerId && playerName) 
+            ? { gameId, playerId, playerName, playerColor } 
+            : null;
+    }
+
+    saveSession(gameId, playerId, playerName, playerColor) {
+        StorageManager.set(StorageKeys.PLAYER_GAME_CODE, gameId);
+        StorageManager.set(StorageKeys.PLAYER_ID, playerId);
+        StorageManager.set(StorageKeys.PLAYER_NAME, playerName);
+        if (playerColor) {
+            StorageManager.set(StorageKeys.PLAYER_COLOR, playerColor);
+        }
+    }
+
+    clearSession() {
+        StorageManager.remove(StorageKeys.PLAYER_GAME_CODE);
+        StorageManager.remove(StorageKeys.PLAYER_ID);
+        StorageManager.remove(StorageKeys.PLAYER_NAME);
+        StorageManager.remove(StorageKeys.PLAYER_COLOR);
+    }
+
     async initialize() {
         debug('📃 Inicializando PlayerManager');
         
@@ -36,16 +63,14 @@ class PlayerManager {
             this.cacheElements();
             this.attachEventListeners();
 
-            const sessionData = playerSession.recover();
+            const sessionData = this.recoverSession();
             if (sessionData) {
                 debug('🔄 Recuperando sesión', 'info');
-                this.recoverSession(sessionData.gameId, sessionData.playerId, sessionData.playerName, sessionData.playerColor);
+                this.recoverGameSession(sessionData.gameId, sessionData.playerId, sessionData.playerName, sessionData.playerColor);
             } else {
                 debug('💡 Mostrando modal de unión', 'info');
                 this.showJoinModal();
             }
-
-            playerSession.registerManager(this);
 
             debug('✅ PlayerManager inicializado');
         } catch (error) {
@@ -219,7 +244,7 @@ class PlayerManager {
         });
     }
 
-    async recoverSession(gameId, playerId, playerName, playerColor) {
+    async recoverGameSession(gameId, playerId, playerName, playerColor) {
         try {
             this.gameId = gameId;
             this.playerId = playerId;
@@ -240,12 +265,12 @@ class PlayerManager {
             }
 
             debug('⚠️ No se pudo recuperar sesión');
-            playerSession.clear();
+            this.clearSession();
             this.showJoinModal();
 
         } catch (error) {
             debug('Error recuperando sesión:', error, 'error');
-            playerSession.clear();
+            this.clearSession();
             this.showJoinModal();
         }
     }
@@ -293,7 +318,7 @@ class PlayerManager {
         this.playerName = playerName;
         this.playerId = generatePlayerId();
 
-        playerSession.savePlayerSession(this.gameId, this.playerId, this.playerName, this.playerColor);
+        this.saveSession(this.gameId, this.playerId, this.playerName, this.playerColor);
 
         try {
             this.client = new GameClient(this.gameId, this.playerId, 'player');
@@ -496,7 +521,7 @@ class PlayerManager {
             if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
             if (this.elements.btnSubmit) {
                 this.elements.btnSubmit.disabled = false;
-                this.elements.btnSubmit.textContent = 'ἷ4d LISTO';
+                this.elements.btnSubmit.textContent = '👍 LISTO';
             }
 
             if (this.elements.waitingMessage) {
@@ -861,7 +886,7 @@ class PlayerManager {
     }
 
     destroy() {
-        debug('🖗 Destroying PlayerManager...', 'info');
+        debug('🧹 Destroying PlayerManager...', 'info');
         
         this.stopTimer();
         
@@ -923,7 +948,7 @@ class PlayerManager {
             savePlayerColor(this.playerColor);
         }
 
-        playerSession.savePlayerSession(this.gameId, this.playerId, trimmedName, this.playerColor);
+        this.saveSession(this.gameId, this.playerId, trimmedName, this.playerColor);
 
         if (this.client) {
             try {
@@ -948,7 +973,7 @@ class PlayerManager {
         if (this.client) {
             this.client.disconnect();
         }
-        playerSession.clear();
+        this.clearSession();
         location.reload();
     }
 }
