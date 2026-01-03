@@ -43,36 +43,6 @@ html.bg-ready body::before {
     opacity: 1;
 }
 
-/* === COUNTDOWN OVERLAY === */
-.countdown-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-}
-
-.countdown-overlay.active {
-    display: flex;
-}
-
-.countdown-number {
-    font-size: clamp(1rem, 12vw, 5rem);
-    font-weight: 700;
-    color: #ffffff;
-    line-height: 1;
-}
-
-.countdown-number.timer-hurry {
-    animation: pulse-countdown 1s infinite;
-    font-size: clamp(1rem, 20vw, 8rem);
-}
-
 /* === GAME SCREEN (CONTENEDOR PRINCIPAL) === */
 .game-screen {
     position: relative;
@@ -210,16 +180,6 @@ html.bg-ready body::before {
     text-transform: uppercase;
 }
 
-.timer-display {
-    font-size: 42px;
-    font-weight: 900;
-    color: var(--color-accent-amber);
-    font-family: var(--font-mono);
-    letter-spacing: 4px;
-    line-height: 1;
-    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.50);
-}
-
 /* === ÁREA CENTRAL (MENSAJES / CONSIGNA / COUNTDOWN / BOTÓN) === */
 .center-stage {
     position: absolute;
@@ -260,73 +220,6 @@ html.bg-ready body::before {
     background: rgba(0, 0, 0, 0.25);
     border-radius: var(--radius-md);
     border: 2px solid rgba(255, 255, 255, 0.12);
-}
-
-.category-display {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--cian);
-    background: rgba(0, 240, 255, 0.12);
-    padding: var(--space-sm) var(--space-xl);
-    border-radius: var(--radius-full);
-    border: 2px solid rgba(0, 240, 255, 0.35);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.30);
-    letter-spacing: 1px;
-}
-
-.category-display .label {
-    opacity: 0.85;
-    margin-right: var(--space-sm);
-}
-
-.category-display .value {
-    font-weight: 900;
-}
-
-.word-display {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-md);
-}
-
-.word-display .label {
-    font-size: 14px;
-    font-weight: 800;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-}
-
-.word-display .word {
-    font-size: clamp(32px, 4.5vw, 64px);
-    font-weight: 900;
-    color: var(--color-accent-amber);
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    line-height: 1.1;
-    text-align: center;
-
-    max-width: 24ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-
-    padding: 14px 28px;
-    background: rgba(255, 0, 85, 0.18);
-    border: 3px solid rgba(255, 0, 85, 0.55);
-    border-radius: var(--radius-full);
-    box-shadow: var(--tv-glow-magenta), 0 8px 20px rgba(0, 0, 0, 0.40);
-}
-
-.countdown-display {
-    font-size: clamp(56px, 8vw, 96px);
-    font-weight: 900;
-    color: var(--color-accent-red);
-    line-height: 1;
-    text-shadow: 0 6px 12px rgba(0, 0, 0, 0.60);
 }
 
 /* === BOTÓN START/END (EN CENTRO) === */
@@ -388,17 +281,6 @@ html.bg-ready body::before {
     cursor: pointer;
     transition: transform var(--transition-normal), background-color var(--transition-normal), box-shadow var(--transition-normal);
     animation: hurry-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes hurry-pulse {
-    0%, 100% {
-        background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 50%), rgba(255, 215, 0, 0.18);
-        box-shadow: 0 0 50px rgba(255, 215, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.35);
-    }
-    50% {
-        background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 50%), rgba(255, 215, 0, 0.28);
-        box-shadow: 0 0 60px rgba(255, 215, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.40);
-    }
 }
 
 .btn-hurry-up:hover:not(:disabled) {
@@ -692,10 +574,6 @@ html.bg-ready body::before {
         padding: 12px 24px;
     }
 
-    .timer-display {
-        font-size: 34px;
-    }
-
     .round-info {
         font-size: 13px;
     }
@@ -735,10 +613,6 @@ html.bg-ready body::before {
 @media (max-width: 480px) {
     .tv-header {
         padding: 10px 18px;
-    }
-
-    .timer-display {
-        font-size: 28px;
     }
 
     .round-info {
