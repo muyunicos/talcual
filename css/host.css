@@ -85,7 +85,6 @@ html.bg-ready body::before {
 
 /* === HOST CONTAINER === */
 .tv-layout {
-    /* Variables locales (sin tocar :root) */
     --tv-panel-bg: rgba(46, 0, 78, 0.75);
     --tv-panel-bg-2: rgba(15, 23, 42, 0.75);
     --tv-border-cyan: rgba(0, 240, 255, 0.55);
@@ -109,10 +108,8 @@ html.bg-ready body::before {
     color: var(--color-text-light);
 }
 
-/* Desactiva transiciones de tamaño (evita layout shift) */
-.tv-layout *,
-.tv-layout *::before,
-.tv-layout *::after {
+/* Transiciones selectivas (evita layout shift) */
+.tv-layout * {
     transition-property: color, background-color, border-color, box-shadow, transform, opacity, filter;
     transition-duration: var(--transition-normal);
     transition-timing-function: ease;
@@ -121,8 +118,8 @@ html.bg-ready body::before {
 /* === LOGO FLOTANTE (TOP LEFT) === */
 .logo-floating {
     position: fixed;
-    top: 20px;
-    left: 20px;
+    top: var(--space-lg);
+    left: var(--space-lg);
     z-index: 120;
     pointer-events: none;
 }
@@ -184,31 +181,10 @@ html.bg-ready body::before {
     animation: copiedPulse 0.6s ease-out;
 }
 
-/* Texto "!Copiado!" flotante */
-.code-sticker-floating.copied::after {
-    content: '!Copiado!';
-    position: absolute;
-    top: 85%;
-    margin-bottom: 8px;
-    background: #308f34;
-    color: white;
-    font-size: 14px;
-    font-weight: 800;
-    text-align: center;
-    width: -webkit-fill-available;
-    max-width: 80%;
-    border-style: solid;
-    border-color: #4caf50;
-    border-radius: var(--radius-md);
-    white-space: nowrap;
-    border-width: 4px;
-    pointer-events: none;
-}
-
 /* === HEADER CENTRAL (TIMER + RONDA) === */
 .tv-header {
     position: fixed;
-    top: 20px;
+    top: var(--space-lg);
     left: 50%;
     transform: translateX(-50%);
     z-index: 110;
@@ -220,7 +196,7 @@ html.bg-ready body::before {
 
     padding: 14px 32px;
     background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(var(--blur-enhanced));
     border-radius: var(--radius-card);
     border: 3px solid rgba(139, 92, 246, 0.30);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.40), 0 0 40px rgba(139, 92, 246, 0.18);
@@ -238,7 +214,7 @@ html.bg-ready body::before {
     font-size: 42px;
     font-weight: 900;
     color: var(--color-accent-amber);
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     letter-spacing: 4px;
     line-height: 1;
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.50);
@@ -446,7 +422,7 @@ html.bg-ready body::before {
 /* === TARJETAS JUGADORES (BOTTOM CENTER) === */
 .players-container {
     position: fixed;
-    bottom: 20px;
+    bottom: var(--space-lg);
     width: fit-content;
     left: 50%;
     transform: translateX(-50%);
@@ -454,7 +430,7 @@ html.bg-ready body::before {
     max-width: calc(100vw - 40px);
     padding: 16px 20px;
     background: rgba(15, 23, 42, 0.70);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--blur-standard));
     border-radius: var(--radius-lg);
     border: 3px solid rgba(139, 92, 246, 0.25);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.40);
@@ -479,7 +455,7 @@ html.bg-ready body::before {
     width: 280px;
     max-height: calc(100vh - 300px);
     background: var(--tv-panel-bg);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(var(--blur-enhanced));
     border-radius: var(--radius-card);
     border: 3px solid var(--tv-border-cyan);
     box-shadow: var(--tv-glow-cyan), 0 10px 30px rgba(0, 0, 0, 0.50);
@@ -489,10 +465,11 @@ html.bg-ready body::before {
     cursor: move;
     transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
-.sidepanel-toggle{
-position: fixed !important;
-    bottom: 20px !important;
-    right: 20px !important;
+
+.sidepanel-toggle {
+    position: fixed !important;
+    bottom: var(--space-lg) !important;
+    right: var(--space-lg) !important;
     width: 280px !important;
     padding: 12px !important;
     background: transparent;
@@ -505,7 +482,7 @@ position: fixed !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    transition: all 0.3s ease !important;
+    transition: all var(--transition-normal) !important;
 }
 
 .floating-side-panel:hover {
@@ -641,7 +618,7 @@ position: fixed !important;
     z-index: 200;
 
     background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--blur-standard));
 
     display: flex;
     justify-content: center;
