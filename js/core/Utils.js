@@ -27,6 +27,12 @@ function isValidGameCode(code) {
     return /^[A-Z0-9]{3,6}$/.test(clean);
 }
 
+function isValidPlayerName(name) {
+    if (!name || typeof name !== 'string') return false;
+    const clean = name.trim();
+    return clean.length >= 2 && clean.length <= 20;
+}
+
 function showNotification(message, type = 'info') {
     const notif = document.createElement('div');
     notif.setAttribute('role', 'alert');
