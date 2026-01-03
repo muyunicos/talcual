@@ -2,6 +2,8 @@
 
 class GameRepository {
     private $gameStatesDir;
+    private $maxRetries = 3;
+    private $retryDelayMs = 50;
 
     public function __construct($gameStatesDir) {
         $this->gameStatesDir = $gameStatesDir;
@@ -35,21 +37,49 @@ class GameRepository {
             return null;
         }
 
-        $json = @file_get_contents($file);
-        if ($json === false) {
-            throw new Exception('No se pudo leer archivo: ' . $file);
+        $state = null;
+        $lastError = null;
+
+        for ($attempt = 0; $attempt < $this->maxRetries; $attempt++) {
+            try {
+                $json = @file_get_contents($file);
+                if ($json === false) {
+                    throw new Exception('No se pudo leer archivo: ' . $file);
+                }
+
+                if (empty($json)) {
+                    if ($attempt < $this->maxRetries - 1) {
+                        usleep($this->retryDelayMs * 1000);
+                        continue;
+                    }
+                    throw new Exception('Archivo vacío: ' . $file);
+                }
+
+                $state = json_decode($json, true);
+                if ($state === null) {
+                    throw new Exception('Error decoding JSON: ' . json_last_error_msg());
+                }
+
+                if (!isset($state['_version'])) {
+                    $state['_version'] = 0;
+                }
+
+                return $state;
+
+            } catch (Exception $e) {
+                $lastError = $e;
+                if ($attempt < $this->maxRetries - 1) {
+                    usleep($this->retryDelayMs * 1000);
+                }
+            }
         }
 
-        $state = json_decode($json, true);
-        if ($state === null) {
-            throw new Exception('Error decoding JSON: ' . json_last_error_msg());
+        if ($lastError) {
+            logMessage('FAIL FAST: Load failed after ' . $this->maxRetries . ' attempts: ' . $lastError->getMessage(), 'ERROR');
+            throw $lastError;
         }
 
-        if (!isset($state['_version'])) {
-            $state['_version'] = 0;
-        }
-
-        return $state;
+        throw new Exception('Tidak dapat membaca state untuk ' . $gameId);
     }
 
     public function save($gameId, $state) {
@@ -62,6 +92,7 @@ class GameRepository {
 
         $file = $this->gameStatesDir . '/' . $gameId . '.json';
         $lockFile = $file . '.lock';
+        $tempFile = $file . '.tmp';
 
         $lock = @fopen($lockFile, 'c+');
         if (!$lock) {
@@ -85,18 +116,29 @@ class GameRepository {
                 throw new Exception('JSON demasiado grande: ' . $jsonSize . ' bytes');
             }
 
-            $result = @file_put_contents($file, $json, LOCK_EX);
-            if ($result === false) {
-                throw new Exception('Error escribiendo archivo: ' . $file);
+            $tempResult = @file_put_contents($tempFile, $json, LOCK_EX);
+            if ($tempResult === false) {
+                throw new Exception('Error escribiendo archivo temporal: ' . $tempFile);
+            }
+
+            $tempFileSize = @filesize($tempFile);
+            if ($tempFileSize === false || $tempFileSize === 0) {
+                @unlink($tempFile);
+                throw new Exception('Archivo temporal está vacío o corrupto: ' . $tempFile);
+            }
+
+            if (!@rename($tempFile, $file)) {
+                @unlink($tempFile);
+                throw new Exception('Error renombrando archivo temporal a ' . $file);
             }
 
             if (!file_exists($file)) {
-                throw new Exception('Archivo no existe después de escribir: ' . $file);
+                throw new Exception('Archivo no existe después de rename: ' . $file);
             }
 
-            $fileSize = filesize($file);
-            if ($fileSize === 0 || $fileSize === false) {
-                throw new Exception('Archivo está vacío o no se puede leer: ' . $file);
+            $finalFileSize = @filesize($file);
+            if ($finalFileSize === false || $finalFileSize === 0) {
+                throw new Exception('Archivo final está vacío o corrupto: ' . $file);
             }
 
             return true;
@@ -105,6 +147,7 @@ class GameRepository {
             flock($lock, LOCK_UN);
             fclose($lock);
             @unlink($lockFile);
+            @unlink($tempFile);
         }
     }
 
