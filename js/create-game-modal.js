@@ -7,8 +7,6 @@ class CreateGameModal {
         this.gameCandidates = [];
         this.selectedCandidate = null;
         this.gameConfig = {};
-        this.userRounds = 3;
-        this.userDuration = 90;
     }
 
     async fetchCandidates() {
@@ -58,8 +56,6 @@ class CreateGameModal {
             }
 
             this.gameConfig = result.config;
-            this.userRounds = this.gameConfig.TOTAL_ROUNDS || 3;
-            this.userDuration = this.gameConfig.round_duration || 90;
             return true;
         } catch (error) {
             debug('Error fetching game config', error, 'error');
@@ -133,42 +129,6 @@ class CreateGameModal {
                 </div>
                 <p class="custom-code-info">Código generado automáticamente por el servidor</p>
             </div>
-            
-            <div style="border-top: 1px solid var(--color-border); margin-top: 16px; padding-top: 16px;">
-                <h4 style="margin: 0 0 12px 0; font-size: 14px; color: var(--color-text-secondary);">⚙️ Configuración</h4>
-                
-                <div class="input-group">
-                    <label class="input-label" for="rounds-select-modal">Rondas</label>
-                    <select id="rounds-select-modal" class="input-field">
-                        <option value="1" ${this.userRounds === 1 ? 'selected' : ''}>1 ronda</option>
-                        <option value="2" ${this.userRounds === 2 ? 'selected' : ''}>2 rondas</option>
-                        <option value="3" ${this.userRounds === 3 ? 'selected' : ''}>3 rondas</option>
-                        <option value="4" ${this.userRounds === 4 ? 'selected' : ''}>4 rondas</option>
-                        <option value="5" ${this.userRounds === 5 ? 'selected' : ''}>5 rondas</option>
-                        <option value="6" ${this.userRounds === 6 ? 'selected' : ''}>6 rondas</option>
-                        <option value="7" ${this.userRounds === 7 ? 'selected' : ''}>7 rondas</option>
-                        <option value="8" ${this.userRounds === 8 ? 'selected' : ''}>8 rondas</option>
-                        <option value="9" ${this.userRounds === 9 ? 'selected' : ''}>9 rondas</option>
-                        <option value="10" ${this.userRounds === 10 ? 'selected' : ''}>10 rondas</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label class="input-label" for="duration-select-modal">Duración por Ronda</label>
-                    <select id="duration-select-modal" class="input-field">
-                        <option value="30" ${this.userDuration === 30 ? 'selected' : ''}>30 segundos</option>
-                        <option value="45" ${this.userDuration === 45 ? 'selected' : ''}>45 segundos</option>
-                        <option value="60" ${this.userDuration === 60 ? 'selected' : ''}>1 minuto</option>
-                        <option value="75" ${this.userDuration === 75 ? 'selected' : ''}>1m 15s</option>
-                        <option value="90" ${this.userDuration === 90 ? 'selected' : ''}>1m 30s</option>
-                        <option value="120" ${this.userDuration === 120 ? 'selected' : ''}>2 minutos</option>
-                        <option value="150" ${this.userDuration === 150 ? 'selected' : ''}>2m 30s</option>
-                        <option value="180" ${this.userDuration === 180 ? 'selected' : ''}>3 minutos</option>
-                        <option value="240" ${this.userDuration === 240 ? 'selected' : ''}>4 minutos</option>
-                        <option value="300" ${this.userDuration === 300 ? 'selected' : ''}>5 minutos</option>
-                    </select>
-                </div>
-            </div>
         `;
 
         ModalManager_Instance.show({
@@ -176,6 +136,12 @@ class CreateGameModal {
             title: '🎮 Crear Nueva Partida',
             content: formHTML,
             buttons: [
+                {
+                    label: 'Opciones',
+                    class: 'btn',
+                    action: () => this.openSettingsModal(),
+                    close: false
+                },
                 {
                     label: 'Crear',
                     class: 'btn-modal-primary',
@@ -195,8 +161,6 @@ class CreateGameModal {
             onOpen: () => {
                 const categorySelect = document.getElementById('category-select-modal');
                 const codeDisplay = document.getElementById('code-display-modal');
-                const roundsSelect = document.getElementById('rounds-select-modal');
-                const durationSelect = document.getElementById('duration-select-modal');
 
                 if (categorySelect) {
                     categorySelect.addEventListener('change', (e) => {
@@ -206,20 +170,16 @@ class CreateGameModal {
                         }
                     });
                 }
-
-                if (roundsSelect) {
-                    roundsSelect.addEventListener('change', (e) => {
-                        this.userRounds = parseInt(e.target.value, 10);
-                    });
-                }
-
-                if (durationSelect) {
-                    durationSelect.addEventListener('change', (e) => {
-                        this.userDuration = parseInt(e.target.value, 10);
-                    });
-                }
             }
         });
+    }
+
+    openSettingsModal() {
+        if (window.settingsModal) {
+            window.settingsModal.openModal('creation');
+        } else {
+            debug('⚠️ SettingsModal no está disponible', null, 'warn');
+        }
     }
 
     async handleCreateClick() {
@@ -234,10 +194,7 @@ class CreateGameModal {
             const payload = {
                 action: 'create_game',
                 game_id: gameId,
-                category,
-                total_rounds: this.userRounds,
-                round_duration: this.userDuration,
-                min_players: this.gameConfig.min_players || 2
+                category
             };
 
             const controller = new AbortController();
