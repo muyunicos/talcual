@@ -2,10 +2,10 @@
  * @file shared-utils.js
  * @description Centralization of services and shared utilities
  * 
- * 🔧 PHASE 2 (FINAL) - AUDITED:
- * - VERIFIED: DictionaryService.load() has robust error handling
- * - VERIFIED: Data injection to wordEngine is safe (try-catch protected)
- * - VERIFIED: No references to removed methods (processLegacyFormat)
+ * 🔧 PHASE 2 (SYNC) - CONSOLIDATED:
+ * - UNIFIED: ConfigService with extended server config
+ * - SYNC: Client-side defaults match PHP constants
+ * - ROBUST: Fallbacks for server failure aligned with PHP defaults
  * - DictionaryService loads app/diccionario.json and injects into wordEngine
  * - Flattens dictionary data for UI prompts
  */
@@ -291,6 +291,103 @@ if (typeof WordEquivalenceEngine === 'undefined') {
 }
 
 // ============================================================================
+// CONFIG SERVICE - SYNCHRONIZED WITH SERVER
+// ============================================================================
+
+class ConfigService {
+    constructor() {
+        this.config = null;
+        this.loadPromise = null;
+        this.isReady = false;
+    }
+
+    getDefaults() {
+        return {
+            round_duration: 60,
+            TOTAL_ROUNDS: 3,
+            max_words_per_player: 6,
+            max_code_length: 5,
+            min_players: 2,
+            max_players: 20,
+            start_countdown: 5,
+            max_word_length: 30,
+            min_player_name_length: 2,
+            max_player_name_length: 20
+        };
+    }
+
+    async load() {
+        if (this.config) {
+            this.isReady = true;
+            return this.config;
+        }
+        if (this.loadPromise) return this.loadPromise;
+
+        this.loadPromise = (async () => {
+            debug('⚙️  Cargando configuración...', null, 'info');
+            
+            try {
+                const url = new URL('./app/actions.php', window.location.href);
+                const response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_config' }),
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Error connecting to server`);
+                }
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.message || 'Invalid server response');
+                }
+
+                if (!result.config || typeof result.config !== 'object') {
+                    throw new Error('Server config is empty or malformed');
+                }
+
+                const requiredFields = ['round_duration', 'TOTAL_ROUNDS', 'max_words_per_player', 'max_code_length'];
+                for (const field of requiredFields) {
+                    if (!(field in result.config)) {
+                        throw new Error(`Critical config field missing: ${field}`);
+                    }
+                }
+
+                this.config = result.config;
+                this.isReady = true;
+
+                debug('⚙️  Configuración cargada exitosamente', this.config, 'success');
+                return this.config;
+            } catch (error) {
+                debug('⚠️  Error cargando configuración, usando defaults: ' + error.message, null, 'warn');
+                this.config = this.getDefaults();
+                this.isReady = true;
+                return this.config;
+            }
+        })();
+
+        return this.loadPromise;
+    }
+
+    get(key, defaultValue = null) {
+        if (!this.config) {
+            const defaults = this.getDefaults();
+            return key in defaults ? defaults[key] : defaultValue;
+        }
+        return this.config[key] ?? defaultValue;
+    }
+
+    isConfigReady() {
+        return this.isReady && this.config !== null;
+    }
+}
+
+const configService = new ConfigService();
+
+// ============================================================================
 // DICTIONARY SERVICE - SINGLE SOURCE OF TRUTH
 // ============================================================================
 
@@ -411,80 +508,6 @@ class DictionaryService {
 const dictionaryService = new DictionaryService();
 
 // ============================================================================
-// CONFIG SERVICE
-// ============================================================================
-
-class ConfigService {
-    constructor() {
-        this.config = null;
-        this.loadPromise = null;
-        this.isReady = false;
-    }
-
-    async load() {
-        if (this.config) {
-            this.isReady = true;
-            return this.config;
-        }
-        if (this.loadPromise) return this.loadPromise;
-
-        this.loadPromise = (async () => {
-            debug('⚙️  Cargando configuración...', null, 'info');
-            
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_config' }),
-                cache: 'no-store'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Error connecting to server`);
-            }
-
-            const result = await response.json();
-            
-            if (!result.success) {
-                throw new Error(result.message || 'Invalid server response');
-            }
-
-            if (!result.config || typeof result.config !== 'object') {
-                throw new Error('Server config is empty or malformed');
-            }
-
-            const requiredFields = ['round_duration', 'TOTAL_ROUNDS', 'max_words_per_player', 'max_code_length'];
-            for (const field of requiredFields) {
-                if (!(field in result.config)) {
-                    throw new Error(`Critical config field missing: ${field}`);
-                }
-            }
-
-            this.config = result.config;
-            this.isReady = true;
-
-            debug('⚙️  Configuración cargada exitosamente', this.config, 'success');
-            return this.config;
-        })();
-
-        return this.loadPromise;
-    }
-
-    get(key, defaultValue = null) {
-        if (!this.config) {
-            throw new Error(`ConfigService.get('${key}'): Config not ready`);
-        }
-        return this.config[key] ?? defaultValue;
-    }
-
-    isConfigReady() {
-        return this.isReady && this.config !== null;
-    }
-}
-
-const configService = new ConfigService();
-
-// ============================================================================
 // VALIDATION HELPERS
 // ============================================================================
 
@@ -564,4 +587,4 @@ function showNotification(message, type = 'info') {
     }, 2000);
 }
 
-debug('✅ shared-utils.js cargado exitosamente - UI namespace + servicios centralizados listos', null, 'success');
+debug('✅ shared-utils.js cargado exitosamente - ConfigService + DictionaryService + SessionManager centralizados', null, 'success');
