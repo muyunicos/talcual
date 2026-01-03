@@ -194,6 +194,87 @@ class HostManager extends BaseController {
     }
   }
 
+  calculateResults(state) {
+    const roundResults = {};
+    const scoreDeltas = {};
+    const wordMatches = {};
+
+    if (!state.roundData || !state.roundData.validMatches) {
+      debug('⚠️ calculateResults: no roundData', null, 'warn');
+      return { roundResults, scoreDeltas, topWords: [] };
+    }
+
+    const validAnswers = state.roundData.validMatches;
+    if (!Array.isArray(validAnswers)) {
+      debug('⚠️ calculateResults: validMatches not array', null, 'warn');
+      return { roundResults, scoreDeltas, topWords: [] };
+    }
+
+    wordEngine.initializeFromRoundContext({
+      roundQuestion: state.current_prompt || '',
+      commonAnswers: validAnswers
+    });
+
+    for (const [playerId, player] of Object.entries(state.players)) {
+      if (!player || !Array.isArray(player.answers)) continue;
+
+      const playerResults = {};
+
+      player.answers.forEach(playerWord => {
+        let bestMatch = null;
+        let bestMatchType = null;
+
+        for (const validWord of validAnswers) {
+          const comparison = wordEngine.areEquivalentWithType(playerWord, validWord);
+          
+          if (comparison.match) {
+            bestMatch = validWord;
+            bestMatchType = comparison.type;
+            break;
+          }
+        }
+
+        playerResults[playerWord] = {
+          matched: bestMatch !== null,
+          matchedWord: bestMatch,
+          matchType: bestMatchType
+        };
+
+        if (bestMatch !== null) {
+          if (!wordMatches[bestMatch]) {
+            wordMatches[bestMatch] = [];
+          }
+          wordMatches[bestMatch].push({
+            player: player.name,
+            playerWord,
+            matchType: bestMatchType
+          });
+        }
+      });
+
+      roundResults[playerId] = playerResults;
+
+      const pointsEarned = Object.values(playerResults).filter(r => r.matched).length;
+      scoreDeltas[playerId] = pointsEarned;
+    }
+
+    const topWords = Object.entries(wordMatches)
+      .map(([word, matches]) => ({
+        word,
+        count: matches.length,
+        matches
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    debug('✅ calculateResults completed', {
+      playerCount: Object.keys(roundResults).length,
+      topWordsCount: topWords.length
+    }, 'success');
+
+    return { roundResults, scoreDeltas, topWords };
+  }
+
   handleStateUpdate(state) {
     this.gameState = state;
     debug('📈 Estado actualizado:', null, 'debug');
