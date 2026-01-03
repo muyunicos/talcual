@@ -304,6 +304,22 @@ try {
             notifyGameChanged($gameId, ['event' => 'player_updated', 'player_id' => $playerId]);
             break;
 
+        case 'typing':
+            $gameId = sanitizeGameId($input['game_id'] ?? null);
+            $playerId = sanitizePlayerId($input['player_id'] ?? null);
+
+            if (!$gameId || !$playerId) {
+                throw new Exception('game_id y player_id requeridos para typing');
+            }
+
+            $response = [
+                'success' => true,
+                'message' => 'typing notificación enviada',
+                'server_now' => intval(microtime(true) * 1000)
+            ];
+            notifyGameChanged($gameId, ['event' => 'typing', 'player_id' => $playerId], true);
+            break;
+
         case 'get_state':
             $gameId = sanitizeGameId($input['game_id'] ?? null);
 
