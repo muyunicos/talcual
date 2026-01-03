@@ -10,6 +10,7 @@
  * - Rechaza Promises si hay error (no fallbacks)
  * 🔧 FASE 3-OPT: Optimized to use GameTimer centralized utility
  * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
+ * 🔧 PHASE 7-MINIDICT: Elimina carga de diccionario completo, usa solo roundContext
  */
 
 class PlayerManager {
@@ -46,8 +47,6 @@ class PlayerManager {
             this.cacheElements();
             this.attachEventListeners();
 
-            await this.initWordEngine();
-
             const sessionData = playerSession.recover();
             if (sessionData) {
                 debug('🔄 Recuperando sesión', 'info');
@@ -64,15 +63,6 @@ class PlayerManager {
             debug('❌ Error inicializando PlayerManager: ' + error.message, null, 'error');
             UI.showFatalError('Error de inicialización. Por favor recarga la página.');
             throw error;
-        }
-    }
-
-    async initWordEngine() {
-        try {
-            await dictionaryService.initialize();
-            debug('📜 Word engine inicializado en player', null, 'success');
-        } catch (error) {
-            debug('❌ Error inicializando word engine: ' + error.message, null, 'error');
         }
     }
 
@@ -388,6 +378,7 @@ class PlayerManager {
         safeHideElement(this.elements.countdownOverlay);
         this.stopTimer();
         GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
+        wordEngine.reset();
     }
 
     runPreciseCountdown(roundStartsAt, countdownDuration, onComplete) {
@@ -468,6 +459,11 @@ class PlayerManager {
                 safeShowElement(this.elements.waitingMessage);
             }
             return;
+        }
+
+        if (state.roundData) {
+            initializeWordEngineFromRound(state.roundData);
+            debug('📚 Mini-diccionario cargado desde roundData', 'info');
         }
 
         if (state.round_starts_at) {
@@ -975,4 +971,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js - PHASE 6: ModalManager integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ player-manager.js - PHASE 7: Mini-dictionary integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
