@@ -9,16 +9,69 @@ class CreateGameModal {
 
         this.gameCandidates = [];
         this.selectedCandidate = null;
+        this.gameConfig = {};
 
         this.init();
     }
 
+    async fetchCandidates() {
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_game_candidates' })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (!result.success || !Array.isArray(result.candidates)) {
+                throw new Error(result.message || 'Invalid response: missing candidates');
+            }
+
+            this.gameCandidates = result.candidates;
+            return true;
+        } catch (error) {
+            debug('Error fetching game candidates', error, 'error');
+            throw error;
+        }
+    }
+
+    async fetchConfig() {
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_config' })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (!result.success || !result.config) {
+                throw new Error(result.message || 'Invalid response: missing config');
+            }
+
+            this.gameConfig = result.config;
+            return true;
+        } catch (error) {
+            debug('Error fetching game config', error, 'error');
+            throw error;
+        }
+    }
+
     async init() {
         try {
-            await configService.load();
-            await dictionaryService.fetchGameCandidates();
-
-            this.gameCandidates = dictionaryService.gameCandidates;
+            await this.fetchConfig();
+            await this.fetchCandidates();
 
             if (this.gameCandidates.length === 0) {
                 throw new Error('No hay candidatos disponibles');
@@ -139,9 +192,9 @@ class CreateGameModal {
                 action: 'create_game',
                 game_id: gameId,
                 category,
-                total_rounds: configService.get('TOTAL_ROUNDS', 3),
-                round_duration: configService.get('round_duration', 60),
-                min_players: configService.get('min_players', 2)
+                total_rounds: this.gameConfig.TOTAL_ROUNDS || 3,
+                round_duration: this.gameConfig.round_duration || 60,
+                min_players: this.gameConfig.min_players || 2
             };
 
             const controller = new AbortController();
