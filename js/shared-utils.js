@@ -2,12 +2,12 @@
  * @file shared-utils.js
  * @description Centralization of services and shared utilities
  * 
- * 🔧 SERVER-SIDE FIRST (Phase 4):
- * - REMOVED: Download of app/diccionario.json from client
- * - NEW: fetchGameCandidates() - Gets pre-generated codes from server
- * - NEW: getDictionaryForRound(roundContext) - Uses mini-dictionary from server
- * - DictionaryService now focused on round context, not full dictionary
- * - WordEngine initialized with round_context on demand
+ * 🔧 SERVER-SIDE FIRST (Phase 4-REFINED):
+ * - FIXED: wordEngine injection via getDictionaryForRound() with proper structure
+ * - NEW: Shim methods for HostManager compatibility (getCategories, getRandomWordByCategory)
+ * - NEW: load() method for backward compatibility with HostManager
+ * - Shim methods extract data from gameCandidates (server-fetched codes)
+ * - WordEngine initialized on-demand when getDictionaryForRound() is called
  */
 
 // ============================================================================
@@ -413,7 +413,7 @@ class ConfigService {
 const configService = new ConfigService();
 
 // ============================================================================
-// DICTIONARY SERVICE - SERVER-SIDE FIRST
+// DICTIONARY SERVICE - SERVER-SIDE FIRST WITH SHIMMED METHODS FOR HostManager
 // ============================================================================
 
 class DictionaryService {
@@ -421,6 +421,97 @@ class DictionaryService {
         this.gameCandidates = [];
         this.isReady = false;
         this.loadPromise = null;
+        this.wordEngineInitialized = false;
+    }
+
+    async load() {
+        if (this.isReady) {
+            return { rawDictionary: {}, flattenedWords: [] };
+        }
+        if (this.loadPromise) return this.loadPromise;
+
+        this.loadPromise = (async () => {
+            debug('🎯 Cargando candidatos de c\u00f3digos del servidor...', null, 'info');
+            
+            try {
+                const url = new URL('./app/actions.php', window.location.href);
+                const response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_game_candidates' }),
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Error obteniendo candidatos`);
+                }
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.message || 'Error fetching candidates');
+                }
+
+                if (!Array.isArray(result.candidates) || result.candidates.length === 0) {
+                    throw new Error('No candidates returned from server');
+                }
+
+                this.gameCandidates = result.candidates;
+                this.isReady = true;
+                this.wordEngineInitialized = false;
+
+                debug('🎯 Candidatos cargados exitosamente', { count: this.gameCandidates.length }, 'success');
+                return { rawDictionary: {}, flattenedWords: [] };
+
+            } catch (error) {
+                debug('❌ Error obteniendo candidatos: ' + error.message, null, 'error');
+                throw error;
+            }
+        })();
+
+        return this.loadPromise;
+    }
+
+    async initialize() {
+        return this.load();
+    }
+
+    getCategories() {
+        if (!this.isReady || this.gameCandidates.length === 0) {
+            debug('⚠️  SHIM: getCategories() called before load() - returning empty', null, 'warn');
+            return [];
+        }
+
+        const categories = new Set();
+        this.gameCandidates.forEach(c => categories.add(c.category));
+        return Array.from(categories).sort();
+    }
+
+    getRandomWordByCategory(category, maxLength = null) {
+        if (!this.isReady || this.gameCandidates.length === 0) {
+            debug('⚠️  SHIM: getRandomWordByCategory() called before load()', null, 'warn');
+            return null;
+        }
+
+        const matching = this.gameCandidates.filter(c => 
+            c.category === category && 
+            (!maxLength || c.code.length <= maxLength)
+        );
+
+        if (matching.length === 0) {
+            return null;
+        }
+
+        const randomIndex = Math.floor(Math.random() * matching.length);
+        return matching[randomIndex].code;
+    }
+
+    getRandomCandidate() {
+        if (this.gameCandidates.length === 0) {
+            throw new Error('No candidates loaded - call load() first');
+        }
+        const randomIndex = Math.floor(Math.random() * this.gameCandidates.length);
+        return { ...this.gameCandidates[randomIndex] };
     }
 
     async fetchGameCandidates() {
@@ -428,49 +519,8 @@ class DictionaryService {
             return [...this.gameCandidates];
         }
         
-        try {
-            debug('🎯 Obteniendo candidatos de c\u00f3digos del servidor...', null, 'info');
-            
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_game_candidates' }),
-                cache: 'no-store'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Error obteniendo candidatos`);
-            }
-
-            const result = await response.json();
-            
-            if (!result.success) {
-                throw new Error(result.message || 'Error fetching candidates');
-            }
-
-            if (!Array.isArray(result.candidates) || result.candidates.length === 0) {
-                throw new Error('No candidates returned from server');
-            }
-
-            this.gameCandidates = result.candidates;
-            this.isReady = true;
-
-            debug('🎯 Candidatos cargados exitosamente', { count: this.gameCandidates.length }, 'success');
-            return [...this.gameCandidates];
-
-        } catch (error) {
-            debug('❌ Error obteniendo candidatos: ' + error.message, null, 'error');
-            throw error;
-        }
-    }
-
-    getRandomCandidate() {
-        if (this.gameCandidates.length === 0) {
-            throw new Error('No candidates loaded - call fetchGameCandidates() first');
-        }
-        const randomIndex = Math.floor(Math.random() * this.gameCandidates.length);
-        return { ...this.gameCandidates[randomIndex] };
+        await this.load();
+        return [...this.gameCandidates];
     }
 
     getCandidatesByCategory(category) {
@@ -479,32 +529,40 @@ class DictionaryService {
 
     getDictionaryForRound(roundContext) {
         if (!roundContext || typeof roundContext !== 'object') {
-            debug('⚠️  roundContext inv\u00e1lido, inicializando WordEngine sin diccionario', null, 'warn');
-            if (wordEngine && wordEngine.reset) {
+            debug('⚠️  roundContext inv\u00e1lido, limpiando WordEngine', null, 'warn');
+            if (wordEngine && typeof wordEngine.reset === 'function') {
                 wordEngine.reset();
             }
+            this.wordEngineInitialized = false;
             return;
         }
 
         const { prompt, synonyms, variants } = roundContext;
         
         if (!prompt) {
-            debug('⚠️  roundContext.prompt faltante', null, 'warn');
-            if (wordEngine && wordEngine.reset) {
+            debug('⚠️  roundContext.prompt faltante, limpiando WordEngine', null, 'warn');
+            if (wordEngine && typeof wordEngine.reset === 'function') {
                 wordEngine.reset();
             }
+            this.wordEngineInitialized = false;
             return;
         }
 
+        const normalizedPrompt = normalizeWord(prompt);
+        const normalizedSynonyms = (synonyms || []).map(w => normalizeWord(w)).filter(w => w.length > 0);
+        const normalizedVariants = (variants || []).map(w => normalizeWord(w)).filter(w => w.length > 0);
+
+        const allWords = [normalizedPrompt, ...normalizedSynonyms, ...normalizedVariants];
+        const uniqueWords = [...new Set(allWords)];
+
         const miniDictionary = {
-            prompt: normalizeWord(prompt),
-            synonyms: (synonyms || []).map(w => normalizeWord(w)).filter(w => w.length > 0),
-            variants: (variants || []).map(w => normalizeWord(w)).filter(w => w.length > 0)
+            'PROMPT': uniqueWords
         };
 
         if (wordEngine && typeof wordEngine.processDictionary === 'function') {
             wordEngine.processDictionary(miniDictionary);
-            debug('🔗 WordEngine inicializado con mini-diccionario de ronda', miniDictionary, 'success');
+            this.wordEngineInitialized = true;
+            debug('🔗 WordEngine inicializado con mini-diccionario de ronda', { prompt: normalizedPrompt, wordsCount: uniqueWords.length }, 'success');
         } else {
             debug('⚠️  WordEngine no tiene m\u00e9todo processDictionary', null, 'warn');
         }
@@ -593,4 +651,4 @@ function showNotification(message, type = 'info') {
     }, 2000);
 }
 
-debug('✅ shared-utils.js cargado - Server-Side First: ConfigService + DictionaryService (fetchGameCandidates + getDictionaryForRound)', null, 'success');
+debug('✅ shared-utils.js - Server-Side First: FIXED wordEngine injection + SHIMMED HostManager methods', null, 'success');
