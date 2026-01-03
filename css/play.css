@@ -1,6 +1,6 @@
 .player-layout {
     height: calc(100vh - 6em);
-    MARGIN: AUTO;
+    margin: auto;
     width: calc(100% - 4em);
 }
 /* TOP HEADER */
@@ -26,7 +26,7 @@
     font-size: 18px;
     font-weight: 700;
     color: var(--color-accent-amber);
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     letter-spacing: 1px;
     text-align: center;
     flex: 1;
