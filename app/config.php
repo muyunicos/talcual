@@ -48,6 +48,22 @@ function flattenWords($data) {
     return $words;
 }
 
+function normalizeWord($rawWord) {
+    if (empty($rawWord)) {
+        return '';
+    }
+    
+    $word = trim($rawWord);
+    
+    $word = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $word);
+    
+    $word = strtoupper($word);
+    
+    $word = preg_replace('/[^A-Z0-9]/', '', $word);
+    
+    return $word;
+}
+
 function cleanWordPrompt($rawWord) {
     if (empty($rawWord)) {
         return '';
@@ -60,7 +76,7 @@ function cleanWordPrompt($rawWord) {
         $word = trim($parts[0]);
     }
     
-    return $word;
+    return normalizeWord($word);
 }
 
 function loadDictionary() {
@@ -72,9 +88,7 @@ function loadDictionary() {
         if (empty($data)) {
             logMessage('Diccionario vacío o no encontrado, usando fallback', 'WARNING');
             $cache = [
-                'categorias' => [
-                    'GENERAL' => ['CASA', 'SOL', 'MAR', 'LUNA', 'NUBE']
-                ]
+                'GENERAL' => ['CASA', 'SOL', 'MAR', 'LUNA', 'NUBE']
             ];
         } else {
             $cache = $data;
@@ -139,7 +153,8 @@ function getRoundContext($category, $prompt) {
     $words = getDictionaryCategoryWords($category);
     
     if (empty($words)) {
-        return ['prompt' => $prompt, 'synonyms' => [$prompt], 'variants' => [$prompt]];
+        $cleanPrompt = cleanWordPrompt($prompt);
+        return ['prompt' => $cleanPrompt, 'synonyms' => [$cleanPrompt], 'variants' => [$cleanPrompt]];
     }
     
     $cleanPrompt = cleanWordPrompt($prompt);
