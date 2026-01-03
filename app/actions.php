@@ -751,16 +751,6 @@ function handleGetConfig() {
     ];
 }
 
-function handleGetWords() {
-    $words = getAllWords();
-
-    return [
-        'success' => true,
-        'server_now' => intval(microtime(true) * 1000),
-        'words' => array_values($words)
-    ];
-}
-
 function handleGetCategories() {
     $categories = getCategories();
     
@@ -772,31 +762,6 @@ function handleGetCategories() {
         'success' => true,
         'server_now' => intval(microtime(true) * 1000),
         'categories' => $categories
-    ];
-}
-
-function handleGetCategoryWord($input) {
-    $category = isset($input['category']) ? trim((string)$input['category']) : null;
-    
-    if (!$category) {
-        return ['success' => false, 'message' => 'category requerida'];
-    }
-    
-    $availableCategories = getCategories();
-    if (!in_array($category, $availableCategories)) {
-        return ['success' => false, 'message' => 'Categoría no válida'];
-    }
-    
-    $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
-    if (!$word) {
-        return ['success' => false, 'message' => 'No hay palabras en esa categoría'];
-    }
-    
-    return [
-        'success' => true,
-        'server_now' => intval(microtime(true) * 1000),
-        'category' => $category,
-        'word' => $word
     ];
 }
 
@@ -873,14 +838,8 @@ try {
         case 'get_config':
             $response = handleGetConfig();
             break;
-        case 'get_words':
-            $response = handleGetWords();
-            break;
         case 'get_categories':
             $response = handleGetCategories();
-            break;
-        case 'get_category_word':
-            $response = handleGetCategoryWord($input);
             break;
         case 'get_stats':
             $response = handleGetStats();
