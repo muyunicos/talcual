@@ -125,6 +125,32 @@ function getWordsByCategory($category) {
     return [];
 }
 
+function getAllResponsesByCategory($category) {
+    $dict = loadDictionary();
+    
+    if (!isset($dict[$category]) || !is_array($dict[$category])) {
+        return [];
+    }
+    
+    $responses = [];
+    foreach ($dict[$category] as $hintObj) {
+        if (is_array($hintObj)) {
+            foreach ($hintObj as $hint => $words) {
+                if (is_array($words)) {
+                    foreach ($words as $word) {
+                        $cleaned = cleanWordPrompt($word);
+                        if ($cleaned) {
+                            $responses[] = $cleaned;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return array_unique($responses);
+}
+
 function getCategories() {
     $dict = loadDictionary();
 
@@ -246,15 +272,33 @@ function getActiveCodes() {
 }
 
 function generateGameCode() {
-    $allWords = getAllWords();
+    $categories = getCategories();
     
-    $shortWords = array_filter($allWords, function($w) {
+    if (empty($categories)) {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        do {
+            $code = '';
+            for ($i = 0; $i < 4; $i++) {
+                $code .= $chars[rand(0, strlen($chars) - 1)];
+            }
+        } while (in_array($code, getActiveCodes()));
+        
+        return $code;
+    }
+    
+    $allResponses = [];
+    foreach ($categories as $category) {
+        $responses = getAllResponsesByCategory($category);
+        $allResponses = array_merge($allResponses, $responses);
+    }
+    
+    $shortWords = array_filter($allResponses, function($w) {
         $length = mb_strlen($w);
         return $length >= 3 && $length <= MAX_CODE_LENGTH;
     });
     
     if (empty($shortWords)) {
-        $shortWords = array_filter($allWords, function($w) {
+        $shortWords = array_filter($allResponses, function($w) {
             return mb_strlen($w) <= MAX_CODE_LENGTH;
         });
     }
@@ -513,17 +557,17 @@ function getRandomWordByCategoryFiltered($category, $maxLength = null) {
         $maxLength = MAX_CODE_LENGTH;
     }
 
-    $words = getWordsByCategory($category);
-    if (empty($words)) {
+    $responses = getAllResponsesByCategory($category);
+    if (empty($responses)) {
         return null;
     }
 
-    $filtered = array_filter($words, function($word) use ($maxLength) {
+    $filtered = array_filter($responses, function($word) use ($maxLength) {
         return mb_strlen($word) <= $maxLength;
     });
 
     if (empty($filtered)) {
-        logMessage("[WARN] No hay palabras en '{$category}' con longitud \u2264 {$maxLength}", 'WARNING');
+        logMessage("[WARN] No hay respuestas en '{$category}' con longitud ≤ {$maxLength}", 'WARNING');
         return null;
     }
 
