@@ -336,6 +336,39 @@
     color: #FF6B6B !important;
 }
 
+/* ========== BUTTON HURRY PULSE (HOST) ========== */
+@keyframes hurry-pulse {
+    0%, 100% {
+        background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 50%), rgba(255, 215, 0, 0.18);
+        box-shadow: 0 0 50px rgba(255, 215, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+    50% {
+        background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 50%), rgba(255, 215, 0, 0.28);
+        box-shadow: 0 0 60px rgba(255, 215, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.40);
+    }
+}
+
+.btn-hurry-up {
+    animation: hurry-pulse 1.2s ease-in-out infinite;
+}
+
+/* ========== COPIED PULSE (FEEDBACK) ========== */
+@keyframes copiedPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.code-sticker-floating.copied {
+    animation: copiedPulse 0.6s ease-out;
+}
+
 /* ========== TRANSICIONES SELECTIVAS ========== */
 button, .btn, [role="button"] {
     transition: transform var(--transition-fast) ease, 
