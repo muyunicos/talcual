@@ -10,6 +10,7 @@ header('Expires: 0');
 header('Connection: keep-alive');
 header('X-Accel-Buffering: no');
 header('X-Content-Type-Options: nosniff');
+header('Keep-Alive: timeout=3600, max=10000');
 
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', '1');
@@ -77,8 +78,14 @@ $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
 
 $lastNotify = 0;
 $startTime = microtime(true);
-$maxDuration = SSE_TIMEOUT;
-$heartbeatInterval = SSE_HEARTBEAT_INTERVAL;
+$maxDuration = 3600;
+if (defined('SSE_TIMEOUT') && SSE_TIMEOUT > 0) {
+    $maxDuration = SSE_TIMEOUT;
+}
+$heartbeatInterval = 30;
+if (defined('SSE_HEARTBEAT_INTERVAL') && SSE_HEARTBEAT_INTERVAL > 0) {
+    $heartbeatInterval = SSE_HEARTBEAT_INTERVAL;
+}
 $lastHeartbeatTime = microtime(true);
 $pollingInterval = 2;
 
@@ -86,12 +93,13 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with per-game monotonic counter'
+    'method' => 'SSE with per-game monotonic counter',
+    'max_duration_seconds' => $maxDuration
 ]);
 
 $lastHeartbeatTime = microtime(true);
 
-logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}", 'DEBUG');
+logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}, max duration: {$maxDuration}s", 'DEBUG');
 
 while ((microtime(true) - $startTime) < $maxDuration) {
     if (connection_aborted()) {
