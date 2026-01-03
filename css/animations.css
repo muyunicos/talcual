@@ -150,18 +150,33 @@
     animation: pulse-countdown 1s infinite;
 }
 
-/* ========== ANIMACIÓN COUNTDOWN BOUNCE ========== */
-@keyframes countdownBounce {
+/* ========== ANIMACIÓN READY PULSE ========== */
+@keyframes readyPulse {
     0%, 100% {
         transform: scale(1);
     }
     50% {
-        transform: scale(1.2);
+        transform: scale(1.05);
     }
 }
 
-.countdown-bounce {
-    animation: countdownBounce 1s ease-in-out;
+.ready-pulse {
+    animation: readyPulse 1s infinite;
+}
+
+/* ========== ANIMACIÓN SELECT PULSE ========== */
+@keyframes selectedPulse {
+    0%, 100% {
+        transform: scale(1.2) rotate(0deg);
+    }
+    50% {
+        transform: scale(1.25) rotate(5deg);
+    }
+}
+
+.selected-pulse,
+.select-pulse {
+    animation: selectedPulse 1s infinite;
 }
 
 /* ========== ANIMACIÓN GLOW ========== */
@@ -209,82 +224,6 @@
     animation: bounce 0.6s;
 }
 
-/* ========== ANIMACIÓN READY PULSE ========== */
-@keyframes readyPulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-}
-
-.ready-pulse,
-.ready-bounce {
-    animation: readyPulse 1s infinite;
-}
-
-/* ========== ANIMACIÓN SELECT PULSE (CONSOLIDADA) ========== */
-@keyframes selectedPulse {
-    0%, 100% {
-        transform: scale(1.2) rotate(0deg);
-    }
-    50% {
-        transform: scale(1.25) rotate(5deg);
-    }
-}
-
-.selected-pulse,
-.aura-option.selected,
-.select-pulse {
-    animation: selectedPulse 1s infinite;
-}
-
-/* Alternative select pulse with box-shadow */
-@keyframes selectPulseShadow {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-    }
-}
-
-/* ========== ANIMACIÓN SPIN (LOADING) ========== */
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-.spin {
-    animation: spin 1s linear infinite;
-}
-
-/* ========== TRANSICIÓN DE FONDO ========== */
-@keyframes backgroundShift {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-.background-shift {
-    background-size: 200% 200%;
-    animation: backgroundShift 3s ease infinite;
-}
-
 /* ========== ANIMACIÓN HEARTBEAT ========== */
 @keyframes heartbeat {
     0%, 100% {
@@ -319,6 +258,38 @@
     animation: flip 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
+/* ========== ANIMACIÓN SPIN (LOADING) ========== */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* ========== TRANSICIÓN DE FONDO ========== */
+@keyframes backgroundShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.background-shift {
+    background-size: 200% 200%;
+    animation: backgroundShift 3s ease infinite;
+}
+
 /* ========== RIPPLE EFFECT ========== */
 @keyframes ripple {
     0% {
@@ -344,27 +315,23 @@
     animation: ripple 0.6s ease-out;
 }
 
-/* ========== TRANSICIONES GENERALES ========== */
-* {
-    transition: all 0.2s ease;
-}
-
-/* ========== TRANSICIÓN BOTÓNES ========== */
+/* ========== TRANSICIONES SELECTIVAS ========== */
 button, .btn, [role="button"] {
-    transition: all 0.1s ease;
+    transition: transform var(--transition-fast) ease, 
+                background-color var(--transition-fast) ease,
+                border-color var(--transition-fast) ease;
 }
 
-button:hover, .btn:hover, [role="button"]:hover {
-    transition: all 0.1s ease;
-}
-
-/* ========== TRANSICIÓN INPUTS ========== */
 input, select, textarea {
-    transition: all 0.2s ease;
+    transition: border-color var(--transition-normal) ease, 
+                background-color var(--transition-normal) ease,
+                box-shadow var(--transition-normal) ease;
 }
 
 input:focus, select:focus, textarea:focus {
-    transition: all 0.2s ease;
+    transition: border-color var(--transition-normal) ease, 
+                background-color var(--transition-normal) ease,
+                box-shadow var(--transition-normal) ease;
 }
 
 /* ========== TRANSFORMACIÓN SUAVE ========== */
