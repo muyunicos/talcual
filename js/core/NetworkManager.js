@@ -284,14 +284,14 @@ class GameClient {
       const dataTrimmed = event.data.trim();
       if (!dataTrimmed || dataTrimmed.startsWith(':')) return;
       
-      let newState;
+      let messageData;
       try {
-        newState = JSON.parse(dataTrimmed);
+        messageData = JSON.parse(dataTrimmed);
         
-        if (!newState || typeof newState !== 'object') {
+        if (!messageData || typeof messageData !== 'object') {
           this.consecutiveEmptyMessages++;
           if (this.consecutiveEmptyMessages > 10) {
-            console.error('[ERROR] Multiple invalid states - reconnecting');
+            console.error('[ERROR] Multiple invalid messages - reconnecting');
             this.handleReconnect();
             this.consecutiveEmptyMessages = 0;
           }
@@ -311,21 +311,40 @@ class GameClient {
         }
         return;
       }
+
+      const messageHash = JSON.stringify(messageData);
+      if (messageHash === this.lastMessageHash) return;
+      this.lastMessageHash = messageHash;
       
-      const stateHash = JSON.stringify(newState);
-      if (stateHash === this.lastMessageHash) return;
-      this.lastMessageHash = stateHash;
-      
-      this.gameState = newState;
-      
-      if (this.onStateUpdate) {
-        try {
-          this.onStateUpdate(newState);
-        } catch (err) {
-          console.error('[ERROR] onStateUpdate callback:', err);
+      if (event.type === 'update') {
+        this.gameState = messageData;
+        
+        if (this.onStateUpdate) {
+          try {
+            this.onStateUpdate(messageData);
+          } catch (err) {
+            console.error('[ERROR] onStateUpdate callback:', err);
+          }
+        }
+        this.emit('state:update', messageData);
+      } else {
+        const eventName = event.type;
+        const eventPayload = messageData;
+        
+        this.emit(eventName, eventPayload);
+        
+        if (eventName === 'player_joined') {
+          this.emit('event:player_joined', eventPayload);
+        } else if (eventName === 'player_ready') {
+          this.emit('event:player_ready', eventPayload);
+        } else if (eventName === 'player_left') {
+          this.emit('event:player_left', eventPayload);
+        } else if (eventName === 'player_updated') {
+          this.emit('event:player_updated', eventPayload);
+        } else if (eventName === 'timer_updated') {
+          this.emit('event:timer_updated', eventPayload);
         }
       }
-      this.emit('state:update', newState);
       
     } catch (error) {
       console.error('[ERROR] Unexpected error in onSSEMessage:', error);
