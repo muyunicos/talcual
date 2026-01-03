@@ -33,6 +33,10 @@ function isValidPlayerName(name) {
     return clean.length >= 2 && clean.length <= 20;
 }
 
+function generatePlayerId() {
+    return 'player_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
 function showNotification(message, type = 'info') {
     const notif = document.createElement('div');
     notif.setAttribute('role', 'alert');
