@@ -2,7 +2,7 @@
 
 **TalCual Party** es un juego web multijugador en tiempo real inspirado en mecánicas de coincidencia mental (tipo *100 Argentinos Dicen*). El objetivo es sincronizar tu mente con la de los demás: debes escribir palabras que coincidan con las de los otros jugadores para sumar puntos.
 
-> **Estado:** En desarrollo (Versión 1.0)
+> **Estado:** En desarrollo (Versión 0.04)
 
 ## 📋 Características Principales
 
@@ -14,17 +14,27 @@
 - **Personalización:** Sistema de **Auras** (gradientes de color) para identificar a cada jugador.
 - **Configuración Total:** Control granular de las mecánicas y el servidor mediante archivo `.env`.
 
+## 🧩 Sistema de Modales (UI)
+
+El juego implementa una arquitectura de interfaz robusta mediante un **Modal Manager** centralizado (`js/modal-manager.js`). Este sistema gestiona las ventanas emergentes utilizando una pila (stack) con **3 capas jerárquicas**, permitiendo superponer alertas críticas sin cerrar los menús de configuración:
+
+1.  **Capa PRIMARY (Z-Index 1000):** Modales base del flujo de juego (ej. *Crear Partida*, *Unirse*).
+2.  **Capa SECONDARY (Z-Index 1100):** Formularios y opciones sobre la capa base (ej. *Configuración*, *Editar Nombre*).
+3.  **Capa CONFIRMATION (Z-Index 1200):** Alertas de sistema y confirmaciones críticas que requieren atención inmediata.
+
 ## ⚙️ Configuración (.env)
 
-El juego es altamente personalizable. Puedes ajustar desde la duración de las rondas hasta el rendimiento del servidor editando el archivo `.env`.
+El juego es altamente personalizable mediante el archivo `.env`.
 
-### 🎮 Mecánicas de Juego
+> **💡 Nota Importante:** Los valores definidos aquí funcionan como **configuración por defecto** al levantar el servidor. Sin embargo, el **Anfitrión (Host)** tiene control total para modificar parámetros como la duración o cantidad de rondas desde el **Menú de Opciones** de la interfaz, ya sea **antes de crear la partida o durante el transcurso de la misma**.
+
+### 🎮 Mecánicas de Juego (Valores por Defecto)
 | Variable | Descripción | Default |
 | :--- | :--- | :--- |
-| `MIN_PLAYERS` | Mínimo de jugadores para poder iniciar una ronda. | `2` |
+| `MIN_PLAYERS` | Mínimo de jugadores para poder iniciar una ronda. | `1` |
 | `MAX_PLAYERS` | Capacidad máxima de la sala. | `20` |
-| `ROUND_DURATION` | Duración total de la ronda (en segundos). | `120` |
-| `TOTAL_ROUNDS` | Cantidad de rondas antes de mostrar la tabla final. | `5` |
+| `ROUND_DURATION` | Duración total de la ronda (en segundos). | `90` |
+| `TOTAL_ROUNDS` | Cantidad de rondas antes de mostrar la tabla final. | `3` |
 | `START_COUNTDOWN` | Tiempo de cuenta regresiva antes de empezar. | `5` |
 | `HURRY_UP_THRESHOLD` | Tiempo al que baja el reloj al activar "Remate". | `10` |
 | `MAX_WORDS_PER_PLAYER` | Máximo de palabras que un jugador puede enviar. | `6` |
