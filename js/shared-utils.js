@@ -111,6 +111,7 @@ const initializeWordEngineFromRound = (roundContext) => {
 
 const StorageKeys = {
     HOST_GAME_CODE: 'host_game_code',
+    HOST_CATEGORY: 'host_category',
     HOST_SESSION: 'host_session',
     PLAYER_ID: 'player_id',
     PLAYER_NAME: 'player_name'
