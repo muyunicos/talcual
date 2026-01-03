@@ -7,6 +7,7 @@
  * - PURIFIED: 100% synchronous, passive, no I/O, no initialization overhead
  * - Data is INJECTED from DictionaryService - engine is read-only except for processDictionary()
  * - ADDED: reset() method to clear state between rounds
+ * - PHASE 3: initializeFromRoundContext() for mini-dictionary (only round answers)
  */
 
 class WordEquivalenceEngine {
@@ -30,6 +31,43 @@ class WordEquivalenceEngine {
         this.processModernFormat(data);
         this.isLoaded = true;
         console.log('✅ WordEngine ready. Dictionary entries:', Object.keys(this.dictionaryMap).length);
+    }
+
+    initializeFromRoundContext(roundContext) {
+        if (!roundContext || typeof roundContext !== 'object') {
+            console.warn('⚠️ initializeFromRoundContext: invalid context');
+            this.reset();
+            return;
+        }
+
+        const answers = roundContext.commonAnswers || [];
+        if (!Array.isArray(answers) || answers.length === 0) {
+            console.warn('⚠️ initializeFromRoundContext: no answers provided');
+            this.reset();
+            return;
+        }
+
+        this.dictionaryMap = {};
+        this.strictGenderSet.clear();
+
+        answers.forEach((answer) => {
+            if (typeof answer === 'string' && answer.length > 0) {
+                if (answer.includes('|')) {
+                    this.processPipeDelimitedEntry(answer, 'ROUND');
+                } else {
+                    this.registerWord(answer, answer, 'ROUND');
+                }
+            }
+        });
+
+        this.setRoundContext({
+            prompt: roundContext.roundQuestion || '',
+            synonyms: [],
+            variants: []
+        });
+
+        this.isLoaded = true;
+        console.log(`✅ WordEngine initialized from roundContext. Entries: ${Object.keys(this.dictionaryMap).length}`);
     }
 
     reset() {
