@@ -1,7 +1,3 @@
-/**
- * Create Game Modal - Modal para crear nuevas partidas
- */
-
 class CreateGameModal {
     constructor() {
         this.gameCandidates = [];
@@ -131,47 +127,37 @@ class CreateGameModal {
             </div>
         `;
 
-        ModalManager_Instance.show({
-            type: ModalManager_Instance.TYPES.SECONDARY,
-            title: '🎮 Crear Nueva Partida',
-            content: formHTML,
-            buttons: [
-                {
-                    label: 'Opciones',
-                    class: 'btn',
-                    action: () => this.openSettingsModal(),
-                    close: false
-                },
-                {
-                    label: 'Crear',
-                    class: 'btn-modal-primary',
-                    action: () => this.handleCreateClick(),
-                    close: false
-                },
-                {
-                    label: 'Cancelar',
-                    class: 'btn',
-                    action: null,
-                    close: true
-                }
+        const buttons = [
+            [
+                () => this.openSettingsModal(),
+                'Opciones',
+                'btn'
             ],
-            onDismiss: () => {
-                debug('Modal cerrado por el usuario', null, 'info');
-            },
-            onOpen: () => {
-                const categorySelect = document.getElementById('category-select-modal');
-                const codeDisplay = document.getElementById('code-display-modal');
+            [
+                () => this.handleCreateClick(),
+                'Crear',
+                'btn-modal-primary'
+            ],
+            [
+                () => ModalSystem_Instance.close(1),
+                'Cancelar',
+                'btn'
+            ]
+        ];
 
-                if (categorySelect) {
-                    categorySelect.addEventListener('change', (e) => {
-                        this.updateCandidateFromCategory(e.target.value);
-                        if (codeDisplay && this.selectedCandidate) {
-                            codeDisplay.textContent = this.selectedCandidate.code;
-                        }
-                    });
+        ModalSystem_Instance.show(1, formHTML, buttons);
+
+        const categorySelect = document.getElementById('category-select-modal');
+        const codeDisplay = document.getElementById('code-display-modal');
+
+        if (categorySelect) {
+            categorySelect.addEventListener('change', (e) => {
+                this.updateCandidateFromCategory(e.target.value);
+                if (codeDisplay && this.selectedCandidate) {
+                    codeDisplay.textContent = this.selectedCandidate.code;
                 }
-            }
-        });
+            });
+        }
     }
 
     openSettingsModal() {
@@ -227,7 +213,7 @@ class CreateGameModal {
 
             await new Promise((r) => setTimeout(r, 500));
 
-            ModalManager_Instance.closeAll();
+            ModalSystem_Instance.closeAll();
 
             if (typeof determineUIState === 'function') {
                 determineUIState();
