@@ -503,6 +503,51 @@ function handleResetGame($input) {
     return ['success' => false, 'message' => 'Error al reiniciar juego'];
 }
 
+function handleUpdateRoundTimer($input) {
+    $gameId = sanitizeGameId($input['game_id'] ?? null);
+
+    if (!$gameId) {
+        return ['success' => false, 'message' => 'game_id requerido'];
+    }
+
+    $state = loadGameState($gameId);
+
+    if (!$state) {
+        return ['success' => false, 'message' => 'Juego no encontrado'];
+    }
+
+    if ($state['status'] !== 'playing') {
+        return ['success' => false, 'message' => 'No hay ronda en curso'];
+    }
+
+    $newEndTime = intval($input['new_end_time'] ?? 0);
+
+    if ($newEndTime <= 0) {
+        return ['success' => false, 'message' => 'Tiempo inválido'];
+    }
+
+    $state['round_ends_at'] = $newEndTime;
+    $newDuration = $newEndTime - ($state['round_started_at'] ?? 0);
+    if ($newDuration > 0) {
+        $state['round_duration'] = $newDuration;
+    }
+
+    $state['last_update'] = time();
+
+    if (saveGameState($gameId, $state)) {
+        trackGameAction($gameId, 'round_timer_updated', ['new_end_time' => $newEndTime]);
+        notifyGameChanged($gameId);
+        return [
+            'success' => true,
+            'message' => 'Temporizador actualizado',
+            'server_now' => intval(microtime(true) * 1000),
+            'state' => $state
+        ];
+    } else {
+        return ['success' => false, 'message' => 'Error actualizando temporizador'];
+    }
+}
+
 function handleLeaveGame($input) {
     $gameId = sanitizeGameId($input['game_id'] ?? null);
     $playerId = sanitizePlayerId($input['player_id'] ?? null);
@@ -742,6 +787,9 @@ try {
             break;
         case 'end_round':
             $response = handleEndRound($input);
+            break;
+        case 'update_round_timer':
+            $response = handleUpdateRoundTimer($input);
             break;
         case 'reset_game':
             $response = handleResetGame($input);
