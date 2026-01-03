@@ -393,6 +393,36 @@ class HostManager extends BaseController {
     }
   }
 
+  async endRound() {
+    if (!this.client || !this.gameState) return;
+
+    debug('🎯 Finalizando ronda...', null, 'info');
+
+    this.view.setEndRoundButtonLoading();
+
+    try {
+      const { roundResults, scoreDeltas, topWords } = this.calculateResults(this.gameState);
+
+      const result = await this.client.sendAction('end_round', {
+        round_results: roundResults,
+        score_deltas: scoreDeltas,
+        top_words: topWords
+      });
+
+      if (result.success) {
+        debug('✅ Ronda finalizada', null, 'success');
+        this.handleStateUpdate(result.state || this.gameState);
+      } else {
+        showNotification('❌ Error finalizando ronda', 'error');
+        this.view.setEndRoundButtonState('ready');
+      }
+    } catch (error) {
+      debug('Error finalizando ronda:', error, 'error');
+      showNotification('❌ Error de conexión', 'error');
+      this.view.setEndRoundButtonState('ready');
+    }
+  }
+
   showRoundEnded(state) {
     this.stopTimer();
     this.view.showRoundEnded();
