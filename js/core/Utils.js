@@ -28,7 +28,6 @@ function isValidGameCode(code) {
 }
 
 function showNotification(message, type = 'info') {
-    const container = document.querySelector('[role="alert"]') || document.body;
     const notif = document.createElement('div');
     notif.setAttribute('role', 'alert');
     notif.textContent = message;
@@ -39,7 +38,7 @@ function showNotification(message, type = 'info') {
         padding: 12px 16px;
         border-radius: 6px;
         font-weight: 500;
-        z-index: 9999;
+        z-index: 4000;
         max-width: 300px;
         word-wrap: break-word;
     `;
@@ -47,7 +46,7 @@ function showNotification(message, type = 'info') {
                              type === 'warning' ? '#ffaa00' :
                              type === 'success' ? '#44ff44' : '#4488ff';
     notif.style.color = '#fff';
-    container.appendChild(notif);
+    document.body.appendChild(notif);
     setTimeout(() => notif.remove(), 3000);
 }
 
@@ -81,22 +80,40 @@ function debug(message, data = null, level = 'log') {
 
 const UI = {
     showFatalError: function(message) {
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); display: flex; align-items: center;
-            justify-content: center; z-index: 99999;
-        `;
-        modal.innerHTML = `
-            <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; text-align: center;">
-                <h2 style="color: #ff4444; margin-top: 0;">❌ Error Fatal</h2>
-                <p>${sanitizeText(message)}</p>
-                <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 20px; cursor: pointer;">
-                    Recargar Página
-                </button>
-            </div>
-        `;
-        document.body.appendChild(modal);
+        if (typeof ModalSystem_Instance !== 'undefined' && ModalSystem_Instance) {
+            const errorHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                    <h2 style="color: #ff6666; margin: 0 0 16px 0; font-size: 20px;">Error Fatal</h2>
+                    <p style="color: #e0e0e0; margin: 0 0 16px 0; line-height: 1.6;">${sanitizeText(message)}</p>
+                </div>
+            `;
+            ModalSystem_Instance.show(3, errorHTML, [
+                [
+                    () => location.reload(),
+                    'Recargar Página',
+                    'btn-modal-primary'
+                ]
+            ]);
+        } else {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.9); display: flex; align-items: center;
+                justify-content: center; z-index: 99999;
+            `;
+            modal.innerHTML = `
+                <div style="background: rgba(46, 0, 78, 0.95); padding: 30px; border-radius: 12px; max-width: 450px; text-align: center; border: 2px solid rgba(255, 0, 85, 0.6);">
+                    <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                    <h2 style="color: #ff6666; margin: 0 0 16px 0; font-size: 22px; font-weight: 700;">Error Fatal</h2>
+                    <p style="color: #e0e0e0; margin: 0 0 24px 0; line-height: 1.6; font-size: 14px;">${sanitizeText(message)}</p>
+                    <button onclick="location.reload()" style="padding: 12px 24px; margin-top: 0; cursor: pointer; background: var(--amarillo, #FFD700); color: #000; border: none; border-radius: 6px; font-weight: 700; font-size: 14px; letter-spacing: 0.5px; transition: all 0.3s ease;">
+                        Recargar Página
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
     }
 };
 
