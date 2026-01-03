@@ -209,7 +209,8 @@ class CreateGameModal {
                 throw new Error(result.message || 'Invalid response: missing game_id');
             }
 
-            hostSession.saveHostSession(result.game_id, category);
+            StorageManager.set(StorageKeys.HOST_GAME_CODE, result.game_id);
+            StorageManager.set(StorageKeys.HOST_CATEGORY, category);
 
             showNotification('✅ Partida creada', 'success');
 
