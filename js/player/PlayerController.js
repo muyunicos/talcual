@@ -14,6 +14,7 @@ class PlayerManager extends BaseController {
     this.wordsUpdatePending = false;
     
     this.lastTypingTime = 0;
+    this.typingThrottleMs = 2000;
 
     this.view = null;
   }
@@ -85,7 +86,55 @@ class PlayerManager extends BaseController {
     this.view.bindKeyPressInInput(() => this.addWord());
     this.view.bindSubmit(() => this.handleFinishButton());
     this.view.bindJoinGame((code, name) => this.joinGame(code, name));
-    this.view.bindTypingOnInput(() => this.scheduleTypingEvent());
+    this.attachTypingListener();
+  }
+
+  attachTypingListener() {
+    const inputElement = document.querySelector('[data-testid="word-input"]') || 
+                        document.querySelector('input[type="text"][placeholder*="Escribe"]') ||
+                        document.getElementById('wordInput');
+    
+    if (!inputElement) {
+      debug('⚠️ No input element found for typing listener', null, 'warn');
+      return;
+    }
+
+    inputElement.addEventListener('input', () => {
+      this.scheduleTypingEvent();
+    });
+
+    debug('✅ Typing listener attached to input', null, 'debug');
+  }
+
+  scheduleTypingEvent() {
+    const inputElement = document.querySelector('[data-testid="word-input"]') || 
+                        document.querySelector('input[type="text"][placeholder*="Escribe"]') ||
+                        document.getElementById('wordInput');
+    
+    if (!inputElement) return;
+
+    const currentInput = (inputElement.value || '').trim();
+    if (!currentInput) return;
+
+    const now = Date.now();
+    const timeSinceLastTyping = now - this.lastTypingTime;
+
+    if (timeSinceLastTyping >= this.typingThrottleMs) {
+      this.sendTypingEvent();
+    }
+  }
+
+  async sendTypingEvent() {
+    if (!this.client || !this.gameId || !this.playerId) return;
+
+    this.lastTypingTime = Date.now();
+
+    try {
+      await this.client.sendAction('typing', {});
+      debug('🗣️ Typing event enviado', null, 'debug');
+    } catch (error) {
+      debug('Error enviando typing event:', error, 'debug');
+    }
   }
 
   showJoinModal() {
@@ -270,29 +319,6 @@ class PlayerManager extends BaseController {
         this.view.updateTimer(remaining);
         this.updateTimerFromState(state);
       });
-    }
-  }
-
-  scheduleTypingEvent() {
-    const now = Date.now();
-    const timeSinceLastTyping = now - this.lastTypingTime;
-    const typingThrottleMs = 2000;
-
-    if (timeSinceLastTyping >= typingThrottleMs) {
-      this.sendTypingEvent();
-    }
-  }
-
-  async sendTypingEvent() {
-    if (!this.client || !this.gameId || !this.playerId) return;
-
-    this.lastTypingTime = Date.now();
-
-    try {
-      await this.client.sendAction('typing', {});
-      debug('🗣️ Typing event enviado', null, 'debug');
-    } catch (error) {
-      debug('Error enviando typing event:', error, 'debug');
     }
   }
 
