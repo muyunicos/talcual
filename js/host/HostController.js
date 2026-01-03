@@ -126,6 +126,7 @@ class HostManager extends BaseController {
     this.view.bindStartGame(() => this.startRound());
     this.view.bindHurryUp(() => this.activateHurryUp());
     this.view.bindEndGame(() => this.endGame());
+    this.view.bindRemovePlayer((playerId) => this.handleRemovePlayer(playerId));
   }
 
   showStartScreen() {
@@ -319,46 +320,30 @@ class HostManager extends BaseController {
     if (!state.players) return;
 
     this.currentPlayers = Object.values(state.players);
-    
-    const playerElements = document.querySelectorAll('[data-player-id]');
-    playerElements.forEach(el => {
-      const playerId = el.getAttribute('data-player-id');
-      const player = state.players[playerId];
-      
-      if (!player) return;
-
-      if (player.disconnected) {
-        el.style.opacity = '0.5';
-        el.style.pointerEvents = 'none';
-        el.setAttribute('data-disconnected', 'true');
-      } else {
-        el.style.opacity = '1';
-        el.style.pointerEvents = 'auto';
-        el.removeAttribute('data-disconnected');
-      }
-
-      const statusIndicator = el.querySelector('[data-player-status]');
-      if (statusIndicator) {
-        statusIndicator.textContent = '';
-        statusIndicator.className = 'player-status-indicator';
-
-        if (player.disconnected) {
-          statusIndicator.classList.add('disconnected');
-          statusIndicator.textContent = '⚠️';
-          statusIndicator.title = 'Jugador desconectado';
-        } else if (player.status === 'ready') {
-          statusIndicator.classList.add('ready');
-          statusIndicator.textContent = '✓';
-          statusIndicator.title = 'Listo';
-        } else if (player.status === 'typing') {
-          statusIndicator.classList.add('typing');
-          statusIndicator.textContent = '✎';
-          statusIndicator.title = 'Escribiendo...';
-        }
-      }
-    });
-
     this.view.updatePlayerList(state.players);
+  }
+
+  async handleRemovePlayer(playerId) {
+    if (!this.client || !playerId) return;
+
+    const confirmed = window.confirm('¿Expulsar a este jugador de la sala?');
+    if (!confirmed) return;
+
+    try {
+      debug(`🚪 Expulsando jugador: ${playerId}`, null, 'info');
+      const result = await this.client.sendAction('leave_game', { player_id: playerId });
+
+      if (result.success) {
+        debug(`✅ Jugador ${playerId} expulsado`, null, 'success');
+        showNotification('👋 Jugador expulsado', 'success');
+      } else {
+        debug(`❌ Error expulsando jugador: ${result.error}`, null, 'error');
+        showNotification('❌ No se pudo expulsar al jugador', 'error');
+      }
+    } catch (error) {
+      debug(`Error expulsando jugador: ${error.message}`, null, 'error');
+      showNotification('❌ Error de conexión', 'error');
+    }
   }
 
   showWaitingState() {
