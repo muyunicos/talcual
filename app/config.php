@@ -224,6 +224,25 @@ function getResponsesByPrompt($category, $prompt) {
     return array_unique($responses);
 }
 
+function getQuestionAndAnswers($category) {
+    $prompts = getPromptsByCategory($category);
+    
+    if (empty($prompts)) {
+        return [
+            'question' => 'JUEGO',
+            'answers' => []
+        ];
+    }
+    
+    $question = $prompts[array_rand($prompts)];
+    $answers = getResponsesByPrompt($category, $question);
+    
+    return [
+        'question' => $question,
+        'answers' => $answers
+    ];
+}
+
 function getRoundContext($category, $prompt) {
     $cleanPrompt = cleanWordPrompt($prompt);
     $responses = getResponsesByPrompt($category, $prompt);
