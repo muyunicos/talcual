@@ -67,51 +67,49 @@ class PlayerView {
 
   showJoinScreen() {
     const content = this.buildJoinContent();
+    const htmlString = content.innerHTML;
 
-    ModalManager_Instance.show({
-      type: 'primary',
-      title: 'Unirse a una Partida',
-      content: content,
-      buttons: [
-        {
-          label: '¡A Jugar!',
-          class: 'btn-modal-primary',
-          action: () => {
+    ModalSystem_Instance.show(
+      1,
+      htmlString,
+      [
+        [
+          () => {
             const codeInput = document.querySelector('#modal-join-code');
             const nameInput = document.querySelector('#modal-join-name');
             if (this._joinCallback) {
               this._joinCallback(codeInput.value, nameInput.value);
             }
           },
-          close: false
-        }
+          '¡A Jugar!',
+          'btn-modal-primary'
+        ]
       ]
-    });
+    );
+
+    this.attachJoinScreenListeners();
   }
 
   buildJoinContent() {
     const container = document.createElement('div');
     container.innerHTML = `
-            <div class="input-group">
-                <label class="input-label" for="modal-join-code">Código de Sala</label>
-                <input type="text" id="modal-join-code" class="input-field" 
-                       placeholder="Ej: CASA" maxlength="6" autocomplete="off">
-            </div>
-            <div class="input-group">
-                <label class="input-label" for="modal-join-name">Tu Nombre</label>
-                <input type="text" id="modal-join-name" class="input-field" 
-                       placeholder="" maxlength="20" autocomplete="on">
-            </div>
-            <div class="input-group">
-                <label class="input-label">✨ Elige tu Aura</label>
-                <div class="aura-selector" id="modal-aura-selector"></div>
-            </div>
-        `;
+      <div class="input-group">
+        <label class="input-label" for="modal-join-code">Código de Sala</label>
+        <input type="text" id="modal-join-code" class="input-field" 
+               placeholder="Ej: CASA" maxlength="6" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <label class="input-label" for="modal-join-name">Tu Nombre</label>
+        <input type="text" id="modal-join-name" class="input-field" 
+               placeholder="" maxlength="20" autocomplete="on">
+      </div>
+      <div class="input-group">
+        <label class="input-label">✨ Elige tu Aura</label>
+        <div class="aura-selector" id="modal-aura-selector"></div>
+      </div>
+    `;
 
-    const codeInput = container.querySelector('#modal-join-code');
-    const nameInput = container.querySelector('#modal-join-name');
     const auraSelector = container.querySelector('#modal-aura-selector');
-
     const availableAuras = generateRandomAuras();
     const randomAura = availableAuras[Math.floor(Math.random() * availableAuras.length)];
 
@@ -126,19 +124,28 @@ class PlayerView {
     );
 
     this._joinData = { selectedColor };
-    this._joinCallback = null;
-
-    codeInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') nameInput.focus();
-    });
-
-    nameInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && this._joinCallback) {
-        this._joinCallback(codeInput.value, nameInput.value);
-      }
-    });
 
     return container;
+  }
+
+  attachJoinScreenListeners() {
+    const codeInput = document.querySelector('#modal-join-code');
+    const nameInput = document.querySelector('#modal-join-name');
+
+    if (codeInput) {
+      codeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') nameInput.focus();
+      });
+    }
+
+    if (nameInput) {
+      nameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && this._joinCallback) {
+          const codeInputValue = document.querySelector('#modal-join-code');
+          this._joinCallback(codeInputValue.value, nameInput.value);
+        }
+      });
+    }
   }
 
   bindJoinGame(callback) {
@@ -154,7 +161,7 @@ class PlayerView {
       applyColorGradient(playerColor);
     }
 
-    ModalManager_Instance.close();
+    ModalSystem_Instance.close(1);
     safeShowElement(this.elements.gameScreen);
 
     if (this.elements.headerCode) this.elements.headerCode.textContent = gameCode;
@@ -279,11 +286,11 @@ class PlayerView {
 
       if (this.elements.wordsList) {
         this.elements.wordsList.innerHTML = words.map((word, idx) => `
-                    <div class="word-item" onclick="playerManager.removeWord(${idx})">
-                        <span class="word-text">${sanitizeText(word)}</span>
-                        <span class="word-delete">✍️</span>
-                    </div>
-                `).join('');
+          <div class="word-item" onclick="playerManager.removeWord(${idx})">
+            <span class="word-text">${sanitizeText(word)}</span>
+            <span class="word-delete">✍️</span>
+          </div>
+        `).join('');
       }
     } else {
       safeHideElement(this.elements.wordsListContainer);
@@ -347,12 +354,12 @@ class PlayerView {
         const hasMatch = result.count > 1;
         const icon = hasMatch ? '✅' : '❌';
         html += `
-                    <div class="result-item ${hasMatch ? 'match' : 'no-match'}">
-                        <div class="result-word">${icon} ${sanitizeText(word)}</div>
-                        <div class="result-points">+${result.points} puntos</div>
-                        ${hasMatch ? `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>` : ''}
-                    </div>
-                `;
+          <div class="result-item ${hasMatch ? 'match' : 'no-match'}">
+            <div class="result-word">${icon} ${sanitizeText(word)}</div>
+            <div class="result-points">+${result.points} puntos</div>
+            ${hasMatch ? `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>` : ''}
+          </div>
+        `;
         roundScore += result.points;
       });
 
@@ -395,38 +402,43 @@ class PlayerView {
 
   showEditNameModal(currentName, currentColor, onSave) {
     const content = this.buildEditNameContent(currentName, currentColor);
+    const htmlString = content.innerHTML;
 
-    ModalManager_Instance.show({
-      type: 'secondary',
-      title: 'Cambiar Nombre',
-      content: content,
-      buttons: [
-        { label: 'Cancelar', class: 'btn', action: null, close: true },
-        {
-          label: 'Guardar',
-          class: 'btn-modal-primary',
-          action: () => {
+    ModalSystem_Instance.show(
+      2,
+      htmlString,
+      [
+        [
+          () => ModalSystem_Instance.close(2),
+          'Cancelar',
+          'btn'
+        ],
+        [
+          () => {
             const nameInput = document.querySelector('#modal-edit-name');
-            onSave(nameInput.value);
+            const selectedAura = this.getSelectedEditAura();
+            onSave(nameInput.value, selectedAura);
+            ModalSystem_Instance.close(2);
           },
-          close: false
-        }
+          'Guardar',
+          'btn-modal-primary'
+        ]
       ]
-    });
+    );
   }
 
   buildEditNameContent(currentName, currentColor) {
     const container = document.createElement('div');
     container.innerHTML = `
-            <div class="input-group">
-                <label class="input-label" for="modal-edit-name">Nuevo Nombre</label>
-                <input type="text" id="modal-edit-name" class="input-field" maxlength="20" autocomplete="off">
-            </div>
-            <div class="input-group" style="margin-top: 15px;">
-                <label class="input-label">✨ Tu Aura</label>
-                <div class="aura-selector" id="modal-edit-aura"></div>
-            </div>
-        `;
+      <div class="input-group">
+        <label class="input-label" for="modal-edit-name">Nuevo Nombre</label>
+        <input type="text" id="modal-edit-name" class="input-field" maxlength="20" autocomplete="off">
+      </div>
+      <div class="input-group" style="margin-top: 15px;">
+        <label class="input-label">✨ Tu Aura</label>
+        <div class="aura-selector" id="modal-edit-aura"></div>
+      </div>
+    `;
 
     const nameInput = container.querySelector('#modal-edit-name');
     const auraSelector = container.querySelector('#modal-edit-aura');
