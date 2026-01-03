@@ -2,8 +2,8 @@
  * Create Game Modal - Modal para crear nuevas partidas
  * Maneja: UI para crear partida
  * 
- * ✅ REFACTORIZADO FASE 3C:
- * - Usa ModalController para gestión centralizada de modales
+ * ✅ REFACTORIZADO FASE 1:
+ * - Usa ModalManager_Instance para gestión centralizada de modales
  * - Usa DictionaryService para carga de categorías
  * - Usa ConfigService para configuración
  * - SOLO responsable de UI
@@ -11,7 +11,6 @@
 
 class CreateGameModal {
     constructor() {
-        this.modalController = null;
         this.btnCreate = document.getElementById('btn-create-game');
         this.categorySelect = document.getElementById('category-select');
         this.customCodeInput = document.getElementById('custom-code');
@@ -25,16 +24,6 @@ class CreateGameModal {
 
     async init() {
         try {
-            this.modalController = new ModalController('modal-create-game', {
-                closeOnBackdrop: true,
-                closeOnEsc: true,
-                onBeforeOpen: () => {
-                    this.selectRandomCategory();
-                    this.customCodeInput.value = '';
-                    this.statusMessage.style.display = 'none';
-                }
-            });
-
             await dictionaryService.initialize();
             await configService.load();
 
@@ -57,32 +46,66 @@ class CreateGameModal {
         }
     }
 
-    populateCategorySelect(categories) {
-        this.categorySelect.innerHTML = '';
-        categories.forEach((cat) => {
-            const option = document.createElement('option');
-            option.value = cat;
-            option.textContent = cat;
-            this.categorySelect.appendChild(option);
+    openModal() {
+        this.selectRandomCategory();
+        this.customCodeInput.value = '';
+        this.statusMessage.style.display = 'none';
+
+        const formHTML = `
+            <div class="input-group">
+                <label class="input-label" for="category-select">Categoría</label>
+                <select id="category-select" class="input-field">
+                    ${this.categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                </select>
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="custom-code">Código personalizado (opcional)</label>
+                <input type="text" id="custom-code" class="input-field" placeholder="Máx. 5 caracteres" maxlength="5">
+                <p class="custom-code-info">Si no completas, se generará automáticamente</p>
+            </div>
+        `;
+
+        ModalManager_Instance.show({
+            type: ModalManager_Instance.TYPES.SECONDARY,
+            title: '🎮 Crear Nueva Partida',
+            content: formHTML,
+            buttons: [
+                {
+                    label: 'Crear',
+                    class: 'btn-modal-primary',
+                    action: () => this.handleCreateClick(),
+                    close: false
+                },
+                {
+                    label: 'Cancelar',
+                    class: 'btn',
+                    action: null,
+                    close: true
+                }
+            ],
+            onDismiss: () => {
+                debug('Modal cerrado por el usuario', null, 'info');
+            }
         });
+    }
+
+    populateCategorySelect(categories) {
+        // Ya no necesario si el select se genera dinámicamente
+        // Pero se mantiene por compatibilidad
     }
 
     selectRandomCategory() {
         if (this.categories.length === 0) return;
-        
         const randomIndex = Math.floor(Math.random() * this.categories.length);
-        this.categorySelect.value = this.categories[randomIndex];
-        this.updateCodeWithCategoryWord();
+        const selectedCategory = this.categories[randomIndex];
+        return selectedCategory;
     }
 
     async updateCodeWithCategoryWord() {
-        const selectedCategory = this.categorySelect.value;
-        
         try {
             const randomWord = await dictionaryService.getRandomWord();
-            
             if (randomWord) {
-                this.customCodeInput.value = randomWord.slice(0, 5);
+                return randomWord.slice(0, 5);
             }
         } catch (error) {
             debug('Error obteniendo palabra para categoría', error, 'warn');
@@ -94,8 +117,11 @@ class CreateGameModal {
         this.showMessage('Creando partida...', 'info');
         
         try {
-            const category = this.categorySelect.value;
-            const customCode = this.customCodeInput.value.trim().toUpperCase() || null;
+            const categorySelect = document.getElementById('category-select');
+            const customCodeInput = document.getElementById('custom-code');
+            
+            const category = categorySelect?.value || this.selectRandomCategory();
+            const customCode = (customCodeInput?.value || '').trim().toUpperCase() || null;
 
             const payload = {
                 action: 'create_game',
@@ -140,6 +166,8 @@ class CreateGameModal {
 
             await new Promise((r) => setTimeout(r, 500));
 
+            ModalManager_Instance.closeAll();
+
             if (typeof determineUIState === 'function') {
                 determineUIState();
             }
@@ -157,13 +185,15 @@ class CreateGameModal {
     }
 
     showMessage(text, type = 'info') {
-        this.statusMessage.textContent = text;
-        this.statusMessage.className = `status-message-modal status-${type}`;
-        this.statusMessage.style.display = 'block';
+        if (this.statusMessage) {
+            this.statusMessage.textContent = text;
+            this.statusMessage.className = `status-message-modal status-${type}`;
+            this.statusMessage.style.display = 'block';
 
-        setTimeout(() => {
-            this.statusMessage.style.display = 'none';
-        }, 2000);
+            setTimeout(() => {
+                this.statusMessage.style.display = 'none';
+            }, 2000);
+        }
     }
 }
 
@@ -173,4 +203,4 @@ if (document.readyState === 'loading') {
     new CreateGameModal();
 }
 
-console.log('%c✅ create-game-modal.js - REFACTORIZADO FASE 3C: Usa ModalController', 'color: #0066FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ create-game-modal.js - REFACTORIZADO FASE 1: Usa ModalManager_Instance', 'color: #0066FF; font-weight: bold; font-size: 12px');
