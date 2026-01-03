@@ -14,7 +14,6 @@
 }
 
 /* GAME SCREEN */
-
 .game-screen {
     display: block;
     position: fixed;
@@ -95,19 +94,21 @@
     /* ========== FUENTES (FONTS) ========== */
     --font-primary: 'Nunito', sans-serif;
     --font-display: 'Fredoka One', cursive;
+    --font-mono: 'Courier New', monospace;
     
     /* ========== TRANSICIONES (TRANSITIONS) ========== */
     --transition-fast: 0.1s ease;
     --transition-normal: 0.2s ease;
     --transition-slow: 0.5s ease;
     
+    /* ========== BLUR & FILTERS ========== */
+    --blur-standard: 10px;
+    --blur-enhanced: 12px;
+    
     /* ========== RESPONSIVE BREAKPOINTS ========== */
     /* Mobile: < 480px */
     /* Tablet: 480px - 1024px */
     /* Desktop: > 1024px */
-    
-    /* ========== OTROS FONDOS ========== */
-    --fondo-tv: #2E004E;
 }
 
 /* ========== ESTILOS BASE BODY ========== */
@@ -115,7 +116,6 @@ body {
     font-family: var(--font-primary);
     font-weight: 700;
     background-color: var(--violeta-profundo);
-    /* Imagen de fondo cover delante del color */
     background-image: url('../images/bg.webp'); 
     background-repeat: no-repeat;
     background-position: center center;
@@ -227,7 +227,6 @@ table tr:last-child td {
 }
 
 /* ========== AURAS (Generadas dinámicamente) ========== */
-/* Clase base para elementos con aura */
 .has-aura {
     transition: background var(--transition-slow);
 }
@@ -358,7 +357,7 @@ table tr:last-child td {
     width: 60px;
     height: 60px;
     background: rgba(139, 92, 246, 0.2);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--blur-standard));
     border: 2px solid rgba(139, 92, 246, 0.4);
     border-radius: 50%;
     display: flex;
@@ -389,8 +388,10 @@ table tr:last-child td {
 .hidden { display: none !important; }
 .visible { display: block !important; }
 .flex { display: flex; }
-.flex-column { display: flex; flex-direction: column; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-col-gap { display: flex; flex-direction: column; gap: var(--space-md); }
 .flex-center { display: flex; justify-content: center; align-items: center; }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(139, 92, 246, 0.5) rgba(0, 0, 0, 0.2); }
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 1024px) {
