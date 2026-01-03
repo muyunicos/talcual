@@ -24,15 +24,16 @@
         
         <div class="version">v0.03 - Muy Únicos</div>
     </div>
-    <script src="js/Utils.js"></script>
+    <script src="js/core/Utils.js"></script>
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const gameId = StorageManager.get(StorageKeys.GAME_ID);
-            const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
-            const isHost = StorageManager.get(StorageKeys.IS_HOST) === 'true';
+            const hostGameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
+            const playerGameCode = StorageManager.get(StorageKeys.PLAYER_GAME_CODE);
 
-            if (gameId) {
-                window.location.href = isHost ? 'host.html' : 'play.html';
+            if (hostGameCode) {
+                window.location.href = 'host.html';
+            } else if (playerGameCode) {
+                window.location.href = 'play.html';
             }
         });
     </script>
