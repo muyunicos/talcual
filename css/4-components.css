@@ -1,5 +1,7 @@
 /* GLOBAL COMPONENTS */
-
+.modal-manager {
+    width: 100%;
+}
 .modal-overlay {
     display: flex;
     align-items: center;
