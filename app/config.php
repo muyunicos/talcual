@@ -184,7 +184,7 @@ function getActiveCodes() {
     $codes = [];
 
     if ($files) {
-        foreach ($files) {
+        foreach ($files as $file) {
             if (time() - filemtime($file) < MAX_GAME_AGE) {
                 $codes[] = pathinfo($file, PATHINFO_FILENAME);
             } else {
