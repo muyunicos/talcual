@@ -187,7 +187,7 @@
     padding: 10px;
     backdrop-filter: blur(8px);
     border: 2px solid rgba(255, 255, 255, 0.16);
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     cursor: default;
     justify-self: center;
     overflow: hidden;
@@ -259,7 +259,31 @@
     transform: scale(1.1);
 }
 
-/* STATUS INDICATORS */
+/* ========== SQUARCLE STATUS COLORS ========== */
+.player-squarcle.status-connected {
+    box-shadow: 0 0 16px #808080, 0 0 32px #808080;
+}
+
+.player-squarcle.status-ready {
+    box-shadow: 0 0 24px #00FF88, 0 0 48px #00FF88, inset 0 0 24px rgba(0, 255, 136, 0.2);
+    animation: selectPulse 0.8s ease-in-out infinite;
+}
+
+.player-squarcle.status-answered {
+    box-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700;
+}
+
+.player-squarcle.status-waiting {
+    box-shadow: 0 0 16px #00F0FF, 0 0 32px #00F0FF;
+}
+
+.player-squarcle.status-disconnected {
+    opacity: 0.5;
+    box-shadow: 0 0 0 0;
+    filter: grayscale(100%);
+}
+
+/* STATUS INDICATORS - PLACEHOLDER */
 .status-connected { }
 .status-ready { }
 .status-answered { }
@@ -595,15 +619,5 @@
 
     .hamburger-option:hover {
         padding-left: 16px;
-    }
-}
-
-/* ========== SPIN ANIMATION ========== */
-@keyframes spin {
-    from {
-        transform: scale(1.15) rotate(0deg);
-    }
-    to {
-        transform: scale(1.15) rotate(360deg);
     }
 }
