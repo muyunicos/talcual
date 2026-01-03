@@ -394,13 +394,20 @@ class HostManager extends BaseController {
   }
 
   async endRound() {
-    if (!this.client || !this.gameState) return;
+    if (!this.client) return;
 
     debug('🎯 Finalizando ronda...', null, 'info');
 
     this.view.setEndRoundButtonLoading();
 
     try {
+      await this.client.forceRefresh();
+      debug('✅ Estado sincronizado antes de procesar resultados', null, 'success');
+      
+      if (!this.gameState) {
+        throw new Error('gameState no disponible después de refresh');
+      }
+
       const { roundResults, scoreDeltas, topWords } = this.processRoundResults(this.gameState);
 
       const result = await this.client.sendAction('end_round', {
