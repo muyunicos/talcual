@@ -127,21 +127,6 @@ class PlayerManager extends BaseController {
         if (this.elements.btnSubmit) {
             this.elements.btnSubmit.addEventListener('click', () => this.handleFinishButton());
         }
-
-        const hamburgerCustomize = safeGetElement('hamburger-customize');
-        const hamburgerAbandon = safeGetElement('hamburger-abandon');
-
-        if (hamburgerCustomize) {
-            hamburgerCustomize.addEventListener('click', () => {
-                this.showEditNameModal();
-            });
-        }
-
-        if (hamburgerAbandon) {
-            hamburgerAbandon.addEventListener('click', () => {
-                this.exitGame();
-            });
-        }
     }
 
     buildJoinContent() {
