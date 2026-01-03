@@ -1,17 +1,3 @@
-/* HOST - Floating Panels Architecture (Jackbox-ish) */
-
-/*
-  Nueva arquitectura para Host:
-  - Sin grid rígido: elementos flotantes con position absolute/fixed.
-  - Top bar: Logo (izq), Timer+Ronda (centro), Código Sala (der).
-  - Centro: Mensajes/Consigna/Countdown/Botón → área flexible full-screen.
-  - Bottom: Tarjetas de jugadores (centradas, flow horizontal).
-  - Panel lateral flotante (draggable/resizable): Ranking ↔ Top Palabras con fade transition.
-  - Categoría: sticker flotante sobre el panel lateral.
-  
-  Objetivo: diseño fluido, sin scrolls anidados, más "Jackbox".
-*/
-
 /* === BOOT ANIMATIONS (SESSIONING) === */
 html.is-booting .boot-el {
     opacity: 0;

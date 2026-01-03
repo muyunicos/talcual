@@ -1,9 +1,3 @@
-# TalCual Party - Apache Configuration for SSE
-# Este archivo deshabilita el buffering para SSE (Server-Sent Events)
-
-# 🔧 FIX CRÍTICO: SSE BUFFERING
-# Apache mod_deflate o mod_gzip puede comprimir/bufferizar SSE
-# Causando que no lleguen heartbeats ni updates al cliente
 <FilesMatch "sse-stream\.php$">
     # Deshabilitar compresión completamente
     SetEnv no-gzip 1
