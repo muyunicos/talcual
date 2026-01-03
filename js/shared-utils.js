@@ -8,6 +8,11 @@
  * - ROBUST: Fallbacks for server failure aligned with PHP defaults
  * - DictionaryService loads app/diccionario.json and injects into wordEngine
  * - Flattens dictionary data for UI prompts
+ * 
+ * 🔧 PHASE 3 (NORMALIZATION) - FIXED:
+ * - normalizeWord() function matches PHP cleanWordPrompt() behavior
+ * - Word normalization consistent between server and client
+ * - Accent removal, case conversion, special char filtering unified
  */
 
 // ============================================================================
@@ -33,6 +38,31 @@ function debug(message, data = null, type = 'log') {
     } else if (data !== null) {
         console.log('%cData:', 'font-weight: bold;', data);
     }
+}
+
+// ============================================================================
+// WORD NORMALIZATION - UNIFIED ALGORITHM (Phase 3)
+// ============================================================================
+
+function normalizeWord(rawWord) {
+    if (!rawWord || typeof rawWord !== 'string') {
+        return '';
+    }
+    
+    let word = rawWord.trim();
+    
+    if (word.includes('|')) {
+        const parts = word.split('|').map(p => p.trim()).filter(p => p.length > 0);
+        if (parts.length > 0) {
+            word = parts[0];
+        }
+    }
+    
+    word = word.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    word = word.toUpperCase();
+    word = word.replace(/[^A-Z0-9]/g, '');
+    
+    return word;
 }
 
 // ============================================================================
@@ -220,7 +250,7 @@ class SessionManager {
         if (category) {
             StorageManager.set(StorageKeys.GAME_CATEGORY, category);
         }
-        debug('💾 Sesión host guardada', { gameCode, category }, 'success');
+        debug('📦 Sesión host guardada', { gameCode, category }, 'success');
     }
 
     savePlayerSession(gameId, playerId, playerName, playerColor) {
@@ -229,7 +259,7 @@ class SessionManager {
         StorageManager.set(StorageKeys.PLAYER_NAME, playerName);
         StorageManager.set(StorageKeys.PLAYER_COLOR, playerColor);
         StorageManager.set(StorageKeys.IS_HOST, 'false');
-        debug('💾 Sesión player guardada', { gameId, playerId, playerName }, 'success');
+        debug('📦 Sesión player guardada', { gameId, playerId, playerName }, 'success');
     }
 
     recover() {
@@ -466,13 +496,9 @@ class DictionaryService {
                     wordsArray.forEach(wordEntry => {
                         if (typeof wordEntry !== 'string' || wordEntry.length === 0) return;
 
-                        if (wordEntry.includes('|')) {
-                            const parts = wordEntry.split('|').map(p => p.trim()).filter(p => p.length > 0);
-                            if (parts.length > 0) {
-                                words.push(parts[0]);
-                            }
-                        } else {
-                            words.push(wordEntry);
+                        const normalized = normalizeWord(wordEntry);
+                        if (normalized.length > 0) {
+                            words.push(normalized);
                         }
                     });
                 });
@@ -503,6 +529,32 @@ class DictionaryService {
         const randomIndex = Math.floor(Math.random() * this.flattenedWords.length);
         return this.flattenedWords[randomIndex];
     }
+
+    getRandomWordByCategory(category, maxLength = null) {
+        if (!this.isReady) throw new Error('Llamar a load() primero');
+        
+        const categoryData = this.rawDictionary[category];
+        if (!categoryData || !Array.isArray(categoryData)) return null;
+        
+        const words = [];
+        categoryData.forEach(hintObj => {
+            if (typeof hintObj !== 'object' || Array.isArray(hintObj)) return;
+            Object.entries(hintObj).forEach(([hint, wordsArray]) => {
+                if (!Array.isArray(wordsArray)) return;
+                wordsArray.forEach(wordEntry => {
+                    if (typeof wordEntry !== 'string' || wordEntry.length === 0) return;
+                    const normalized = normalizeWord(wordEntry);
+                    if (normalized.length > 0 && (!maxLength || normalized.length <= maxLength)) {
+                        words.push(normalized);
+                    }
+                });
+            });
+        });
+        
+        if (words.length === 0) return null;
+        const uniqueWords = [...new Set(words)];
+        return uniqueWords[Math.floor(Math.random() * uniqueWords.length)];
+    }
 }
 
 const dictionaryService = new DictionaryService();
@@ -512,7 +564,7 @@ const dictionaryService = new DictionaryService();
 // ============================================================================
 
 function isValidGameCode(code) {
-    return code && /^[A-Z0-9]{3,6}$/.test(code);
+    return code && /^[A-Z0-9]{3,5}$/.test(code);
 }
 
 function isValidPlayerName(name) {
@@ -587,4 +639,4 @@ function showNotification(message, type = 'info') {
     }, 2000);
 }
 
-debug('✅ shared-utils.js cargado exitosamente - ConfigService + DictionaryService + SessionManager centralizados', null, 'success');
+debug('✅ shared-utils.js cargado - ConfigService + DictionaryService + SessionManager + normalizeWord() centralizados', null, 'success');
