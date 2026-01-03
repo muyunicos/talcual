@@ -1,21 +1,3 @@
-const COMM_CONFIG = {
-    MAX_CATEGORY_LENGTH: 50,
-    MAX_PLAYER_NAME_LENGTH: 20,
-    MIN_PLAYER_NAME_LENGTH: 2
-};
-
-function syncCommConfigWithServer(serverConfig) {
-    if (serverConfig.max_category_length) {
-        COMM_CONFIG.MAX_CATEGORY_LENGTH = serverConfig.max_category_length;
-    }
-    if (serverConfig.max_player_name_length) {
-        COMM_CONFIG.MAX_PLAYER_NAME_LENGTH = serverConfig.max_player_name_length;
-    }
-    if (serverConfig.min_player_name_length) {
-        COMM_CONFIG.MIN_PLAYER_NAME_LENGTH = serverConfig.min_player_name_length;
-    }
-}
-
 function safeGetElement(id) {
     const el = document.getElementById(id);
     if (!el) {
