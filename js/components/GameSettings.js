@@ -1,10 +1,3 @@
-/**
- * Settings Modal - Modal de opciones del juego
- * Accesible desde:
- * 1. Modal de crear partida (botón "Opciones")
- * 2. Menú hamburguesa durante la partida (botón "⚙️ Opciones")
- */
-
 class SettingsModal {
     constructor() {
         this.settings = {};
@@ -119,7 +112,7 @@ class SettingsModal {
                 </div>
 
                 <div class="settings-group">
-                    <h4>📝 Palabras</h4>
+                    <h4>📏 Palabras</h4>
                     
                     <div class="input-group">
                         <label class="input-label" for="max-words-per-player">Máx. Palabras por Jugador</label>
@@ -149,42 +142,30 @@ class SettingsModal {
         const isCreationContext = context === 'creation';
 
         const buttons = isCreationContext ? [
-            {
-                label: 'Guardar y Crear',
-                class: 'btn-modal-primary',
-                action: () => this.saveAndCreateGame(),
-                close: false
-            },
-            {
-                label: 'Volver',
-                class: 'btn',
-                action: null,
-                close: true
-            }
+            [
+                () => this.saveAndCreateGame(),
+                'Guardar y Crear',
+                'btn-modal-primary'
+            ],
+            [
+                () => ModalSystem_Instance.close(2),
+                'Volver',
+                'btn'
+            ]
         ] : [
-            {
-                label: 'Guardar',
-                class: 'btn-modal-primary',
-                action: () => this.saveSettings(),
-                close: false
-            },
-            {
-                label: 'Cancelar',
-                class: 'btn',
-                action: null,
-                close: true
-            }
+            [
+                () => this.saveSettings(),
+                'Guardar',
+                'btn-modal-primary'
+            ],
+            [
+                () => ModalSystem_Instance.close(2),
+                'Cancelar',
+                'btn'
+            ]
         ];
 
-        ModalManager_Instance.show({
-            type: ModalManager_Instance.TYPES.SECONDARY,
-            title: '⚙️ Configuración del Juego',
-            content: formHTML,
-            buttons,
-            onDismiss: () => {
-                debug('Modal de configuración cerrado', null, 'info');
-            }
-        });
+        ModalSystem_Instance.show(2, formHTML, buttons);
     }
 
     getFormValues() {
@@ -263,7 +244,7 @@ class SettingsModal {
 
             this.settings = values;
             showNotification('✅ Configuración guardada', 'success');
-            ModalManager_Instance.close();
+            ModalSystem_Instance.close(2);
         } catch (error) {
             debug('Error guardando configuración', error, 'error');
             showNotification('❌ Error guardando configuración', 'error');
@@ -302,7 +283,7 @@ class SettingsModal {
 
             this.settings = values;
             showNotification('✅ Configuración guardada', 'success');
-            ModalManager_Instance.close();
+            ModalSystem_Instance.close(2);
 
             await new Promise((r) => setTimeout(r, 300));
 
