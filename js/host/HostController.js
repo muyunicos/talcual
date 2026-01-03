@@ -194,19 +194,19 @@ class HostManager extends BaseController {
     }
   }
 
-  calculateResults(state) {
+  processRoundResults(state) {
     const roundResults = {};
     const scoreDeltas = {};
     const wordMatches = {};
 
     if (!state.roundData || !state.roundData.validMatches) {
-      debug('⚠️ calculateResults: no roundData', null, 'warn');
+      debug('⚠️ processRoundResults: no roundData', null, 'warn');
       return { roundResults, scoreDeltas, topWords: [] };
     }
 
     const validAnswers = state.roundData.validMatches;
     if (!Array.isArray(validAnswers)) {
-      debug('⚠️ calculateResults: validMatches not array', null, 'warn');
+      debug('⚠️ processRoundResults: validMatches not array', null, 'warn');
       return { roundResults, scoreDeltas, topWords: [] };
     }
 
@@ -267,7 +267,7 @@ class HostManager extends BaseController {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    debug('✅ calculateResults completed', {
+    debug('✅ processRoundResults completed', {
       playerCount: Object.keys(roundResults).length,
       topWordsCount: topWords.length
     }, 'success');
@@ -401,7 +401,7 @@ class HostManager extends BaseController {
     this.view.setEndRoundButtonLoading();
 
     try {
-      const { roundResults, scoreDeltas, topWords } = this.calculateResults(this.gameState);
+      const { roundResults, scoreDeltas, topWords } = this.processRoundResults(this.gameState);
 
       const result = await this.client.sendAction('end_round', {
         round_results: roundResults,
