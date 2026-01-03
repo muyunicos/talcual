@@ -1,13 +1,11 @@
 /**
- * Word Comparison Engine V10 - Passive Logic Engine (PHASE 2 FINAL)
+ * Word Comparison Engine V11 - Passive Logic Engine (PHASE 2 CLEAN)
  *
  * PHASE 2 Changes:
- * - REMOVED: async init(jsonUrl) - no I/O at all
- * - REFACTORED: processDictionary(data) handles diccionario.json structure
- *   Expects: Object -> Categories -> Array[Objects] -> Hints -> Array[Strings]
- *   With pipe syntax: "Cine|Cinema" -> canonical ID is first part "Cine"
- * - Pipe parsing: "A|B|C" -> all mapped to first item as canonical
- * - Data is INJECTED from DictionaryService - engine is passive
+ * - REMOVED: processLegacyFormat() - legacy array format support
+ * - SIMPLIFIED: processDictionary() - only processes modern format (diccionario.json structure)
+ * - PURIFIED: 100% synchronous, passive, no I/O, no initialization overhead
+ * - Data is INJECTED from DictionaryService - engine is read-only except for processDictionary()
  */
 
 class WordEquivalenceEngine {
@@ -28,12 +26,7 @@ class WordEquivalenceEngine {
         this.dictionaryMap = {};
         this.strictGenderSet.clear();
 
-        if (Array.isArray(data)) {
-            this.processLegacyFormat(data);
-        } else {
-            this.processModernFormat(data);
-        }
-
+        this.processModernFormat(data);
         this.isLoaded = true;
         console.log('✅ WordEngine ready. Dictionary entries:', Object.keys(this.dictionaryMap).length);
     }
@@ -101,44 +94,6 @@ class WordEquivalenceEngine {
         if (stem !== norm && !this.dictionaryMap[stem]) {
             this.dictionaryMap[stem] = canonicalNorm || canonical;
         }
-    }
-
-    processLegacyFormat(data) {
-        data.forEach(group => {
-            if (!Array.isArray(group) || group.length === 0) return;
-
-            let canonicalRaw = group[0];
-
-            if (canonicalRaw.endsWith('.')) {
-                canonicalRaw = canonicalRaw.slice(0, -1);
-            }
-
-            group.forEach(word => {
-                let cleanWord = word;
-                let isStrict = false;
-
-                if (cleanWord.endsWith('.')) {
-                    isStrict = true;
-                    cleanWord = cleanWord.slice(0, -1);
-                }
-
-                const norm = this.normalize(cleanWord);
-                if (!norm) return;
-
-                if (isStrict) {
-                    this.strictGenderSet.add(norm);
-                }
-
-                this.dictionaryMap[norm] = canonicalRaw;
-
-                const stem = this.getStem(norm);
-                if (stem !== norm) {
-                    if (!this.dictionaryMap[stem]) {
-                        this.dictionaryMap[stem] = canonicalRaw;
-                    }
-                }
-            });
-        });
     }
 
     normalize(word) {
