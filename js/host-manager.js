@@ -12,9 +12,7 @@
  * 🎯 FEATURE: Restaurada lógica de selector de categoría
  * 🔧 FIX: Moved determineUIState to after dependencies load
  * 🔧 FIX: Remove fallbacks - fail-fast dev mode for v1.0
- * 🔧 FIX: Ensure dictionaryService.initialize() executed before operations
- * 🔧 FASE 3-CORE: Espera a que dictionaryService Y configService estén listos
- * 🔧 FASE 3-CORE: WordEngine ya está configurado por DictionaryService.initialize()
+ * 🔧 FASE 3-CORE: Espera a que configService esté listo
  * 🔧 FASE 3-OPT: Optimized manager to consume GameTimer centralized utility
  * 🔧 PHASE 1: Removed ghost 'start-screen' element from cacheElements
  * 🔧 PHASE 1: Fixed round display - removed duplicate "Ronda" label
@@ -23,6 +21,7 @@
  * 🔧 PHASE 2-SYNC: ConfigService + COMM_CONFIG sync after load
  * 🎯 FEATURE: Hurry Up (Remate) implemented - reduces round timer to threshold
  * 🔧 PHASE 7-SHIMMED: Refactored to use gameCandidates via shimmed methods
+ * 🔧 PHASE 8-SERVER: Removed dictionaryService.load() - all dictionary logic server-side
  */
 
 class HostManager {
@@ -70,25 +69,17 @@ class HostManager {
 
     async loadConfigAndInit() {
         try {
-            debug('⏳ Cargando configuración y candidatos...', null, 'info');
+            debug('⏳ Cargando configuración...', null, 'info');
             
-            const [configResult, dictResult] = await Promise.all([
-                configService.load(),
-                dictionaryService.load()
-            ]);
+            const configResult = await configService.load();
 
             debug('✅ ConfigService listo', null, 'success');
-            debug('✅ DictionaryService listo (candidatos cargados)', null, 'success');
 
             if (!configService.isConfigReady()) {
                 throw new Error('ConfigService no está en estado ready');
             }
 
-            if (!dictionaryService.isReady) {
-                throw new Error('DictionaryService no está en estado ready');
-            }
-
-            debug('✅ Verificación exitosa: ConfigService + DictionaryService listos', null, 'success');
+            debug('✅ Verificación exitosa: ConfigService listo', null, 'success');
 
             syncCommConfigWithServer(configService.config);
             debug('🔗 COMM_CONFIG sincronizado con servidor', null, 'success');
@@ -121,28 +112,27 @@ class HostManager {
 
     async populateCategories() {
         try {
-            this.categories = dictionaryService.getCategories();
-            if (this.categories.length > 0) {
-                const randomIndex = Math.floor(Math.random() * this.categories.length);
-                this.categorySelectValue = this.categories[randomIndex];
-                this.updateCodeWithCategoryWord();
+            const result = await fetch('/app/actions.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_categories' })
+            });
+            const data = await result.json();
+
+            if (data.success && Array.isArray(data.categories)) {
+                this.categories = data.categories;
+                if (this.categories.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * this.categories.length);
+                    this.categorySelectValue = this.categories[randomIndex];
+                }
+                debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
+            } else {
+                debug('⚠️  Error cargando categorías', null, 'warn');
+                this.categories = [];
             }
-            debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
         } catch (error) {
             debug('⚠️  Error cargando categorías: ' + error.message, null, 'warn');
-            throw error;
-        }
-    }
-
-    async updateCodeWithCategoryWord() {
-        try {
-            const maxLength = configService.get('max_code_length', 5);
-            const randomWord = dictionaryService.getRandomWordByCategory(this.categorySelectValue, maxLength);
-            if (randomWord) {
-                this.gameCodeInput = randomWord.slice(0, maxLength).toUpperCase();
-            }
-        } catch (error) {
-            debug('⚠️  Error actualizando código: ' + error.message, null, 'warn');
+            this.categories = [];
         }
     }
 
@@ -229,8 +219,6 @@ class HostManager {
 
         categorySelect.addEventListener('change', (e) => {
             this.categorySelectValue = e.target.value;
-            this.updateCodeWithCategoryWord();
-            gameCodeInput.value = this.gameCodeInput;
         });
 
         gameCodeInput.addEventListener('input', (e) => {
@@ -501,7 +489,7 @@ class HostManager {
         safeHideElement(this.elements.countdownOverlay);
 
         if (this.elements.currentWord) {
-            this.elements.currentWord.textContent = state.current_word || '???';
+            this.elements.currentWord.textContent = state.current_prompt || '???';
             safeShowElement(this.elements.currentWord);
         }
 
@@ -801,4 +789,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - Refactored to use gameCandidates via shimmed methods', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - Removed dictionaryService dependency, server-side only', 'color: #FF00FF; font-weight: bold; font-size: 12px');

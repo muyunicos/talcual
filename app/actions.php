@@ -80,21 +80,23 @@ function checkRateLimit() {
 
 function pickNonRepeatingPrompt($state, $preferredCategory = null) {
     $category = $preferredCategory;
-    $prompts = [];
-
-    if ($category && !empty($category)) {
-        $words = getWordsByCategory($category);
-        $prompts = !empty($words) ? $words : getAllWords();
-    } else {
-        $prompts = getAllWords();
+    
+    if (!$category) {
+        $categories = getCategories();
+        if (empty($categories)) {
+            return ['category' => null, 'prompt' => 'JUEGO', 'used_prompts' => $state['used_prompts'] ?? []];
+        }
+        $category = $categories[array_rand($categories)];
     }
-
+    
+    $prompts = getPromptsByCategory($category);
+    
     if (empty($prompts)) {
         return ['category' => $category, 'prompt' => 'JUEGO', 'used_prompts' => $state['used_prompts'] ?? []];
     }
 
     $used = [];
-    if (isset($state['used_prompts']) && is_array($state['used_prompts']) && $category !== null) {
+    if (isset($state['used_prompts']) && is_array($state['used_prompts'])) {
         $used = $state['used_prompts'][$category] ?? [];
         if (!is_array($used)) $used = [];
     }
@@ -115,9 +117,7 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
     }
 
     $newUsedPrompts = (isset($state['used_prompts']) && is_array($state['used_prompts'])) ? $state['used_prompts'] : [];
-    if ($category !== null) {
-        $newUsedPrompts[$category] = $used;
-    }
+    $newUsedPrompts[$category] = $used;
 
     return ['category' => $category, 'prompt' => $prompt, 'used_prompts' => $newUsedPrompts];
 }
@@ -328,21 +328,16 @@ function handleStartRound($input) {
         return ['success' => false, 'message' => 'Mínimo ' . $minPlayers . ' jugadores'];
     }
 
-    $prompt = trim((string)($input['word'] ?? ''));
     $categoryFromRequest = isset($input['category']) ? trim((string)$input['category']) : null;
     if ($categoryFromRequest === '') $categoryFromRequest = null;
 
     $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
     if ($preferredCategory === '') $preferredCategory = null;
 
-    if ($prompt === '') {
-        $picked = pickNonRepeatingPrompt($state, $preferredCategory);
-        $prompt = (string)($picked['prompt'] ?? 'JUEGO');
-        $preferredCategory = $picked['category'] ?? $preferredCategory;
-        $state['used_prompts'] = $picked['used_prompts'] ?? ($state['used_prompts'] ?? []);
-    } else {
-        $prompt = cleanWordPrompt($prompt);
-    }
+    $picked = pickNonRepeatingPrompt($state, $preferredCategory);
+    $prompt = (string)($picked['prompt'] ?? 'JUEGO');
+    $preferredCategory = $picked['category'] ?? $preferredCategory;
+    $state['used_prompts'] = $picked['used_prompts'] ?? ($state['used_prompts'] ?? []);
 
     $duration = intval($input['duration'] ?? $state['round_duration'] ?? ROUND_DURATION * 1000);
     $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? TOTAL_ROUNDS);

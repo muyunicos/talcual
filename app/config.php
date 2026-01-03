@@ -149,21 +149,81 @@ function getDictionaryCategoryWords($category, $minLength = 1, $maxLength = null
     return array_values($filtered);
 }
 
-function getRoundContext($category, $prompt) {
-    $words = getDictionaryCategoryWords($category);
+function getPromptsByCategory($category) {
+    $dict = loadDictionary();
     
-    if (empty($words)) {
-        $cleanPrompt = cleanWordPrompt($prompt);
-        return ['prompt' => $cleanPrompt, 'synonyms' => [$cleanPrompt], 'variants' => [$cleanPrompt]];
+    if (!isset($dict[$category]) || !is_array($dict[$category])) {
+        return [];
     }
     
+    $prompts = [];
+    foreach ($dict[$category] as $hintObj) {
+        if (is_array($hintObj)) {
+            foreach (array_keys($hintObj) as $hint) {
+                $cleaned = cleanWordPrompt($hint);
+                if ($cleaned && strlen($cleaned) <= MAX_CODE_LENGTH) {
+                    $prompts[] = $cleaned;
+                }
+            }
+        }
+    }
+    
+    return array_unique($prompts);
+}
+
+function getResponsesByPrompt($category, $prompt) {
+    $dict = loadDictionary();
     $cleanPrompt = cleanWordPrompt($prompt);
-    $variants = [$cleanPrompt, $cleanPrompt . 'S', $cleanPrompt . 'A', $cleanPrompt . 'O', substr($cleanPrompt, 0, -1)];
-    $synonyms = array_slice($words, 0, 10);
+    
+    if (!isset($dict[$category]) || !is_array($dict[$category])) {
+        return [];
+    }
+    
+    $responses = [];
+    foreach ($dict[$category] as $hintObj) {
+        if (is_array($hintObj)) {
+            foreach ($hintObj as $hint => $words) {
+                if (cleanWordPrompt($hint) === $cleanPrompt && is_array($words)) {
+                    foreach ($words as $word) {
+                        $cleaned = cleanWordPrompt($word);
+                        if ($cleaned) {
+                            $responses[] = $cleaned;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return array_unique($responses);
+}
+
+function getRoundContext($category, $prompt) {
+    $cleanPrompt = cleanWordPrompt($prompt);
+    $responses = getResponsesByPrompt($category, $prompt);
+    
+    if (empty($responses)) {
+        return [
+            'prompt' => $cleanPrompt, 
+            'synonyms' => [$cleanPrompt], 
+            'variants' => [$cleanPrompt]
+        ];
+    }
+    
+    $variants = [$cleanPrompt];
+    foreach ($responses as $resp) {
+        $variants[] = $resp;
+        $variants[] = $resp . 'S';
+        $variants[] = $resp . 'A';
+        $variants[] = $resp . 'O';
+        if (strlen($resp) > 1) {
+            $variants[] = substr($resp, 0, -1);
+        }
+    }
     
     return [
         'prompt' => $cleanPrompt, 
-        'synonyms' => $synonyms, 
+        'synonyms' => array_unique($responses),
         'variants' => array_unique(array_filter($variants))
     ];
 }
@@ -463,7 +523,7 @@ function getRandomWordByCategoryFiltered($category, $maxLength = null) {
     });
 
     if (empty($filtered)) {
-        logMessage("[WARN] No hay palabras en '{$category}' con longitud ≤ {$maxLength}", 'WARNING');
+        logMessage("[WARN] No hay palabras en '{$category}' con longitud \u2264 {$maxLength}", 'WARNING');
         return null;
     }
 
