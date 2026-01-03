@@ -161,6 +161,7 @@ class GameClient {
     this.heartbeatCheckInterval = null;
     this.parseErrorCount = 0;
     this.consecutiveEmptyMessages = 0;
+    this.unknownEventCount = 0;
     this.metrics = {
       messagesReceived: 0,
       errorsCount: 0,
@@ -270,6 +271,7 @@ class GameClient {
     this.lastMessageTime = Date.now();
     this.parseErrorCount = 0;
     this.consecutiveEmptyMessages = 0;
+    this.unknownEventCount = 0;
     this.startHeartbeatMonitor();
     this.emit('connected', { timestamp: Date.now() });
   }
@@ -291,8 +293,8 @@ class GameClient {
         if (!messageData || typeof messageData !== 'object') {
           this.consecutiveEmptyMessages++;
           if (this.consecutiveEmptyMessages > 10) {
-            console.error('[ERROR] Multiple invalid messages - reconnecting');
-            this.handleReconnect();
+            console.error('[ERROR] Multiple invalid messages - force refresh');
+            this.forceRefresh();
             this.consecutiveEmptyMessages = 0;
           }
           return;
@@ -303,10 +305,11 @@ class GameClient {
       } catch (parseError) {
         this.parseErrorCount++;
         this.metrics.errorsCount++;
+        console.warn('[WARN] Parse error on SSE message - triggering refresh', parseError);
         
-        if (this.parseErrorCount >= 5) {
-          console.error('[ERROR] Multiple parse errors - reconnecting');
-          this.handleReconnect();
+        if (this.parseErrorCount >= 3) {
+          console.error('[ERROR] Multiple parse errors - force refresh');
+          this.forceRefresh();
           this.parseErrorCount = 0;
         }
         return;
@@ -333,21 +336,41 @@ class GameClient {
         
         this.emit(eventName, eventPayload);
         
-        if (eventName === 'player_joined') {
-          this.emit('event:player_joined', eventPayload);
-        } else if (eventName === 'player_ready') {
-          this.emit('event:player_ready', eventPayload);
-        } else if (eventName === 'player_left') {
-          this.emit('event:player_left', eventPayload);
-        } else if (eventName === 'player_updated') {
-          this.emit('event:player_updated', eventPayload);
-        } else if (eventName === 'timer_updated') {
-          this.emit('event:timer_updated', eventPayload);
+        const knownEvents = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'timer_updated', 'typing', 'connection'];
+        
+        if (knownEvents.includes(eventName)) {
+          this.unknownEventCount = 0;
+          
+          if (eventName === 'player_joined') {
+            this.emit('event:player_joined', eventPayload);
+          } else if (eventName === 'player_ready') {
+            this.emit('event:player_ready', eventPayload);
+          } else if (eventName === 'player_left') {
+            this.emit('event:player_left', eventPayload);
+          } else if (eventName === 'player_updated') {
+            this.emit('event:player_updated', eventPayload);
+          } else if (eventName === 'timer_updated') {
+            this.emit('event:timer_updated', eventPayload);
+          } else if (eventName === 'typing') {
+            this.emit('event:typing', eventPayload);
+          } else if (eventName === 'connection') {
+            this.emit('event:connection', eventPayload);
+          }
+        } else {
+          this.unknownEventCount++;
+          console.warn(`[WARN] Unknown event type: ${eventName}`);
+          
+          if (this.unknownEventCount >= 5) {
+            console.error('[ERROR] Multiple unknown events - force refresh');
+            this.forceRefresh();
+            this.unknownEventCount = 0;
+          }
         }
       }
       
     } catch (error) {
       console.error('[ERROR] Unexpected error in onSSEMessage:', error);
+      this.metrics.errorsCount++;
     }
   }
 
@@ -432,7 +455,7 @@ class GameClient {
       };
       
       if (this.playerId && [
-        'join_game', 'submit_answers', 'leave_game', 'update_player_name'
+        'join_game', 'submit_answers', 'leave_game', 'update_player_name', 'update_player_color', 'typing'
       ].includes(action)) {
         payload.player_id = this.playerId;
       }
@@ -466,6 +489,7 @@ class GameClient {
 
   async forceRefresh() {
     try {
+      debug('🔄 Force refresh initiated', null, 'debug');
       const payload = {
         action: 'get_state',
         game_id: this.gameId
@@ -481,6 +505,8 @@ class GameClient {
         this.gameState = result.state;
         this.lastMessageHash = JSON.stringify(result.state);
         this.lastMessageTime = Date.now();
+        this.parseErrorCount = 0;
+        this.unknownEventCount = 0;
         
         if (this.onStateUpdate) {
           try {
@@ -490,6 +516,7 @@ class GameClient {
           }
         }
         this.emit('state:refreshed', result.state);
+        debug('✅ Force refresh completed', null, 'success');
       }
     } catch (error) {
       console.error('[ERROR] Force refresh:', error);
