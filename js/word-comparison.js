@@ -6,6 +6,7 @@
  * - SIMPLIFIED: processDictionary() - only processes modern format (diccionario.json structure)
  * - PURIFIED: 100% synchronous, passive, no I/O, no initialization overhead
  * - Data is INJECTED from DictionaryService - engine is read-only except for processDictionary()
+ * - ADDED: reset() method to clear state between rounds
  */
 
 class WordEquivalenceEngine {
@@ -29,6 +30,14 @@ class WordEquivalenceEngine {
         this.processModernFormat(data);
         this.isLoaded = true;
         console.log('✅ WordEngine ready. Dictionary entries:', Object.keys(this.dictionaryMap).length);
+    }
+
+    reset() {
+        this.dictionaryMap = {};
+        this.strictGenderSet.clear();
+        this.roundContext = null;
+        this.isLoaded = false;
+        console.log('🔄 WordEngine reset - state cleared');
     }
 
     processModernFormat(data) {
