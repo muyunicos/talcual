@@ -89,9 +89,10 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
         $category = $categories[array_rand($categories)];
     }
     
-    $prompts = getPromptsByCategory($category);
+    $card = getTopicCard($category);
+    $question = $card['question'];
     
-    if (empty($prompts)) {
+    if (empty($question)) {
         return ['category' => $category, 'prompt' => 'JUEGO', 'used_prompts' => $state['used_prompts'] ?? []];
     }
 
@@ -101,16 +102,8 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
         if (!is_array($used)) $used = [];
     }
 
-    $available = array_values(array_diff($prompts, $used));
-
-    if (empty($available)) {
-        $used = [];
-        $available = $prompts;
-    }
-
-    $prompt = !empty($available) ? (string)$available[array_rand($available)] : 'JUEGO';
-    $prompt = cleanWordPrompt($prompt);
-    $used[] = $prompt;
+    $cleanPrompt = cleanWordPrompt($question);
+    $used[] = $cleanPrompt;
 
     if (count($used) > 500) {
         $used = array_slice($used, -500);
@@ -119,7 +112,7 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
     $newUsedPrompts = (isset($state['used_prompts']) && is_array($state['used_prompts'])) ? $state['used_prompts'] : [];
     $newUsedPrompts[$category] = $used;
 
-    return ['category' => $category, 'prompt' => $prompt, 'used_prompts' => $newUsedPrompts];
+    return ['category' => $category, 'prompt' => $cleanPrompt, 'used_prompts' => $newUsedPrompts];
 }
 
 function handleGetGameCandidates($input) {
@@ -131,26 +124,30 @@ function handleGetGameCandidates($input) {
     
     $usedCodes = getActiveCodes();
     $candidates = [];
+    $maxCategoryAttempts = 10;
     
     foreach ($categories as $category) {
-        $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+        $categoryAttempts = 0;
+        $code = null;
         
-        if (!$word) {
-            continue;
-        }
-        
-        $attempts = 0;
-        $maxAttempts = 20;
-        while (in_array($word, $usedCodes) && $attempts < $maxAttempts) {
+        while ($categoryAttempts < $maxCategoryAttempts) {
             $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
-            $attempts++;
+            
+            if (!$word || in_array($word, $usedCodes)) {
+                $categoryAttempts++;
+                continue;
+            }
+            
+            $code = $word;
+            break;
         }
         
-        if (!in_array($word, $usedCodes)) {
+        if ($code) {
             $candidates[] = [
                 'category' => $category,
-                'code' => $word
+                'code' => $code
             ];
+            $usedCodes[] = $code;
         }
     }
     
@@ -215,18 +212,9 @@ function handleCreateGame($input) {
         'round_details' => [],
         'round_top_words' => [],
         'game_history' => [],
-        'round_context' => null,
+        'roundData' => null,
         'last_update' => time()
     ];
-    
-    $picked = pickNonRepeatingPrompt($initialState, $requestedCategory);
-    $initialPrompt = (string)($picked['prompt'] ?? 'JUEGO');
-    $initialCategory = $picked['category'] ?? $requestedCategory ?? 'Sin categoría';
-    $initialState['used_prompts'] = $picked['used_prompts'] ?? [];
-    
-    $initialState['current_prompt'] = $initialPrompt;
-    $initialState['current_category'] = $initialCategory;
-    $initialState['round_context'] = getRoundContext($initialCategory, $initialPrompt);
     
     $state = $initialState;
 
@@ -333,10 +321,17 @@ function handleStartRound($input) {
 
     $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
     if ($preferredCategory === '') $preferredCategory = null;
-
-    $roundData = getQuestionAndAnswers($preferredCategory ?: (getCategories()[0] ?? null));
-    $question = $roundData['question'];
-    $answers = $roundData['answers'];
+    
+    if (!$preferredCategory) {
+        $categories = getCategories();
+        if (!empty($categories)) {
+            $preferredCategory = $categories[array_rand($categories)];
+        }
+    }
+    
+    $card = getTopicCard($preferredCategory);
+    $roundQuestion = $card['question'];
+    $commonAnswers = $card['answers'];
 
     $duration = intval($input['duration'] ?? $state['round_duration'] ?? ROUND_DURATION * 1000);
     $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? TOTAL_ROUNDS);
@@ -357,8 +352,8 @@ function handleStartRound($input) {
 
     $state['round']++;
     $state['status'] = 'playing';
-    $state['current_prompt'] = $question;
-    $state['current_category'] = $preferredCategory ?: (getCategories()[0] ?? 'Sin categoría');
+    $state['current_prompt'] = $roundQuestion;
+    $state['current_category'] = $preferredCategory ?: 'Sin categoría';
     $state['round_duration'] = $duration;
     $state['total_rounds'] = $totalRounds;
     $state['countdown_duration'] = $countdownDuration;
@@ -366,24 +361,10 @@ function handleStartRound($input) {
     $state['round_started_at'] = $roundStartedAt;
     $state['round_ends_at'] = $roundEndsAt;
     
-    $state['round_context'] = [
-        'prompt' => $question,
-        'synonyms' => [],
-        'variants' => []
+    $state['roundData'] = [
+        'roundQuestion' => $roundQuestion,
+        'commonAnswers' => $commonAnswers
     ];
-    
-    foreach ($answers as $answerGroup) {
-        $parts = explode('|', strtoupper($answerGroup));
-        foreach ($parts as $p) {
-            $cleaned = trim($p);
-            if ($cleaned) {
-                $state['round_context']['synonyms'][] = $cleaned;
-            }
-        }
-    }
-    
-    $state['round_context']['synonyms'] = array_unique($state['round_context']['synonyms']);
-    $state['round_context']['variants'] = $state['round_context']['synonyms'];
     
     $state['last_update'] = time();
 
@@ -504,11 +485,11 @@ function handleEndRound($input) {
 
     if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS)) {
         $state['status'] = 'finished';
-        $state['round_context'] = null;
+        $state['roundData'] = null;
         trackGameAction($gameId, 'game_finished', []);
     } else {
         $state['status'] = 'round_ended';
-        $state['round_context'] = null;
+        $state['roundData'] = null;
     }
 
     $state['round_started_at'] = null;
@@ -560,7 +541,7 @@ function handleResetGame($input) {
     $state['round_ends_at'] = null;
     $state['countdown_duration'] = null;
     $state['round_top_words'] = [];
-    $state['round_context'] = null;
+    $state['roundData'] = null;
     $state['last_update'] = time();
 
     if (saveGameState($gameId, $state)) {
