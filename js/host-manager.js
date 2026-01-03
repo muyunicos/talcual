@@ -1,7 +1,3 @@
-/**
- * Host Manager - Gestión de partida en host
- */
-
 class HostManager {
     constructor(gameCode) {
         this.gameCode = gameCode;
@@ -31,12 +27,31 @@ class HostManager {
         this.loadConfigAndInit();
     }
 
-    determineUIState() {
-        const hasSession = hostSession.isSessionActive();
+    hasActiveSession() {
+        return !!StorageManager.get(StorageKeys.HOST_GAME_CODE);
+    }
+
+    recoverSession() {
         const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
+        const category = StorageManager.get(StorageKeys.HOST_CATEGORY);
+        return gameCode ? { gameCode, category } : null;
+    }
+
+    saveSession(gameCode, category) {
+        StorageManager.set(StorageKeys.HOST_GAME_CODE, gameCode);
+        StorageManager.set(StorageKeys.HOST_CATEGORY, category || 'Sin categoría');
+    }
+
+    clearSession() {
+        StorageManager.remove(StorageKeys.HOST_GAME_CODE);
+        StorageManager.remove(StorageKeys.HOST_CATEGORY);
+    }
+
+    determineUIState() {
+        const hasSession = this.hasActiveSession();
         const root = document.documentElement;
 
-        if (hasSession && gameCode) {
+        if (hasSession) {
             root.classList.add('has-session');
             root.classList.remove('no-session');
         } else {
@@ -69,7 +84,7 @@ class HostManager {
 
             this.determineUIState();
 
-            const sessionData = hostSession.recover();
+            const sessionData = this.recoverSession();
             if (sessionData) {
                 debug('🔄 Recuperando sesión de host', null, 'info');
                 this.resumeGame(sessionData.gameCode);
@@ -77,8 +92,6 @@ class HostManager {
                 debug('💡 Mostrando pantalla inicial', null, 'info');
                 this.showStartScreen();
             }
-
-            hostSession.registerManager(this);
 
             debug('✅ HostManager inicializado completamente', null, 'success');
         } catch (error) {
@@ -330,7 +343,7 @@ class HostManager {
             if (result.success) {
                 debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory}, Rondas: ${rounds}, Duración: ${duration}s)`, null, 'success');
 
-                hostSession.saveHostSession(code, selectedCategory);
+                this.saveSession(code, selectedCategory);
 
                 ModalManager_Instance.close();
                 this.loadGameScreen(result.state || {});
@@ -370,11 +383,11 @@ class HostManager {
             }
 
             debug('⚠️  No se pudo recuperar sesión', null, 'warn');
-            hostSession.clear();
+            this.clearSession();
             this.showStartScreen();
         } catch (error) {
             debug('Error recuperando sesión:', error, 'error');
-            hostSession.clear();
+            this.clearSession();
             this.showStartScreen();
         }
     }
@@ -723,7 +736,7 @@ class HostManager {
             await this.client.sendAction('end_game', {});
             debug('✅ Juego terminado', null, 'success');
 
-            hostSession.clear();
+            this.clearSession();
             location.reload();
         } catch (error) {
             debug('Error terminando juego:', error, 'error');
@@ -754,7 +767,7 @@ class HostManager {
         if (this.client) {
             this.client.disconnect();
         }
-        hostSession.clear();
+        this.clearSession();
         location.reload();
     }
 }
