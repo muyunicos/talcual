@@ -61,22 +61,29 @@ function sendHeartbeat() {
     }
 }
 
-function getNotifyCounter($filePath) {
+function readNotificationFile($filePath) {
     if (!file_exists($filePath)) {
-        return 0;
+        return null;
     }
     $content = @file_get_contents($filePath);
-    if ($content && is_numeric(trim($content))) {
-        return (int)trim($content);
+    if (!$content) {
+        return null;
     }
-    return 0;
+    $decoded = @json_decode($content, true);
+    if (is_array($decoded)) {
+        return $decoded;
+    }
+    if (is_numeric(trim($content))) {
+        return ['counter' => (int)trim($content)];
+    }
+    return null;
 }
 
 $notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
 $notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
 $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
 
-$lastNotify = 0;
+$lastNotifyContent = null;
 $startTime = microtime(true);
 $maxDuration = 3600;
 if (defined('SSE_TIMEOUT') && SSE_TIMEOUT > 0) {
@@ -93,7 +100,7 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with per-game monotonic counter',
+    'method' => 'SSE with lightweight notifications',
     'max_duration_seconds' => $maxDuration
 ]);
 
@@ -114,25 +121,9 @@ while ((microtime(true) - $startTime) < $maxDuration) {
     }
     
     clearstatcache(false, $notifyFile);
-    $currentNotify = getNotifyCounter($notifyFile);
+    $currentNotification = readNotificationFile($notifyFile);
     
-    if ($currentNotify > $lastNotify) {
-        $state = loadGameState($gameId);
-        
-        if ($state) {
-            $playerCount = count(array_filter($state['players'], function($p) {
-                return !$p['disconnected'];
-            }));
-            
-            sendSSE('update', $state);
-            $lastNotify = $currentNotify;
-            $lastHeartbeatTime = microtime(true);
-            
-            logMessage("SSE update enviado para {$gameId} (counter: {$currentNotify}, status={$state['status']}, {$playerCount} activos)", 'DEBUG');
-            
-            usleep(100000);
-        }
-    } else {
+    if ($currentNotification === null) {
         $now = microtime(true);
         $timeSinceHeartbeat = $now - $lastHeartbeatTime;
         
@@ -143,7 +134,41 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         }
         
         sleep($pollingInterval);
+        continue;
     }
+    
+    $notifyString = json_encode($currentNotification);
+    if ($notifyString === $lastNotifyContent) {
+        $now = microtime(true);
+        $timeSinceHeartbeat = $now - $lastHeartbeatTime;
+        
+        if ($timeSinceHeartbeat >= $heartbeatInterval) {
+            sendHeartbeat();
+            $lastHeartbeatTime = $now;
+            logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
+        }
+        
+        sleep($pollingInterval);
+        continue;
+    }
+    
+    $lastNotifyContent = $notifyString;
+    
+    $eventType = $currentNotification['event'] ?? 'full_update';
+    
+    if ($eventType === 'full_update' || $eventType === 'sync') {
+        $state = loadGameState($gameId);
+        if ($state) {
+            sendSSE('update', $state);
+            logMessage("SSE full update enviado para {$gameId}", 'DEBUG');
+        }
+    } else {
+        sendSSE($eventType, $currentNotification);
+        logMessage("SSE event '{$eventType}' enviado para {$gameId}", 'DEBUG');
+    }
+    
+    $lastHeartbeatTime = microtime(true);
+    usleep(100000);
 }
 
 logMessage("SSE terminado para {$gameId}", 'DEBUG');
