@@ -138,41 +138,6 @@ const StorageManager = {
     }
 };
 
-const timeSync = {
-    isCalibrated: false,
-    serverTime: 0,
-    clientTime: 0,
-    offset: 0,
-
-    calibrateWithServerTime: function(serverNow, roundStartsAt, roundEndsAt, roundDuration) {
-        if (this.isCalibrated) return;
-        this.clientTime = Date.now();
-        this.serverTime = serverNow;
-        this.offset = this.serverTime - this.clientTime;
-        this.isCalibrated = true;
-        debug('⏱️  TimeSyncCalibrated', {
-            offset: this.offset,
-            roundStartsAt,
-            roundEndsAt,
-            roundDuration
-        });
-    },
-
-    getServerTime: function() {
-        if (!this.isCalibrated) {
-            return Date.now();
-        }
-        return Date.now() + this.offset;
-    },
-
-    reset: function() {
-        this.isCalibrated = false;
-        this.serverTime = 0;
-        this.clientTime = 0;
-        this.offset = 0;
-    }
-};
-
 const GameTimer = {
     getRemaining: (roundStartedAt, roundDuration) => {
         if (!roundStartedAt || !roundDuration) return null;
@@ -195,7 +160,7 @@ const GameTimer = {
     }
 };
 
-const ConfigService = {
+const configService = {
     config: {},
 
     load: async function() {
@@ -212,7 +177,7 @@ const ConfigService = {
             }
             return false;
         } catch (e) {
-            console.error('ConfigService.load error:', e);
+            console.error('configService.load error:', e);
             return false;
         }
     },
@@ -222,7 +187,7 @@ const ConfigService = {
     },
 
     get: (key, defaultValue = null) => {
-        return ConfigService.config[key] !== undefined ? ConfigService.config[key] : defaultValue;
+        return configService.config[key] !== undefined ? configService.config[key] : defaultValue;
     }
 };
 
