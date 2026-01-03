@@ -11,6 +11,7 @@ class HostView {
       headerRound: safeGetElement('header-round'),
       headerTimer: safeGetElement('header-timer'),
       playersList: safeGetElement('players-list'),
+      playersGrid: safeGetElement('players-grid'),
       categoryLabel: safeGetElement('category-label'),
       currentWord: safeGetElement('current-word'),
       countdownOverlay: safeGetElement('countdown-overlay'),
@@ -50,6 +51,60 @@ class HostView {
     }
   }
 
+  bindRemovePlayer(handler) {
+    if (!this.elements.playersGrid) return;
+
+    this.elements.playersGrid.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!target || !target.classList.contains('btn-remove-player')) return;
+
+      const playerId = target.getAttribute('data-player-id');
+      if (!playerId) return;
+
+      handler(playerId);
+    });
+  }
+
+  renderPlayerCards(players) {
+    if (!this.elements.playersGrid || !players) return;
+
+    const html = Object.entries(players).map(([pid, player]) => {
+      const name = sanitizeText(player.name || 'Jugador');
+      const initial = name.charAt(0).toUpperCase();
+      const score = player.score || 0;
+      const status = player.disconnected
+        ? 'status-disconnected'
+        : (player.status === 'ready'
+          ? 'status-ready'
+          : (player.answers && player.answers.length ? 'status-answered' : 'status-waiting'));
+
+      const aura = player.color && typeof isValidAura === 'function' && isValidAura(player.color)
+        ? player.color
+        : null;
+
+      const initialStyle = aura
+        ? `background: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);`
+        : '';
+
+      return `
+        <div class="player-squarcle ${status}" data-player-id="${pid}">
+          <button class="btn-remove-player" data-player-id="${pid}" aria-label="Expulsar jugador" type="button">&times;</button>
+          <div class="player-initial" style="${initialStyle}">
+            ${initial}
+          </div>
+          <div class="player-name-label" title="${name}">
+            ${name}
+          </div>
+          <div class="player-score-label">
+            ${score} pts
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.elements.playersGrid.innerHTML = html || '';
+  }
+
   showGameScreen() {
     safeShowElement(this.elements.gameScreen);
   }
@@ -77,24 +132,27 @@ class HostView {
   updatePlayerList(players) {
     if (!players) return;
 
-    const html = Object.entries(players).map(([pid, player]) => {
+    const sidebarHtml = Object.entries(players).map(([pid, player]) => {
       const ready = player.status === 'ready';
       const readyIcon = ready ? '✅' : '⏳';
       const wordCount = player.answers ? player.answers.length : 0;
       return `
-                <div class="player-item ${ready ? 'ready' : 'waiting'}">
-                    <div class="player-name" style="color: ${player.color || '#999'}">
-                        ${readyIcon} ${sanitizeText(player.name)}
-                    </div>
-                    <div class="player-words">${wordCount} palabras</div>
-                    <div class="player-score">${player.score || 0} pts</div>
-                </div>
-            `;
+        <div class="player-item ${ready ? 'ready' : 'waiting'}" data-player-id="${pid}">
+          <div class="player-name" style="color: ${player.color ? player.color.split(',')[0] : '#999'}">
+            ${readyIcon} ${sanitizeText(player.name)}
+          </div>
+          <div class="player-words">${wordCount} palabras</div>
+          <div class="player-score">${player.score || 0} pts</div>
+          <div class="player-status-indicator" data-player-status></div>
+        </div>
+      `;
     }).join('');
 
     if (this.elements.playersList) {
-      this.elements.playersList.innerHTML = html;
+      this.elements.playersList.innerHTML = sidebarHtml || '<div class="panel-item"><div class="name">Sin jugadores aún</div></div>';
     }
+
+    this.renderPlayerCards(players);
   }
 
   showWaitingState(playerCount) {
