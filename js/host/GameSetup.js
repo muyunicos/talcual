@@ -145,18 +145,13 @@ class CreateGameModal {
             const buttons = [
                 [
                     () => this.openSettingsModal(),
-                    'Opciones',
+                    'Más Opciones',
                     'btn'
                 ],
                 [
                     () => this.handleCreateClick(),
                     'Crear',
                     'btn-modal-primary'
-                ],
-                [
-                    () => ModalSystem_Instance.close(1),
-                    'Cancelar',
-                    'btn'
                 ]
             ];
 
