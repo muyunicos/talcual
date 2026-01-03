@@ -287,13 +287,6 @@
     filter: grayscale(100%);
 }
 
-/* STATUS INDICATORS - PLACEHOLDER */
-.status-connected { }
-.status-ready { }
-.status-answered { }
-.status-waiting { }
-.status-disconnected { }
-
 /* ========== AURA SELECTOR ========== */
 .aura-selector {
     display: flex;
@@ -361,7 +354,7 @@
     padding: 0 !important;
     transition: all 0.3s ease;
     z-index: 100;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--blur-standard));
     box-shadow: 0 0 22px rgba(0, 240, 255, 0.25), var(--sombra-dura);
 }
 
@@ -395,7 +388,7 @@
     box-shadow: 0 0 40px rgba(0, 240, 255, 0.18), var(--sombra-dura);
     z-index: 99;
     overflow-y: auto;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--blur-standard));
     display: none !important;
     flex-direction: column;
     padding: 0 !important;
