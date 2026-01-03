@@ -21,6 +21,7 @@
  * 🔧 PHASE 3: Settings Modal wired - cached, initialized, events bound
  * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
  * 🔧 PHASE 2-SYNC: ConfigService + COMM_CONFIG sync after load
+ * 🎯 FEATURE: Hurry Up (Remate) implemented - reduces round timer to threshold
  */
 
 class HostManager {
@@ -38,6 +39,7 @@ class HostManager {
         this.countdownRAFId = null;
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
+        this.hurryUpActive = false;
 
         this.elements = {};
         this.wordEngineReady = false;
@@ -170,6 +172,7 @@ class HostManager {
             countdownNumber: safeGetElement('countdown-number'),
             statusMessage: safeGetElement('status-message'),
             btnStartRound: safeGetElement('btn-start-round'),
+            btnHurryUp: safeGetElement('btn-hurry-up'),
             btnSelectCategory: safeGetElement('btn-select-category'),
             btnEndGame: safeGetElement('btn-end-game')
         };
@@ -178,6 +181,10 @@ class HostManager {
     attachEventListeners() {
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.addEventListener('click', () => this.startRound());
+        }
+
+        if (this.elements.btnHurryUp) {
+            this.elements.btnHurryUp.addEventListener('click', () => this.activateHurryUp());
         }
 
         if (this.elements.btnSelectCategory) {
@@ -477,6 +484,7 @@ class HostManager {
         safeHideElement(this.elements.currentWord);
         safeHideElement(this.elements.categoryLabel);
         safeHideElement(this.elements.countdownOverlay);
+        safeHideElement(this.elements.btnHurryUp);
 
         if (this.elements.statusMessage) {
             this.elements.statusMessage.textContent = '⏳ En espera de jugadores (mín. 2)';
@@ -516,6 +524,12 @@ class HostManager {
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.disabled = true;
             this.elements.btnStartRound.textContent = '▶️ En Juego';
+        }
+
+        if (this.elements.btnHurryUp) {
+            safeShowElement(this.elements.btnHurryUp);
+            this.elements.btnHurryUp.disabled = this.hurryUpActive;
+            this.elements.btnHurryUp.textContent = this.hurryUpActive ? '⚡ REMATE ACTIVO' : '⚡ REMATE';
         }
 
         if (state.round_started_at && state.round_duration) {
@@ -572,6 +586,8 @@ class HostManager {
             this.elements.btnStartRound.textContent = '⏳ Iniciando...';
         }
 
+        this.hurryUpActive = false;
+
         try {
             const result = await this.client.sendAction('start_round', {});
 
@@ -606,11 +622,50 @@ class HostManager {
         }
     }
 
+    async activateHurryUp() {
+        if (!this.client || this.hurryUpActive) return;
+
+        debug('⚡ Activando Remate...', null, 'info');
+
+        if (this.elements.btnHurryUp) {
+            this.elements.btnHurryUp.disabled = true;
+            this.elements.btnHurryUp.textContent = '⏳ Enviando...';
+        }
+
+        try {
+            const hurryUpThreshold = configService.get('hurry_up_threshold', 10) * 1000;
+            const result = await this.client.sendAction('update_round_timer', {
+                new_end_time: timeSync.getServerTime() + hurryUpThreshold
+            });
+
+            if (result.success) {
+                debug('✅ Remate activado', null, 'success');
+                this.hurryUpActive = true;
+                showNotification('⚡ ¡REMATE ACTIVADO!', 'info');
+                this.handleStateUpdate(result.state || this.gameState);
+            } else {
+                showNotification('❌ Error activando remate', 'error');
+                if (this.elements.btnHurryUp) {
+                    this.elements.btnHurryUp.disabled = false;
+                    this.elements.btnHurryUp.textContent = '⚡ REMATE';
+                }
+            }
+        } catch (error) {
+            debug('Error activando remate:', error, 'error');
+            showNotification('❌ Error de conexión', 'error');
+            if (this.elements.btnHurryUp) {
+                this.elements.btnHurryUp.disabled = false;
+                this.elements.btnHurryUp.textContent = '⚡ REMATE';
+            }
+        }
+    }
+
     showRoundEnded(state) {
         this.stopTimer();
         safeHideElement(this.elements.currentWord);
         safeHideElement(this.elements.categoryLabel);
         safeHideElement(this.elements.countdownOverlay);
+        safeHideElement(this.elements.btnHurryUp);
 
         if (this.elements.statusMessage) {
             this.elements.statusMessage.textContent = '✅ Ronda Finalizada - Mostrando Resultados';
@@ -625,6 +680,7 @@ class HostManager {
     showGameFinished(state) {
         this.stopTimer();
         safeHideElement(this.elements.countdownOverlay);
+        safeHideElement(this.elements.btnHurryUp);
 
         if (this.elements.statusMessage) {
             this.elements.statusMessage.textContent = '🏆 ¡Juego Finalizado!';
@@ -750,4 +806,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - PHASE 2: ConfigService + COMM_CONFIG sync integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - Hurry Up (Remate) feature implemented', 'color: #FF00FF; font-weight: bold; font-size: 12px');
