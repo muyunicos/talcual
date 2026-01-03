@@ -181,6 +181,30 @@ class HostManager {
         }
     }
 
+    showStartScreen() {
+        if (typeof window.createGameModal !== 'undefined' && window.createGameModal) {
+            debug('🎮 Abriendo modal CreateGameModal...', null, 'info');
+            window.createGameModal.openModal();
+        } else {
+            debug('⚠️  CreateGameModal no disponible, usando fallback', null, 'warn');
+            this.showFallbackStartScreen();
+        }
+    }
+
+    showFallbackStartScreen() {
+        const content = this.buildStartScreenContent();
+
+        ModalManager_Instance.show({
+            type: 'primary',
+            title: 'Nueva Partida',
+            content: content,
+            buttons: [
+                { label: '🎮 Crear Juego', class: 'btn-modal-primary', action: () => this.createGame(), close: false },
+                { label: '⚡ Opciones', class: 'btn-secondary', action: () => this.showSettingsModal(), close: false }
+            ]
+        });
+    }
+
     buildStartScreenContent() {
         const container = document.createElement('div');
         container.innerHTML = `
@@ -263,20 +287,6 @@ class HostManager {
             </div>
         `;
         return container;
-    }
-
-    showStartScreen() {
-        const content = this.buildStartScreenContent();
-
-        ModalManager_Instance.show({
-            type: 'primary',
-            title: 'Nueva Partida',
-            content: content,
-            buttons: [
-                { label: '🎮 Crear Juego', class: 'btn-modal-primary', action: () => this.createGame(), close: false },
-                { label: '⚡ Opciones', class: 'btn-secondary', action: () => this.showSettingsModal(), close: false }
-            ]
-        });
     }
 
     showSettingsModal() {
