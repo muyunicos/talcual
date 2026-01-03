@@ -8,6 +8,7 @@
  * - Usa UI.showFatalError() centralizado de shared-utils.js
  * - ModalHandler centralizado para modales
  * - SessionManager para persistencia
+ * - ConfigService.load() + syncCommConfigWithServer() para sincronización
  * 🎯 FEATURE: Restaurada lógica de selector de categoría
  * 🔧 FIX: Moved determineUIState to after dependencies load
  * 🔧 FIX: Remove fallbacks - fail-fast dev mode for v1.0
@@ -19,6 +20,7 @@
  * 🔧 PHASE 1: Fixed round display - removed duplicate "Ronda" label
  * 🔧 PHASE 3: Settings Modal wired - cached, initialized, events bound
  * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
+ * 🔧 PHASE 2-SYNC: ConfigService + COMM_CONFIG sync after load
  */
 
 class HostManager {
@@ -90,6 +92,9 @@ class HostManager {
 
             this.wordEngineReady = true;
             debug('✅ Verificación exitosa: ConfigService + DictionaryService + WordEngine listos', null, 'success');
+
+            syncCommConfigWithServer(configService.config);
+            debug('🔗 COMM_CONFIG sincronizado con servidor', null, 'success');
 
             this.cacheElements();
             this.attachEventListeners();
@@ -745,4 +750,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - PHASE 6: ModalManager integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - PHASE 2: ConfigService + COMM_CONFIG sync integration complete', 'color: #FF00FF; font-weight: bold; font-size: 12px');
