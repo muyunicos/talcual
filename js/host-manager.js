@@ -19,11 +19,6 @@ class HostManager {
         this.categories = [];
         this.categoryWordsMap = {};
 
-        this.roundsInput = 3;
-        this.durationInput = 60;
-        this.categorySelectValue = '';
-        this.gameCodeInput = '';
-
         this.loadConfigAndInit();
     }
 
@@ -112,10 +107,6 @@ class HostManager {
 
             if (data.success && Array.isArray(data.categories)) {
                 this.categories = data.categories;
-                if (this.categories.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * this.categories.length);
-                    this.categorySelectValue = this.categories[randomIndex];
-                }
                 debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
             } else {
                 debug('⚠️  Error cargando categorías', null, 'warn');
@@ -149,7 +140,6 @@ class HostManager {
             statusMessage: safeGetElement('status-message'),
             btnStartRound: safeGetElement('btn-start-round'),
             btnHurryUp: safeGetElement('btn-hurry-up'),
-            btnSelectCategory: safeGetElement('btn-select-category'),
             btnEndGame: safeGetElement('btn-end-game')
         };
     }
@@ -161,10 +151,6 @@ class HostManager {
 
         if (this.elements.btnHurryUp) {
             this.elements.btnHurryUp.addEventListener('click', () => this.activateHurryUp());
-        }
-
-        if (this.elements.btnSelectCategory) {
-            this.elements.btnSelectCategory.addEventListener('click', () => this.showCategoryModal());
         }
 
         if (this.elements.btnEndGame) {
@@ -191,37 +177,14 @@ class HostManager {
             <div class="input-group">
                 <label class="input-label" for="modal-rounds">Rondas</label>
                 <input type="number" id="modal-rounds" class="input-field"
-                       min="1" max="10" value="${this.roundsInput}">
+                       min="1" max="10" value="3" disabled>
+                <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">Se configura al crear la partida</small>
             </div>
             <div class="input-group">
                 <label class="input-label" for="modal-duration">Duración por Ronda (seg)</label>
                 <input type="number" id="modal-duration" class="input-field"
-                       min="10" max="300" value="${this.durationInput}">
-            </div>
-        `;
-
-        const roundsInput = container.querySelector('#modal-rounds');
-        const durationInput = container.querySelector('#modal-duration');
-
-        roundsInput.addEventListener('change', (e) => {
-            this.roundsInput = parseInt(e.target.value, 10);
-        });
-
-        durationInput.addEventListener('change', (e) => {
-            this.durationInput = parseInt(e.target.value, 10);
-        });
-
-        return container;
-    }
-
-    buildCategoryContent() {
-        const container = document.createElement('div');
-        container.innerHTML = `
-            <div class="input-group">
-                <label class="input-label" for="modal-category-input">Categoría</label>
-                <input type="text" id="modal-category-input" class="input-field"
-                       placeholder="Escribe una categoría (ej: Películas, Animales, Países)"
-                       maxlength="50">
+                       min="30" max="300" value="90" disabled>
+                <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">Se configura al crear la partida</small>
             </div>
         `;
         return container;
@@ -232,7 +195,7 @@ class HostManager {
 
         ModalManager_Instance.show({
             type: 'secondary',
-            title: '⚡ Configuración de Juego',
+            title: '⚡ Información de Configuración',
             content: content,
             buttons: [
                 { label: 'Cerrar', class: 'btn', action: null, close: true }
@@ -240,66 +203,30 @@ class HostManager {
         });
     }
 
-    showCategoryModal() {
-        const content = this.buildCategoryContent();
-        const categoryInput = content.querySelector('#modal-category-input');
+    async setCategory(category) {
+        const cat = (category || '').trim();
 
-        ModalManager_Instance.show({
-            type: 'secondary',
-            title: '📚 Seleccionar Categoría',
-            content: content,
-            buttons: [
-                { label: 'Cancelar', class: 'btn', action: null, close: true },
-                { label: 'Confirmar', class: 'btn-modal-primary', action: () => this.setCategory(categoryInput.value), close: false }
-            ]
-        });
-    }
-
-    async createGame() {
-        const code = this.gameCodeInput.trim().toUpperCase();
-        const selectedCategory = this.categorySelectValue;
-        const rounds = this.roundsInput;
-        const duration = this.durationInput;
-
-        if (!isValidGameCode(code)) {
-            showNotification('⚠️  Código inválido', 'warning');
+        if (!cat || cat.length > COMM_CONFIG.MAX_CATEGORY_LENGTH) {
+            showNotification('⚠️ Categoría inválida', 'warning');
             return;
         }
 
-        if (rounds < 1 || rounds > 10) {
-            showNotification('⚠️  Rondas deben estar entre 1 y 10', 'warning');
-            return;
-        }
-
-        if (duration < 10 || duration > 300) {
-            showNotification('⚠️  Duración debe estar entre 10 y 300 segundos', 'warning');
-            return;
-        }
+        if (!this.client) return;
 
         try {
-            this.gameCode = code;
-            this.currentCategory = selectedCategory;
-            this.totalRounds = rounds;
-            this.client = new GameClient(code, code, 'host');
-
-            const result = await this.client.sendAction('create_game', {
-                category: selectedCategory,
-                total_rounds: rounds,
-                round_duration: duration
-            });
+            const result = await this.client.sendAction('set_category', { category: cat });
 
             if (result.success) {
-                debug(`✅ Juego creado: ${code} (Categoría: ${selectedCategory}, Rondas: ${rounds}, Duración: ${duration}s)`, null, 'success');
-
-                this.saveSession(code, selectedCategory);
+                debug(`✅ Categoría establecida: ${cat}`, null, 'success');
+                this.currentCategory = cat;
 
                 ModalManager_Instance.close();
-                this.loadGameScreen(result.state || {});
+                showNotification(`📂 Categoría: ${cat}`, 'success');
             } else {
-                showNotification('❌ ' + (result.message || 'Error al crear juego'), 'error');
+                showNotification('❌ Error estableciendo categoría', 'error');
             }
         } catch (error) {
-            debug('Error creando juego:', error, 'error');
+            debug('Error estableciendo categoría:', error, 'error');
             showNotification('❌ Error de conexión', 'error');
         }
     }
@@ -611,34 +538,6 @@ class HostManager {
         if (this.elements.btnStartRound) {
             this.elements.btnStartRound.disabled = true;
             this.elements.btnStartRound.textContent = '🏆 Fin';
-        }
-    }
-
-    async setCategory(category) {
-        const cat = (category || '').trim();
-
-        if (!cat || cat.length > COMM_CONFIG.MAX_CATEGORY_LENGTH) {
-            showNotification('⚠️ Categoría inválida', 'warning');
-            return;
-        }
-
-        if (!this.client) return;
-
-        try {
-            const result = await this.client.sendAction('set_category', { category: cat });
-
-            if (result.success) {
-                debug(`✅ Categoría establecida: ${cat}`, null, 'success');
-                this.currentCategory = cat;
-
-                ModalManager_Instance.close();
-                showNotification(`📂 Categoría: ${cat}`, 'success');
-            } else {
-                showNotification('❌ Error estableciendo categoría', 'error');
-            }
-        } catch (error) {
-            debug('Error estableciendo categoría:', error, 'error');
-            showNotification('❌ Error de conexión', 'error');
         }
     }
 
