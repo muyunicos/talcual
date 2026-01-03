@@ -3,6 +3,8 @@ class CreateGameModal {
         this.gameCandidates = [];
         this.selectedCandidate = null;
         this.gameConfig = {};
+        this.readyPromise = null;
+        this.isReady = false;
     }
 
     async fetchCandidates() {
@@ -68,11 +70,21 @@ class CreateGameModal {
                 throw new Error('No hay candidatos disponibles');
             }
 
+            this.isReady = true;
             debug('✅ CreateGameModal inicializado', { candidatos: this.gameCandidates.length }, 'success');
         } catch (error) {
+            this.isReady = false;
             debug('❌ Error inicializando CreateGameModal', error, 'error');
             throw error;
         }
+    }
+
+    async ensureReady() {
+        if (this.isReady) return;
+        if (!this.readyPromise) {
+            this.readyPromise = this.init();
+        }
+        await this.readyPromise;
     }
 
     getCategories() {
@@ -101,62 +113,69 @@ class CreateGameModal {
         }
     }
 
-    openModal() {
-        this.selectRandomCandidate();
-        const categories = this.getCategories();
-        const selectedCategory = this.selectedCandidate?.category || categories[0];
-        const selectedCode = this.selectedCandidate?.code || '';
+    async openModal() {
+        try {
+            await this.ensureReady();
 
-        const categoryOptions = categories.map(cat => 
-            `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
-        ).join('');
+            this.selectRandomCandidate();
+            const categories = this.getCategories();
+            const selectedCategory = this.selectedCandidate?.category || categories[0];
+            const selectedCode = this.selectedCandidate?.code || '';
 
-        const formHTML = `
-            <div class="input-group">
-                <label class="input-label" for="category-select-modal">Categoría</label>
-                <select id="category-select-modal" class="input-field">
-                    ${categoryOptions}
-                </select>
-            </div>
-            <div class="input-group">
-                <label class="input-label" for="code-display-modal">Código de Sala</label>
-                <div id="code-display-modal" class="input-field code-display" style="background: var(--color-secondary); padding: 12px; border-radius: 6px; font-weight: bold; letter-spacing: 2px; text-align: center; font-size: 18px;">
-                    ${selectedCode}
+            const categoryOptions = categories.map(cat => 
+                `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
+            ).join('');
+
+            const formHTML = `
+                <div class="input-group">
+                    <label class="input-label" for="category-select-modal">Categoría</label>
+                    <select id="category-select-modal" class="input-field">
+                        ${categoryOptions}
+                    </select>
                 </div>
-                <p class="custom-code-info">Código generado automáticamente por el servidor</p>
-            </div>
-        `;
+                <div class="input-group">
+                    <label class="input-label" for="code-display-modal">Código de Sala</label>
+                    <div id="code-display-modal" class="input-field code-display" style="background: var(--color-secondary); padding: 12px; border-radius: 6px; font-weight: bold; letter-spacing: 2px; text-align: center; font-size: 18px;">
+                        ${selectedCode}
+                    </div>
+                    <p class="custom-code-info">Código generado automáticamente por el servidor</p>
+                </div>
+            `;
 
-        const buttons = [
-            [
-                () => this.openSettingsModal(),
-                'Opciones',
-                'btn'
-            ],
-            [
-                () => this.handleCreateClick(),
-                'Crear',
-                'btn-modal-primary'
-            ],
-            [
-                () => ModalSystem_Instance.close(1),
-                'Cancelar',
-                'btn'
-            ]
-        ];
+            const buttons = [
+                [
+                    () => this.openSettingsModal(),
+                    'Opciones',
+                    'btn'
+                ],
+                [
+                    () => this.handleCreateClick(),
+                    'Crear',
+                    'btn-modal-primary'
+                ],
+                [
+                    () => ModalSystem_Instance.close(1),
+                    'Cancelar',
+                    'btn'
+                ]
+            ];
 
-        ModalSystem_Instance.show(1, formHTML, buttons);
+            ModalSystem_Instance.show(1, formHTML, buttons);
 
-        const categorySelect = document.getElementById('category-select-modal');
-        const codeDisplay = document.getElementById('code-display-modal');
+            const categorySelect = document.getElementById('category-select-modal');
+            const codeDisplay = document.getElementById('code-display-modal');
 
-        if (categorySelect) {
-            categorySelect.addEventListener('change', (e) => {
-                this.updateCandidateFromCategory(e.target.value);
-                if (codeDisplay && this.selectedCandidate) {
-                    codeDisplay.textContent = this.selectedCandidate.code;
-                }
-            });
+            if (categorySelect) {
+                categorySelect.addEventListener('change', (e) => {
+                    this.updateCandidateFromCategory(e.target.value);
+                    if (codeDisplay && this.selectedCandidate) {
+                        codeDisplay.textContent = this.selectedCandidate.code;
+                    }
+                });
+            }
+        } catch (error) {
+            debug('Error abriendo modal de creación', error, 'error');
+            showNotification('❌ Error cargando datos de partida', 'error');
         }
     }
 
@@ -235,14 +254,24 @@ let createGameModal = null;
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', async () => {
         createGameModal = new CreateGameModal();
-        await createGameModal.init();
         window.createGameModal = createGameModal;
+        
+        try {
+            await createGameModal.init();
+        } catch (error) {
+            debug('❌ Error inicializando CreateGameModal durante boot', error, 'error');
+        }
     });
 } else {
     (async () => {
         createGameModal = new CreateGameModal();
-        await createGameModal.init();
         window.createGameModal = createGameModal;
+        
+        try {
+            await createGameModal.init();
+        } catch (error) {
+            debug('❌ Error inicializando CreateGameModal durante boot', error, 'error');
+        }
     })();
 }
 
