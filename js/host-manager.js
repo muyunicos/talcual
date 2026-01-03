@@ -182,69 +182,7 @@ class HostManager {
     }
 
     showStartScreen() {
-        if (typeof window.createGameModal !== 'undefined' && window.createGameModal) {
-            debug('🎮 Abriendo modal CreateGameModal...', null, 'info');
-            window.createGameModal.openModal();
-        } else {
-            debug('⚠️  CreateGameModal no disponible, usando fallback', null, 'warn');
-            this.showFallbackStartScreen();
-        }
-    }
-
-    showFallbackStartScreen() {
-        const content = this.buildStartScreenContent();
-
-        ModalManager_Instance.show({
-            type: 'primary',
-            title: 'Nueva Partida',
-            content: content,
-            buttons: [
-                { label: '🎮 Crear Juego', class: 'btn-modal-primary', action: () => this.createGame(), close: false },
-                { label: '⚡ Opciones', class: 'btn-secondary', action: () => this.showSettingsModal(), close: false }
-            ]
-        });
-    }
-
-    buildStartScreenContent() {
-        const container = document.createElement('div');
-        container.innerHTML = `
-            <div class="input-group">
-                <label class="input-label" for="modal-category-select">Categoría Inicial</label>
-                <select id="modal-category-select" class="input-field"></select>
-            </div>
-            <div class="input-group">
-                <label class="input-label" for="modal-game-code">Código de Sala</label>
-                <input type="text" id="modal-game-code" class="input-field"
-                       placeholder="EJ: ABC123" maxlength="6" autocomplete="off">
-            </div>
-        `;
-
-        const categorySelect = container.querySelector('#modal-category-select');
-        const gameCodeInput = container.querySelector('#modal-game-code');
-
-        this.categories.forEach((cat) => {
-            const option = document.createElement('option');
-            option.value = cat;
-            option.textContent = cat;
-            categorySelect.appendChild(option);
-        });
-
-        categorySelect.value = this.categorySelectValue;
-        gameCodeInput.value = this.gameCodeInput;
-
-        categorySelect.addEventListener('change', (e) => {
-            this.categorySelectValue = e.target.value;
-        });
-
-        gameCodeInput.addEventListener('input', (e) => {
-            this.gameCodeInput = e.target.value.toUpperCase();
-        });
-
-        gameCodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.createGame();
-        });
-
-        return container;
+        window.createGameModal.openModal();
     }
 
     buildSettingsContent() {
