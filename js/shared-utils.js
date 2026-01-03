@@ -55,11 +55,27 @@ function debug(message, data = null, level = 'log') {
     if (level === 'debug') {
         if (!window.DEBUG_MODE) return;
     }
+
+    const validConsoleMethod = (method) => {
+        const map = {
+            'success': 'log',
+            'info': 'log',
+            'warning': 'warn',
+            'warn': 'warn',
+            'error': 'error',
+            'debug': 'debug',
+            'log': 'log'
+        };
+        return map[method] || 'log';
+    };
+
+    const consoleMethod = validConsoleMethod(level);
     const prefix = `[${new Date().toLocaleTimeString()}]`;
+
     if (data) {
-        console[level](prefix, message, data);
+        console[consoleMethod](prefix, message, data);
     } else {
-        console[level](prefix, message);
+        console[consoleMethod](prefix, message);
     }
 }
 
@@ -170,7 +186,17 @@ const configService = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'get_config' })
             });
-            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const text = await response.text();
+            if (!text) {
+                throw new Error('Empty response from server');
+            }
+
+            const data = JSON.parse(text);
             if (data.success && data.config) {
                 this.config = data.config;
                 return true;
