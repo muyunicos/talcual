@@ -14,9 +14,14 @@ if (function_exists('apache_setenv')) {
     @apache_setenv('dont-vary', '1');
 }
 
+if (ob_get_level() > 0) {
+    @ob_end_clean();
+}
+
 ini_set('output_buffering', 'off');
 ini_set('zlib.output_compression', 'off');
 ini_set('implicit_flush', 'on');
+set_time_limit(0);
 
 $gameId = sanitizeGameId($_GET['game_id'] ?? null);
 $playerId = sanitizePlayerId($_GET['player_id'] ?? null);
@@ -46,6 +51,14 @@ function sendSSE($event, $data) {
     }
 }
 
+function sendHeartbeat() {
+    echo ": heartbeat\n\n";
+    flush();
+    if (function_exists('apache_flush')) {
+        @apache_flush();
+    }
+}
+
 function getNotifyCounter($filePath) {
     if (!file_exists($filePath)) {
         return 0;
@@ -62,11 +75,11 @@ $notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
 $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
 
 $lastNotify = 0;
-$startTime = time();
-$maxDuration = 1800;
+$startTime = microtime(true);
+$maxDuration = SSE_TIMEOUT;
 $heartbeatInterval = SSE_HEARTBEAT_INTERVAL;
-$lastHeartbeat = time();
-$pollingInterval = 1;
+$lastHeartbeatTime = microtime(true);
+$pollingInterval = 0.5;
 
 sendSSE('connected', [
     'game_id' => $gameId,
@@ -75,9 +88,11 @@ sendSSE('connected', [
     'method' => 'SSE with per-game monotonic counter'
 ]);
 
+$lastHeartbeatTime = microtime(true);
+
 logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}", 'DEBUG');
 
-while ((time() - $startTime) < $maxDuration) {
+while ((microtime(true) - $startTime) < $maxDuration) {
     if (connection_aborted()) {
         logMessage("SSE desconectado por cliente: {$gameId}", 'DEBUG');
         break;
@@ -102,25 +117,24 @@ while ((time() - $startTime) < $maxDuration) {
             
             sendSSE('update', $state);
             $lastNotify = $currentNotify;
+            $lastHeartbeatTime = microtime(true);
             
             logMessage("SSE update enviado para {$gameId} (counter: {$currentNotify}, status={$state['status']}, {$playerCount} activos)", 'DEBUG');
             
             usleep(100000);
         }
-    }
-    
-    $now = time();
-    if ($now - $lastHeartbeat >= $heartbeatInterval) {
-        echo ": heartbeat\n\n";
-        flush();
-        if (function_exists('apache_flush')) {
-            @apache_flush();
+    } else {
+        $now = microtime(true);
+        $timeSinceHeartbeat = $now - $lastHeartbeatTime;
+        
+        if ($timeSinceHeartbeat >= $heartbeatInterval) {
+            sendHeartbeat();
+            $lastHeartbeatTime = $now;
+            logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
         }
-        $lastHeartbeat = $now;
-        logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
+        
+        usleep($pollingInterval * 1000000);
     }
-    
-    sleep($pollingInterval);
 }
 
 logMessage("SSE terminado para {$gameId}", 'DEBUG');
