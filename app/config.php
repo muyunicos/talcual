@@ -32,22 +32,6 @@ function loadRawDictionaryJson() {
     return is_array($data) ? $data : [];
 }
 
-function flattenWords($data) {
-    $words = [];
-    
-    if (!is_array($data)) {
-        return $words;
-    }
-
-    array_walk_recursive($data, function($item) use (&$words) {
-        if (is_string($item) && !empty(trim($item))) {
-            $words[] = trim($item);
-        }
-    });
-
-    return $words;
-}
-
 function normalizeWord($rawWord) {
     if (empty($rawWord)) {
         return '';
@@ -76,6 +60,10 @@ function cleanWordPrompt($rawWord) {
         $word = trim($parts[0]);
     }
     
+    if (substr($word, -1) === '.') {
+        $word = substr($word, 0, -1);
+    }
+    
     return normalizeWord($word);
 }
 
@@ -98,28 +86,44 @@ function loadDictionary() {
     return $cache;
 }
 
-function getAllWords() {
+function getTopicCard($category) {
     $dict = loadDictionary();
-    $rawWords = flattenWords($dict);
     
-    $cleanedWords = array_map('cleanWordPrompt', $rawWords);
-    $cleanedWords = array_filter($cleanedWords, function($w) { 
-        return !empty($w); 
-    });
-
-    return array_unique($cleanedWords);
+    if (!isset($dict[$category]) || !is_array($dict[$category]) || empty($dict[$category])) {
+        return [
+            'question' => 'JUEGO',
+            'answers' => []
+        ];
+    }
+    
+    $categoryArray = $dict[$category];
+    $randomCard = $categoryArray[array_rand($categoryArray)];
+    
+    if (!is_array($randomCard) || empty($randomCard)) {
+        return [
+            'question' => 'JUEGO',
+            'answers' => []
+        ];
+    }
+    
+    $question = (string)key($randomCard);
+    $answers = current($randomCard);
+    
+    if (!is_array($answers)) {
+        $answers = [];
+    }
+    
+    return [
+        'question' => trim($question),
+        'answers' => array_values($answers)
+    ];
 }
 
-function getWordsByCategory($category) {
+function getCategories() {
     $dict = loadDictionary();
 
-    if (isset($dict[$category])) {
-        $rawWords = flattenWords($dict[$category]);
-        $cleanedWords = array_map('cleanWordPrompt', $rawWords);
-        $cleanedWords = array_filter($cleanedWords, function($w) { 
-            return !empty($w); 
-        });
-        return array_unique($cleanedWords);
+    if (is_array($dict)) {
+        return array_keys($dict);
     }
 
     return [];
@@ -133,15 +137,12 @@ function getAllResponsesByCategory($category) {
     }
     
     $responses = [];
-    foreach ($dict[$category] as $hintObj) {
-        if (is_array($hintObj)) {
-            foreach ($hintObj as $hint => $words) {
-                if (is_array($words)) {
-                    foreach ($words as $word) {
-                        $cleaned = cleanWordPrompt($word);
-                        if ($cleaned) {
-                            $responses[] = $cleaned;
-                        }
+    foreach ($dict[$category] as $cardObj) {
+        if (is_array($cardObj)) {
+            foreach ($cardObj as $question => $answers) {
+                if (is_array($answers)) {
+                    foreach ($answers as $rawAnswer) {
+                        $responses[] = (string)$rawAnswer;
                     }
                 }
             }
@@ -151,126 +152,31 @@ function getAllResponsesByCategory($category) {
     return array_unique($responses);
 }
 
-function getCategories() {
-    $dict = loadDictionary();
-
-    if (is_array($dict)) {
-        return array_keys($dict);
+function getRandomWordByCategoryFiltered($category, $maxLength = null) {
+    if ($maxLength === null) {
+        $maxLength = MAX_CODE_LENGTH;
     }
 
-    return [];
-}
-
-function getDictionaryCategoryWords($category, $minLength = 1, $maxLength = null) {
-    $words = getWordsByCategory($category);
-    if (empty($words)) return [];
-    
-    $filtered = array_filter($words, function($word) use ($minLength, $maxLength) {
-        $len = mb_strlen($word);
-        if ($len < $minLength) return false;
-        if ($maxLength !== null && $len > $maxLength) return false;
-        return true;
-    });
-    
-    return array_values($filtered);
-}
-
-function getPromptsByCategory($category) {
-    $dict = loadDictionary();
-    
-    if (!isset($dict[$category]) || !is_array($dict[$category])) {
-        return [];
-    }
-    
-    $prompts = [];
-    foreach ($dict[$category] as $hintObj) {
-        if (is_array($hintObj)) {
-            foreach (array_keys($hintObj) as $hint) {
-                $cleaned = cleanWordPrompt($hint);
-                if ($cleaned && strlen($cleaned) <= MAX_CODE_LENGTH) {
-                    $prompts[] = $cleaned;
-                }
-            }
-        }
-    }
-    
-    return array_unique($prompts);
-}
-
-function getResponsesByPrompt($category, $prompt) {
-    $dict = loadDictionary();
-    $cleanPrompt = cleanWordPrompt($prompt);
-    
-    if (!isset($dict[$category]) || !is_array($dict[$category])) {
-        return [];
-    }
-    
-    $responses = [];
-    foreach ($dict[$category] as $hintObj) {
-        if (is_array($hintObj)) {
-            foreach ($hintObj as $hint => $words) {
-                if (cleanWordPrompt($hint) === $cleanPrompt && is_array($words)) {
-                    foreach ($words as $word) {
-                        $cleaned = cleanWordPrompt($word);
-                        if ($cleaned) {
-                            $responses[] = $cleaned;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    return array_unique($responses);
-}
-
-function getQuestionAndAnswers($category) {
-    $prompts = getPromptsByCategory($category);
-    
-    if (empty($prompts)) {
-        return [
-            'question' => 'JUEGO',
-            'answers' => []
-        ];
-    }
-    
-    $question = $prompts[array_rand($prompts)];
-    $answers = getResponsesByPrompt($category, $question);
-    
-    return [
-        'question' => $question,
-        'answers' => $answers
-    ];
-}
-
-function getRoundContext($category, $prompt) {
-    $cleanPrompt = cleanWordPrompt($prompt);
-    $responses = getResponsesByPrompt($category, $prompt);
-    
+    $responses = getAllResponsesByCategory($category);
     if (empty($responses)) {
-        return [
-            'prompt' => $cleanPrompt, 
-            'synonyms' => [$cleanPrompt], 
-            'variants' => [$cleanPrompt]
-        ];
+        return null;
     }
+
+    $attempts = 0;
+    $maxAttempts = 30;
     
-    $variants = [$cleanPrompt];
-    foreach ($responses as $resp) {
-        $variants[] = $resp;
-        $variants[] = $resp . 'S';
-        $variants[] = $resp . 'A';
-        $variants[] = $resp . 'O';
-        if (strlen($resp) > 1) {
-            $variants[] = substr($resp, 0, -1);
+    while ($attempts < $maxAttempts) {
+        $rawWord = $responses[array_rand($responses)];
+        $cleaned = cleanWordPrompt($rawWord);
+        
+        if (!empty($cleaned) && mb_strlen($cleaned) <= $maxLength) {
+            return $cleaned;
         }
+        
+        $attempts++;
     }
     
-    return [
-        'prompt' => $cleanPrompt, 
-        'synonyms' => array_unique($responses),
-        'variants' => array_unique(array_filter($variants))
-    ];
+    return null;
 }
 
 function getActiveCodes() {
@@ -278,7 +184,7 @@ function getActiveCodes() {
     $codes = [];
 
     if ($files) {
-        foreach ($files as $file) {
+        foreach ($files) {
             if (time() - filemtime($file) < MAX_GAME_AGE) {
                 $codes[] = pathinfo($file, PATHINFO_FILENAME);
             } else {
@@ -305,52 +211,35 @@ function generateGameCode() {
         return $code;
     }
     
-    $allResponses = [];
-    foreach ($categories as $category) {
-        $responses = getAllResponsesByCategory($category);
-        $allResponses = array_merge($allResponses, $responses);
-    }
-    
-    $shortWords = array_filter($allResponses, function($w) {
-        $length = mb_strlen($w);
-        return $length >= 3 && $length <= MAX_CODE_LENGTH;
-    });
-    
-    if (empty($shortWords)) {
-        $shortWords = array_filter($allResponses, function($w) {
-            return mb_strlen($w) <= MAX_CODE_LENGTH;
-        });
-    }
-    
     $usedCodes = getActiveCodes();
-    $freeCodes = array_diff($shortWords, $usedCodes);
-
-    if (empty($freeCodes)) {
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        do {
-            $code = '';
-            for ($i = 0; $i < 4; $i++) {
-                $code .= $chars[rand(0, strlen($chars) - 1)];
-            }
-        } while (in_array($code, $usedCodes));
-
-        if (mb_strlen($code) > MAX_CODE_LENGTH) {
-            logMessage('[WARNING] Código generado excede MAX_CODE_LENGTH: ' . $code . ' (longitud: ' . mb_strlen($code) . ')', 'WARNING');
-            $code = substr($code, 0, MAX_CODE_LENGTH);
-        }
+    $roomCodeCandidates = [];
+    
+    foreach ($categories as $category) {
+        $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
         
-        return $code;
-    }
-
-    $freeCodes = array_values($freeCodes);
-    $selected = $freeCodes[array_rand($freeCodes)];
-    
-    if (mb_strlen($selected) > MAX_CODE_LENGTH) {
-        logMessage('[WARNING] Palabra seleccionada excede MAX_CODE_LENGTH: ' . $selected, 'WARNING');
-        $selected = substr($selected, 0, MAX_CODE_LENGTH);
+        if ($word && !in_array($word, $usedCodes)) {
+            $roomCodeCandidates[] = $word;
+        }
     }
     
-    return $selected;
+    if (!empty($roomCodeCandidates)) {
+        return $roomCodeCandidates[array_rand($roomCodeCandidates)];
+    }
+    
+    $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    do {
+        $code = '';
+        for ($i = 0; $i < 4; $i++) {
+            $code .= $chars[rand(0, strlen($chars) - 1)];
+        }
+    } while (in_array($code, $usedCodes));
+    
+    if (mb_strlen($code) > MAX_CODE_LENGTH) {
+        logMessage('[WARNING] Código generado excede MAX_CODE_LENGTH: ' . $code, 'WARNING');
+        $code = substr($code, 0, MAX_CODE_LENGTH);
+    }
+    
+    return $code;
 }
 
 function sanitizeGameId($gameId) {
@@ -552,48 +441,6 @@ function cleanupOldGames() {
     return $deleted;
 }
 
-function getRandomWord() {
-    $words = getAllWords();
-
-    if (empty($words)) {
-        logMessage('[WARN] No hay palabras disponibles, usando fallback', 'WARNING');
-        return 'JUEGO';
-    }
-
-    return $words[array_rand($words)];
-}
-
-function getRandomWordFromCategory($category) {
-    $words = getWordsByCategory($category);
-    if (empty($words)) {
-        return getRandomWord();
-    }
-    return $words[array_rand($words)];
-}
-
-function getRandomWordByCategoryFiltered($category, $maxLength = null) {
-    if ($maxLength === null) {
-        $maxLength = MAX_CODE_LENGTH;
-    }
-
-    $responses = getAllResponsesByCategory($category);
-    if (empty($responses)) {
-        return null;
-    }
-
-    $filtered = array_filter($responses, function($word) use ($maxLength) {
-        return mb_strlen($word) <= $maxLength;
-    });
-
-    if (empty($filtered)) {
-        logMessage("[WARN] No hay respuestas en '{$category}' con longitud ≤ {$maxLength}", 'WARNING');
-        return null;
-    }
-
-    $filtered = array_values($filtered);
-    return $filtered[array_rand($filtered)];
-}
-
 function gameExists($gameId) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) return false;
@@ -613,8 +460,8 @@ function getDictionaryStats() {
     ];
 
     foreach ($dict as $categoria => $content) {
-        $words = flattenWords([$categoria => $content]);
-        $cleanedWords = array_map('cleanWordPrompt', $words);
+        $responses = getAllResponsesByCategory($categoria);
+        $cleanedWords = array_map('cleanWordPrompt', $responses);
         $cleanedWords = array_filter($cleanedWords, function($w) { 
             return !empty($w); 
         });
