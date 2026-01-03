@@ -5,6 +5,8 @@
  * 
  * SECURITY NOTE: All input validation must be performed both client-side
  * and server-side. This file defines validation constants for consistency.
+ * 
+ * PHASE 2 SYNC: COMM_CONFIG values synchronized with server via ConfigService
  */
 
 const EVENT_TYPES = {
@@ -48,13 +50,46 @@ const COMM_CONFIG = {
   WORDS_UPDATE_THROTTLE: 2000,
   STATE_UPDATE_THROTTLE: 500,
   
-  MAX_WORD_LENGTH: 50,
+  MAX_WORD_LENGTH: 30,
   MAX_PLAYER_NAME_LENGTH: 20,
   MIN_PLAYER_NAME_LENGTH: 2,
-  MAX_WORDS_PER_ROUND: 10,
+  MAX_WORDS_PER_PLAYER: 6,
   GAME_CODE_LENGTH_MIN: 3,
-  GAME_CODE_LENGTH_MAX: 6
+  GAME_CODE_LENGTH_MAX: 5,
+  MIN_PLAYERS: 2,
+  MAX_PLAYERS: 20,
+  START_COUNTDOWN: 5
 };
+
+function syncCommConfigWithServer(serverConfig) {
+  if (!serverConfig || typeof serverConfig !== 'object') {
+    console.warn('[COMM] Server config invalid, using defaults');
+    return;
+  }
+
+  const mappings = {
+    'max_word_length': 'MAX_WORD_LENGTH',
+    'max_player_name_length': 'MAX_PLAYER_NAME_LENGTH',
+    'min_player_name_length': 'MIN_PLAYER_NAME_LENGTH',
+    'max_words_per_player': 'MAX_WORDS_PER_PLAYER',
+    'max_code_length': 'GAME_CODE_LENGTH_MAX',
+    'min_players': 'MIN_PLAYERS',
+    'max_players': 'MAX_PLAYERS',
+    'start_countdown': 'START_COUNTDOWN'
+  };
+
+  Object.entries(mappings).forEach(([serverKey, configKey]) => {
+    if (serverKey in serverConfig) {
+      COMM_CONFIG[configKey] = serverConfig[serverKey];
+    }
+  });
+
+  console.log(
+    '%c🔗 COMM_CONFIG synchronized with server',
+    'color: #10B981; font-weight: bold',
+    COMM_CONFIG
+  );
+}
 
 function validateAPIResponse(response) {
   return response && typeof response === 'object' && response.success !== undefined;
@@ -190,6 +225,7 @@ if (typeof window !== 'undefined') {
     validateAPIResponse,
     calculateReconnectDelay,
     getConnectionHealth,
+    syncCommConfigWithServer,
     TimeSyncManager,
     timeSync
   };
@@ -202,9 +238,10 @@ if (typeof module !== 'undefined' && module.exports) {
     validateAPIResponse,
     calculateReconnectDelay,
     getConnectionHealth,
+    syncCommConfigWithServer,
     TimeSyncManager,
     timeSync
   };
 }
 
-console.log('%c✅ communication.js cargado - TimeSyncManager limpio (calibrateWithServerTime + calibrateWithRTT)', 'color: #10B981; font-weight: bold');
+console.log('%c✅ communication.js cargado - TimeSyncManager + COMM_CONFIG (awaiting syncCommConfigWithServer)', 'color: #10B981; font-weight: bold');
