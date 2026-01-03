@@ -58,7 +58,7 @@ html.bg-ready body::before {
 }
 
 /* === COUNTDOWN OVERLAY === */
-.countdown-overlay-host {
+.countdown-overlay {
     display: none;
     position: fixed;
     top: 0;
@@ -71,18 +71,18 @@ html.bg-ready body::before {
     z-index: 999;
 }
 
-.countdown-overlay-host.active {
+.countdown-overlay.active {
     display: flex;
 }
 
-.countdown-number-host {
+.countdown-number {
     font-size: clamp(1rem, 12vw, 5rem);
     font-weight: 700;
     color: #ffffff;
     line-height: 1;
 }
 
-.countdown-number-host.timer-hury {
+.countdown-number.timer-hurry {
     animation: pulse-countdown 1s infinite;
     font-size: clamp(1rem, 20vw, 8rem);
 }
@@ -368,7 +368,7 @@ html.bg-ready body::before {
 }
 
 /* === BOTÓN START/END (EN CENTRO) === */
-.btn-empezar {
+.btn-start {
     padding: 18px 50px;
     font-size: 20px;
     font-weight: 900;
@@ -383,26 +383,78 @@ html.bg-ready body::before {
 
     border: 3px solid rgba(0, 240, 255, 0.45);
     border-radius: var(--radius-btn);
-    box-shadow: var(--tv-glow-cyan), 0 8px 20px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 50px rgba(0, 240, 255, 0.16), 0 8px 20px rgba(0, 0, 0, 0.35);
 
     cursor: pointer;
     transition: transform var(--transition-normal), background-color var(--transition-normal), box-shadow var(--transition-normal);
 }
 
-.btn-empezar:hover:not(:disabled) {
+.btn-start:hover:not(:disabled) {
     background: rgba(0, 240, 255, 0.25);
     border-color: rgba(0, 240, 255, 0.70);
     box-shadow: 0 0 50px rgba(0, 240, 255, 0.28), 0 10px 24px rgba(0, 0, 0, 0.45);
     transform: translateY(-3px);
 }
 
-.btn-empezar:active:not(:disabled) {
+.btn-start:active:not(:disabled) {
     transform: translateY(-1px);
 }
 
-.btn-empezar:disabled {
+.btn-start:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* === BOTÓN HURRY UP (REMATE) === */
+.btn-hurry-up {
+    padding: 18px 50px;
+    font-size: 20px;
+    font-weight: 900;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.95);
+
+    background:
+        radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 50%),
+        rgba(255, 215, 0, 0.18);
+
+    border: 3px solid rgba(255, 215, 0, 0.55);
+    border-radius: var(--radius-btn);
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.35);
+
+    cursor: pointer;
+    transition: transform var(--transition-normal), background-color var(--transition-normal), box-shadow var(--transition-normal);
+    animation: hurry-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes hurry-pulse {
+    0%, 100% {
+        background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 50%), rgba(255, 215, 0, 0.18);
+        box-shadow: 0 0 50px rgba(255, 215, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+    50% {
+        background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 50%), rgba(255, 215, 0, 0.28);
+        box-shadow: 0 0 60px rgba(255, 215, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.40);
+    }
+}
+
+.btn-hurry-up:hover:not(:disabled) {
+    background: rgba(255, 215, 0, 0.32);
+    border-color: rgba(255, 215, 0, 0.85);
+    box-shadow: 0 0 70px rgba(255, 215, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.45);
+    transform: translateY(-3px);
+    animation: none;
+}
+
+.btn-hurry-up:active:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn-hurry-up:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    animation: none;
 }
 
 /* === TARJETAS JUGADORES (BOTTOM CENTER) === */
@@ -697,7 +749,8 @@ position: fixed !important;
         padding: 20px;
     }
 
-    .btn-empezar {
+    .btn-start,
+    .btn-hurry-up {
         padding: 14px 36px;
         font-size: 17px;
     }
@@ -741,7 +794,8 @@ position: fixed !important;
         height: 36px;
     }
 
-    .btn-empezar {
+    .btn-start,
+    .btn-hurry-up {
         padding: 12px 28px;
         font-size: 15px;
     }
