@@ -34,12 +34,12 @@ class PlayerView {
       }
     });
 
-    if (this.elements.maxWordsDisplay) {
-      this.elements.maxWordsDisplay.textContent = this.maxWords;
+    if (elements.maxWordsDisplay) {
+      elements.maxWordsDisplay.textContent = this.maxWords;
     }
 
-    if (this.elements.headerTimer) {
-      GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
+    if (elements.headerTimer) {
+      GameTimer.updateDisplay(null, elements.headerTimer, '⏳');
     }
 
     return elements;
