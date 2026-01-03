@@ -1,4 +1,6 @@
 <?php
+set_time_limit(0);
+
 require_once __DIR__ . '/config.php';
 
 header('Content-Type: text/event-stream; charset=utf-8');
@@ -14,14 +16,13 @@ if (function_exists('apache_setenv')) {
     @apache_setenv('dont-vary', '1');
 }
 
-if (ob_get_level() > 0) {
+while (ob_get_level()) {
     @ob_end_clean();
 }
 
 ini_set('output_buffering', 'off');
 ini_set('zlib.output_compression', 'off');
 ini_set('implicit_flush', 'on');
-set_time_limit(0);
 
 $gameId = sanitizeGameId($_GET['game_id'] ?? null);
 $playerId = sanitizePlayerId($_GET['player_id'] ?? null);
@@ -79,7 +80,7 @@ $startTime = microtime(true);
 $maxDuration = SSE_TIMEOUT;
 $heartbeatInterval = SSE_HEARTBEAT_INTERVAL;
 $lastHeartbeatTime = microtime(true);
-$pollingInterval = 0.5;
+$pollingInterval = 2;
 
 sendSSE('connected', [
     'game_id' => $gameId,
@@ -133,7 +134,7 @@ while ((microtime(true) - $startTime) < $maxDuration) {
             logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
         }
         
-        usleep($pollingInterval * 1000000);
+        sleep($pollingInterval);
     }
 }
 
