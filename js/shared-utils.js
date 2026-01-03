@@ -102,12 +102,13 @@ const UI = {
     }
 };
 
-const getDictionaryForRound = (roundContext) => {
+const initializeWordEngineFromRound = (roundContext) => {
     if (!roundContext) {
+        debug('⚠️ initializeWordEngineFromRound: no roundContext provided', null, 'warning');
         wordEngine.reset();
         return;
     }
-    wordEngine.setRoundContext(roundContext);
+    wordEngine.initializeFromRoundContext(roundContext);
 };
 
 const StorageKeys = {
