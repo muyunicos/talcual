@@ -10,11 +10,20 @@
     Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 </IfModule>
 
-# Asegurar que los archivos JSON se sirven con el tipo correcto
+# SECURITY: Block direct HTTP access to JSON files
+# Reason: Client never needs access to full dictionary or game state files
+# All data flows through API endpoints only
 <FilesMatch "\.json$">
-    AddType application/json .json
-    Header set Access-Control-Allow-Origin "*"
+    Order allow,deny
+    Deny from all
 </FilesMatch>
+
+# Exception: Allow app/config.json if needed for frontend config
+# (This file should NOT contain sensitive dictionary data)
+<Files "config.json">
+    Order allow,deny
+    Allow from all
+</Files>
 
 # Habilitar cache busting
 <IfModule mod_expires.c>
