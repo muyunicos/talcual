@@ -1,6 +1,6 @@
 class BaseController {
     constructor() {
-        this.timerInterval = null;
+        this.gameTimer = null;
         this.countdownRAFId = null;
         this.client = null;
         this.gameState = {};
@@ -40,15 +40,24 @@ class BaseController {
         }
     }
 
-    startContinuousTimer(state) {
+    startContinuousTimer(state, onTick = null) {
         this.stopTimer();
+        this.gameTimer = new GameTimer(this.elements.headerTimer, onTick);
+        this.gameTimer.start(100);
         this.updateTimerFromState(state);
 
-        this.timerInterval = setInterval(() => {
+        const timerCheckInterval = setInterval(() => {
             if (this.gameState && this.gameState.status === 'playing') {
                 this.updateTimerFromState(this.gameState);
+            } else {
+                clearInterval(timerCheckInterval);
             }
         }, 1000);
+
+        if (!this._timerCheckIntervals) {
+            this._timerCheckIntervals = [];
+        }
+        this._timerCheckIntervals.push(timerCheckInterval);
     }
 
     updateTimerFromState(state) {
@@ -62,9 +71,13 @@ class BaseController {
     }
 
     stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
+        if (this.gameTimer) {
+            this.gameTimer.destroy();
+            this.gameTimer = null;
+        }
+        if (this._timerCheckIntervals) {
+            this._timerCheckIntervals.forEach(id => clearInterval(id));
+            this._timerCheckIntervals = [];
         }
         if (this.countdownRAFId) {
             cancelAnimationFrame(this.countdownRAFId);
