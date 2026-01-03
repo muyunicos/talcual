@@ -1,16 +1,14 @@
-class PlayerManager {
+class PlayerManager extends BaseController {
     constructor() {
+        super();
         this.gameId = null;
         this.playerId = null;
         this.playerName = null;
         this.playerColor = null;
-        this.client = null;
         this.gameState = null;
         this.myWords = [];
         this.maxWords = 6;
         this.isReady = false;
-        this.timerInterval = null;
-        this.countdownRAFId = null;
 
         this.lastWordsUpdateTime = 0;
         this.wordsUpdatePending = false;
@@ -18,19 +16,23 @@ class PlayerManager {
         this.availableAuras = [];
         this.selectedAura = null;
         this.tempSelectedAura = null;
-
-        this.elements = {};
     }
 
-    hasActiveSession() {
-        return !!StorageManager.get(StorageKeys.PLAYER_ID);
+    getStorageKeys() {
+        return {
+            primary: StorageKeys.PLAYER_ID,
+            gameCode: StorageKeys.PLAYER_GAME_CODE,
+            name: StorageKeys.PLAYER_NAME,
+            color: StorageKeys.PLAYER_COLOR
+        };
     }
 
     recoverSession() {
-        const gameId = StorageManager.get(StorageKeys.PLAYER_GAME_CODE);
-        const playerId = StorageManager.get(StorageKeys.PLAYER_ID);
-        const playerName = StorageManager.get(StorageKeys.PLAYER_NAME);
-        const playerColor = StorageManager.get(StorageKeys.PLAYER_COLOR);
+        const keys = this.getStorageKeys();
+        const gameId = StorageManager.get(keys.gameCode);
+        const playerId = StorageManager.get(keys.primary);
+        const playerName = StorageManager.get(keys.name);
+        const playerColor = StorageManager.get(keys.color);
         
         return (gameId && playerId && playerName) 
             ? { gameId, playerId, playerName, playerColor } 
@@ -38,19 +40,13 @@ class PlayerManager {
     }
 
     saveSession(gameId, playerId, playerName, playerColor) {
-        StorageManager.set(StorageKeys.PLAYER_GAME_CODE, gameId);
-        StorageManager.set(StorageKeys.PLAYER_ID, playerId);
-        StorageManager.set(StorageKeys.PLAYER_NAME, playerName);
+        const keys = this.getStorageKeys();
+        StorageManager.set(keys.gameCode, gameId);
+        StorageManager.set(keys.primary, playerId);
+        StorageManager.set(keys.name, playerName);
         if (playerColor) {
-            StorageManager.set(StorageKeys.PLAYER_COLOR, playerColor);
+            StorageManager.set(keys.color, playerColor);
         }
-    }
-
-    clearSession() {
-        StorageManager.remove(StorageKeys.PLAYER_GAME_CODE);
-        StorageManager.remove(StorageKeys.PLAYER_ID);
-        StorageManager.remove(StorageKeys.PLAYER_NAME);
-        StorageManager.remove(StorageKeys.PLAYER_COLOR);
     }
 
     async initialize() {
@@ -344,14 +340,7 @@ class PlayerManager {
         this.gameState = state;
         debug('📈 Estado actualizado:', state.status);
 
-        if (state.server_now && state.round_starts_at && !timeSync.isCalibrated) {
-            timeSync.calibrateWithServerTime(
-                state.server_now,
-                state.round_starts_at,
-                state.round_ends_at,
-                state.round_duration
-            );
-        }
+        this.calibrateTimeSync(state);
 
         const me = state.players?.[this.playerId];
         if (me && this.elements.playerScore) {
@@ -393,68 +382,6 @@ class PlayerManager {
         this.stopTimer();
         GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
         wordEngine.reset();
-    }
-
-    runPreciseCountdown(roundStartsAt, countdownDuration, onComplete) {
-        if (this.countdownRAFId) {
-            cancelAnimationFrame(this.countdownRAFId);
-        }
-
-        safeShowElement(this.elements.countdownOverlay);
-        if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = true;
-        if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = true;
-        if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = true;
-
-        if (this.elements.countdownNumber) {
-            this.elements.countdownNumber.style.fontSize = 'inherit';
-        }
-
-        const update = () => {
-            const nowServer = timeSync.getServerTime();
-            const elapsed = nowServer - roundStartsAt;
-            const remaining = Math.max(0, countdownDuration - elapsed);
-            const seconds = Math.ceil(remaining / 1000);
-
-            if (this.elements.countdownNumber) {
-                if (seconds > 3) {
-                    this.elements.countdownNumber.classList.add('timer-hury');
-                    this.elements.countdownNumber.textContent = '¿Preparado?';
-                    this.elements.countdownNumber.style.fontSize = '1.2em';
-                } else if (seconds > 0) {
-                    const displayValue = Math.max(1, seconds);
-                    this.elements.countdownNumber.textContent = displayValue.toString();
-                    this.elements.countdownNumber.style.fontSize = 'inherit';
-                } else {
-                    this.elements.countdownNumber.classList.remove('timer-hury');
-                    this.elements.countdownNumber.textContent = '';
-                }
-            }
-
-            if (remaining > 0) {
-                this.countdownRAFId = requestAnimationFrame(update);
-            } else {
-                safeHideElement(this.elements.countdownOverlay);
-                if (this.elements.currentWordInput) this.elements.currentWordInput.disabled = false;
-                if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
-                if (this.elements.btnSubmit) this.elements.btnSubmit.disabled = false;
-                if (this.elements.currentWordInput) this.elements.currentWordInput.focus();
-                
-                if (typeof onComplete === 'function') {
-                    onComplete();
-                }
-            }
-        };
-        this.countdownRAFId = requestAnimationFrame(update);
-    }
-
-    async showCountdown(state) {
-        debug('⏱️ Iniciando countdown', 'debug');
-        const countdownDuration = state.countdown_duration || 4000;
-        safeHideElement(this.elements.waitingMessage);
-        
-        return new Promise((resolve) => {
-            this.runPreciseCountdown(state.round_starts_at, countdownDuration, resolve);
-        });
     }
 
     async showPlayingState(state) {
@@ -803,7 +730,7 @@ class PlayerManager {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
                 }
-                debug('⚠️ No envíné palabras esta ronda', 'warning');
+                debug('⚠️ No envén palabras esta ronda', 'warning');
             } else {
                 if (this.elements.resultsSection) {
                     this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
@@ -845,17 +772,6 @@ class PlayerManager {
         }
     }
 
-    startContinuousTimer(state) {
-        this.stopTimer();
-        this.updateTimerFromState(state);
-
-        this.timerInterval = setInterval(() => {
-            if (this.gameState && this.gameState.status === 'playing') {
-                this.updateTimerFromState(this.gameState);
-            }
-        }, 1000);
-    }
-
     updateTimerFromState(state) {
         if (!state.round_started_at) {
             this.stopTimer();
@@ -872,32 +788,6 @@ class PlayerManager {
                 this.autoSubmitWords();
             }
         }
-    }
-
-    stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-        if (this.countdownRAFId) {
-            cancelAnimationFrame(this.countdownRAFId);
-            this.countdownRAFId = null;
-        }
-    }
-
-    destroy() {
-        debug('🧹 Destroying PlayerManager...', 'info');
-        
-        this.stopTimer();
-        
-        if (this.client) {
-            this.client.disconnect();
-            this.client = null;
-        }
-        
-        this.myWords = [];
-        this.gameState = null;
-        this.elements = {};
     }
 
     async autoSubmitWords() {
@@ -962,19 +852,6 @@ class PlayerManager {
         }
 
         ModalManager_Instance.close();
-    }
-
-    handleConnectionLost() {
-        alert('Desconectado del servidor');
-        this.exitGame();
-    }
-
-    exitGame() {
-        if (this.client) {
-            this.client.disconnect();
-        }
-        this.clearSession();
-        location.reload();
     }
 }
 
