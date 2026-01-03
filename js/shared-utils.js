@@ -2,17 +2,12 @@
  * @file shared-utils.js
  * @description Centralization of services and shared utilities
  * 
- * 🔧 PHASE 2 (SYNC) - CONSOLIDATED:
- * - UNIFIED: ConfigService with extended server config
- * - SYNC: Client-side defaults match PHP constants
- * - ROBUST: Fallbacks for server failure aligned with PHP defaults
- * - DictionaryService loads app/diccionario.json and injects into wordEngine
- * - Flattens dictionary data for UI prompts
- * 
- * 🔧 PHASE 3 (NORMALIZATION) - FIXED:
- * - normalizeWord() function matches PHP cleanWordPrompt() behavior
- * - Word normalization consistent between server and client
- * - Accent removal, case conversion, special char filtering unified
+ * 🔧 SERVER-SIDE FIRST (Phase 4):
+ * - REMOVED: Download of app/diccionario.json from client
+ * - NEW: fetchGameCandidates() - Gets pre-generated codes from server
+ * - NEW: getDictionaryForRound(roundContext) - Uses mini-dictionary from server
+ * - DictionaryService now focused on round context, not full dictionary
+ * - WordEngine initialized with round_context on demand
  */
 
 // ============================================================================
@@ -41,7 +36,7 @@ function debug(message, data = null, type = 'log') {
 }
 
 // ============================================================================
-// WORD NORMALIZATION - UNIFIED ALGORITHM (Phase 3)
+// WORD NORMALIZATION - UNIFIED ALGORITHM
 // ============================================================================
 
 function normalizeWord(rawWord) {
@@ -418,142 +413,101 @@ class ConfigService {
 const configService = new ConfigService();
 
 // ============================================================================
-// DICTIONARY SERVICE - SINGLE SOURCE OF TRUTH
+// DICTIONARY SERVICE - SERVER-SIDE FIRST
 // ============================================================================
 
 class DictionaryService {
     constructor() {
-        this.rawDictionary = null;
-        this.flattenedWords = [];
-        this.categories = [];
+        this.gameCandidates = [];
         this.isReady = false;
         this.loadPromise = null;
     }
 
-    async load() {
-        if (this.isReady) {
-            return { rawDictionary: this.rawDictionary, flattenedWords: this.flattenedWords };
+    async fetchGameCandidates() {
+        if (this.gameCandidates.length > 0) {
+            return [...this.gameCandidates];
         }
-        if (this.loadPromise) return this.loadPromise;
-
-        this.loadPromise = (async () => {
-            debug('📚 Cargando diccionario desde app/diccionario.json...', null, 'info');
+        
+        try {
+            debug('🎯 Obteniendo candidatos de c\u00f3digos del servidor...', null, 'info');
             
-            try {
-                const response = await fetch('./app/diccionario.json', { 
-                    cache: 'no-store'
-                });
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_game_candidates' }),
+                cache: 'no-store'
+            });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: No se puede acceder a app/diccionario.json`);
-                }
-
-                const data = await response.json();
-                
-                if (!data || typeof data !== 'object') {
-                    throw new Error('Formato de diccionario inválido (no es un objeto JSON válido)');
-                }
-
-                this.rawDictionary = data;
-                this.categories = Object.keys(data).filter(k => {
-                    const v = data[k];
-                    return Array.isArray(v) || typeof v === 'object';
-                });
-
-                if (typeof wordEngine === 'undefined' || !wordEngine) {
-                    throw new Error('WordEngine not available for dictionary injection');
-                }
-
-                wordEngine.processDictionary(data);
-                debug('🔗 WordEngine initialized with diccionario.json', { entriesCount: Object.keys(wordEngine.dictionaryMap).length }, 'success');
-
-                this.flattenedWords = this._flattenDictionary(data);
-                this.isReady = true;
-
-                debug('📚 Diccionario completamente cargado', { categorias: this.categories.length, palabras: this.flattenedWords.length }, 'success');
-                return { rawDictionary: this.rawDictionary, flattenedWords: this.flattenedWords };
-
-            } catch (error) {
-                debug('❌ Error cargando diccionario: ' + error.message, null, 'error');
-                throw error;
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Error obteniendo candidatos`);
             }
-        })();
-        return this.loadPromise;
+
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.message || 'Error fetching candidates');
+            }
+
+            if (!Array.isArray(result.candidates) || result.candidates.length === 0) {
+                throw new Error('No candidates returned from server');
+            }
+
+            this.gameCandidates = result.candidates;
+            this.isReady = true;
+
+            debug('🎯 Candidatos cargados exitosamente', { count: this.gameCandidates.length }, 'success');
+            return [...this.gameCandidates];
+
+        } catch (error) {
+            debug('❌ Error obteniendo candidatos: ' + error.message, null, 'error');
+            throw error;
+        }
     }
 
-    _flattenDictionary(data) {
-        const words = [];
+    getRandomCandidate() {
+        if (this.gameCandidates.length === 0) {
+            throw new Error('No candidates loaded - call fetchGameCandidates() first');
+        }
+        const randomIndex = Math.floor(Math.random() * this.gameCandidates.length);
+        return { ...this.gameCandidates[randomIndex] };
+    }
+
+    getCandidatesByCategory(category) {
+        return this.gameCandidates.filter(c => c.category === category);
+    }
+
+    getDictionaryForRound(roundContext) {
+        if (!roundContext || typeof roundContext !== 'object') {
+            debug('⚠️  roundContext inv\u00e1lido, inicializando WordEngine sin diccionario', null, 'warn');
+            if (wordEngine && wordEngine.reset) {
+                wordEngine.reset();
+            }
+            return;
+        }
+
+        const { prompt, synonyms, variants } = roundContext;
         
-        Object.entries(data).forEach(([category, categoryContent]) => {
-            if (!Array.isArray(categoryContent)) return;
+        if (!prompt) {
+            debug('⚠️  roundContext.prompt faltante', null, 'warn');
+            if (wordEngine && wordEngine.reset) {
+                wordEngine.reset();
+            }
+            return;
+        }
 
-            categoryContent.forEach(hintObj => {
-                if (typeof hintObj !== 'object' || Array.isArray(hintObj)) return;
+        const miniDictionary = {
+            prompt: normalizeWord(prompt),
+            synonyms: (synonyms || []).map(w => normalizeWord(w)).filter(w => w.length > 0),
+            variants: (variants || []).map(w => normalizeWord(w)).filter(w => w.length > 0)
+        };
 
-                Object.entries(hintObj).forEach(([hint, wordsArray]) => {
-                    if (!Array.isArray(wordsArray)) return;
-
-                    wordsArray.forEach(wordEntry => {
-                        if (typeof wordEntry !== 'string' || wordEntry.length === 0) return;
-
-                        const normalized = normalizeWord(wordEntry);
-                        if (normalized.length > 0) {
-                            words.push(normalized);
-                        }
-                    });
-                });
-            });
-        });
-
-        return [...new Set(words)];
-    }
-
-    getCategories() {
-        if (!this.isReady) throw new Error('Llamar a load() primero');
-        return [...this.categories];
-    }
-
-    getFlattenedWords() {
-        if (!this.isReady) throw new Error('Llamar a load() primero');
-        return [...this.flattenedWords];
-    }
-
-    getTotalWordCount() {
-        if (!this.isReady) return 0;
-        return this.flattenedWords.length;
-    }
-
-    async getRandomWord() {
-        if (!this.isReady) await this.load();
-        if (this.flattenedWords.length === 0) return null;
-        const randomIndex = Math.floor(Math.random() * this.flattenedWords.length);
-        return this.flattenedWords[randomIndex];
-    }
-
-    getRandomWordByCategory(category, maxLength = null) {
-        if (!this.isReady) throw new Error('Llamar a load() primero');
-        
-        const categoryData = this.rawDictionary[category];
-        if (!categoryData || !Array.isArray(categoryData)) return null;
-        
-        const words = [];
-        categoryData.forEach(hintObj => {
-            if (typeof hintObj !== 'object' || Array.isArray(hintObj)) return;
-            Object.entries(hintObj).forEach(([hint, wordsArray]) => {
-                if (!Array.isArray(wordsArray)) return;
-                wordsArray.forEach(wordEntry => {
-                    if (typeof wordEntry !== 'string' || wordEntry.length === 0) return;
-                    const normalized = normalizeWord(wordEntry);
-                    if (normalized.length > 0 && (!maxLength || normalized.length <= maxLength)) {
-                        words.push(normalized);
-                    }
-                });
-            });
-        });
-        
-        if (words.length === 0) return null;
-        const uniqueWords = [...new Set(words)];
-        return uniqueWords[Math.floor(Math.random() * uniqueWords.length)];
+        if (wordEngine && typeof wordEngine.processDictionary === 'function') {
+            wordEngine.processDictionary(miniDictionary);
+            debug('🔗 WordEngine inicializado con mini-diccionario de ronda', miniDictionary, 'success');
+        } else {
+            debug('⚠️  WordEngine no tiene m\u00e9todo processDictionary', null, 'warn');
+        }
     }
 }
 
@@ -639,4 +593,4 @@ function showNotification(message, type = 'info') {
     }, 2000);
 }
 
-debug('✅ shared-utils.js cargado - ConfigService + DictionaryService + SessionManager + normalizeWord() centralizados', null, 'success');
+debug('✅ shared-utils.js cargado - Server-Side First: ConfigService + DictionaryService (fetchGameCandidates + getDictionaryForRound)', null, 'success');
