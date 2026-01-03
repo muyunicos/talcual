@@ -232,11 +232,7 @@ class CreateGameModal {
 
             await new Promise((r) => setTimeout(r, 500));
 
-            ModalSystem_Instance.closeAll();
-
-            if (typeof determineUIState === 'function') {
-                determineUIState();
-            }
+            window.location.reload();
         } catch (error) {
             debug('Error creando partida', error, 'error');
             
