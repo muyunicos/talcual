@@ -334,10 +334,9 @@ function handleStartRound($input) {
     $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
     if ($preferredCategory === '') $preferredCategory = null;
 
-    $picked = pickNonRepeatingPrompt($state, $preferredCategory);
-    $prompt = (string)($picked['prompt'] ?? 'JUEGO');
-    $preferredCategory = $picked['category'] ?? $preferredCategory;
-    $state['used_prompts'] = $picked['used_prompts'] ?? ($state['used_prompts'] ?? []);
+    $roundData = getQuestionAndAnswers($preferredCategory ?: (getCategories()[0] ?? null));
+    $question = $roundData['question'];
+    $answers = $roundData['answers'];
 
     $duration = intval($input['duration'] ?? $state['round_duration'] ?? ROUND_DURATION * 1000);
     $totalRounds = intval($input['total_rounds'] ?? $state['total_rounds'] ?? TOTAL_ROUNDS);
@@ -358,15 +357,34 @@ function handleStartRound($input) {
 
     $state['round']++;
     $state['status'] = 'playing';
-    $state['current_prompt'] = $prompt;
-    $state['current_category'] = $preferredCategory;
+    $state['current_prompt'] = $question;
+    $state['current_category'] = $preferredCategory ?: (getCategories()[0] ?? 'Sin categoría');
     $state['round_duration'] = $duration;
     $state['total_rounds'] = $totalRounds;
     $state['countdown_duration'] = $countdownDuration;
     $state['round_starts_at'] = $roundStartsAt;
     $state['round_started_at'] = $roundStartedAt;
     $state['round_ends_at'] = $roundEndsAt;
-    $state['round_context'] = getRoundContext($preferredCategory, $prompt);
+    
+    $state['round_context'] = [
+        'prompt' => $question,
+        'synonyms' => [],
+        'variants' => []
+    ];
+    
+    foreach ($answers as $answerGroup) {
+        $parts = explode('|', strtoupper($answerGroup));
+        foreach ($parts as $p) {
+            $cleaned = trim($p);
+            if ($cleaned) {
+                $state['round_context']['synonyms'][] = $cleaned;
+            }
+        }
+    }
+    
+    $state['round_context']['synonyms'] = array_unique($state['round_context']['synonyms']);
+    $state['round_context']['variants'] = $state['round_context']['synonyms'];
+    
     $state['last_update'] = time();
 
     foreach ($state['players'] as $pId => $player) {
