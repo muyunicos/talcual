@@ -16,7 +16,7 @@ class ModalSystem {
     const root = document.createElement('div');
     root.id = 'modal-system-root';
     root.innerHTML = `
-      <div id="modal-slot-1" class="modal-slot">
+      <div id="modal-slot-1" class="modal-slot hidden">
         <div class="modal-overlay">
           <div class="modal-content">
             <div class="modal-body"></div>
@@ -24,7 +24,7 @@ class ModalSystem {
           </div>
         </div>
       </div>
-      <div id="modal-slot-2" class="modal-slot">
+      <div id="modal-slot-2" class="modal-slot hidden">
         <div class="modal-overlay">
           <div class="modal-content">
             <div class="modal-body"></div>
@@ -32,7 +32,7 @@ class ModalSystem {
           </div>
         </div>
       </div>
-      <div id="modal-slot-3" class="modal-slot">
+      <div id="modal-slot-3" class="modal-slot hidden">
         <div class="modal-overlay">
           <div class="modal-content">
             <div class="modal-body"></div>
