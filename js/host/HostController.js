@@ -198,6 +198,7 @@ class HostManager extends BaseController {
     const roundResults = {};
     const scoreDeltas = {};
     const wordMatches = {};
+    const maxPointsPerPlayer = (this.gameState?.players && Object.keys(this.gameState.players).length > 0) ? 6 : 0;
 
     if (!state.roundData || !state.roundData.validMatches) {
       debug('⚠️ processRoundResults: no roundData', null, 'warn');
@@ -256,6 +257,13 @@ class HostManager extends BaseController {
 
       const pointsEarned = Object.values(playerResults).filter(r => r.matched).length;
       scoreDeltas[playerId] = pointsEarned;
+
+      if (pointsEarned > maxPointsPerPlayer) {
+        console.error(`❌ VALIDATION FAILED: Player ${playerId} earned ${pointsEarned} points (max: ${maxPointsPerPlayer})`);
+        console.error('Player answers:', player.answers);
+        console.error('Round results:', playerResults);
+        throw new Error(`Invalid points calculated: ${pointsEarned} > ${maxPointsPerPlayer}`);
+      }
     }
 
     const topWords = Object.entries(wordMatches)
@@ -307,6 +315,35 @@ class HostManager extends BaseController {
     if (!state.players) return;
 
     this.currentPlayers = Object.values(state.players);
+    
+    const playerElements = document.querySelectorAll('[data-player-id]');
+    playerElements.forEach(el => {
+      const playerId = el.getAttribute('data-player-id');
+      const player = state.players[playerId];
+      
+      if (!player) return;
+
+      const statusIndicator = el.querySelector('[data-player-status]');
+      if (statusIndicator) {
+        statusIndicator.textContent = '';
+        statusIndicator.className = 'player-status-indicator';
+
+        if (player.disconnected) {
+          statusIndicator.classList.add('disconnected');
+          statusIndicator.textContent = '⚠️';
+          statusIndicator.title = 'Jugador desconectado';
+        } else if (player.status === 'ready') {
+          statusIndicator.classList.add('ready');
+          statusIndicator.textContent = '✓';
+          statusIndicator.title = 'Listo';
+        } else if (player.status === 'typing') {
+          statusIndicator.classList.add('typing');
+          statusIndicator.textContent = '✎';
+          statusIndicator.title = 'Escribiendo...';
+        }
+      }
+    });
+
     this.view.updatePlayerList(state.players);
   }
 
@@ -424,7 +461,8 @@ class HostManager extends BaseController {
         this.view.setEndRoundButtonState('ready');
       }
     } catch (error) {
-      debug('Error finalizando ronda:', error, 'error');
+      debug('❌ Error finalizando ronda:', error, 'error');
+      console.error('Stack trace:', error.stack);
       showNotification('❌ Error de conexión', 'error');
       this.view.setEndRoundButtonState('ready');
     }
