@@ -70,11 +70,8 @@ function readNotificationFile($filePath) {
         return null;
     }
     $decoded = @json_decode($content, true);
-    if (is_array($decoded)) {
+    if (is_array($decoded) && isset($decoded['event'])) {
         return $decoded;
-    }
-    if (is_numeric(trim($content))) {
-        return ['counter' => (int)trim($content)];
     }
     return null;
 }
@@ -83,7 +80,7 @@ $notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
 $notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
 $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
 
-$lastNotifyContent = null;
+$lastNotifyHash = null;
 $startTime = microtime(true);
 $maxDuration = 3600;
 if (defined('SSE_TIMEOUT') && SSE_TIMEOUT > 0) {
@@ -100,7 +97,7 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with lightweight notifications',
+    'method' => 'SSE with lightweight JSON events',
     'max_duration_seconds' => $maxDuration
 ]);
 
@@ -121,9 +118,9 @@ while ((microtime(true) - $startTime) < $maxDuration) {
     }
     
     clearstatcache(false, $notifyFile);
-    $currentNotification = readNotificationFile($notifyFile);
+    $notification = readNotificationFile($notifyFile);
     
-    if ($currentNotification === null) {
+    if ($notification === null) {
         $now = microtime(true);
         $timeSinceHeartbeat = $now - $lastHeartbeatTime;
         
@@ -137,8 +134,8 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         continue;
     }
     
-    $notifyString = json_encode($currentNotification);
-    if ($notifyString === $lastNotifyContent) {
+    $notifyHash = json_encode($notification);
+    if ($notifyHash === $lastNotifyHash) {
         $now = microtime(true);
         $timeSinceHeartbeat = $now - $lastHeartbeatTime;
         
@@ -152,18 +149,22 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         continue;
     }
     
-    $lastNotifyContent = $notifyString;
+    $lastNotifyHash = $notifyHash;
     
-    $eventType = $currentNotification['event'] ?? 'full_update';
+    $eventType = $notification['event'];
+    $eventData = $notification['data'] ?? [];
     
-    if ($eventType === 'full_update' || $eventType === 'sync') {
+    if ($eventType === 'sync' || $eventType === 'refresh') {
         $state = loadGameState($gameId);
         if ($state) {
             sendSSE('update', $state);
-            logMessage("SSE full update enviado para {$gameId}", 'DEBUG');
+            $activePlayers = count(array_filter($state['players'], function($p) {
+                return !$p['disconnected'];
+            }));
+            logMessage("SSE full update enviado para {$gameId} ({$activePlayers} activos, status={$state['status']})", 'DEBUG');
         }
     } else {
-        sendSSE($eventType, $currentNotification);
+        sendSSE($eventType, $eventData);
         logMessage("SSE event '{$eventType}' enviado para {$gameId}", 'DEBUG');
     }
     
