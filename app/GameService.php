@@ -245,8 +245,9 @@ class GameService {
 
         $validAnswers = [];
         foreach ($answers as $word) {
-            $trimmed = trim($word);
-            $validAnswers[] = strtoupper($trimmed);
+            if (is_string($word)) {
+                $validAnswers[] = trim($word);
+            }
         }
 
         if (count($validAnswers) > MAX_WORDS_PER_PLAYER) {
