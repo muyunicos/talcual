@@ -162,45 +162,17 @@ class HostManager {
             btnHamburgerSettings.addEventListener('click', () => {
                 const hamburgerMenu = safeGetElement('hamburger-menu-host');
                 if (hamburgerMenu) hamburgerMenu.classList.remove('menu-open');
-                this.showSettingsModal();
+                if (window.settingsModal) {
+                    window.settingsModal.openModal('normal');
+                } else {
+                    debug('⚠️ SettingsModal no está disponible', null, 'warn');
+                }
             });
         }
     }
 
     showStartScreen() {
         window.createGameModal.openModal();
-    }
-
-    buildSettingsContent() {
-        const container = document.createElement('div');
-        container.innerHTML = `
-            <div class="input-group">
-                <label class="input-label" for="modal-rounds">Rondas</label>
-                <input type="number" id="modal-rounds" class="input-field"
-                       min="1" max="10" value="3" disabled>
-                <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">Se configura al crear la partida</small>
-            </div>
-            <div class="input-group">
-                <label class="input-label" for="modal-duration">Duración por Ronda (seg)</label>
-                <input type="number" id="modal-duration" class="input-field"
-                       min="30" max="300" value="90" disabled>
-                <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">Se configura al crear la partida</small>
-            </div>
-        `;
-        return container;
-    }
-
-    showSettingsModal() {
-        const content = this.buildSettingsContent();
-
-        ModalManager_Instance.show({
-            type: 'secondary',
-            title: '⚡ Información de Configuración',
-            content: content,
-            buttons: [
-                { label: 'Cerrar', class: 'btn', action: null, close: true }
-            ]
-        });
     }
 
     async setCategory(category) {
