@@ -122,16 +122,68 @@ function pickNonRepeatingPrompt($state, $preferredCategory = null) {
     return ['category' => $category, 'prompt' => $prompt, 'used_prompts' => $newUsedPrompts];
 }
 
+function handleGetGameCandidates($input) {
+    $categories = getCategories();
+    
+    if (empty($categories)) {
+        return ['success' => false, 'message' => 'No hay categorías disponibles'];
+    }
+    
+    $usedCodes = getActiveCodes();
+    $candidates = [];
+    
+    foreach ($categories as $category) {
+        $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+        
+        if (!$word) {
+            continue;
+        }
+        
+        $attempts = 0;
+        $maxAttempts = 20;
+        while (in_array($word, $usedCodes) && $attempts < $maxAttempts) {
+            $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+            $attempts++;
+        }
+        
+        if (!in_array($word, $usedCodes)) {
+            $candidates[] = [
+                'category' => $category,
+                'code' => $word
+            ];
+        }
+    }
+    
+    if (empty($candidates)) {
+        return ['success' => false, 'message' => 'No se pudieron generar códigos para las categorías'];
+    }
+    
+    return [
+        'success' => true,
+        'server_now' => intval(microtime(true) * 1000),
+        'candidates' => $candidates
+    ];
+}
+
 function handleCreateGame($input) {
     $gameId = sanitizeGameId($input['game_id'] ?? null);
+    $requestedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
+    if ($requestedCategory === '') $requestedCategory = null;
 
-    if (!$gameId || strlen($gameId) < 3) {
-        $gameId = generateGameCode();
-    } else {
+    if ($gameId) {
         $existingState = loadGameState($gameId);
         if ($existingState) {
-            $gameId = generateGameCode();
+            return ['success' => false, 'message' => 'El código de sala ya está en uso'];
         }
+        
+        if ($requestedCategory) {
+            $availableCategories = getCategories();
+            if (!in_array($requestedCategory, $availableCategories)) {
+                return ['success' => false, 'message' => 'Categoría no válida'];
+            }
+        }
+    } else {
+        $gameId = generateGameCode();
     }
 
     $totalRounds = intval($input['total_rounds'] ?? TOTAL_ROUNDS);
@@ -142,9 +194,6 @@ function handleCreateGame($input) {
     if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = ROUND_DURATION;
     if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
 
-    $selectedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
-    if ($selectedCategory === '') $selectedCategory = null;
-
     $serverNow = intval(microtime(true) * 1000);
     $state = [
         'game_id' => $gameId,
@@ -154,7 +203,7 @@ function handleCreateGame($input) {
         'status' => 'waiting',
         'current_word' => null,
         'current_category' => null,
-        'selected_category' => $selectedCategory,
+        'selected_category' => $requestedCategory,
         'used_prompts' => [],
         'round_duration' => $roundDuration * 1000,
         'round_started_at' => null,
@@ -773,6 +822,9 @@ try {
     $response = ['success' => false, 'message' => 'Acción no válida'];
 
     switch ($action) {
+        case 'get_game_candidates':
+            $response = handleGetGameCandidates($input);
+            break;
         case 'create_game':
             $response = handleCreateGame($input);
             break;
