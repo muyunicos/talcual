@@ -260,4 +260,4 @@ if (document.readyState === 'loading') {
     })();
 }
 
-console.log('%c✅ create-game-modal.js', 'color: #0066FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ GameSetup.js', 'color: #0066FF; font-weight: bold; font-size: 12px');

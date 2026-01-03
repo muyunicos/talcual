@@ -1,5 +1,5 @@
 /**
- * @file aura-system.js
+ * @file PlayerAura.js
  * @description Sistema de Auras Dinámicas - 12 colores base generan 4 auras + randomizador
  * Cada aura es un par de colores para gradientes vibrantes
  */

@@ -599,4 +599,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ HostController.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');

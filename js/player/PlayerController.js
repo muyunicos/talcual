@@ -987,4 +987,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ player-manager.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ PlayerController.js', 'color: #FF00FF; font-weight: bold; font-size: 12px');

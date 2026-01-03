@@ -332,4 +332,4 @@ if (document.readyState === 'loading') {
     })();
 }
 
-console.log('%c✅ settings-modal.js', 'color: #FF6B00; font-weight: bold; font-size: 12px');
+console.log('%c✅ GameSettings.js', 'color: #FF6B00; font-weight: bold; font-size: 12px');

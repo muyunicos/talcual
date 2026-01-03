@@ -215,4 +215,4 @@ class ModalManager {
 
 const ModalManager_Instance = new ModalManager();
 
-console.log('%c✅ modal-manager.js', 'color: #00FF00; font-weight: bold; font-size: 12px');
+console.log('%c✅ ModalSystem.js', 'color: #00FF00; font-weight: bold; font-size: 12px');

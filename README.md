@@ -10,13 +10,13 @@
 - **Salas Semánticas:** Los códigos de sala son únicos y se generan usando palabras reales del diccionario (`app/diccionario.json`) basadas en la categoría seleccionada.
 - **Tecnología SSE:** Actualizaciones en tiempo real mediante *Server-Sent Events*, optimizando la comunicación sin la sobrecarga de WebSockets.
 - **Interfaz Híbrida:** Optimizada para **Smart TV** (Vista Anfitrión/Host) y **Móviles** (Controlador de Jugador).
-- **Motor de Coincidencias:** Sistema inteligente de puntuación (`js/word-comparison.js`) que detecta coincidencias totales o parciales (género, plurales, sinónimos).
+- **Motor de Coincidencias:** Sistema inteligente de puntuación (`js/WordEngine.js`) que detecta coincidencias totales o parciales (género, plurales, sinónimos).
 - **Personalización:** Sistema de **Auras** (gradientes de color) para identificar a cada jugador.
 - **Configuración Total:** Control granular de las mecánicas y el servidor mediante archivo `.env`.
 
 ## 🧩 Sistema de Modales (UI)
 
-El juego implementa una arquitectura de interfaz robusta mediante un **Modal Manager** centralizado (`js/modal-manager.js`). Este sistema gestiona las ventanas emergentes utilizando una pila (stack) con **3 capas jerárquicas**, permitiendo superponer alertas críticas sin cerrar los menús de configuración:
+El juego implementa una arquitectura de interfaz robusta mediante un **Modal Manager** centralizado (`js/ModalSystem.js`). Este sistema gestiona las ventanas emergentes utilizando una pila (stack) con **3 capas jerárquicas**, permitiendo superponer alertas críticas sin cerrar los menús de configuración:
 
 1.  **Capa PRIMARY (Z-Index 1000):** Modales base del flujo de juego (ej. *Crear Partida*, *Unirse*).
 2.  **Capa SECONDARY (Z-Index 1100):** Formularios y opciones sobre la capa base (ej. *Configuración*, *Editar Nombre*).

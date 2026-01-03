@@ -220,4 +220,4 @@ const configService = {
     }
 };
 
-console.log('%c✅ shared-utils.js', 'color: #00aa00; font-weight: bold');
+console.log('%c✅ Utils.js', 'color: #00aa00; font-weight: bold');
