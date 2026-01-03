@@ -22,6 +22,7 @@
  * 🔧 PHASE 6-MODAL: Migrado a ModalManager unificado
  * 🔧 PHASE 2-SYNC: ConfigService + COMM_CONFIG sync after load
  * 🎯 FEATURE: Hurry Up (Remate) implemented - reduces round timer to threshold
+ * 🔧 PHASE 7-SHIMMED: Refactored to use gameCandidates via shimmed methods
  */
 
 class HostManager {
@@ -42,7 +43,6 @@ class HostManager {
         this.hurryUpActive = false;
 
         this.elements = {};
-        this.wordEngineReady = false;
         this.categories = [];
         this.categoryWordsMap = {};
 
@@ -70,7 +70,7 @@ class HostManager {
 
     async loadConfigAndInit() {
         try {
-            debug('⏳ Cargando configuración y diccionario...', null, 'info');
+            debug('⏳ Cargando configuración y candidatos...', null, 'info');
             
             const [configResult, dictResult] = await Promise.all([
                 configService.load(),
@@ -78,7 +78,7 @@ class HostManager {
             ]);
 
             debug('✅ ConfigService listo', null, 'success');
-            debug('✅ DictionaryService listo + WordEngine inicializado', null, 'success');
+            debug('✅ DictionaryService listo (candidatos cargados)', null, 'success');
 
             if (!configService.isConfigReady()) {
                 throw new Error('ConfigService no está en estado ready');
@@ -88,12 +88,7 @@ class HostManager {
                 throw new Error('DictionaryService no está en estado ready');
             }
 
-            if (!wordEngine || !wordEngine.isLoaded) {
-                throw new Error('WordEngine no fue inicializado por DictionaryService');
-            }
-
-            this.wordEngineReady = true;
-            debug('✅ Verificación exitosa: ConfigService + DictionaryService + WordEngine listos', null, 'success');
+            debug('✅ Verificación exitosa: ConfigService + DictionaryService listos', null, 'success');
 
             syncCommConfigWithServer(configService.config);
             debug('🔗 COMM_CONFIG sincronizado con servidor', null, 'success');
@@ -806,4 +801,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }, { once: true });
 
-console.log('%c✅ host-manager.js - Hurry Up (Remate) feature implemented', 'color: #FF00FF; font-weight: bold; font-size: 12px');
+console.log('%c✅ host-manager.js - Refactored to use gameCandidates via shimmed methods', 'color: #FF00FF; font-weight: bold; font-size: 12px');
