@@ -65,15 +65,24 @@ function readNotificationFile($filePath) {
     if (!file_exists($filePath)) {
         return null;
     }
+    
     $content = @file_get_contents($filePath);
     if (!$content) {
         return null;
     }
+    
     $decoded = @json_decode($content, true);
-    if (is_array($decoded) && isset($decoded['event'])) {
-        return $decoded;
+    
+    if (!is_array($decoded) || !isset($decoded['event'])) {
+        return ['error' => true, 'content' => $content];
     }
-    return null;
+    
+    return $decoded;
+}
+
+function isLightweightEvent($eventType) {
+    $lightweight = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'connection', 'typing'];
+    return in_array($eventType, $lightweight);
 }
 
 $notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
@@ -97,7 +106,7 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with lightweight JSON events',
+    'method' => 'SSE with event-driven notifications',
     'max_duration_seconds' => $maxDuration
 ]);
 
@@ -134,6 +143,15 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         continue;
     }
     
+    if (isset($notification['error']) && $notification['error']) {
+        logMessage("SSE notification JSON parsing failed for {$gameId}, forcing sync", 'ERROR');
+        sendSSE('sync', ['reason' => 'notification_parse_error']);
+        $lastNotifyHash = null;
+        $lastHeartbeatTime = microtime(true);
+        sleep(1);
+        continue;
+    }
+    
     $notifyHash = json_encode($notification);
     if ($notifyHash === $lastNotifyHash) {
         $now = microtime(true);
@@ -154,18 +172,21 @@ while ((microtime(true) - $startTime) < $maxDuration) {
     $eventType = $notification['event'];
     $eventData = $notification['data'] ?? [];
     
-    if ($eventType === 'sync' || $eventType === 'refresh') {
+    if (isLightweightEvent($eventType)) {
+        sendSSE($eventType, $eventData);
+        logMessage("SSE lightweight event '{$eventType}' enviado para {$gameId}", 'DEBUG');
+    } elseif ($eventType === 'sync' || $eventType === 'refresh') {
         $state = loadGameState($gameId);
         if ($state) {
             sendSSE('update', $state);
             $activePlayers = count(array_filter($state['players'], function($p) {
                 return !$p['disconnected'];
             }));
-            logMessage("SSE full update enviado para {$gameId} ({$activePlayers} activos, status={$state['status']})", 'DEBUG');
+            logMessage("SSE full state 'update' enviado para {$gameId} ({$activePlayers} activos, status={$state['status']})", 'DEBUG');
         }
     } else {
         sendSSE($eventType, $eventData);
-        logMessage("SSE event '{$eventType}' enviado para {$gameId}", 'DEBUG');
+        logMessage("SSE custom event '{$eventType}' enviado para {$gameId}", 'DEBUG');
     }
     
     $lastHeartbeatTime = microtime(true);
