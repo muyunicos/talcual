@@ -54,6 +54,10 @@ class PlayerManager extends BaseController {
     debug('📋 Inicializando PlayerManager');
     
     try {
+      if (typeof wordEngine === 'undefined') {
+        throw new Error('[PlayerManager] WordEngine not loaded');
+      }
+
       await configService.load();
       this.maxWords = configService.get('max_words_per_player', 6);
       
@@ -84,36 +88,13 @@ class PlayerManager extends BaseController {
   attachEventListeners() {
     this.view.bindAddWord(() => this.addWord());
     this.view.bindKeyPressInInput(() => this.addWord());
+    this.view.bindInputEvent(() => this.scheduleTypingEvent());
     this.view.bindSubmit(() => this.handleFinishButton());
     this.view.bindJoinGame((code, name) => this.joinGame(code, name));
-    this.attachTypingListener();
-  }
-
-  attachTypingListener() {
-    const inputElement = document.querySelector('[data-testid="word-input"]') || 
-                        document.querySelector('input[type="text"][placeholder*="Escribe"]') ||
-                        document.getElementById('wordInput');
-    
-    if (!inputElement) {
-      debug('⚠️ No input element found for typing listener', null, 'warn');
-      return;
-    }
-
-    inputElement.addEventListener('input', () => {
-      this.scheduleTypingEvent();
-    });
-
-    debug('✅ Typing listener attached to input', null, 'debug');
   }
 
   scheduleTypingEvent() {
-    const inputElement = document.querySelector('[data-testid="word-input"]') || 
-                        document.querySelector('input[type="text"][placeholder*="Escribe"]') ||
-                        document.getElementById('wordInput');
-    
-    if (!inputElement) return;
-
-    const currentInput = (inputElement.value || '').trim();
+    const currentInput = this.view.getInputValue();
     if (!currentInput) return;
 
     const now = Date.now();
