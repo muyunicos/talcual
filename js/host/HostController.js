@@ -211,6 +211,10 @@ class HostManager extends BaseController {
       return { roundResults, scoreDeltas, topWords: [] };
     }
 
+    if (!wordEngine.isReady()) {
+      debug('⚠️ WordEngine not ready, using fallback mode', null, 'warn');
+    }
+
     wordEngine.initializeFromRoundContext({
       roundQuestion: state.current_prompt || '',
       commonAnswers: validAnswers
@@ -322,6 +326,16 @@ class HostManager extends BaseController {
       const player = state.players[playerId];
       
       if (!player) return;
+
+      if (player.disconnected) {
+        el.style.opacity = '0.5';
+        el.style.pointerEvents = 'none';
+        el.setAttribute('data-disconnected', 'true');
+      } else {
+        el.style.opacity = '1';
+        el.style.pointerEvents = 'auto';
+        el.removeAttribute('data-disconnected');
+      }
 
       const statusIndicator = el.querySelector('[data-player-status]');
       if (statusIndicator) {
