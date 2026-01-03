@@ -1,45 +1,40 @@
-class HostManager {
+class HostManager extends BaseController {
     constructor(gameCode) {
+        super();
         this.gameCode = gameCode;
-        this.client = null;
         this.currentRound = 0;
         this.totalRounds = 3;
         this.remainingTime = 0;
-        this.timerInterval = null;
         this.activeTab = 'ranking';
         this.minPlayers = 2;
         this.currentPlayers = [];
-        this.gameState = {};
-        this.countdownRAFId = null;
         this.currentCategory = 'Sin categoría';
         this.roundEnded = false;
         this.hurryUpActive = false;
-
-        this.elements = {};
         this.categories = [];
         this.categoryWordsMap = {};
 
         this.loadConfigAndInit();
     }
 
-    hasActiveSession() {
-        return !!StorageManager.get(StorageKeys.HOST_GAME_CODE);
+    getStorageKeys() {
+        return {
+            primary: StorageKeys.HOST_GAME_CODE,
+            category: StorageKeys.HOST_CATEGORY
+        };
     }
 
     recoverSession() {
-        const gameCode = StorageManager.get(StorageKeys.HOST_GAME_CODE);
-        const category = StorageManager.get(StorageKeys.HOST_CATEGORY);
+        const keys = this.getStorageKeys();
+        const gameCode = StorageManager.get(keys.primary);
+        const category = StorageManager.get(keys.category);
         return gameCode ? { gameCode, category } : null;
     }
 
     saveSession(gameCode, category) {
-        StorageManager.set(StorageKeys.HOST_GAME_CODE, gameCode);
-        StorageManager.set(StorageKeys.HOST_CATEGORY, category || 'Sin categoría');
-    }
-
-    clearSession() {
-        StorageManager.remove(StorageKeys.HOST_GAME_CODE);
-        StorageManager.remove(StorageKeys.HOST_CATEGORY);
+        const keys = this.getStorageKeys();
+        StorageManager.set(keys.primary, gameCode);
+        StorageManager.set(keys.category, category || 'Sin categoría');
     }
 
     determineUIState() {
@@ -243,14 +238,7 @@ class HostManager {
         this.gameState = state;
         debug('📈 Estado actualizado:', null, 'debug');
 
-        if (state.server_now && state.round_starts_at && !timeSync.isCalibrated) {
-            timeSync.calibrateWithServerTime(
-                state.server_now,
-                state.round_starts_at,
-                state.round_ends_at,
-                state.round_duration
-            );
-        }
+        this.calibrateTimeSync(state);
 
         if (this.elements.headerRound) {
             const round = state.round || 0;
@@ -356,45 +344,6 @@ class HostManager {
         if (state.round_started_at && state.round_duration) {
             this.startContinuousTimer(state);
         }
-    }
-
-    async showCountdown(state) {
-        debug('⏱️ Iniciando countdown para host', null, 'debug');
-        const countdownDuration = state.countdown_duration || 4000;
-
-        safeShowElement(this.elements.countdownOverlay);
-        if (this.elements.countdownNumber) {
-            this.elements.countdownNumber.style.fontSize = 'inherit';
-        }
-
-        return new Promise((resolve) => {
-            const update = () => {
-                const nowServer = timeSync.getServerTime();
-                const elapsed = nowServer - state.round_starts_at;
-                const remaining = Math.max(0, countdownDuration - elapsed);
-                const seconds = Math.ceil(remaining / 1000);
-
-                if (this.elements.countdownNumber) {
-                    if (seconds > 3) {
-                        this.elements.countdownNumber.textContent = '¿Preparado?';
-                        this.elements.countdownNumber.style.fontSize = '1.2em';
-                    } else if (seconds > 0) {
-                        this.elements.countdownNumber.textContent = seconds.toString();
-                        this.elements.countdownNumber.style.fontSize = 'inherit';
-                    } else {
-                        this.elements.countdownNumber.textContent = '';
-                    }
-                }
-
-                if (remaining > 0) {
-                    this.countdownRAFId = requestAnimationFrame(update);
-                } else {
-                    safeHideElement(this.elements.countdownOverlay);
-                    resolve();
-                }
-            };
-            this.countdownRAFId = requestAnimationFrame(update);
-        });
     }
 
     async startRound() {
@@ -513,38 +462,6 @@ class HostManager {
         }
     }
 
-    startContinuousTimer(state) {
-        this.stopTimer();
-        this.updateTimerFromState(state);
-
-        this.timerInterval = setInterval(() => {
-            if (this.gameState && this.gameState.status === 'playing') {
-                this.updateTimerFromState(this.gameState);
-            }
-        }, 1000);
-    }
-
-    updateTimerFromState(state) {
-        if (!state.round_started_at) {
-            this.stopTimer();
-            return;
-        }
-
-        const remaining = GameTimer.getRemaining(state.round_started_at, state.round_duration);
-        GameTimer.updateDisplay(remaining, this.elements.headerTimer, '⏳');
-    }
-
-    stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-        if (this.countdownRAFId) {
-            cancelAnimationFrame(this.countdownRAFId);
-            this.countdownRAFId = null;
-        }
-    }
-
     async endGame() {
         if (!this.client) return;
 
@@ -560,34 +477,6 @@ class HostManager {
         } catch (error) {
             debug('Error terminando juego:', error, 'error');
         }
-    }
-
-    destroy() {
-        debug('🧹 Destroying HostManager...', null, 'info');
-
-        this.stopTimer();
-
-        if (this.client) {
-            this.client.disconnect();
-            this.client = null;
-        }
-
-        this.currentPlayers = [];
-        this.gameState = null;
-        this.elements = {};
-    }
-
-    handleConnectionLost() {
-        alert('Desconectado del servidor');
-        this.exitGame();
-    }
-
-    exitGame() {
-        if (this.client) {
-            this.client.disconnect();
-        }
-        this.clearSession();
-        location.reload();
     }
 }
 
