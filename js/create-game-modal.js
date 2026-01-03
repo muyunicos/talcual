@@ -4,14 +4,9 @@
 
 class CreateGameModal {
     constructor() {
-        this.btnCreate = document.getElementById('btn-create-game');
-        this.statusMessage = document.getElementById('status-message');
-
         this.gameCandidates = [];
         this.selectedCandidate = null;
         this.gameConfig = {};
-
-        this.init();
     }
 
     async fetchCandidates() {
@@ -77,13 +72,10 @@ class CreateGameModal {
                 throw new Error('No hay candidatos disponibles');
             }
 
-            this.btnCreate.addEventListener('click', () => this.handleCreateClick());
-
             debug('✅ CreateGameModal inicializado', { candidatos: this.gameCandidates.length }, 'success');
         } catch (error) {
             debug('❌ Error inicializando CreateGameModal', error, 'error');
-            this.showMessage('Error inicializando modal', 'error');
-            this.btnCreate.disabled = true;
+            throw error;
         }
     }
 
@@ -177,9 +169,6 @@ class CreateGameModal {
     }
 
     async handleCreateClick() {
-        this.btnCreate.disabled = true;
-        this.showMessage('Creando partida...', 'info');
-        
         try {
             if (!this.selectedCandidate || !this.selectedCandidate.code) {
                 throw new Error('No hay código seleccionado');
@@ -222,7 +211,7 @@ class CreateGameModal {
 
             hostSession.saveHostSession(result.game_id, category);
 
-            this.showMessage('Partida creada. Inicializando...', 'success');
+            showNotification('✅ Partida creada', 'success');
 
             await new Promise((r) => setTimeout(r, 500));
 
@@ -235,32 +224,28 @@ class CreateGameModal {
             debug('Error creando partida', error, 'error');
             
             if (error.name === 'AbortError') {
-                this.showMessage('Timeout: La solicitud tardó demasiado', 'error');
+                showNotification('⚠️ Timeout: La solicitud tardó demasiado', 'error');
             } else {
-                this.showMessage(error.message || 'Error creando partida', 'error');
+                showNotification('❌ ' + (error.message || 'Error creando partida'), 'error');
             }
-        } finally {
-            this.btnCreate.disabled = false;
-        }
-    }
-
-    showMessage(text, type = 'info') {
-        if (this.statusMessage) {
-            this.statusMessage.textContent = text;
-            this.statusMessage.className = `status-message-modal status-${type}`;
-            this.statusMessage.style.display = 'block';
-
-            setTimeout(() => {
-                this.statusMessage.style.display = 'none';
-            }, 2000);
         }
     }
 }
 
+let createGameModal = null;
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => new CreateGameModal());
+    document.addEventListener('DOMContentLoaded', async () => {
+        createGameModal = new CreateGameModal();
+        await createGameModal.init();
+        window.createGameModal = createGameModal;
+    });
 } else {
-    new CreateGameModal();
+    (async () => {
+        createGameModal = new CreateGameModal();
+        await createGameModal.init();
+        window.createGameModal = createGameModal;
+    })();
 }
 
 console.log('%c✅ create-game-modal.js', 'color: #0066FF; font-weight: bold; font-size: 12px');
