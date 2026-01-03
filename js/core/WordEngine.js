@@ -372,3 +372,11 @@ class WordEquivalenceEngine {
         this.debugMode = false;
     }
 }
+
+const wordEngine = new WordEquivalenceEngine();
+
+if (window.location.hostname === 'localhost') {
+    wordEngine.enableDebug();
+}
+
+console.log('%c✅ WordEngine.js loaded', 'color: #00aa00; font-weight: bold');
