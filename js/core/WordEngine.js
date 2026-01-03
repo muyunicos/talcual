@@ -140,7 +140,7 @@ class WordEquivalenceEngine {
         return word
             .toString()
             .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[̀-ͯ]/g, '')
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, '');
     }
@@ -199,6 +199,14 @@ class WordEquivalenceEngine {
     }
 
     getMatchType(word1, word2) {
+        if (typeof word1 !== 'string' || typeof word2 !== 'string') {
+            throw new Error(`[WordEngine] getMatchType requires two strings. Received: ${typeof word1}, ${typeof word2}`);
+        }
+
+        if (word1 === null || word2 === null || word1 === undefined || word2 === undefined) {
+            throw new Error('[WordEngine] getMatchType received null or undefined input');
+        }
+
         const n1 = this.normalize(word1);
         const n2 = this.normalize(word2);
 
@@ -285,10 +293,18 @@ class WordEquivalenceEngine {
     }
 
     areEquivalentWithType(word1, word2) {
+        if (typeof word1 !== 'string' || typeof word2 !== 'string') {
+            throw new Error(`[WordEngine] areEquivalentWithType requires two strings. Received: ${typeof word1}, ${typeof word2}`);
+        }
+
+        if (word1 === null || word2 === null || word1 === undefined || word2 === undefined) {
+            throw new Error('[WordEngine] areEquivalentWithType received null or undefined input');
+        }
+
         const matchType = this.getMatchType(word1, word2);
         
         if (this.debugMode && matchType) {
-            console.log(`🎯 areEquivalentWithType("${word1}", "${word2}"): type=${matchType}`);
+            console.log(`🎏 areEquivalentWithType("${word1}", "${word2}"): type=${matchType}`);
         }
         
         return {
