@@ -5,6 +5,7 @@ class BaseController {
         this.client = null;
         this.gameState = {};
         this.elements = {};
+        this.auraModule = new AuraModule();
     }
 
     getStorageKeys() {
@@ -38,6 +39,14 @@ class BaseController {
                 state.round_duration
             );
         }
+    }
+
+    createPlayerAuraNode(player) {
+        return this.auraModule.renderPlayerNode(player);
+    }
+
+    applyPlayerAura(colorStr) {
+        this.auraModule.applyColorGradient(colorStr);
     }
 
     startContinuousTimer(state, onTick = null) {
