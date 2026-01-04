@@ -39,7 +39,7 @@ class PlayerView {
     }
 
     if (elements.headerTimer) {
-      GameTimer.updateDisplay(null, elements.headerTimer, '⏳');
+      elements.headerTimer.textContent = '⏳ 00:00';
     }
 
     return elements;
@@ -187,11 +187,25 @@ class PlayerView {
   }
 
   updateTimer(remaining) {
-    GameTimer.updateDisplay(remaining, this.elements.headerTimer, '⏳');
+    if (!this.elements.headerTimer) return;
+
+    let ms = remaining;
+    if (ms === null || ms === undefined || ms < 0) {
+      ms = 0;
+    }
+
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    this.elements.headerTimer.textContent = `⏳ ${timeStr}`;
   }
 
   clearTimer() {
-    GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
+    if (this.elements.headerTimer) {
+      this.elements.headerTimer.textContent = '⏳ 00:00';
+    }
   }
 
   showWaitingState() {
@@ -199,7 +213,7 @@ class PlayerView {
     safeHideElement(this.elements.categoryLabel);
     safeShowElement(this.elements.waitingMessage);
     if (this.elements.waitingMessage) {
-      this.elements.waitingMessage.textContent = 'El anfitríon iniciará la ronda pronto';
+      this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
     }
     safeHideElement(this.elements.wordsInputSection);
     safeHideElement(this.elements.resultsSection);
