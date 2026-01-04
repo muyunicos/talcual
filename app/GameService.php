@@ -14,7 +14,6 @@ class GameService {
             throw new Exception('No hay categorías disponibles');
         }
 
-        $usedCodes = getActiveCodes();
         $candidates = [];
         $maxCategoryAttempts = 10;
 
@@ -25,7 +24,7 @@ class GameService {
             while ($categoryAttempts < $maxCategoryAttempts) {
                 $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
 
-                if (!$word || in_array($word, $usedCodes)) {
+                if (!$word || $this->repository->exists($word)) {
                     $categoryAttempts++;
                     continue;
                 }
@@ -39,7 +38,6 @@ class GameService {
                     'category' => $category,
                     'code' => $code
                 ];
-                $usedCodes[] = $code;
             }
         }
 
@@ -96,12 +94,6 @@ class GameService {
         ];
 
         $this->repository->save($gameId, $initialState);
-        
-        try {
-            trackGameAction($gameId, 'game_created', []);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in createGame: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'game_id' => $gameId,
@@ -148,12 +140,6 @@ class GameService {
         $state['last_update'] = time();
 
         $this->repository->save($gameId, $state);
-        
-        try {
-            trackGameAction($gameId, 'player_joined', ['player_name' => $playerName]);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in joinGame: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'message' => 'Te uniste al juego',
@@ -233,12 +219,6 @@ class GameService {
         }
 
         $this->repository->save($gameId, $state);
-        
-        try {
-            trackGameAction($gameId, 'round_started', ['round' => $state['round']]);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in startRound: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'message' => 'Ronda iniciada',
@@ -341,12 +321,6 @@ class GameService {
                 $state['players'][$pId]['answers'] = [];
                 $state['players'][$pId]['round_results'] = [];
             }
-
-            try {
-                trackGameAction($gameId, 'game_finished', []);
-            } catch (Throwable $t) {
-                logMessage('Analytics error in endRound (game_finished): ' . $t->getMessage(), 'WARNING');
-            }
         } else {
             $state['status'] = 'round_ended';
             $state['roundData'] = null;
@@ -358,12 +332,6 @@ class GameService {
         $state['countdown_duration'] = null;
 
         $this->repository->save($gameId, $state);
-        
-        try {
-            trackGameAction($gameId, 'round_ended', []);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in endRound: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'message' => 'Ronda finalizada',
@@ -400,12 +368,6 @@ class GameService {
         $state['last_update'] = time();
 
         $this->repository->save($gameId, $state);
-        
-        try {
-            trackGameAction($gameId, 'game_reset', []);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in resetGame: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'message' => 'Juego reiniciado',
@@ -438,12 +400,6 @@ class GameService {
         $state['last_update'] = time();
 
         $this->repository->save($gameId, $state);
-        
-        try {
-            trackGameAction($gameId, 'round_timer_updated', ['new_end_time' => $newEndTime]);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in updateRoundTimer: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'message' => 'Temporizador actualizado',
@@ -460,12 +416,6 @@ class GameService {
             $state['last_update'] = time();
 
             $this->repository->save($gameId, $state);
-            
-            try {
-                trackGameAction($gameId, 'player_left', []);
-            } catch (Throwable $t) {
-                logMessage('Analytics error in leaveGame: ' . $t->getMessage(), 'WARNING');
-            }
 
             return [
                 'message' => 'Saliste del juego'
@@ -493,12 +443,6 @@ class GameService {
         $state['last_update'] = time();
 
         $this->repository->save($gameId, $state);
-        
-        try {
-            trackGameAction($gameId, 'player_name_updated', []);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in updatePlayerName: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'message' => 'Nombre actualizado',
@@ -522,12 +466,6 @@ class GameService {
         $state['last_update'] = time();
 
         $this->repository->save($gameId, $state);
-        
-        try {
-            trackGameAction($gameId, 'player_color_updated', []);
-        } catch (Throwable $t) {
-            logMessage('Analytics error in updatePlayerColor: ' . $t->getMessage(), 'WARNING');
-        }
 
         return [
             'message' => 'Color actualizado',
