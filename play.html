@@ -12,6 +12,10 @@
 </head>
 <body>
     <div class="game-screen" id="game-screen" style="display: none;">
+        <div id="countdown-overlay" class="countdown-overlay hidden" role="status" aria-live="assertive" aria-label="Contador regresivo">
+            <div id="countdown-number" class="countdown-number" aria-atomic="true"></div>
+        </div>
+
         <div class="player-layout">
             <div class="top-header">
                 <div class="header-round" id="header-round" aria-live="polite" aria-label="Ronda actual"></div>
@@ -52,10 +56,6 @@
 
             <div class="results-section" id="results-section" role="region" aria-label="Resultados de la ronda"></div>
         </div>
-    </div>
-
-    <div class="countdown-overlay" id="countdown-overlay" role="status" aria-live="assertive" aria-label="Contador regresivo">
-        <div class="countdown-number" id="countdown-number" aria-atomic="true"></div>
     </div>
 
     <button class="btn-hamburger" id="btn-hamburger-player" aria-label="Abrir menú de opciones">
