@@ -19,6 +19,12 @@ const EVENT_TYPES = {
   'ACK': 'ack'
 };
 
+const SSE_EVENT_NAMES = [
+  'heartbeat', 'connected', 'game_ended', 'sync', 'update',
+  'player_joined', 'player_ready', 'player_left', 'player_updated',
+  'timer_updated', 'typing', 'connection', 'error'
+];
+
 const COMM_CONFIG = {
   HEARTBEAT_INTERVAL: 15000,
   MESSAGE_TIMEOUT: 35000,
@@ -257,6 +263,11 @@ class GameClient {
       this.eventSource = new EventSource(sseUrl);
       this.metrics.connectionStartTime = Date.now();
       this.eventSource.onopen = () => this.onConnectionOpen();
+      
+      SSE_EVENT_NAMES.forEach(eventName => {
+        this.eventSource.addEventListener(eventName, (event) => this.onSSEMessage(event));
+      });
+      
       this.eventSource.onmessage = (event) => this.onSSEMessage(event);
       this.eventSource.onerror = () => this.onSSEError();
     } catch (error) {
@@ -563,6 +574,7 @@ class GameClient {
 if (typeof window !== 'undefined') {
   window.COMM = {
     EVENT_TYPES,
+    SSE_EVENT_NAMES,
     COMM_CONFIG,
     validateAPIResponse,
     calculateReconnectDelay,
@@ -577,6 +589,7 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     EVENT_TYPES,
+    SSE_EVENT_NAMES,
     COMM_CONFIG,
     validateAPIResponse,
     calculateReconnectDelay,
