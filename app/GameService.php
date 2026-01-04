@@ -191,8 +191,8 @@ class GameService {
         $roundQuestion = $card['question'];
         $commonAnswers = $card['answers'];
 
-        if ($duration < 30000 || $duration > 300000) {
-            $duration = ($state['round_duration'] ?? ROUND_DURATION * 1000);
+        if ($duration < 10000 || $duration > 300000) {
+            $duration = defined('ROUND_DURATION') ? ROUND_DURATION * 1000 : 90000;
         }
 
         if ($totalRounds < 1 || $totalRounds > 10) {
