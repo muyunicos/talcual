@@ -2,6 +2,7 @@ class PlayerView {
   constructor(maxWords = 6) {
     this.maxWords = maxWords;
     this.elements = this.cacheElements();
+    this.initializeVisibility();
   }
 
   cacheElements() {
@@ -43,6 +44,12 @@ class PlayerView {
     }
 
     return elements;
+  }
+
+  initializeVisibility() {
+    if (this.elements.countdownOverlay) {
+      safeHideElement(this.elements.countdownOverlay);
+    }
   }
 
   bindAddWord(handler) {
