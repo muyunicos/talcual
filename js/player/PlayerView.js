@@ -368,6 +368,48 @@ class PlayerView {
     }
   }
 
+  showRoundResults(matches, allPlayers, playerScore) {
+    safeHideElement(this.elements.wordsInputSection);
+    safeHideElement(this.elements.currentWord);
+    safeHideElement(this.elements.categoryLabel);
+    safeHideElement(this.elements.waitingMessage);
+    safeHideElement(this.elements.countdownOverlay);
+    this.clearTimer();
+
+    if (!matches || matches.length === 0) {
+      if (this.elements.resultsSection) {
+        this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
+      }
+      safeShowElement(this.elements.resultsSection);
+      return;
+    }
+
+    let html = '<div class="results-title">📊 Tus Resultados</div>';
+
+    for (const match of matches) {
+      const icon = match.matched ? '✅' : '❌';
+      const word = sanitizeText(match.word);
+      let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match'}">`;
+      resultHtml += `<div class="result-word">${icon} ${word}</div>`;
+
+      if (match.matched && match.matchedPlayers && match.matchedPlayers.length > 0) {
+        const playerNames = match.matchedPlayers.map(name => sanitizeText(name)).join(', ');
+        resultHtml += `<div class="result-players">Coincidió con: ${playerNames}</div>`;
+      } else if (!match.matched) {
+        resultHtml += `<div class="result-players">Sin coincidencias</div>`;
+      }
+
+      resultHtml += '</div>';
+      html += resultHtml;
+    }
+
+    if (this.elements.resultsSection) {
+      this.elements.resultsSection.innerHTML = html;
+    }
+
+    safeShowElement(this.elements.resultsSection);
+  }
+
   showResults(myResults, myAnswers, isReady) {
     safeHideElement(this.elements.wordsInputSection);
     safeHideElement(this.elements.currentWord);
