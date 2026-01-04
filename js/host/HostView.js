@@ -2,6 +2,7 @@ class HostView {
   constructor() {
     this.elements = this.cacheElements();
     this.eventHandlers = new Map();
+    this.initializeVisibility();
   }
 
   cacheElements() {
@@ -34,6 +35,12 @@ class HostView {
     });
 
     return elements;
+  }
+
+  initializeVisibility() {
+    if (this.elements.countdownOverlay) {
+      safeHideElement(this.elements.countdownOverlay);
+    }
   }
 
   bindStartGame(handler) {
