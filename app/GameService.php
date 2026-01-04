@@ -271,10 +271,10 @@ class GameService {
 
         $state['players'][$playerId]['answers'] = $validAnswers;
 
-        $hasMaxWords = count($validAnswers) >= MAX_WORDS_PER_PLAYER;
-
-        if ($hasMaxWords || $forcedPass) {
+        if ($forcedPass) {
             $state['players'][$playerId]['status'] = 'ready';
+        } else {
+            $state['players'][$playerId]['status'] = 'playing';
         }
 
         $state['last_update'] = time();
