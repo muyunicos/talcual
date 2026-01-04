@@ -356,7 +356,7 @@ class GameClient {
         
         this.emit(eventName, eventPayload);
         
-        const knownEvents = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'timer_updated', 'typing', 'connection'];
+        const knownEvents = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'timer_updated', 'typing', 'connection', 'connected'];
         
         if (knownEvents.includes(eventName)) {
           this.unknownEventCount = 0;
@@ -376,6 +376,8 @@ class GameClient {
             this.emit('event:typing', eventPayload);
           } else if (eventName === 'connection') {
             this.emit('event:connection', eventPayload);
+          } else if (eventName === 'connected') {
+            this.emit('event:connected', eventPayload);
           }
         } else {
           this.unknownEventCount++;
