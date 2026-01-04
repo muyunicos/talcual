@@ -471,8 +471,13 @@ class HostManager extends BaseController {
         this.view.setHurryUpButtonState('active');
       }
     } catch (error) {
-      debug('Error activando remate:', error, 'error');
-      showNotification('❌ Error de conexión', 'error');
+      debug('❌ Error en activateHurryUp:', error, 'error');
+      console.error('activateHurryUp error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      showNotification('❌ Error activando remate', 'error');
       this.view.setHurryUpButtonState('active');
     }
   }
