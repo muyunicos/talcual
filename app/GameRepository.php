@@ -5,78 +5,8 @@ require_once __DIR__ . '/Database.php';
 class GameRepository {
     private $db = null;
 
-    public function __construct($gameStatesDir = null) {
+    public function __construct() {
         $this->db = Database::getInstance();
-        $this->initializeTables();
-    }
-
-    private function initializeTables() {
-        try {
-            $pdo = $this->db->getConnection();
-
-            $pdo->exec('CREATE TABLE IF NOT EXISTS games (
-                id TEXT PRIMARY KEY,
-                status TEXT NOT NULL,
-                round INTEGER NOT NULL DEFAULT 0,
-                total_rounds INTEGER NOT NULL DEFAULT 0,
-                current_prompt TEXT,
-                current_category TEXT,
-                selected_category TEXT,
-                min_players INTEGER NOT NULL DEFAULT 2,
-                round_duration INTEGER,
-                countdown_duration INTEGER,
-                round_started_at INTEGER,
-                round_starts_at INTEGER,
-                round_ends_at INTEGER,
-                data TEXT NOT NULL,
-                updated_at INTEGER NOT NULL DEFAULT 0
-            )');
-
-            $pdo->exec('CREATE TABLE IF NOT EXISTS players (
-                id TEXT NOT NULL,
-                game_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                score INTEGER NOT NULL DEFAULT 0,
-                status TEXT NOT NULL DEFAULT "connected",
-                color TEXT,
-                answers TEXT NOT NULL DEFAULT "[]",
-                round_results TEXT NOT NULL DEFAULT "{}",
-                disconnected INTEGER NOT NULL DEFAULT 0,
-                PRIMARY KEY (id, game_id),
-                FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-            )');
-
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_players_game_id ON players(game_id)');
-
-            $pdo->exec('CREATE TABLE IF NOT EXISTS categories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL
-            )');
-
-            $pdo->exec('CREATE TABLE IF NOT EXISTS prompts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                category_id INTEGER NOT NULL,
-                text TEXT NOT NULL,
-                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-            )');
-
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prompts_category_id ON prompts(category_id)');
-
-            $pdo->exec('CREATE TABLE IF NOT EXISTS valid_words (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                prompt_id INTEGER NOT NULL,
-                word_entry TEXT NOT NULL,
-                FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE
-            )');
-
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)');
-
-            logMessage('Database tables initialized successfully', 'DEBUG');
-
-        } catch (PDOException $e) {
-            logMessage('Error initializing tables: ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Database initialization error: ' . $e->getMessage());
-        }
     }
 
     public function load($gameId) {
