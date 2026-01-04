@@ -305,7 +305,7 @@ class HostManager extends BaseController {
 
   handleStateUpdate(state) {
     this.gameState = state;
-    debug('📈 Estado actualizado:', null, 'debug');
+    debug('📨 Estado actualizado:', null, 'debug');
 
     this.calibrateTimeSync(state);
 
@@ -349,7 +349,7 @@ class HostManager extends BaseController {
     debug(`🔍 Game Flow: ${readyPlayers.length}/${activePlayers.length} listos`, null, 'debug');
 
     if (readyPlayers.length === activePlayers.length && activePlayers.length > 0) {
-      debug('👫 TODOS listos - Auto-end ronda', null, 'info');
+      debug('🐫 TODOS listos - Auto-end ronda', null, 'info');
       this.endRound();
       return;
     }
@@ -365,7 +365,7 @@ class HostManager extends BaseController {
       const minTimeForHurryUp = 15000;
 
       if (remaining > minTimeForHurryUp) {
-        debug('🕫 Solo 1 jugador falta - Auto-Remate', null, 'info');
+        debug('🔫 Solo 1 jugador falta - Auto-Remate', null, 'info');
         this.activateHurryUp();
       }
     }
@@ -426,15 +426,8 @@ class HostManager extends BaseController {
         debug('✅ Ronda iniciada', null, 'success');
         const state = result.state;
 
-        if (state.round_starts_at) {
-          const nowServer = timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
-          const countdownDuration = state.countdown_duration || 4000;
-          const elapsedSinceStart = nowServer - state.round_starts_at;
-
-          if (elapsedSinceStart < countdownDuration) {
-            await this.showCountdown(state);
-          }
-        }
+        this.calibrateTimeSync(state);
+        await this.showCountdown(state);
 
         this.handleStateUpdate(state);
       } else {
@@ -545,33 +538,6 @@ class HostManager extends BaseController {
     } catch (error) {
       debug('Error terminando juego:', error, 'error');
     }
-  }
-
-  async showCountdown(state) {
-    debug('⏱️ Iniciando countdown', 'debug');
-    const countdownDuration = state.countdown_duration || 4000;
-
-    this.view.showCountdownOverlay();
-
-    return new Promise((resolve) => {
-      const update = () => {
-        const nowServer = timeSync.getServerTime();
-        const elapsed = nowServer - state.round_starts_at;
-        const remaining = Math.max(0, countdownDuration - elapsed);
-        const seconds = Math.ceil(remaining / 1000);
-
-        this.view.updateCountdownNumber(seconds);
-
-        if (remaining > 0) {
-          requestAnimationFrame(update);
-        } else {
-          this.view.hideCountdownOverlay();
-          resolve();
-        }
-      };
-
-      requestAnimationFrame(update);
-    });
   }
 }
 
