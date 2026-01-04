@@ -20,12 +20,15 @@ class HostView {
       btnStartRound: safeGetElement('btn-start-round'),
       btnHurryUp: safeGetElement('btn-hurry-up'),
       btnEndGame: safeGetElement('btn-end-game'),
+      btnEndRound: null,
       centerStage: safeGetElement('center-stage'),
       categorySticker: safeGetElement('category-sticker')
     };
 
+    elements.btnEndRound = document.querySelector('[aria-label="Botón para terminar la ronda"], .btn-end-round');
+
     Object.entries(elements).forEach(([key, el]) => {
-      if (!el) {
+      if (!el && key !== 'btnEndRound') {
         throw new Error(`[HostView] Critical element not found: ${key}`);
       }
     });
@@ -122,11 +125,25 @@ class HostView {
   }
 
   updateTimer(remaining) {
-    GameTimer.updateDisplay(remaining, this.elements.headerTimer, '⏳');
+    if (!this.elements.headerTimer) return;
+
+    let ms = remaining;
+    if (ms === null || ms === undefined || ms < 0) {
+      ms = 0;
+    }
+
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    this.elements.headerTimer.textContent = `⏳ ${timeStr}`;
   }
 
   clearTimer() {
-    GameTimer.updateDisplay(null, this.elements.headerTimer, '⏳');
+    if (this.elements.headerTimer) {
+      this.elements.headerTimer.textContent = '⏳ 00:00';
+    }
   }
 
   updatePlayerList(players) {
@@ -219,7 +236,7 @@ class HostView {
     if (!this.elements.btnStartRound) return;
 
     const states = {
-      'disabled': { disabled: true, text: '🔒 Esperando', visible: true },
+      'disabled': { disabled: true, text: '🔐 Esperando', visible: true },
       'ready': { disabled: false, text: '🎮 Iniciar Ronda', visible: true },
       'playing': { disabled: true, text: '▶️ En Juego', visible: true },
       'next_round': { disabled: false, text: '🎮 Siguiente Ronda', visible: true },
@@ -250,6 +267,28 @@ class HostView {
       safeShowElement(this.elements.btnHurryUp);
     } else {
       safeHideElement(this.elements.btnHurryUp);
+    }
+  }
+
+  setEndRoundButtonLoading() {
+    if (!this.elements.btnEndRound) {
+      this.elements.btnEndRound = document.querySelector('.btn-end-round, [aria-label*="Terminar"]');
+    }
+    if (this.elements.btnEndRound) {
+      this.elements.btnEndRound.disabled = true;
+      this.elements.btnEndRound.textContent = '⏳ Finalizando...';
+      this.elements.btnEndRound.classList.add('loading');
+    }
+  }
+
+  setEndRoundButtonState(state) {
+    if (!this.elements.btnEndRound) {
+      this.elements.btnEndRound = document.querySelector('.btn-end-round, [aria-label*="Terminar"]');
+    }
+    if (this.elements.btnEndRound) {
+      this.elements.btnEndRound.disabled = false;
+      this.elements.btnEndRound.textContent = '🎯 Terminar Ronda';
+      this.elements.btnEndRound.classList.remove('loading');
     }
   }
 
