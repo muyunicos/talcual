@@ -48,6 +48,29 @@ class GameRepository {
 
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_players_game_id ON players(game_id)');
 
+            $pdo->exec('CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL
+            )');
+
+            $pdo->exec('CREATE TABLE IF NOT EXISTS prompts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+            )');
+
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prompts_category_id ON prompts(category_id)');
+
+            $pdo->exec('CREATE TABLE IF NOT EXISTS valid_words (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                prompt_id INTEGER NOT NULL,
+                word_entry TEXT NOT NULL,
+                FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE
+            )');
+
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)');
+
             logMessage('Database tables initialized successfully', 'DEBUG');
 
         } catch (PDOException $e) {
