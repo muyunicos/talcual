@@ -9,6 +9,7 @@ function safeGetElement(id) {
 function safeShowElement(el) {
     if (el) {
         el.classList.remove('hidden');
+        el.style.display = '';
     }
 }
 
