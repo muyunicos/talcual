@@ -1,45 +1,65 @@
 # --- SEGURIDAD: Bloquear listado de directorios ---
-# Evita que se vean todos los archivos si entran a una carpeta sin index
 Options -Indexes
 
-# --- SEGURIDAD: Proteger archivos ocultos y sensibles ---
-# Bloquea acceso a .env, .git, .htaccess, etc.
+# --- SEGURIDAD: Proteger archivos ocultos ---
 <FilesMatch "^\.">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# EXCEPCIÓN: Permitir validación SSL (si usas Let's Encrypt en Hostinger)
+# Permitir SSL
 <FilesMatch "^\.well-known">
     Order allow,deny
     Allow from all
 </FilesMatch>
+
+# --- PHP: Configuración de Logs (LO QUE PEDISTE) ---
+# Solo se ejecuta si el servidor usa mod_php (evita Error 500 en FPM)
+<IfModule mod_php.c>
+    php_flag log_errors on
+    php_flag display_errors off
+    php_value error_reporting 32767
+    # NOTA: Si no se crea el archivo, intenta poner la ruta completa aquí
+    # Ej: /home/u12345/domains/talcual/public_html/error_log.txt
+    php_value error_log "error_log.txt"
+</IfModule>
+<IfModule mod_php5.c>
+    php_flag log_errors on
+    php_flag display_errors off
+    php_value error_reporting 32767
+    php_value error_log "error_log.txt"
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag log_errors on
+    php_flag display_errors off
+    php_value error_reporting 32767
+    php_value error_log "error_log.txt"
+</IfModule>
 
 # --- PHP: Handler ---
 <FilesMatch "\.php$">
     AddType application/x-httpd-php .php
 </FilesMatch>
 
-# --- CORS: Configuración ---
+# --- CORS ---
 <IfModule mod_headers.c>
     Header set Access-Control-Allow-Origin "*"
     Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 </IfModule>
 
-# --- SEGURIDAD: Bloquear acceso directo a JSON ---
+# --- Bloqueo JSON ---
 <FilesMatch "\.json$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# EXCEPCIÓN: Permitir config.json
 <Files "config.json">
     Order allow,deny
     Allow from all
 </Files>
 
-# --- CACHE: Optimización ---
+# --- CACHE ---
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType image/jpeg "access plus 1 year"
@@ -52,16 +72,14 @@ Options -Indexes
     ExpiresByType application/x-javascript "access plus 1 month"
 </IfModule>
 
-# --- ROUTING: Single Page Application ---
+# --- ROUTING SPA ---
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
     
-    # No reescribir si es un archivo o directorio real
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
-    # Si es un archivo estático o la raíz, servir index.html
     RewriteCond %{REQUEST_FILENAME} \.(js|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf)$ [OR]
     RewriteCond %{REQUEST_FILENAME} /$ 
     RewriteRule ^ index.html [L]
