@@ -7,11 +7,16 @@ function safeGetElement(id) {
 }
 
 function safeShowElement(el) {
-    if (el) el.style.display = '';
+    if (el) {
+        el.classList.remove('hidden');
+        el.style.display = '';
+    }
 }
 
 function safeHideElement(el) {
-    if (el) el.style.display = 'none';
+    if (el) {
+        el.classList.add('hidden');
+    }
 }
 
 function sanitizeText(text) {
