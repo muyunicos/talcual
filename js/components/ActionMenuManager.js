@@ -43,13 +43,18 @@ class ActionMenuManager {
     }
 
     handleAction(actionId) {
-        if (this.role === 'host' && window.hostManager) {
+        if (this.role === 'host') {
+            if (!window.hostManager) {
+                console.error('❌ hostManager no está disponible');
+                return;
+            }
+
             switch (actionId) {
                 case 'hamburger-restart-round':
-                    hostManager.startRound();
+                    window.hostManager.startRound();
                     break;
                 case 'hamburger-new-game':
-                    hostManager.showStartScreen();
+                    window.hostManager.showStartScreen();
                     break;
                 case 'hamburger-settings':
                     if (window.settingsModal) {
@@ -57,16 +62,21 @@ class ActionMenuManager {
                     }
                     break;
                 case 'hamburger-terminate':
-                    hostManager.endGame();
+                    window.hostManager.endGame();
                     break;
             }
-        } else if (this.role === 'player' && window.playerManager) {
+        } else if (this.role === 'player') {
+            if (!window.playerManager) {
+                console.error('❌ playerManager no está disponible');
+                return;
+            }
+
             switch (actionId) {
                 case 'hamburger-customize':
-                    playerManager.showEditNameModal();
+                    window.playerManager.showEditNameModal();
                     break;
                 case 'hamburger-abandon':
-                    playerManager.exitGame();
+                    window.playerManager.exitGame();
                     break;
             }
         }
@@ -89,11 +99,27 @@ class ActionMenuManager {
     }
 
     updateOptions(gameState) {
+        if (!gameState) return;
+
         const restartBtn = this.menu.querySelector('#hamburger-restart-round');
         if (restartBtn) {
-            const canRestart = gameState?.status === 'waiting';
+            const canRestart = gameState.status === 'playing' || 
+                              gameState.status === 'round_ended' || 
+                              gameState.status === 'waiting';
             restartBtn.disabled = !canRestart;
             restartBtn.style.opacity = canRestart ? "1" : "0.5";
+        }
+
+        const terminateBtn = this.menu.querySelector('#hamburger-terminate');
+        if (terminateBtn) {
+            terminateBtn.disabled = false;
+            terminateBtn.style.opacity = "1";
+        }
+
+        const settingsBtn = this.menu.querySelector('#hamburger-settings');
+        if (settingsBtn) {
+            settingsBtn.disabled = false;
+            settingsBtn.style.opacity = "1";
         }
     }
 }
