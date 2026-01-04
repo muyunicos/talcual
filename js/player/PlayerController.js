@@ -473,16 +473,70 @@ class PlayerManager extends BaseController {
     }
   }
 
+  calculateLocalMatches(myAnswers, allPlayers, myPlayerId) {
+    const matches = [];
+
+    if (!myAnswers || !Array.isArray(myAnswers) || myAnswers.length === 0) {
+      debug('⚠️ No hay respuestas para calcular', 'warn');
+      return matches;
+    }
+
+    for (const myWord of myAnswers) {
+      const myCanonical = this.getCanonicalForCompare(myWord);
+      const matchedPlayers = [];
+
+      for (const [otherPlayerId, otherPlayer] of Object.entries(allPlayers)) {
+        if (otherPlayerId === myPlayerId) continue;
+        if (!otherPlayer.answers || !Array.isArray(otherPlayer.answers)) continue;
+
+        for (const otherWord of otherPlayer.answers) {
+          const otherCanonical = this.getCanonicalForCompare(otherWord);
+          
+          if (myCanonical && otherCanonical && myCanonical === otherCanonical) {
+            matchedPlayers.push(otherPlayer.name || otherPlayerId);
+            break;
+          }
+        }
+      }
+
+      matches.push({
+        word: myWord,
+        matched: matchedPlayers.length > 0,
+        matchedPlayers: matchedPlayers,
+        count: matchedPlayers.length
+      });
+    }
+
+    debug('🎯 Coincidencias calculadas:', matches, 'debug');
+    return matches;
+  }
+
   showResults(state) {
     const me = state.players?.[this.playerId];
     const myResults = me?.round_results;
     const myAnswers = me?.answers;
 
-    this.view.showResults(myResults, myAnswers, this.isReady);
+    if (state.status === 'round_ended' && myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0) {
+      debug('🔍 Calculando coincidencias localmente en round_ended', 'debug');
+      const localMatches = this.calculateLocalMatches(myAnswers, state.players, this.playerId);
+      this.view.showRoundResults(localMatches, state.players, me?.score || 0);
+    } else {
+      this.view.showResults(myResults, myAnswers, this.isReady);
+    }
   }
 
   showFinalResults(state) {
-    this.showResults(state);
+    const me = state.players?.[this.playerId];
+    const myAnswers = me?.answers;
+
+    if (myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0) {
+      debug('🏁 Calculando coincidencias finales en finished', 'debug');
+      const localMatches = this.calculateLocalMatches(myAnswers, state.players, this.playerId);
+      this.view.showRoundResults(localMatches, state.players, me?.score || 0);
+    } else {
+      this.view.showResults(me?.round_results, myAnswers, this.isReady);
+    }
+
     this.view.showFinalResults();
   }
 
