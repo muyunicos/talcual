@@ -129,6 +129,29 @@ class HostManager extends BaseController {
     this.view.bindRemovePlayer((playerId) => this.handleRemovePlayer(playerId));
   }
 
+  attachSSEListeners() {
+    if (!this.client) return;
+
+    this.client.on('event:player_joined', () => {
+      debug('👉 Event: player_joined detected, refreshing', null, 'info');
+      this.client.forceRefresh();
+    });
+
+    this.client.on('event:player_left', () => {
+      debug('👈 Event: player_left detected, refreshing', null, 'info');
+      this.client.forceRefresh();
+    });
+
+    this.client.on('event:player_updated', () => {
+      debug('🔃 Event: player_updated detected, refreshing', null, 'info');
+      this.client.forceRefresh();
+    });
+
+    this.client.on('event:heartbeat', () => {
+      debug('💓 Heartbeat pulse received', null, 'debug');
+    });
+  }
+
   showStartScreen() {
     window.createGameModal.openModal();
   }
@@ -168,6 +191,7 @@ class HostManager extends BaseController {
 
     this.client.onStateUpdate = (s) => this.handleStateUpdate(s);
     this.client.onConnectionLost = () => this.handleConnectionLost();
+    this.attachSSEListeners();
     this.client.connect();
 
     this.handleStateUpdate(state);
