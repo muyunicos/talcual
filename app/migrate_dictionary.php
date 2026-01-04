@@ -240,19 +240,39 @@ class DictionaryManager {
     }
 }
 
-function printHeader($title) {
+function isCliContext() {
+    return php_sapi_name() === 'cli' || php_sapi_name() === 'cli-server';
+}
+
+function getCommandInput() {
+    if (isCliContext()) {
+        return isset($GLOBALS['argv'][1]) ? $GLOBALS['argv'][1] : null;
+    } else {
+        return isset($_GET['cmd']) ? $_GET['cmd'] : null;
+    }
+}
+
+function getArguments() {
+    if (isCliContext()) {
+        return array_slice($GLOBALS['argv'], 2);
+    } else {
+        return isset($_GET['args']) ? explode(',', $_GET['args']) : [];
+    }
+}
+
+function printCliHeader($title) {
     echo "\n" . str_repeat("=", 70) . "\n";
     echo "{$title}\n";
     echo str_repeat("=", 70) . "\n\n";
 }
 
-function printSubHeader($title) {
+function printCliSubHeader($title) {
     echo "\n" . str_repeat("-", 70) . "\n";
     echo "{$title}\n";
     echo str_repeat("-", 70) . "\n\n";
 }
 
-function printStats(DictionaryManager $manager) {
+function printCliStats(DictionaryManager $manager) {
     $stats = $manager->getStats();
     echo "📈 ESTADO ACTUAL DE BASE DE DATOS\n";
     echo "   Categorías:  " . $stats['categories'] . "\n";
@@ -260,185 +280,269 @@ function printStats(DictionaryManager $manager) {
     echo "   Palabras:    " . $stats['words'] . "\n\n";
 }
 
+function jsonResponse($success, $data = null, $message = null) {
+    header('Content-Type: application/json; charset=utf-8');
+    $response = [
+        'success' => $success,
+        'timestamp' => date('Y-m-d H:i:s'),
+        'data' => $data
+    ];
+    if ($message) {
+        $response['message'] = $message;
+    }
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+}
+
 try {
+    $isHttp = !isCliContext();
     $manager = new DictionaryManager();
 
-    printHeader("📚 TalCual Dictionary Manager (SQLite)");
+    if ($isHttp) {
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            header('Content-Length: 0');
+            exit(0);
+        }
+    }
 
-    echo "Available commands:\n";
-    echo "  list_categories       - List all categories\n";
-    echo "  list_prompts          - List all prompts\n";
-    echo "  list_words            - List all valid words\n";
-    echo "  full_dictionary       - Show full dictionary structure\n";
-    echo "  add_category          - Add a new category\n";
-    echo "  add_prompt            - Add a new prompt to category\n";
-    echo "  add_words             - Add multiple words to prompt\n";
-    echo "  delete_category       - Delete a category\n";
-    echo "  delete_prompt         - Delete a prompt\n";
-    echo "  delete_word           - Delete a word\n";
-    echo "  stats                 - Show database statistics\n";
-    echo "\n";
+    $command = getCommandInput();
+    $args = getArguments();
 
-    $command = isset($argv[1]) ? $argv[1] : 'stats';
-    $args = array_slice($argv, 2);
+    if (!$command || $command === 'stats') {
+        $stats = $manager->getStats();
+        
+        if ($isHttp) {
+            jsonResponse(true, $stats);
+        } else {
+            printCliSubHeader("📈 Dictionary Statistics");
+            printCliStats($manager);
+            exit(0);
+        }
+    }
 
     switch ($command) {
         case 'list_categories':
-            printSubHeader("🗄️ Categories");
             $categories = $manager->getCategories();
-            foreach ($categories as $cat) {
-                echo "[{$cat['id']}] {$cat['name']}\n";
+            if ($isHttp) {
+                jsonResponse(true, $categories);
+            } else {
+                printCliSubHeader("🗂️  Categories");
+                foreach ($categories as $cat) {
+                    echo "[{$cat['id']}] {$cat['name']}\n";
+                }
+                echo "\n";
             }
-            echo "\n";
             break;
 
         case 'list_prompts':
-            printSubHeader("📄 Prompts");
             $categoryId = isset($args[0]) ? (int)$args[0] : null;
             $prompts = $manager->getPrompts($categoryId);
-            foreach ($prompts as $prompt) {
-                echo "[{$prompt['id']}] Cat#{$prompt['category_id']}: {$prompt['text']}\n";
+            if ($isHttp) {
+                jsonResponse(true, $prompts);
+            } else {
+                printCliSubHeader("📄 Prompts");
+                foreach ($prompts as $prompt) {
+                    echo "[{$prompt['id']}] Cat#{$prompt['category_id']}: {$prompt['text']}\n";
+                }
+                echo "\n";
             }
-            echo "\n";
             break;
 
         case 'list_words':
-            printSubHeader("🔍 Valid Words");
             $promptId = isset($args[0]) ? (int)$args[0] : null;
             $words = $manager->getValidWords($promptId);
-            foreach ($words as $word) {
-                echo "[{$word['id']}] Prompt#{$word['prompt_id']}: {$word['word_entry']}\n";
+            if ($isHttp) {
+                jsonResponse(true, $words);
+            } else {
+                printCliSubHeader("🔍 Valid Words");
+                foreach ($words as $word) {
+                    echo "[{$word['id']}] Prompt#{$word['prompt_id']}: {$word['word_entry']}\n";
+                }
+                echo "\n";
             }
-            echo "\n";
             break;
 
         case 'full_dictionary':
-            printSubHeader("📚 Full Dictionary Structure");
             $dict = $manager->getFullDictionary();
-            $lastCategory = null;
-            $lastPrompt = null;
-            foreach ($dict as $row) {
-                if ($row['category_name'] !== $lastCategory) {
-                    echo "\n📅 {$row['category_name']}\n";
-                    $lastCategory = $row['category_name'];
-                    $lastPrompt = null;
+            if ($isHttp) {
+                jsonResponse(true, $dict);
+            } else {
+                printCliSubHeader("📚 Full Dictionary Structure");
+                $lastCategory = null;
+                $lastPrompt = null;
+                foreach ($dict as $row) {
+                    if ($row['category_name'] !== $lastCategory) {
+                        echo "\n📋 {$row['category_name']}\n";
+                        $lastCategory = $row['category_name'];
+                        $lastPrompt = null;
+                    }
+                    if ($row['prompt_text'] && $row['prompt_text'] !== $lastPrompt) {
+                        echo "  ↓ {$row['prompt_text']}\n";
+                        $lastPrompt = $row['prompt_text'];
+                    }
+                    if ($row['word_entry']) {
+                        echo "     - {$row['word_entry']}\n";
+                    }
                 }
-                if ($row['prompt_text'] && $row['prompt_text'] !== $lastPrompt) {
-                    echo "  ↓ {$row['prompt_text']}\n";
-                    $lastPrompt = $row['prompt_text'];
-                }
-                if ($row['word_entry']) {
-                    echo "     - {$row['word_entry']}\n";
-                }
+                echo "\n";
             }
-            echo "\n";
             break;
 
         case 'add_category':
             if (empty($args)) {
-                echo "\n⚠️  Usage: php migrate_dictionary.php add_category 'Category Name'\n\n";
-                exit(1);
-            }
-            printSubHeader("➕ Adding Category");
-            $categoryName = $args[0];
-            $result = $manager->addCategory($categoryName);
-            if ($result) {
-                echo "✅ Category added: #{$result['id']} {$result['name']}\n\n";
+                if ($isHttp) {
+                    jsonResponse(false, null, 'Missing required parameter: category name');
+                } else {
+                    echo "\n⚠️  Usage: php migrate_dictionary.php add_category 'Category Name'\n\n";
+                    exit(1);
+                }
             } else {
-                echo "⚠️  Category already exists: {$categoryName}\n\n";
+                $categoryName = $args[0];
+                $result = $manager->addCategory($categoryName);
+                if ($isHttp) {
+                    jsonResponse(true, $result);
+                } else {
+                    printCliSubHeader("➕ Adding Category");
+                    echo "✅ Category added: #{$result['id']} {$result['name']}\n\n";
+                }
             }
             break;
 
         case 'add_prompt':
             if (count($args) < 2) {
-                echo "\n⚠️  Usage: php migrate_dictionary.php add_prompt <category_id> 'Prompt Text'\n\n";
-                exit(1);
+                if ($isHttp) {
+                    jsonResponse(false, null, 'Missing required parameters: category_id, prompt_text');
+                } else {
+                    echo "\n⚠️  Usage: php migrate_dictionary.php add_prompt <category_id> 'Prompt Text'\n\n";
+                    exit(1);
+                }
+            } else {
+                $categoryId = (int)$args[0];
+                $promptText = $args[1];
+                $promptId = $manager->addPrompt($categoryId, $promptText);
+                if ($isHttp) {
+                    jsonResponse(true, ['id' => $promptId]);
+                } else {
+                    printCliSubHeader("➕ Adding Prompt");
+                    echo "✅ Prompt added: #{$promptId}\n";
+                    echo "   Category: #{$categoryId}\n";
+                    echo "   Text: {$promptText}\n\n";
+                }
             }
-            printSubHeader("➕ Adding Prompt");
-            $categoryId = (int)$args[0];
-            $promptText = $args[1];
-            $promptId = $manager->addPrompt($categoryId, $promptText);
-            echo "✅ Prompt added: #{$promptId}\n";
-            echo "   Category: #{$categoryId}\n";
-            echo "   Text: {$promptText}\n\n";
             break;
 
         case 'add_words':
             if (count($args) < 2) {
-                echo "\n⚠️  Usage: php migrate_dictionary.php add_words <prompt_id> 'word1|alt1' 'word2' ...\n\n";
-                exit(1);
+                if ($isHttp) {
+                    jsonResponse(false, null, 'Missing required parameters: prompt_id, words');
+                } else {
+                    echo "\n⚠️  Usage: php migrate_dictionary.php add_words <prompt_id> 'word1|alt1' 'word2' ...\n\n";
+                    exit(1);
+                }
+            } else {
+                $promptId = (int)$args[0];
+                $words = array_slice($args, 1);
+                $count = $manager->addValidWords($promptId, $words);
+                if ($isHttp) {
+                    jsonResponse(true, ['count' => $count, 'words' => $words]);
+                } else {
+                    printCliSubHeader("➕ Adding Words");
+                    echo "✅ {$count} words added to prompt #{$promptId}\n\n";
+                    foreach ($words as $word) {
+                        echo "   - {$word}\n";
+                    }
+                    echo "\n";
+                }
             }
-            printSubHeader("➕ Adding Words");
-            $promptId = (int)$args[0];
-            $words = array_slice($args, 1);
-            $count = $manager->addValidWords($promptId, $words);
-            echo "✅ {$count} words added to prompt #{$promptId}\n\n";
-            foreach ($words as $word) {
-                echo "   - {$word}\n";
-            }
-            echo "\n";
             break;
 
         case 'delete_category':
             if (empty($args)) {
-                echo "\n⚠️  Usage: php migrate_dictionary.php delete_category <category_id>\n\n";
-                exit(1);
-            }
-            printSubHeader("❌ Deleting Category");
-            $categoryId = (int)$args[0];
-            $result = $manager->deleteCategory($categoryId);
-            if ($result) {
-                echo "✅ Category #{$categoryId} deleted\n\n";
+                if ($isHttp) {
+                    jsonResponse(false, null, 'Missing required parameter: category_id');
+                } else {
+                    echo "\n⚠️  Usage: php migrate_dictionary.php delete_category <category_id>\n\n";
+                    exit(1);
+                }
             } else {
-                echo "⚠️  Category #{$categoryId} not found\n\n";
+                $categoryId = (int)$args[0];
+                $result = $manager->deleteCategory($categoryId);
+                if ($isHttp) {
+                    jsonResponse(true, ['deleted' => $result]);
+                } else {
+                    printCliSubHeader("❌ Deleting Category");
+                    echo "✅ Category #{$categoryId} deleted\n\n";
+                }
             }
             break;
 
         case 'delete_prompt':
             if (empty($args)) {
-                echo "\n⚠️  Usage: php migrate_dictionary.php delete_prompt <prompt_id>\n\n";
-                exit(1);
-            }
-            printSubHeader("❌ Deleting Prompt");
-            $promptId = (int)$args[0];
-            $result = $manager->deletePrompt($promptId);
-            if ($result) {
-                echo "✅ Prompt #{$promptId} deleted\n\n";
+                if ($isHttp) {
+                    jsonResponse(false, null, 'Missing required parameter: prompt_id');
+                } else {
+                    echo "\n⚠️  Usage: php migrate_dictionary.php delete_prompt <prompt_id>\n\n";
+                    exit(1);
+                }
             } else {
-                echo "⚠️  Prompt #{$promptId} not found\n\n";
+                $promptId = (int)$args[0];
+                $result = $manager->deletePrompt($promptId);
+                if ($isHttp) {
+                    jsonResponse(true, ['deleted' => $result]);
+                } else {
+                    printCliSubHeader("❌ Deleting Prompt");
+                    echo "✅ Prompt #{$promptId} deleted\n\n";
+                }
             }
             break;
 
         case 'delete_word':
             if (empty($args)) {
-                echo "\n⚠️  Usage: php migrate_dictionary.php delete_word <word_id>\n\n";
-                exit(1);
-            }
-            printSubHeader("❌ Deleting Word");
-            $wordId = (int)$args[0];
-            $result = $manager->deleteValidWord($wordId);
-            if ($result) {
-                echo "✅ Word #{$wordId} deleted\n\n";
+                if ($isHttp) {
+                    jsonResponse(false, null, 'Missing required parameter: word_id');
+                } else {
+                    echo "\n⚠️  Usage: php migrate_dictionary.php delete_word <word_id>\n\n";
+                    exit(1);
+                }
             } else {
-                echo "⚠️  Word #{$wordId} not found\n\n";
+                $wordId = (int)$args[0];
+                $result = $manager->deleteValidWord($wordId);
+                if ($isHttp) {
+                    jsonResponse(true, ['deleted' => $result]);
+                } else {
+                    printCliSubHeader("❌ Deleting Word");
+                    echo "✅ Word #{$wordId} deleted\n\n";
+                }
             }
-            break;
-
-        case 'stats':
-            printSubHeader("📈 Dictionary Statistics");
-            printStats($manager);
             break;
 
         default:
-            echo "❌ Unknown command: {$command}\n\n";
-            exit(1);
+            if ($isHttp) {
+                jsonResponse(false, null, 'Unknown command: ' . $command);
+            } else {
+                echo "❌ Unknown command: {$command}\n\n";
+                exit(1);
+            }
     }
 
-    printStats($manager);
-    exit(0);
+    if (!$isHttp) {
+        printCliStats($manager);
+        exit(0);
+    } else {
+        $stats = $manager->getStats();
+        echo json_encode($stats);
+    }
 
 } catch (Exception $e) {
-    echo "\n❌ ERROR: " . $e->getMessage() . "\n\n";
-    exit(1);
+    if (isCliContext()) {
+        echo "\n❌ ERROR: " . $e->getMessage() . "\n\n";
+        exit(1);
+    } else {
+        jsonResponse(false, null, $e->getMessage());
+        http_response_code(500);
+    }
 }
 ?>
