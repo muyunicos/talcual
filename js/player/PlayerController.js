@@ -93,6 +93,28 @@ class PlayerManager extends BaseController {
     this.view.bindJoinGame((code, name) => this.joinGame(code, name));
   }
 
+  attachSSEListeners() {
+    if (!this.client) return;
+
+    this.client.on('event:player_updated', () => {
+      debug('🔄 Event: player_updated detected, refreshing', null, 'info');
+      this.client.forceRefresh();
+    });
+
+    this.client.on('event:game_started', () => {
+      debug('🎮 Event: game_started detected, refreshing', null, 'info');
+      this.client.forceRefresh();
+    });
+
+    this.client.on('event:timer_updated', () => {
+      debug('⏱️ Event: timer_updated detected', null, 'debug');
+    });
+
+    this.client.on('event:heartbeat', () => {
+      debug('💓 Heartbeat pulse received', null, 'debug');
+    });
+  }
+
   scheduleTypingEvent() {
     const currentInput = this.view.getInputValue();
     if (!currentInput) return;
@@ -162,6 +184,7 @@ class PlayerManager extends BaseController {
 
     this.client.onStateUpdate = (s) => this.handleStateUpdate(s);
     this.client.onConnectionLost = () => this.handleConnectionLost();
+    this.attachSSEListeners();
     this.client.connect();
 
     this.handleStateUpdate(state);
