@@ -186,6 +186,11 @@ class HostManager extends BaseController {
       this.client.forceRefresh();
     });
 
+    this.client.on('event:player_ready', (data) => {
+      debug('⚡ Jugador terminó detectado:', data, 'info');
+      this.client.forceRefresh();
+    });
+
     this.handleStateUpdate(state);
   }
 
@@ -367,9 +372,9 @@ class HostManager extends BaseController {
         state.round_duration
       );
 
-      const minTimeForHurryUp = 15000;
+      const threshold = (configService.get('hurry_up_threshold', 10) + 2) * 1000;
 
-      if (remaining > minTimeForHurryUp) {
+      if (remaining > threshold) {
         debug('🔫 Solo 1 jugador falta - Auto-Remate', null, 'info');
         this.activateHurryUp();
       }
