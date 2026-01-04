@@ -129,6 +129,7 @@ class HostView {
 
     if (remaining === null || remaining === undefined) {
       this.elements.headerTimer.textContent = '⏳ --:--';
+      this.elements.headerTimer.style.opacity = '1';
       return;
     }
 
