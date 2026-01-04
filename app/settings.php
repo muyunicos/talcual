@@ -26,8 +26,6 @@ $getenv = function($key, $default) use ($config) {
     return $default;
 };
 
-define('GAME_STATES_DIR', __DIR__ . '/../game_states');
-define('ANALYTICS_FILE', __DIR__ . '/../game_states/analytics.json');
 define('DICTIONARY_FILE', __DIR__ . '/diccionario.json');
 
 define('DEV_MODE', $getenv('DEV_MODE', false) === true || $getenv('DEV_MODE', false) === 'true');
@@ -45,8 +43,4 @@ define('MAX_WORDS_PER_PLAYER', $getenv('MAX_WORDS_PER_PLAYER', 6));
 define('MAX_WORD_LENGTH', $getenv('MAX_WORD_LENGTH', 30));
 define('SSE_TIMEOUT', $getenv('SSE_TIMEOUT', 900));
 define('SSE_HEARTBEAT_INTERVAL', $getenv('SSE_HEARTBEAT_INTERVAL', 15));
-
-if (!is_dir(GAME_STATES_DIR)) {
-    @mkdir(GAME_STATES_DIR, 0755, true);
-}
 ?>
