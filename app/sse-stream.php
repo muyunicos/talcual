@@ -54,7 +54,8 @@ function sendSSE($event, $data) {
 }
 
 function sendHeartbeat() {
-    echo ": heartbeat\n\n";
+    echo "event: heartbeat\n";
+    echo "data: {\"timestamp\": " . time() . "}\n\n";
     flush();
     if (function_exists('apache_flush')) {
         @apache_flush();
