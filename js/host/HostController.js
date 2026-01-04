@@ -129,29 +129,6 @@ class HostManager extends BaseController {
     this.view.bindRemovePlayer((playerId) => this.handleRemovePlayer(playerId));
   }
 
-  attachSSEListeners() {
-    if (!this.client) return;
-
-    this.client.on('event:player_joined', () => {
-      debug('👉 Event: player_joined detected, refreshing', null, 'info');
-      this.client.forceRefresh();
-    });
-
-    this.client.on('event:player_left', () => {
-      debug('👈 Event: player_left detected, refreshing', null, 'info');
-      this.client.forceRefresh();
-    });
-
-    this.client.on('event:player_updated', () => {
-      debug('🔃 Event: player_updated detected, refreshing', null, 'info');
-      this.client.forceRefresh();
-    });
-
-    this.client.on('event:heartbeat', () => {
-      debug('💓 Heartbeat pulse received', null, 'debug');
-    });
-  }
-
   showStartScreen() {
     window.createGameModal.openModal();
   }
@@ -191,8 +168,22 @@ class HostManager extends BaseController {
 
     this.client.onStateUpdate = (s) => this.handleStateUpdate(s);
     this.client.onConnectionLost = () => this.handleConnectionLost();
-    this.attachSSEListeners();
     this.client.connect();
+
+    this.client.on('event:player_joined', (data) => {
+      debug('⚡ Jugador unido detectado:', data, 'info');
+      this.client.forceRefresh();
+    });
+
+    this.client.on('event:player_left', (data) => {
+      debug('⚡ Jugador desconectado detectado:', data, 'info');
+      this.client.forceRefresh();
+    });
+
+    this.client.on('event:player_updated', (data) => {
+      debug('⚡ Jugador actualizado detectado:', data, 'info');
+      this.client.forceRefresh();
+    });
 
     this.handleStateUpdate(state);
   }
