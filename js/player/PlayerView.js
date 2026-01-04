@@ -186,15 +186,26 @@ class PlayerView {
     }
   }
 
-  updateTimer(remaining) {
+  updateTimer(remaining, totalDuration) {
     if (!this.elements.headerTimer) return;
 
-    let ms = remaining;
-    if (ms === null || ms === undefined || ms < 0) {
-      ms = 0;
+    if (remaining === null || remaining === undefined) {
+      this.elements.headerTimer.textContent = '⏳ --:--';
+      return;
     }
 
-    const totalSeconds = Math.ceil(ms / 1000);
+    if (remaining > totalDuration) {
+      this.elements.headerTimer.style.opacity = '0';
+      return;
+    }
+
+    this.elements.headerTimer.style.opacity = '1';
+
+    if (remaining < 0) {
+      remaining = 0;
+    }
+
+    const totalSeconds = Math.ceil(remaining / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -205,6 +216,7 @@ class PlayerView {
   clearTimer() {
     if (this.elements.headerTimer) {
       this.elements.headerTimer.textContent = '⏳ 00:00';
+      this.elements.headerTimer.style.opacity = '1';
     }
   }
 
