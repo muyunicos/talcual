@@ -231,7 +231,7 @@ class PlayerManager extends BaseController {
 
   handleStateUpdate(state) {
     this.gameState = state;
-    debug('📈 Estado actualizado:', state.status);
+    debug('📨 Estado actualizado:', state.status);
 
     this.calibrateTimeSync(state);
 
@@ -284,7 +284,8 @@ class PlayerManager extends BaseController {
     }
 
     if (state.round_starts_at) {
-      const nowServer = timeSync.isCalibrated ? timeSync.getServerTime() : Date.now();
+      this.calibrateTimeSync(state);
+      const nowServer = timeSync.getServerTime();
       const countdownDuration = state.countdown_duration || 4000;
       const elapsedSinceStart = nowServer - state.round_starts_at;
       
@@ -315,7 +316,6 @@ class PlayerManager extends BaseController {
     if (state.round_started_at && state.round_duration) {
       this.startContinuousTimer(state, (remaining) => {
         this.view.updateTimer(remaining);
-        this.updateTimerFromState(state);
       });
     }
   }
@@ -511,33 +511,6 @@ class PlayerManager extends BaseController {
     } catch (error) {
       debug('Error en auto-submit:', error, 'error');
     }
-  }
-
-  async showCountdown(state) {
-    debug('⏱️ Iniciando countdown', 'debug');
-    const countdownDuration = state.countdown_duration || 4000;
-
-    this.view.showCountdownOverlay();
-
-    return new Promise((resolve) => {
-      const update = () => {
-        const nowServer = timeSync.getServerTime();
-        const elapsed = nowServer - state.round_starts_at;
-        const remaining = Math.max(0, countdownDuration - elapsed);
-        const seconds = Math.ceil(remaining / 1000);
-
-        this.view.updateCountdownNumber(seconds);
-
-        if (remaining > 0) {
-          requestAnimationFrame(update);
-        } else {
-          this.view.hideCountdownOverlay();
-          resolve();
-        }
-      };
-
-      requestAnimationFrame(update);
-    });
   }
 
   showEditNameModal() {
