@@ -13,14 +13,11 @@ Options -Indexes
     Allow from all
 </FilesMatch>
 
-# --- PHP: Configuración de Logs (LO QUE PEDISTE) ---
-# Solo se ejecuta si el servidor usa mod_php (evita Error 500 en FPM)
+# --- PHP: Configuración de Logs ---
 <IfModule mod_php.c>
     php_flag log_errors on
     php_flag display_errors off
     php_value error_reporting 32767
-    # NOTA: Si no se crea el archivo, intenta poner la ruta completa aquí
-    # Ej: /home/u12345/domains/talcual/public_html/error_log.txt
     php_value error_log "error_log.txt"
 </IfModule>
 <IfModule mod_php5.c>
