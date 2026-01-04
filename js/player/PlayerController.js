@@ -169,6 +169,11 @@ class PlayerManager extends BaseController {
       this.client.forceRefresh();
     });
 
+    this.client.on('event:player_ready', (data) => {
+      debug('⚡ Jugador terminó detectado:', data, 'info');
+      this.client.forceRefresh();
+    });
+
     this.client.on('event:game_started', (data) => {
       debug('⚡ Juego iniciado detectado:', data, 'info');
       this.client.forceRefresh();
