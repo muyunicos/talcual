@@ -69,6 +69,25 @@ class DictionaryManager {
         }
     }
 
+    public function getPromptsWithStats($categoryId) {
+        try {
+            $sql = 'SELECT 
+                p.id, p.category_id, p.text,
+                COUNT(vw.id) as word_count
+            FROM prompts p
+            LEFT JOIN valid_words vw ON p.id = vw.prompt_id
+            WHERE p.category_id = ?
+            GROUP BY p.id, p.category_id, p.text
+            ORDER BY p.text';
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$categoryId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            throw new Exception('Error fetching prompts: ' . $e->getMessage());
+        }
+    }
+
     public function getPrompts($categoryId = null) {
         try {
             if ($categoryId) {
@@ -208,6 +227,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Cache-Control: no-cache, no-store, must-revalidate');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
@@ -253,7 +273,7 @@ try {
 
         case 'get_prompts':
             if (!$categoryId) throw new Exception('Missing category_id');
-            $response = ['success' => true, 'data' => $manager->getPrompts($categoryId)];
+            $response = ['success' => true, 'data' => $manager->getPromptsWithStats($categoryId)];
             break;
 
         case 'get_prompt':
