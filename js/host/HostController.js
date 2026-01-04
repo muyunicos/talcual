@@ -400,9 +400,21 @@ class HostManager extends BaseController {
     this.view.clearTimer();
   }
 
-  showPlayingState(state) {
+  async showPlayingState(state) {
     const readyCount = (this.currentPlayers || []).filter(p => p.status === 'ready').length;
     this.view.showPlayingState(state, readyCount);
+
+    if (state.round_starts_at) {
+      this.calibrateTimeSync(state);
+      const nowServer = timeSync.getServerTime();
+      const countdownDuration = state.countdown_duration || 4000;
+      const elapsed = nowServer - state.round_starts_at;
+
+      if (elapsed < countdownDuration) {
+        debug('⏳ Detectado countdown activo desde update', null, 'info');
+        await this.showCountdown(state);
+      }
+    }
 
     if (state.round_started_at && state.round_duration) {
       this.startContinuousTimer(state);
