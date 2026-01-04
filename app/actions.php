@@ -98,7 +98,7 @@ try {
 
     logMessage("API Action: {$action} | game_id: " . ($input['game_id'] ?? 'N/A') . " | player_id: " . ($input['player_id'] ?? 'N/A'), 'DEBUG');
 
-    $repository = new GameRepository(GAME_STATES_DIR);
+    $repository = new GameRepository();
     $service = new GameService($repository);
 
     $response = ['success' => false, 'message' => 'Acción no válida'];
@@ -109,7 +109,7 @@ try {
             $response = [
                 'success' => true,
                 'server_now' => intval(microtime(true) * 1000),
-                'candidates' => $candidates['candidates'] ?? $candidates
+                'candidates' => $candidates
             ];
             break;
 
@@ -394,7 +394,6 @@ try {
                 'server_now' => intval(microtime(true) * 1000),
                 'stats' => [
                     'dictionary' => getDictionaryStats(),
-                    'active_games' => count(getActiveCodes()),
                     'dev_mode' => DEV_MODE
                 ]
             ];
