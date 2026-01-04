@@ -220,15 +220,6 @@
     color: var(--color-text-muted);
 }
 
-/* HIDDEN/VISIBLE UTILITIES */
-.hidden {
-    display: none !important;
-}
-
-.visible {
-    display: block !important;
-}
-
 /* RESPONSIVE */
 @media (max-width: 1024px) {
     .status-card {
