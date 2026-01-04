@@ -18,8 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 function notifyGameChanged($gameId, $data = null, $isHostOnly = false) {
-    $notifyAll = GAME_STATES_DIR . '/' . $gameId . '_all.json';
-    $notifyHost = GAME_STATES_DIR . '/' . $gameId . '_host.json';
+    if (!extension_loaded('apcu') || !apcu_enabled()) {
+        logMessage('APCu not available, notification skipped', 'WARNING');
+        return;
+    }
 
     if ($data === null) {
         $event = 'sync';
@@ -35,12 +37,14 @@ function notifyGameChanged($gameId, $data = null, $isHostOnly = false) {
         'ts' => microtime(true)
     ];
 
-    $notificationJson = json_encode($notification, JSON_UNESCAPED_UNICODE);
+    $ttl = 60;
 
-    @file_put_contents($notifyHost, $notificationJson, LOCK_EX);
+    $hostKey = 'talcual_notify_' . $gameId . '_host';
+    apcu_store($hostKey, $notification, $ttl);
 
     if (!$isHostOnly) {
-        @file_put_contents($notifyAll, $notificationJson, LOCK_EX);
+        $allKey = 'talcual_notify_' . $gameId . '_all';
+        apcu_store($allKey, $notification, $ttl);
     }
 }
 
