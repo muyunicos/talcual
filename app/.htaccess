@@ -1,3 +1,4 @@
+# 1. OPTIMIZACIÓN CRÍTICA PARA SSE
 <FilesMatch "sse-stream\.php$">
     # Deshabilitar compresión completamente
     SetEnv no-gzip 1
@@ -10,7 +11,7 @@
         php_flag implicit_flush On
     </IfModule>
     
-    # Headers adicionales para evitar caching
+    # Headers adicionales para evitar caching de eventos
     <IfModule mod_headers.c>
         Header set Cache-Control "no-cache, no-store, must-revalidate"
         Header set Pragma "no-cache"
@@ -19,10 +20,16 @@
     </IfModule>
 </FilesMatch>
 
-# Configuración general de seguridad
+# 2. SEGURIDAD: BLINDAJE DE ARCHIVOS INTERNOS
+<FilesMatch "^(Database|GameRepository|GameService|config|settings)\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# 3. HEADERS DE SEGURIDAD GENERAL
 <IfModule mod_headers.c>
-    # Prevenir clickjacking
+    # Prevenir clickjacking (que metan tu juego en un iframe ajeno)
     Header set X-Frame-Options "SAMEORIGIN"
-    # Prevenir MIME sniffing
+    # Prevenir ataques de MIME sniffing
     Header set X-Content-Type-Options "nosniff"
 </IfModule>
