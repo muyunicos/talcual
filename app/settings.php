@@ -1,4 +1,10 @@
 <?php
+// --- CONFIGURACIÓN DE LOGS ---
+// Forzar que los errores se guarden en 'php_error.log' en la raíz del proyecto
+ini_set('log_errors', 1);
+ini_set('display_errors', 0); // No mostrar errores en pantalla (seguridad)
+ini_set('error_log', __DIR__ . '/../php_error.log');
+// -----------------------------
 
 $dotenv = __DIR__ . '/../.env';
 $config = [];
