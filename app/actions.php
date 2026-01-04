@@ -321,6 +321,16 @@ try {
             notifyGameChanged($gameId, ['event' => 'typing', 'player_id' => $playerId], true);
             break;
 
+        case 'update_config':
+            $configData = $input['config'] ?? [];
+            logMessage('update_config received: ' . json_encode($configData), 'INFO');
+            $response = [
+                'success' => true,
+                'message' => 'Configuración actualizada',
+                'server_now' => intval(microtime(true) * 1000)
+            ];
+            break;
+
         case 'get_state':
             $gameId = sanitizeGameId($input['game_id'] ?? null);
 
@@ -350,7 +360,8 @@ try {
                     'start_countdown' => START_COUNTDOWN,
                     'max_word_length' => MAX_WORD_LENGTH,
                     'min_player_name_length' => 2,
-                    'max_player_name_length' => 20
+                    'max_player_name_length' => 20,
+                    'hurry_up_threshold' => 10
                 ]
             ];
             break;
