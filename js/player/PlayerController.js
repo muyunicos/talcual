@@ -258,6 +258,10 @@ class PlayerManager extends BaseController {
         this.showFinalResults(state);
         break;
     }
+
+    if (window.actionMenuPlayer) {
+      window.actionMenuPlayer.updateOptions(state);
+    }
   }
 
   showWaitingState() {
@@ -558,6 +562,7 @@ let playerManager = null;
 document.addEventListener('DOMContentLoaded', () => {
   if (!playerManager) {
     playerManager = new PlayerManager();
+    window.playerManager = playerManager;
     playerManager.initialize();
   }
 }, { once: true });
