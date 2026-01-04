@@ -179,8 +179,9 @@ try {
             }
 
             $answers = $input['answers'] ?? [];
+            $forcedPass = isset($input['forced_pass']) && !empty($input['forced_pass']);
 
-            $result = $service->submitAnswers($gameId, $playerId, $answers);
+            $result = $service->submitAnswers($gameId, $playerId, $answers, $forcedPass);
             $response = [
                 'success' => true,
                 'message' => $result['message'],
@@ -391,7 +392,7 @@ try {
 
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     logMessage('Error fatal: ' . $e->getMessage(), 'ERROR');
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error del servidor: ' . $e->getMessage()]);
