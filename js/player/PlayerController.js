@@ -272,7 +272,7 @@ class PlayerManager extends BaseController {
     const wordPrompt = state.current_prompt || state.current_word;
 
     if (!wordPrompt) {
-      debug('❌ PROBLEMA: No hay current_prompt en el estado!', 'error');
+      debug('❌ No prompt encontrado en el estado', 'error');
       return;
     }
 
