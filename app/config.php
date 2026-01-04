@@ -3,13 +3,6 @@ require_once __DIR__ . '/settings.php';
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/GameRepository.php';
 
-if (!is_dir(GAME_STATES_DIR)) {
-    $mkdir_result = @mkdir(GAME_STATES_DIR, 0755, true);
-    if (!$mkdir_result) {
-        error_log('[CRITICAL] No se pudo crear directorio: ' . GAME_STATES_DIR);
-    }
-}
-
 function logMessage($message, $level = 'INFO') {
     if (!DEV_MODE && $level === 'DEBUG') return;
     
@@ -181,23 +174,6 @@ function getRandomWordByCategoryFiltered($category, $maxLength = null) {
     return null;
 }
 
-function getActiveCodes() {
-    $files = glob(GAME_STATES_DIR . '/*.json');
-    $codes = [];
-
-    if ($files) {
-        foreach ($files as $file) {
-            if (time() - filemtime($file) < MAX_GAME_AGE) {
-                $codes[] = pathinfo($file, PATHINFO_FILENAME);
-            } else {
-                @unlink($file);
-            }
-        }
-    }
-
-    return $codes;
-}
-
 function generateGameCode() {
     $categories = getCategories();
     
@@ -295,19 +271,6 @@ function saveGameState($gameId, $state) {
         return false;
     }
     
-    if (!is_dir(GAME_STATES_DIR)) {
-        logMessage('[WARN] game_states no existe. Intentando crear...', 'WARNING');
-        if (!@mkdir(GAME_STATES_DIR, 0755, true)) {
-            logMessage('[ERROR] No se pudo crear directorio: ' . GAME_STATES_DIR, 'ERROR');
-            return false;
-        }
-    }
-    
-    if (!is_writable(GAME_STATES_DIR)) {
-        logMessage('[ERROR] Directorio NO tiene permisos de escritura: ' . GAME_STATES_DIR . ' | Permisos: ' . substr(sprintf('%o', fileperms(GAME_STATES_DIR)), -4), 'ERROR');
-        return false;
-    }
-    
     $state['_version'] = 1;
     $state['_updated_at'] = time();
     
@@ -315,7 +278,6 @@ function saveGameState($gameId, $state) {
         $db = Database::getInstance();
         $repo = new GameRepository();
         $repo->save($gameId, $state);
-        trackGameAction($gameId, 'state_updated', ['players' => count($state['players'] ?? []), 'status' => $state['status'] ?? 'unknown']);
         logMessage('[SUCCESS] Estado guardado para ' . $gameId . ' vía SQLite', 'DEBUG');
         return true;
     } catch (Exception $e) {
@@ -413,29 +375,6 @@ function getDictionaryStats() {
     }
 
     return $stats;
-}
-
-function trackGameAction($gameId, $action, $data = []) {
-    $entry = [
-        'timestamp' => time(),
-        'game_id' => $gameId,
-        'action' => $action,
-        'data' => $data
-    ];
-    
-    $analytics = [];
-    if (file_exists(ANALYTICS_FILE)) {
-        $json = @file_get_contents(ANALYTICS_FILE);
-        $analytics = json_decode($json, true) ?? [];
-    }
-    
-    $analytics[] = $entry;
-    
-    if (count($analytics) > 1000) {
-        $analytics = array_slice($analytics, -1000);
-    }
-    
-    @file_put_contents(ANALYTICS_FILE, json_encode($analytics, JSON_PRETTY_PRINT));
 }
 
 if (rand(1, 100) <= (CLEANUP_PROBABILITY * 100)) {
