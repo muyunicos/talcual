@@ -29,7 +29,7 @@ class PlayerView {
     };
 
     Object.entries(elements).forEach(([key, el]) => {
-      if (!el) {
+      if (!el && key !== 'countdownOverlay' && key !== 'countdownNumber') {
         throw new Error(`[PlayerView] Critical element not found: ${key}`);
       }
     });
@@ -353,6 +353,7 @@ class PlayerView {
     safeHideElement(this.elements.currentWord);
     safeHideElement(this.elements.categoryLabel);
     safeHideElement(this.elements.waitingMessage);
+    safeHideElement(this.elements.countdownOverlay);
     this.clearTimer();
 
     if (!myResults || Object.keys(myResults).length === 0) {
@@ -367,7 +368,7 @@ class PlayerView {
         }
       }
     } else {
-      let html = '<div class="results-title">📈 Tus Resultados</div>';
+      let html = '<div class="results-title">📊 Tus Resultados</div>';
       let roundScore = 0;
 
       Object.entries(myResults).forEach(([word, result]) => {
@@ -401,22 +402,31 @@ class PlayerView {
   }
 
   showCountdownOverlay() {
-    safeShowElement(this.elements.countdownOverlay);
+    if (this.elements.countdownOverlay) {
+      safeShowElement(this.elements.countdownOverlay);
+    } else {
+      debug('⚠️ [PlayerView] countdownOverlay element not found, skipping show', null, 'warn');
+    }
   }
 
   hideCountdownOverlay() {
-    safeHideElement(this.elements.countdownOverlay);
+    if (this.elements.countdownOverlay) {
+      safeHideElement(this.elements.countdownOverlay);
+    }
   }
 
   updateCountdownNumber(seconds) {
-    if (this.elements.countdownNumber) {
-      if (seconds > 3) {
-        this.elements.countdownNumber.textContent = '¿Preparado?';
-      } else if (seconds > 0) {
-        this.elements.countdownNumber.textContent = seconds.toString();
-      } else {
-        this.elements.countdownNumber.textContent = '';
-      }
+    if (!this.elements.countdownNumber) {
+      debug('⚠️ [PlayerView] countdownNumber element not found, skipping update', null, 'warn');
+      return;
+    }
+
+    if (seconds > 3) {
+      this.elements.countdownNumber.textContent = '¿Preparado?';
+    } else if (seconds > 0) {
+      this.elements.countdownNumber.textContent = seconds.toString();
+    } else {
+      this.elements.countdownNumber.textContent = '';
     }
   }
 
