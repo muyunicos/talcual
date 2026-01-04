@@ -71,6 +71,12 @@ function sanitizeStateForPlayer($state, $playerId) {
         return $state;
     }
 
+    $status = $state['status'] ?? 'waiting';
+
+    if ($status === 'round_ended' || $status === 'finished') {
+        return $state;
+    }
+
     $sanitized = $state;
     $sanitized['players'] = [];
 
