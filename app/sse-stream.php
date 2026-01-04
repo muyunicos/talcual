@@ -140,6 +140,16 @@ $heartbeatInterval = defined('SSE_HEARTBEAT_INTERVAL') && SSE_HEARTBEAT_INTERVAL
 $lastHeartbeatTime = microtime(true);
 $pollingInterval = 2;
 
+try {
+    $db = Database::getInstance();
+    $repo = new GameRepository();
+} catch (Exception $e) {
+    echo "event: error\n";
+    echo "data: {\"message\": \"Error inicializando repositorio\"}\n\n";
+    flush();
+    exit;
+}
+
 sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
@@ -205,14 +215,18 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         sendSSE($eventType, $eventData);
         logMessage("SSE lightweight event '{$eventType}' enviado para {$gameId}", 'DEBUG');
     } elseif ($eventType === 'sync' || $eventType === 'refresh') {
-        $state = loadGameState($gameId);
-        if ($state) {
-            $sanitizedState = sanitizeStateForPlayer($state, $playerId);
-            sendSSE('update', $sanitizedState);
-            $activePlayers = count(array_filter($state['players'], function($p) {
-                return !$p['disconnected'];
-            }));
-            logMessage("SSE full state 'update' enviado para {$gameId} ({$activePlayers} activos, status={$state['status']})", 'DEBUG');
+        try {
+            $state = $repo->load($gameId);
+            if ($state) {
+                $sanitizedState = sanitizeStateForPlayer($state, $playerId);
+                sendSSE('update', $sanitizedState);
+                $activePlayers = count(array_filter($state['players'], function($p) {
+                    return !$p['disconnected'];
+                }));
+                logMessage("SSE full state 'update' enviado para {$gameId} ({$activePlayers} activos, status={$state['status']})", 'DEBUG');
+            }
+        } catch (Exception $e) {
+            logMessage("[ERROR] Error cargando estado en SSE: " . $e->getMessage(), 'ERROR');
         }
     } else {
         sendSSE($eventType, $eventData);
