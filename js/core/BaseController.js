@@ -4,7 +4,6 @@ class BaseController {
     this.countdownRAFId = null;
     this.client = null;
     this.gameState = {};
-    this.elements = {};
     this.auraModule = new AuraModule();
     this.hurryUpActive = false;
   }
@@ -52,15 +51,19 @@ class BaseController {
 
   setTimerHurryUp(isActive) {
     this.hurryUpActive = isActive;
-    if (this.elements.headerTimer) {
-      this.elements.headerTimer.classList.toggle('tc-timer--hurry', isActive);
+    if (this.view && this.view.elements && this.view.elements.headerTimer) {
+      this.view.elements.headerTimer.classList.toggle('tc-timer--hurry', isActive);
     }
   }
 
   startContinuousTimer(state, onTick = null) {
     this.stopTimer();
     
-    this.gameTimer = new GameTimer(this.elements.headerTimer, onTick);
+    if (!this.view || !this.view.elements) {
+      throw new Error('View not initialized before startContinuousTimer');
+    }
+
+    this.gameTimer = new GameTimer(this.view.elements.headerTimer, onTick);
     this.gameTimer.start(100);
     this.updateTimerFromState(state);
 
@@ -83,7 +86,10 @@ class BaseController {
     }
 
     const remaining = GameTimer.getRemaining(state.round_started_at, state.round_duration);
-    GameTimer.updateDisplay(remaining, this.elements.headerTimer, '⏳');
+    
+    if (this.view && this.view.elements && this.view.elements.headerTimer) {
+      GameTimer.updateDisplay(remaining, this.view.elements.headerTimer, '⏳');
+    }
   }
 
   stopTimer() {
@@ -104,14 +110,18 @@ class BaseController {
   }
 
   runCountdown(roundStartsAt, countdownDuration, onComplete) {
+    if (!this.view || !this.view.elements) {
+      throw new Error('View not initialized before runCountdown');
+    }
+
     if (this.countdownRAFId) {
       cancelAnimationFrame(this.countdownRAFId);
     }
 
-    safeShowElement(this.elements.countdownOverlay);
+    safeShowElement(this.view.elements.countdownOverlay);
 
-    if (this.elements.countdownNumber) {
-      this.elements.countdownNumber.style.fontSize = 'inherit';
+    if (this.view.elements.countdownNumber) {
+      this.view.elements.countdownNumber.style.fontSize = 'inherit';
     }
 
     const update = () => {
@@ -120,22 +130,22 @@ class BaseController {
       const remaining = Math.max(0, countdownDuration - elapsed);
       const seconds = Math.ceil(remaining / 1000);
 
-      if (this.elements.countdownNumber) {
+      if (this.view.elements.countdownNumber) {
         if (seconds > 3) {
-          this.elements.countdownNumber.textContent = '¿Preparado?';
-          this.elements.countdownNumber.style.fontSize = '1.2em';
+          this.view.elements.countdownNumber.textContent = '¿Preparado?';
+          this.view.elements.countdownNumber.style.fontSize = '1.2em';
         } else if (seconds > 0) {
-          this.elements.countdownNumber.textContent = seconds.toString();
-          this.elements.countdownNumber.style.fontSize = 'inherit';
+          this.view.elements.countdownNumber.textContent = seconds.toString();
+          this.view.elements.countdownNumber.style.fontSize = 'inherit';
         } else {
-          this.elements.countdownNumber.textContent = '';
+          this.view.elements.countdownNumber.textContent = '';
         }
       }
 
       if (remaining > 0) {
         this.countdownRAFId = requestAnimationFrame(update);
       } else {
-        safeHideElement(this.elements.countdownOverlay);
+        safeHideElement(this.view.elements.countdownOverlay);
         if (typeof onComplete === 'function') {
           onComplete();
         }
@@ -177,7 +187,6 @@ class BaseController {
     }
 
     this.gameState = null;
-    this.elements = {};
   }
 }
 
