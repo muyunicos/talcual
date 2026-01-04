@@ -2,6 +2,8 @@
 set_time_limit(0);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/GameRepository.php';
 
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
@@ -142,7 +144,7 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with APCu-based event notifications',
+    'method' => 'SSE with APCu-based event notifications + Phase 4 distributed calculation',
     'max_duration_seconds' => $maxDuration
 ]);
 
