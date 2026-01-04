@@ -1,6 +1,6 @@
 class BaseController {
   constructor() {
-    this.gameTimer = null;
+    this.timerRAFId = null;
     this.countdownRAFId = null;
     this.client = null;
     this.gameState = {};
@@ -56,56 +56,42 @@ class BaseController {
     }
   }
 
-  startContinuousTimer(state, onTick = null) {
-    this.stopTimer();
-    
-    if (!this.view || !this.view.elements) {
+  startContinuousTimer(state) {
+    if (!this.view) {
       throw new Error('View not initialized before startContinuousTimer');
     }
 
-    this.gameTimer = new GameTimer(this.view.elements.headerTimer, onTick);
-    this.gameTimer.start(100);
-    this.updateTimerFromState(state);
+    this.stopTimer();
 
     const timerLoop = () => {
-      if (!this.gameTimer) return;
-      
-      if (this.gameState && this.gameState.status === 'playing') {
-        this.updateTimerFromState(this.gameState);
-        this.gameTimer.rafId = requestAnimationFrame(timerLoop);
+      if (!this.gameState || this.gameState.status !== 'playing') {
+        return;
       }
+
+      const remaining = GameTimer.getRemaining(
+        state.round_started_at,
+        state.round_duration
+      );
+
+      this.view.updateTimer(remaining, state.round_duration);
+
+      this.timerRAFId = requestAnimationFrame(timerLoop);
     };
-    
-    this.gameTimer.rafId = requestAnimationFrame(timerLoop);
-  }
 
-  updateTimerFromState(state) {
-    if (!state.round_started_at) {
-      this.stopTimer();
-      return;
-    }
-
-    const remaining = GameTimer.getRemaining(state.round_started_at, state.round_duration);
-    
-    if (this.view && this.view.elements && this.view.elements.headerTimer) {
-      GameTimer.updateDisplay(remaining, this.view.elements.headerTimer, '⏳');
-    }
+    this.timerRAFId = requestAnimationFrame(timerLoop);
   }
 
   stopTimer() {
-    if (this.gameTimer) {
-      if (this.gameTimer.rafId) {
-        cancelAnimationFrame(this.gameTimer.rafId);
-      }
-      this.gameTimer.destroy();
-      this.gameTimer = null;
+    if (this.timerRAFId) {
+      cancelAnimationFrame(this.timerRAFId);
+      this.timerRAFId = null;
     }
-    
+
     if (this.countdownRAFId) {
       cancelAnimationFrame(this.countdownRAFId);
       this.countdownRAFId = null;
     }
-    
+
     this.setTimerHurryUp(false);
   }
 
@@ -118,11 +104,7 @@ class BaseController {
       cancelAnimationFrame(this.countdownRAFId);
     }
 
-    safeShowElement(this.view.elements.countdownOverlay);
-
-    if (this.view.elements.countdownNumber) {
-      this.view.elements.countdownNumber.style.fontSize = 'inherit';
-    }
+    this.view.showCountdownOverlay();
 
     const update = () => {
       const nowServer = timeSync.getServerTime();
@@ -130,28 +112,18 @@ class BaseController {
       const remaining = Math.max(0, countdownDuration - elapsed);
       const seconds = Math.ceil(remaining / 1000);
 
-      if (this.view.elements.countdownNumber) {
-        if (seconds > 3) {
-          this.view.elements.countdownNumber.textContent = '¿Preparado?';
-          this.view.elements.countdownNumber.style.fontSize = '1.2em';
-        } else if (seconds > 0) {
-          this.view.elements.countdownNumber.textContent = seconds.toString();
-          this.view.elements.countdownNumber.style.fontSize = 'inherit';
-        } else {
-          this.view.elements.countdownNumber.textContent = '';
-        }
-      }
+      this.view.updateCountdownNumber(seconds);
 
       if (remaining > 0) {
         this.countdownRAFId = requestAnimationFrame(update);
       } else {
-        safeHideElement(this.view.elements.countdownOverlay);
+        this.view.hideCountdownOverlay();
         if (typeof onComplete === 'function') {
           onComplete();
         }
       }
     };
-    
+
     this.countdownRAFId = requestAnimationFrame(update);
   }
 
