@@ -86,6 +86,37 @@ function isLightweightEvent($eventType) {
     return in_array($eventType, $lightweight);
 }
 
+function sanitizeStateForPlayer($state, $playerId) {
+    if ($playerId === 'host') {
+        return $state;
+    }
+
+    if (!isset($state['players']) || !is_array($state['players'])) {
+        return $state;
+    }
+
+    $sanitized = $state;
+    $sanitized['players'] = [];
+
+    foreach ($state['players'] as $pid => $player) {
+        if ($pid === $playerId) {
+            $sanitized['players'][$pid] = $player;
+        } else {
+            $sanitized['players'][$pid] = [
+                'id' => $player['id'] ?? $pid,
+                'name' => $player['name'] ?? 'Jugador',
+                'score' => $player['score'] ?? 0,
+                'status' => $player['status'] ?? 'waiting',
+                'color' => $player['color'] ?? '#999999',
+                'disconnected' => $player['disconnected'] ?? false,
+                'answer_count' => isset($player['answers']) && is_array($player['answers']) ? count($player['answers']) : 0
+            ];
+        }
+    }
+
+    return $sanitized;
+}
+
 $notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
 $notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
 $notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
@@ -176,7 +207,8 @@ while ((microtime(true) - $startTime) < $maxDuration) {
     } elseif ($eventType === 'sync' || $eventType === 'refresh') {
         $state = loadGameState($gameId);
         if ($state) {
-            sendSSE('update', $state);
+            $sanitizedState = sanitizeStateForPlayer($state, $playerId);
+            sendSSE('update', $sanitizedState);
             $activePlayers = count(array_filter($state['players'], function($p) {
                 return !$p['disconnected'];
             }));
