@@ -310,11 +310,38 @@ class GameService {
             $state['round_top_words'] = $topWords;
         }
 
+        $isGameFinished = (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS));
+
+        if ($isGameFinished) {
+            $roundSnapshot = [
+                'round' => $state['round'] ?? 0,
+                'current_prompt' => $state['current_prompt'] ?? null,
+                'current_category' => $state['current_category'] ?? null,
+                'round_top_words' => $state['round_top_words'] ?? []
+            ];
+            
+            if (!isset($state['game_history'])) {
+                $state['game_history'] = [];
+            }
+            
+            if (!is_array($state['game_history'])) {
+                $state['game_history'] = [];
+            }
+            
+            $state['game_history'][] = $roundSnapshot;
+        }
+
         $state['last_update'] = time();
 
-        if (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS)) {
+        if ($isGameFinished) {
             $state['status'] = 'finished';
             $state['roundData'] = null;
+
+            foreach ($state['players'] as $pId => $player) {
+                $state['players'][$pId]['answers'] = [];
+                $state['players'][$pId]['round_results'] = [];
+            }
+
             try {
                 trackGameAction($gameId, 'game_finished', []);
             } catch (Throwable $t) {
