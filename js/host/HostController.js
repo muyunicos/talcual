@@ -332,6 +332,10 @@ class HostManager extends BaseController {
     }
 
     this.checkAutoGameFlow(state);
+
+    if (window.actionMenuHost) {
+      window.actionMenuHost.updateOptions(state);
+    }
   }
 
   updatePlayersList(state) {
@@ -583,6 +587,7 @@ let hostManager = null;
 document.addEventListener('DOMContentLoaded', () => {
   if (!hostManager) {
     hostManager = new HostManager();
+    window.hostManager = hostManager;
   }
 }, { once: true });
 
