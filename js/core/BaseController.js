@@ -71,6 +71,12 @@ class BaseController {
       const roundStartedAt = Number(this.gameState.round_started_at);
       const roundDuration = Number(this.gameState.round_duration);
 
+      if (!roundStartedAt || !roundDuration) {
+        this.view.updateTimer(undefined, undefined);
+        this.timerRAFId = requestAnimationFrame(timerLoop);
+        return;
+      }
+
       const remaining = GameTimer.getRemaining(roundStartedAt, roundDuration);
 
       this.view.updateTimer(remaining, roundDuration);
@@ -128,7 +134,7 @@ class BaseController {
   }
 
   showCountdown(state) {
-    debug('⏱️ Iniciando countdown', 'debug');
+    debug('⏳ Iniciando countdown', 'debug');
     const countdownDuration = state.countdown_duration || 4000;
 
     return new Promise((resolve) => {
@@ -150,7 +156,7 @@ class BaseController {
   }
 
   destroy() {
-    debug('🧮 Destroying controller...', null, 'info');
+    debug('🧶 Destroying controller...', null, 'info');
     this.stopTimer();
 
     if (this.client) {
