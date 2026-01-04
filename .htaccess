@@ -1,31 +1,45 @@
-# Habilitar PHP como handler
+# --- SEGURIDAD: Bloquear listado de directorios ---
+# Evita que se vean todos los archivos si entran a una carpeta sin index
+Options -Indexes
+
+# --- SEGURIDAD: Proteger archivos ocultos y sensibles ---
+# Bloquea acceso a .env, .git, .htaccess, etc.
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# EXCEPCIÓN: Permitir validación SSL (si usas Let's Encrypt en Hostinger)
+<FilesMatch "^\.well-known">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# --- PHP: Handler ---
 <FilesMatch "\.php$">
     AddType application/x-httpd-php .php
 </FilesMatch>
 
-# Configuración para CORS
+# --- CORS: Configuración ---
 <IfModule mod_headers.c>
     Header set Access-Control-Allow-Origin "*"
     Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 </IfModule>
 
-# SECURITY: Block direct HTTP access to JSON files
-# Reason: Client never needs access to full dictionary or game state files
-# All data flows through API endpoints only
+# --- SEGURIDAD: Bloquear acceso directo a JSON ---
 <FilesMatch "\.json$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Exception: Allow app/config.json if needed for frontend config
-# (This file should NOT contain sensitive dictionary data)
+# EXCEPCIÓN: Permitir config.json
 <Files "config.json">
     Order allow,deny
     Allow from all
 </Files>
 
-# Habilitar cache busting
+# --- CACHE: Optimización ---
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType image/jpeg "access plus 1 year"
@@ -38,7 +52,7 @@
     ExpiresByType application/x-javascript "access plus 1 month"
 </IfModule>
 
-# Reescritura de URLs (si es necesario)
+# --- ROUTING: Single Page Application ---
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
@@ -47,7 +61,8 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
-    # Permitir acceso a archivos estáticos
+    # Si es un archivo estático o la raíz, servir index.html
     RewriteCond %{REQUEST_FILENAME} \.(js|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf)$ [OR]
     RewriteCond %{REQUEST_FILENAME} /$ 
+    RewriteRule ^ index.html [L]
 </IfModule>
