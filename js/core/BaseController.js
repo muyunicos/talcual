@@ -68,12 +68,12 @@ class BaseController {
         return;
       }
 
-      const remaining = GameTimer.getRemaining(
-        state.round_started_at,
-        state.round_duration
-      );
+      const roundStartedAt = Number(this.gameState.round_started_at);
+      const roundDuration = Number(this.gameState.round_duration);
 
-      this.view.updateTimer(remaining, state.round_duration);
+      const remaining = GameTimer.getRemaining(roundStartedAt, roundDuration);
+
+      this.view.updateTimer(remaining, roundDuration);
 
       this.timerRAFId = requestAnimationFrame(timerLoop);
     };
@@ -150,7 +150,7 @@ class BaseController {
   }
 
   destroy() {
-    debug('🧹 Destroying controller...', null, 'info');
+    debug('🧮 Destroying controller...', null, 'info');
     this.stopTimer();
 
     if (this.client) {
