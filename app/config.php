@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/settings.php';
+require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/GameRepository.php';
 
 if (!is_dir(GAME_STATES_DIR)) {
     $mkdir_result = @mkdir(GAME_STATES_DIR, 0755, true);
@@ -206,18 +208,17 @@ function generateGameCode() {
             for ($i = 0; $i < 4; $i++) {
                 $code .= $chars[rand(0, strlen($chars) - 1)];
             }
-        } while (in_array($code, getActiveCodes()));
+        } while (gameExists($code));
         
         return $code;
     }
     
-    $usedCodes = getActiveCodes();
     $roomCodeCandidates = [];
     
     foreach ($categories as $category) {
         $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
         
-        if ($word && !in_array($word, $usedCodes)) {
+        if ($word && !gameExists($word)) {
             $roomCodeCandidates[] = $word;
         }
     }
@@ -232,7 +233,7 @@ function generateGameCode() {
         for ($i = 0; $i < 4; $i++) {
             $code .= $chars[rand(0, strlen($chars) - 1)];
         }
-    } while (in_array($code, $usedCodes));
+    } while (gameExists($code));
     
     if (mb_strlen($code) > MAX_CODE_LENGTH) {
         logMessage('[WARNING] Código generado excede MAX_CODE_LENGTH: ' . $code, 'WARNING');
@@ -310,62 +311,16 @@ function saveGameState($gameId, $state) {
     $state['_version'] = 1;
     $state['_updated_at'] = time();
     
-    $file = GAME_STATES_DIR . '/' . $gameId . '.json';
-    $lockFile = $file . '.lock';
-    
-    $lock = @fopen($lockFile, 'c+');
-    if (!$lock) {
-        logMessage('[ERROR] No se pudo abrir lockfile: ' . $lockFile . ' (Permisos: ' . substr(sprintf('%o', @fileperms(dirname($lockFile))), -4) . ')', 'ERROR');
-        return false;
-    }
-    
-    if (!@flock($lock, LOCK_EX)) {
-        logMessage('[ERROR] No se pudo obtener lock para ' . $gameId, 'ERROR');
-        fclose($lock);
-        return false;
-    }
-    
     try {
-        $json = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-
-        if ($json === false) {
-            logMessage('[ERROR] Error encoding JSON: ' . json_last_error_msg() . ' | State: ' . var_export(array_keys($state), true), 'ERROR');
-            return false;
-        }
-        
-        $jsonSize = strlen($json);
-        if ($jsonSize > 1000000) {
-            logMessage('[ERROR] JSON demasiado grande: ' . $jsonSize . ' bytes', 'ERROR');
-            return false;
-        }
-
-        $result = @file_put_contents($file, $json, LOCK_EX);
-
-        if ($result === false) {
-            logMessage('[ERROR] Error escribiendo archivo: ' . $file . ' | Permisos dir: ' . substr(sprintf('%o', @fileperms(dirname($file))), -4), 'ERROR');
-            return false;
-        }
-        
-        if (!file_exists($file)) {
-            logMessage('[ERROR] Archivo no existe después de escribir: ' . $file, 'ERROR');
-            return false;
-        }
-        
-        $fileSize = filesize($file);
-        if ($fileSize === 0 || $fileSize === false) {
-            logMessage('[ERROR] Archivo está vacío o no se puede leer: ' . $file . ' | Size: ' . var_export($fileSize, true), 'ERROR');
-            return false;
-        }
-        
+        $db = Database::getInstance();
+        $repo = new GameRepository();
+        $repo->save($gameId, $state);
         trackGameAction($gameId, 'state_updated', ['players' => count($state['players'] ?? []), 'status' => $state['status'] ?? 'unknown']);
-        
-        logMessage('[SUCCESS] Estado guardado para ' . $gameId . ' | Size: ' . $fileSize . ' bytes', 'DEBUG');
+        logMessage('[SUCCESS] Estado guardado para ' . $gameId . ' vía SQLite', 'DEBUG');
         return true;
-        
-    } finally {
-        flock($lock, LOCK_UN);
-        fclose($lock);
-        @unlink($lockFile);
+    } catch (Exception $e) {
+        logMessage('[ERROR] Error guardando a SQLite: ' . $e->getMessage(), 'ERROR');
+        return false;
     }
 }
 
@@ -381,72 +336,51 @@ function loadGameState($gameId) {
         return null;
     }
     
-    $file = GAME_STATES_DIR . '/' . $gameId . '.json';
-
-    if (!file_exists($file)) {
-        logMessage('[DEBUG] Archivo no existe: ' . $file, 'DEBUG');
+    try {
+        $db = Database::getInstance();
+        $repo = new GameRepository();
+        $state = $repo->load($gameId);
+        
+        if ($state) {
+            logMessage('[DEBUG] Estado cargado desde SQLite: ' . $gameId, 'DEBUG');
+            return $state;
+        }
+        
+        logMessage('[DEBUG] Game no encontrado en SQLite: ' . $gameId, 'DEBUG');
+        return null;
+        
+    } catch (Exception $e) {
+        logMessage('[ERROR] Error cargando de SQLite: ' . $e->getMessage(), 'ERROR');
         return null;
     }
-
-    if (time() - filemtime($file) > MAX_GAME_AGE) {
-        logMessage('[INFO] Archivo antiguo eliminado: ' . $gameId, 'INFO');
-        @unlink($file);
-        return null;
-    }
-
-    $json = @file_get_contents($file);
-    if ($json === false) {
-        logMessage('[ERROR] No se pudo leer archivo: ' . $file . ' | Permisos: ' . substr(sprintf('%o', @fileperms($file)), -4), 'ERROR');
-        return null;
-    }
-    
-    $state = json_decode($json, true);
-
-    if (!$state) {
-        logMessage('[ERROR] Error decoding JSON: ' . json_last_error_msg() . ' | File: ' . $file, 'ERROR');
-        return null;
-    }
-
-    if (!isset($state['_version'])) {
-        $state['_version'] = 0;
-    }
-
-    return $state;
 }
 
 function cleanupOldGames() {
-    $files = glob(GAME_STATES_DIR . '/*.json');
-    $deleted = 0;
-
-    if ($files) {
-        foreach ($files as $file) {
-            if (time() - filemtime($file) > MAX_GAME_AGE) {
-                if (@unlink($file)) {
-                    $deleted++;
-                    logMessage('[INFO] Juego antiguo eliminado: ' . basename($file), 'INFO');
-                }
-            }
-        }
+    try {
+        $db = Database::getInstance();
+        $repo = new GameRepository();
+        $deleted = $repo->cleanup(MAX_GAME_AGE);
+        logMessage('[INFO] Cleanup: ' . $deleted . ' old games removed from SQLite', 'INFO');
+        return $deleted;
+    } catch (Exception $e) {
+        logMessage('[ERROR] Cleanup failed: ' . $e->getMessage(), 'ERROR');
+        return 0;
     }
-    
-    $locks = glob(GAME_STATES_DIR . '/*.lock');
-    if ($locks) {
-        foreach ($locks as $lock) {
-            if (time() - filemtime($lock) > 300) {
-                @unlink($lock);
-            }
-        }
-    }
-
-    return $deleted;
 }
 
 function gameExists($gameId) {
     $gameId = sanitizeGameId($gameId);
     if (!$gameId) return false;
     if (strlen($gameId) > MAX_CODE_LENGTH) return false;
-    $file = GAME_STATES_DIR . '/' . $gameId . '.json';
-    return file_exists($file) && (time() - filemtime($file) < MAX_GAME_AGE);
+    
+    try {
+        $db = Database::getInstance();
+        $repo = new GameRepository();
+        return $repo->exists($gameId);
+    } catch (Exception $e) {
+        logMessage('[ERROR] gameExists check failed: ' . $e->getMessage(), 'ERROR');
+        return false;
+    }
 }
 
 function getDictionaryStats() {
