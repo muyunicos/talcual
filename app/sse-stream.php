@@ -62,30 +62,6 @@ function sendHeartbeat() {
     }
 }
 
-function readNotificationFile($filePath) {
-    if (!file_exists($filePath)) {
-        return null;
-    }
-    
-    $content = @file_get_contents($filePath);
-    if (!$content) {
-        return null;
-    }
-    
-    $decoded = @json_decode($content, true);
-    
-    if (!is_array($decoded) || !isset($decoded['event'])) {
-        return ['error' => true, 'content' => $content];
-    }
-    
-    return $decoded;
-}
-
-function isLightweightEvent($eventType) {
-    $lightweight = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'connection', 'typing'];
-    return in_array($eventType, $lightweight);
-}
-
 function sanitizeStateForPlayer($state, $playerId) {
     if ($playerId === 'host') {
         return $state;
@@ -117,11 +93,36 @@ function sanitizeStateForPlayer($state, $playerId) {
     return $sanitized;
 }
 
-$notifyAllFile = GAME_STATES_DIR . '/' . $gameId . '_all.json';
-$notifyHostFile = GAME_STATES_DIR . '/' . $gameId . '_host.json';
-$notifyFile = $playerId === 'host' ? $notifyHostFile : $notifyAllFile;
+function isLightweightEvent($eventType) {
+    $lightweight = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'connection', 'typing'];
+    return in_array($eventType, $lightweight);
+}
 
-$lastNotifyHash = null;
+function getAPCuNotificationKey($gameId, $playerId) {
+    if ($playerId === 'host') {
+        return 'talcual_notify_' . $gameId . '_host';
+    }
+    return 'talcual_notify_' . $gameId . '_all';
+}
+
+function getAPCuNotification($key) {
+    if (!extension_loaded('apcu') || !apcu_enabled()) {
+        return null;
+    }
+
+    $success = false;
+    $notification = apcu_fetch($key, $success);
+
+    if ($success && is_array($notification)) {
+        return $notification;
+    }
+
+    return null;
+}
+
+$notifyKey = getAPCuNotificationKey($gameId, $playerId);
+
+$lastNotificationTs = null;
 $startTime = microtime(true);
 $maxDuration = 3600;
 if (defined('SSE_TIMEOUT') && SSE_TIMEOUT > 0) {
@@ -135,13 +136,13 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with event-driven notifications',
+    'method' => 'SSE with APCu-based event notifications',
     'max_duration_seconds' => $maxDuration
 ]);
 
 $lastHeartbeatTime = microtime(true);
 
-logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}, max duration: {$maxDuration}s, heartbeat: {$heartbeatInterval}s", 'DEBUG');
+logMessage("SSE conectado para {$gameId} (player: {$playerId}), usando APCu, max duration: {$maxDuration}s, heartbeat: {$heartbeatInterval}s", 'DEBUG');
 
 while ((microtime(true) - $startTime) < $maxDuration) {
     if (connection_aborted()) {
@@ -155,8 +156,7 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         break;
     }
     
-    clearstatcache(false, $notifyFile);
-    $notification = readNotificationFile($notifyFile);
+    $notification = getAPCuNotification($notifyKey);
     
     if ($notification === null) {
         $now = microtime(true);
@@ -172,17 +172,9 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         continue;
     }
     
-    if (isset($notification['error']) && $notification['error']) {
-        logMessage("SSE notification JSON parsing failed for {$gameId}, forcing sync", 'ERROR');
-        sendSSE('sync', ['reason' => 'notification_parse_error']);
-        $lastNotifyHash = null;
-        $lastHeartbeatTime = microtime(true);
-        sleep(1);
-        continue;
-    }
+    $currentTs = $notification['ts'] ?? microtime(true);
     
-    $notifyHash = json_encode($notification);
-    if ($notifyHash === $lastNotifyHash) {
+    if ($lastNotificationTs !== null && $currentTs === $lastNotificationTs) {
         $now = microtime(true);
         $timeSinceHeartbeat = $now - $lastHeartbeatTime;
         
@@ -196,9 +188,9 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         continue;
     }
     
-    $lastNotifyHash = $notifyHash;
+    $lastNotificationTs = $currentTs;
     
-    $eventType = $notification['event'];
+    $eventType = $notification['event'] ?? 'update';
     $eventData = $notification['data'] ?? [];
     
     if (isLightweightEvent($eventType)) {
