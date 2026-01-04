@@ -96,10 +96,7 @@ $maxDuration = 3600;
 if (defined('SSE_TIMEOUT') && SSE_TIMEOUT > 0) {
     $maxDuration = SSE_TIMEOUT;
 }
-$heartbeatInterval = 30;
-if (defined('SSE_HEARTBEAT_INTERVAL') && SSE_HEARTBEAT_INTERVAL > 0) {
-    $heartbeatInterval = SSE_HEARTBEAT_INTERVAL;
-}
+$heartbeatInterval = defined('SSE_HEARTBEAT_INTERVAL') && SSE_HEARTBEAT_INTERVAL > 0 ? SSE_HEARTBEAT_INTERVAL : 15;
 $lastHeartbeatTime = microtime(true);
 $pollingInterval = 2;
 
@@ -113,7 +110,7 @@ sendSSE('connected', [
 
 $lastHeartbeatTime = microtime(true);
 
-logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}, max duration: {$maxDuration}s", 'DEBUG');
+logMessage("SSE conectado para {$gameId}, mirando: {$notifyFile}, max duration: {$maxDuration}s, heartbeat: {$heartbeatInterval}s", 'DEBUG');
 
 while ((microtime(true) - $startTime) < $maxDuration) {
     if (connection_aborted()) {
