@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/config.php';
 
 class DictionaryManager {
     private $db = null;
@@ -316,6 +316,7 @@ try {
         
         if ($isHttp) {
             jsonResponse(true, $stats);
+            exit;
         } else {
             printCliSubHeader("📈 Dictionary Statistics");
             printCliStats($manager);
@@ -328,6 +329,7 @@ try {
             $categories = $manager->getCategories();
             if ($isHttp) {
                 jsonResponse(true, $categories);
+                exit;
             } else {
                 printCliSubHeader("🗂️  Categories");
                 foreach ($categories as $cat) {
@@ -342,6 +344,7 @@ try {
             $prompts = $manager->getPrompts($categoryId);
             if ($isHttp) {
                 jsonResponse(true, $prompts);
+                exit;
             } else {
                 printCliSubHeader("📄 Prompts");
                 foreach ($prompts as $prompt) {
@@ -356,6 +359,7 @@ try {
             $words = $manager->getValidWords($promptId);
             if ($isHttp) {
                 jsonResponse(true, $words);
+                exit;
             } else {
                 printCliSubHeader("🔍 Valid Words");
                 foreach ($words as $word) {
@@ -369,6 +373,7 @@ try {
             $dict = $manager->getFullDictionary();
             if ($isHttp) {
                 jsonResponse(true, $dict);
+                exit;
             } else {
                 printCliSubHeader("📚 Full Dictionary Structure");
                 $lastCategory = null;
@@ -395,6 +400,7 @@ try {
             if (empty($args)) {
                 if ($isHttp) {
                     jsonResponse(false, null, 'Missing required parameter: category name');
+                    exit;
                 } else {
                     echo "\n⚠️  Usage: php migrate_dictionary.php add_category 'Category Name'\n\n";
                     exit(1);
@@ -404,6 +410,7 @@ try {
                 $result = $manager->addCategory($categoryName);
                 if ($isHttp) {
                     jsonResponse(true, $result);
+                    exit;
                 } else {
                     printCliSubHeader("➕ Adding Category");
                     echo "✅ Category added: #{$result['id']} {$result['name']}\n\n";
@@ -415,6 +422,7 @@ try {
             if (count($args) < 2) {
                 if ($isHttp) {
                     jsonResponse(false, null, 'Missing required parameters: category_id, prompt_text');
+                    exit;
                 } else {
                     echo "\n⚠️  Usage: php migrate_dictionary.php add_prompt <category_id> 'Prompt Text'\n\n";
                     exit(1);
@@ -425,6 +433,7 @@ try {
                 $promptId = $manager->addPrompt($categoryId, $promptText);
                 if ($isHttp) {
                     jsonResponse(true, ['id' => $promptId]);
+                    exit;
                 } else {
                     printCliSubHeader("➕ Adding Prompt");
                     echo "✅ Prompt added: #{$promptId}\n";
@@ -438,6 +447,7 @@ try {
             if (count($args) < 2) {
                 if ($isHttp) {
                     jsonResponse(false, null, 'Missing required parameters: prompt_id, words');
+                    exit;
                 } else {
                     echo "\n⚠️  Usage: php migrate_dictionary.php add_words <prompt_id> 'word1|alt1' 'word2' ...\n\n";
                     exit(1);
@@ -448,6 +458,7 @@ try {
                 $count = $manager->addValidWords($promptId, $words);
                 if ($isHttp) {
                     jsonResponse(true, ['count' => $count, 'words' => $words]);
+                    exit;
                 } else {
                     printCliSubHeader("➕ Adding Words");
                     echo "✅ {$count} words added to prompt #{$promptId}\n\n";
@@ -463,6 +474,7 @@ try {
             if (empty($args)) {
                 if ($isHttp) {
                     jsonResponse(false, null, 'Missing required parameter: category_id');
+                    exit;
                 } else {
                     echo "\n⚠️  Usage: php migrate_dictionary.php delete_category <category_id>\n\n";
                     exit(1);
@@ -472,6 +484,7 @@ try {
                 $result = $manager->deleteCategory($categoryId);
                 if ($isHttp) {
                     jsonResponse(true, ['deleted' => $result]);
+                    exit;
                 } else {
                     printCliSubHeader("❌ Deleting Category");
                     echo "✅ Category #{$categoryId} deleted\n\n";
@@ -483,6 +496,7 @@ try {
             if (empty($args)) {
                 if ($isHttp) {
                     jsonResponse(false, null, 'Missing required parameter: prompt_id');
+                    exit;
                 } else {
                     echo "\n⚠️  Usage: php migrate_dictionary.php delete_prompt <prompt_id>\n\n";
                     exit(1);
@@ -492,6 +506,7 @@ try {
                 $result = $manager->deletePrompt($promptId);
                 if ($isHttp) {
                     jsonResponse(true, ['deleted' => $result]);
+                    exit;
                 } else {
                     printCliSubHeader("❌ Deleting Prompt");
                     echo "✅ Prompt #{$promptId} deleted\n\n";
@@ -503,6 +518,7 @@ try {
             if (empty($args)) {
                 if ($isHttp) {
                     jsonResponse(false, null, 'Missing required parameter: word_id');
+                    exit;
                 } else {
                     echo "\n⚠️  Usage: php migrate_dictionary.php delete_word <word_id>\n\n";
                     exit(1);
@@ -512,6 +528,7 @@ try {
                 $result = $manager->deleteValidWord($wordId);
                 if ($isHttp) {
                     jsonResponse(true, ['deleted' => $result]);
+                    exit;
                 } else {
                     printCliSubHeader("❌ Deleting Word");
                     echo "✅ Word #{$wordId} deleted\n\n";
@@ -522,6 +539,7 @@ try {
         default:
             if ($isHttp) {
                 jsonResponse(false, null, 'Unknown command: ' . $command);
+                exit;
             } else {
                 echo "❌ Unknown command: {$command}\n\n";
                 exit(1);
@@ -531,9 +549,6 @@ try {
     if (!$isHttp) {
         printCliStats($manager);
         exit(0);
-    } else {
-        $stats = $manager->getStats();
-        echo json_encode($stats);
     }
 
 } catch (Exception $e) {
@@ -541,8 +556,9 @@ try {
         echo "\n❌ ERROR: " . $e->getMessage() . "\n\n";
         exit(1);
     } else {
-        jsonResponse(false, null, $e->getMessage());
         http_response_code(500);
+        jsonResponse(false, null, $e->getMessage());
+        exit;
     }
 }
 ?>
