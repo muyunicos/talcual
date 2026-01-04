@@ -314,9 +314,7 @@ class PlayerManager extends BaseController {
     }
 
     if (state.round_started_at && state.round_duration) {
-      this.startContinuousTimer(state, (remaining) => {
-        this.view.updateTimer(remaining);
-      });
+      this.startContinuousTimer(state);
     }
   }
 
@@ -376,7 +374,7 @@ class PlayerManager extends BaseController {
     this.updateInputAndButtons();
 
     if (this.isReady && this.myWords.length < this.maxWords) {
-      debug('🔼 Revertiendo a estado editable (palabras removidas)', 'debug');
+      debug('🔜 Revertiendo a estado editable (palabras removidas)', 'debug');
       this.markNotReady();
     }
   }
@@ -456,7 +454,7 @@ class PlayerManager extends BaseController {
   async markNotReady() {
     if (!this.client) return;
 
-    debug('🔼 Revertiendo a NO READY', 'info');
+    debug('🔜 Revertiendo a NO READY', 'info');
     this.isReady = false;
 
     this.view.setEditableMode(this.myWords.length);
