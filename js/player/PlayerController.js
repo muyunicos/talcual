@@ -264,8 +264,10 @@ class PlayerManager extends BaseController {
   async showPlayingState(state) {
     debug('🎮 Estado PLAYING detectado', 'debug');
 
-    if (!state.current_word) {
-      debug('❌ PROBLEMA: No hay current_word en el estado!', 'error');
+    const wordPrompt = state.current_prompt || state.current_word;
+
+    if (!wordPrompt) {
+      debug('❌ PROBLEMA: No hay current_prompt en el estado!', 'error');
       return;
     }
 
@@ -293,7 +295,7 @@ class PlayerManager extends BaseController {
 
     debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, 'debug');
 
-    this.view.showPlayingState(state.current_word, state.current_category, hasAnswers, isReady);
+    this.view.showPlayingState(wordPrompt, state.current_category, hasAnswers, isReady);
 
     if (!isReady) {
       if (!me?.answers || me.answers.length === 0) {
