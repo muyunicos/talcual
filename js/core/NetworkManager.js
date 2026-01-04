@@ -286,6 +286,15 @@ class GameClient {
       const dataTrimmed = event.data.trim();
       if (!dataTrimmed || dataTrimmed.startsWith(':')) return;
       
+      console.log('📡 SSE RECEIVED:', event.type, dataTrimmed.substring(0, 100));
+      
+      if (event.type === 'heartbeat') {
+        console.log('💓 Heartbeat received');
+        this.metrics.lastHeartbeatTime = Date.now();
+        this.emit('event:heartbeat', { timestamp: Date.now() });
+        return;
+      }
+      
       let messageData;
       try {
         messageData = JSON.parse(dataTrimmed);
@@ -340,6 +349,7 @@ class GameClient {
         
         if (knownEvents.includes(eventName)) {
           this.unknownEventCount = 0;
+          console.log(`✅ Lightweight event: ${eventName}`);
           
           if (eventName === 'player_joined') {
             this.emit('event:player_joined', eventPayload);
