@@ -14,19 +14,6 @@ function logMessage($message, $level = 'INFO') {
     }
 }
 
-function loadRawDictionaryJson() {
-    $file = defined('DICTIONARY_FILE') ? DICTIONARY_FILE : (__DIR__ . '/diccionario.json');
-
-    if (!file_exists($file)) {
-        return [];
-    }
-
-    $raw = @file_get_contents($file);
-    $data = json_decode($raw ?: '', true);
-
-    return is_array($data) ? $data : [];
-}
-
 function normalizeWord($rawWord) {
     if (empty($rawWord)) {
         return '';
@@ -62,116 +49,151 @@ function cleanWordPrompt($rawWord) {
     return normalizeWord($word);
 }
 
-function loadDictionary() {
-    static $cache = null;
-
-    if ($cache === null) {
-        $data = loadRawDictionaryJson();
-
-        if (empty($data)) {
-            logMessage('Diccionario vacío o no encontrado, usando fallback', 'WARNING');
-            $cache = [
-                'GENERAL' => ['CASA', 'SOL', 'MAR', 'LUNA', 'NUBE']
-            ];
-        } else {
-            $cache = $data;
-        }
+function getCategories() {
+    try {
+        $db = Database::getInstance();
+        $pdo = $db->getConnection();
+        
+        $stmt = $pdo->query('SELECT name FROM categories ORDER BY name ASC');
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return array_map(function($row) { return $row['name']; }, $rows);
+    } catch (Exception $e) {
+        logMessage('Error fetching categories from SQLite: ' . $e->getMessage(), 'ERROR');
+        return [];
     }
-
-    return $cache;
 }
 
 function getTopicCard($category) {
-    $dict = loadDictionary();
-    
-    if (!isset($dict[$category]) || !is_array($dict[$category]) || empty($dict[$category])) {
+    try {
+        $db = Database::getInstance();
+        $pdo = $db->getConnection();
+        
+        $categoryStmt = $pdo->prepare('SELECT id FROM categories WHERE name = ?');
+        $categoryStmt->execute([$category]);
+        $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$categoryRow) {
+            return [
+                'question' => 'JUEGO',
+                'answers' => []
+            ];
+        }
+        
+        $categoryId = $categoryRow['id'];
+        
+        $promptStmt = $pdo->prepare(
+            'SELECT id, text FROM prompts WHERE category_id = ? ORDER BY RANDOM() LIMIT 1'
+        );
+        $promptStmt->execute([$categoryId]);
+        $promptRow = $promptStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$promptRow) {
+            return [
+                'question' => 'JUEGO',
+                'answers' => []
+            ];
+        }
+        
+        $promptId = $promptRow['id'];
+        $question = trim($promptRow['text']);
+        
+        $wordStmt = $pdo->prepare(
+            'SELECT word_entry FROM valid_words WHERE prompt_id = ? ORDER BY word_entry ASC'
+        );
+        $wordStmt->execute([$promptId]);
+        $wordRows = $wordStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $answers = array_map(function($row) { return $row['word_entry']; }, $wordRows);
+        
+        return [
+            'question' => $question,
+            'answers' => $answers
+        ];
+    } catch (Exception $e) {
+        logMessage('Error fetching topic card for ' . $category . ': ' . $e->getMessage(), 'ERROR');
         return [
             'question' => 'JUEGO',
             'answers' => []
         ];
     }
-    
-    $categoryArray = $dict[$category];
-    $randomCard = $categoryArray[array_rand($categoryArray)];
-    
-    if (!is_array($randomCard) || empty($randomCard)) {
-        return [
-            'question' => 'JUEGO',
-            'answers' => []
-        ];
-    }
-    
-    $question = (string)key($randomCard);
-    $answers = current($randomCard);
-    
-    if (!is_array($answers)) {
-        $answers = [];
-    }
-    
-    return [
-        'question' => trim($question),
-        'answers' => array_values($answers)
-    ];
-}
-
-function getCategories() {
-    $dict = loadDictionary();
-
-    if (is_array($dict)) {
-        return array_keys($dict);
-    }
-
-    return [];
 }
 
 function getAllResponsesByCategory($category) {
-    $dict = loadDictionary();
-    
-    if (!isset($dict[$category]) || !is_array($dict[$category])) {
+    try {
+        $db = Database::getInstance();
+        $pdo = $db->getConnection();
+        
+        $sql = 'SELECT DISTINCT vw.word_entry '
+             . 'FROM valid_words vw '
+             . 'JOIN prompts p ON vw.prompt_id = p.id '
+             . 'JOIN categories c ON p.category_id = c.id '
+             . 'WHERE c.name = ? '
+             . 'ORDER BY vw.word_entry ASC';
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$category]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return array_map(function($row) { return $row['word_entry']; }, $rows);
+    } catch (Exception $e) {
+        logMessage('Error fetching responses for category ' . $category . ': ' . $e->getMessage(), 'ERROR');
         return [];
     }
-    
-    $responses = [];
-    foreach ($dict[$category] as $cardObj) {
-        if (is_array($cardObj)) {
-            foreach ($cardObj as $question => $answers) {
-                if (is_array($answers)) {
-                    foreach ($answers as $rawAnswer) {
-                        $responses[] = (string)$rawAnswer;
-                    }
-                }
-            }
-        }
-    }
-    
-    return array_unique($responses);
 }
 
 function getRandomWordByCategoryFiltered($category, $maxLength = null) {
     if ($maxLength === null) {
         $maxLength = MAX_CODE_LENGTH;
     }
-
-    $responses = getAllResponsesByCategory($category);
-    if (empty($responses)) {
-        return null;
-    }
-
-    $attempts = 0;
-    $maxAttempts = 30;
     
-    while ($attempts < $maxAttempts) {
-        $rawWord = $responses[array_rand($responses)];
-        $cleaned = cleanWordPrompt($rawWord);
+    try {
+        $db = Database::getInstance();
+        $pdo = $db->getConnection();
         
-        if (!empty($cleaned) && mb_strlen($cleaned) <= $maxLength) {
-            return $cleaned;
+        $categoryStmt = $pdo->prepare('SELECT id FROM categories WHERE name = ?');
+        $categoryStmt->execute([$category]);
+        $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$categoryRow) {
+            return null;
         }
         
-        $attempts++;
+        $categoryId = $categoryRow['id'];
+        $attempts = 0;
+        $maxAttempts = 30;
+        
+        while ($attempts < $maxAttempts) {
+            $sql = 'SELECT vw.word_entry '
+                 . 'FROM valid_words vw '
+                 . 'JOIN prompts p ON vw.prompt_id = p.id '
+                 . 'WHERE p.category_id = ? '
+                 . 'ORDER BY RANDOM() '
+                 . 'LIMIT 1';
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$categoryId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$row) {
+                return null;
+            }
+            
+            $rawWord = $row['word_entry'];
+            $cleaned = cleanWordPrompt($rawWord);
+            
+            if (!empty($cleaned) && mb_strlen($cleaned) <= $maxLength) {
+                return $cleaned;
+            }
+            
+            $attempts++;
+        }
+        
+        return null;
+    } catch (Exception $e) {
+        logMessage('Error getting random word for category ' . $category . ': ' . $e->getMessage(), 'ERROR');
+        return null;
     }
-    
-    return null;
 }
 
 function generateGameCode() {
@@ -346,35 +368,49 @@ function gameExists($gameId) {
 }
 
 function getDictionaryStats() {
-    $dict = loadDictionary();
-
-    $stats = [
-        'categorias' => count($dict),
-        'total_palabras' => 0,
-        'palabras_codigo' => 0,
-        'categorias_detalle' => []
-    ];
-
-    foreach ($dict as $categoria => $content) {
-        $responses = getAllResponsesByCategory($categoria);
-        $cleanedWords = array_map('cleanWordPrompt', $responses);
-        $cleanedWords = array_filter($cleanedWords, function($w) { 
-            return !empty($w); 
-        });
-        $uniqueWords = array_unique($cleanedWords);
+    try {
+        $db = Database::getInstance();
+        $pdo = $db->getConnection();
         
-        $count = count($uniqueWords);
-        $stats['total_palabras'] += $count;
-        $stats['categorias_detalle'][$categoria] = $count;
+        $categoryCount = $pdo->query('SELECT COUNT(*) as count FROM categories')->fetch()['count'];
+        $categories = getCategories();
         
-        foreach ($uniqueWords as $palabra) {
-            if (mb_strlen($palabra) <= MAX_CODE_LENGTH) {
-                $stats['palabras_codigo']++;
+        $stats = [
+            'categorias' => (int)$categoryCount,
+            'total_palabras' => 0,
+            'palabras_codigo' => 0,
+            'categorias_detalle' => []
+        ];
+        
+        foreach ($categories as $categoria) {
+            $responses = getAllResponsesByCategory($categoria);
+            $cleanedWords = array_map('cleanWordPrompt', $responses);
+            $cleanedWords = array_filter($cleanedWords, function($w) { 
+                return !empty($w); 
+            });
+            $uniqueWords = array_unique($cleanedWords);
+            
+            $count = count($uniqueWords);
+            $stats['total_palabras'] += $count;
+            $stats['categorias_detalle'][$categoria] = $count;
+            
+            foreach ($uniqueWords as $palabra) {
+                if (mb_strlen($palabra) <= MAX_CODE_LENGTH) {
+                    $stats['palabras_codigo']++;
+                }
             }
         }
+        
+        return $stats;
+    } catch (Exception $e) {
+        logMessage('Error fetching dictionary stats: ' . $e->getMessage(), 'ERROR');
+        return [
+            'categorias' => 0,
+            'total_palabras' => 0,
+            'palabras_codigo' => 0,
+            'categorias_detalle' => []
+        ];
     }
-
-    return $stats;
 }
 
 if (rand(1, 100) <= (CLEANUP_PROBABILITY * 100)) {
