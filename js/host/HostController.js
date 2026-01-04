@@ -405,9 +405,7 @@ class HostManager extends BaseController {
     this.view.showPlayingState(state, readyCount);
 
     if (state.round_started_at && state.round_duration) {
-      this.startContinuousTimer(state, (remaining) => {
-        this.view.updateTimer(remaining);
-      });
+      this.startContinuousTimer(state);
     }
   }
 
