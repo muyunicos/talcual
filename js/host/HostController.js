@@ -54,7 +54,7 @@ class HostManager extends BaseController {
 
   async loadConfigAndInit() {
     try {
-      debug('⛳ Cargando configuración...', null, 'info');
+      debug('⚳ Cargando configuración...', null, 'info');
       
       const configResult = await configService.load();
 
@@ -346,7 +346,7 @@ class HostManager extends BaseController {
     const activePlayers = Object.values(state.players).filter(p => !p.disconnected);
     const readyPlayers = activePlayers.filter(p => p.status === 'ready');
 
-    debug(`🧐 Game Flow: ${readyPlayers.length}/${activePlayers.length} listos`, null, 'debug');
+    debug(`🔍 Game Flow: ${readyPlayers.length}/${activePlayers.length} listos`, null, 'debug');
 
     if (readyPlayers.length === activePlayers.length && activePlayers.length > 0) {
       debug('👫 TODOS listos - Auto-end ronda', null, 'info');
@@ -362,10 +362,10 @@ class HostManager extends BaseController {
         state.round_duration
       );
 
-      const minTimeForHurryUp = 20000;
+      const minTimeForHurryUp = 15000;
 
       if (remaining > minTimeForHurryUp) {
-        debug('🧯 Solo 1 jugador falta - Auto-Remate', null, 'info');
+        debug('🕫 Solo 1 jugador falta - Auto-Remate', null, 'info');
         this.activateHurryUp();
       }
     }
@@ -378,7 +378,7 @@ class HostManager extends BaseController {
     if (!confirmed) return;
 
     try {
-      debug(`🚪 Expulsando jugador: ${playerId}`, null, 'info');
+      debug(`💪 Expulsando jugador: ${playerId}`, null, 'info');
       const result = await this.client.sendAction('leave_game', { player_id: playerId });
 
       if (result.success) {
