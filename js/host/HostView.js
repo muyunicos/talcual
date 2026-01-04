@@ -28,7 +28,7 @@ class HostView {
     elements.btnEndRound = document.querySelector('[aria-label="Botón para terminar la ronda"], .btn-end-round');
 
     Object.entries(elements).forEach(([key, el]) => {
-      if (!el && key !== 'btnEndRound') {
+      if (!el && key !== 'btnEndRound' && key !== 'countdownOverlay' && key !== 'countdownNumber') {
         throw new Error(`[HostView] Critical element not found: ${key}`);
       }
     });
@@ -316,22 +316,31 @@ class HostView {
   }
 
   showCountdownOverlay() {
-    safeShowElement(this.elements.countdownOverlay);
+    if (this.elements.countdownOverlay) {
+      safeShowElement(this.elements.countdownOverlay);
+    } else {
+      debug('⚠️ [HostView] countdownOverlay element not found, skipping show', null, 'warn');
+    }
   }
 
   hideCountdownOverlay() {
-    safeHideElement(this.elements.countdownOverlay);
+    if (this.elements.countdownOverlay) {
+      safeHideElement(this.elements.countdownOverlay);
+    }
   }
 
   updateCountdownNumber(seconds) {
-    if (this.elements.countdownNumber) {
-      if (seconds > 3) {
-        this.elements.countdownNumber.textContent = '¿Preparado?';
-      } else if (seconds > 0) {
-        this.elements.countdownNumber.textContent = seconds.toString();
-      } else {
-        this.elements.countdownNumber.textContent = '';
-      }
+    if (!this.elements.countdownNumber) {
+      debug('⚠️ [HostView] countdownNumber element not found, skipping update', null, 'warn');
+      return;
+    }
+
+    if (seconds > 3) {
+      this.elements.countdownNumber.textContent = '¿Preparado?';
+    } else if (seconds > 0) {
+      this.elements.countdownNumber.textContent = seconds.toString();
+    } else {
+      this.elements.countdownNumber.textContent = '';
     }
   }
 }
