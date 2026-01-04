@@ -511,10 +511,23 @@ class PlayerManager extends BaseController {
     return matches;
   }
 
+  ensureWordEngineInitialized(state) {
+    if (!state.roundData || !state.roundData.validMatches) {
+      debug('⚠️ No roundData disponible para inicializar WordEngine', 'warn');
+      return false;
+    }
+
+    initializeWordEngineFromRound(state.roundData);
+    debug('📚 WordEngine inicializado en showResults/showFinalResults', 'info');
+    return true;
+  }
+
   showResults(state) {
     const me = state.players?.[this.playerId];
     const myResults = me?.round_results;
     const myAnswers = me?.answers;
+
+    this.ensureWordEngineInitialized(state);
 
     if (state.status === 'round_ended' && myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0) {
       debug('🔍 Calculando coincidencias localmente en round_ended', 'debug');
@@ -528,6 +541,8 @@ class PlayerManager extends BaseController {
   showFinalResults(state) {
     const me = state.players?.[this.playerId];
     const myAnswers = me?.answers;
+
+    this.ensureWordEngineInitialized(state);
 
     if (myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0) {
       debug('🏁 Calculando coincidencias finales en finished', 'debug');
