@@ -60,11 +60,13 @@
 
         .categories-list > li {
             margin: 0 0 8px 0;
+            display: flex;
+            gap: 6px;
+            align-items: center;
         }
 
         .category-btn {
-            display: block;
-            width: 100%;
+            flex: 1;
             padding: 10px 12px;
             background: var(--color-bg);
             border: 1px solid transparent;
@@ -85,6 +87,24 @@
             background: var(--color-primary);
             color: white;
             border-color: var(--color-primary);
+        }
+
+        .category-delete-btn {
+            padding: 6px 8px;
+            background: none;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .category-delete-btn:hover {
+            border-color: var(--color-error);
+            color: var(--color-error);
+            background: rgba(239, 68, 68, 0.05);
         }
 
         .btn-add-category {
@@ -506,7 +526,15 @@
                     btn.className = `category-btn ${currentCategory === cat.id ? 'active' : ''}`;
                     btn.textContent = cat.name;
                     btn.onclick = () => selectCategory(cat.id, cat.name);
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'category-delete-btn';
+                    deleteBtn.textContent = '🗑️';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteCategory(cat.id);
+                    };
                     li.appendChild(btn);
+                    li.appendChild(deleteBtn);
                     list.appendChild(li);
                 });
                 scheduleStatsUpdate();
