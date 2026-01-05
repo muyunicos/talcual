@@ -7,6 +7,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/GameRepository.php';
 require_once __DIR__ . '/DictionaryRepository.php';
 require_once __DIR__ . '/GameService.php';
+require_once __DIR__ . '/AppUtils.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -79,7 +80,7 @@ try {
             break;
 
         case 'create_game':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
             $requestedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
             if ($requestedCategory === '') $requestedCategory = null;
             $totalRounds = intval($input['total_rounds'] ?? TOTAL_ROUNDS);
@@ -97,15 +98,15 @@ try {
             break;
 
         case 'join_game':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
-            $playerId = sanitizePlayerId($input['player_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+            $playerId = AppUtils::sanitizePlayerId($input['player_id'] ?? null);
 
             if (!$gameId || !$playerId) {
                 throw new Exception('game_id y player_id requeridos');
             }
 
             $playerName = trim($input['name'] ?? 'Jugador');
-            $playerColor = validatePlayerColor($input['color'] ?? null);
+            $playerColor = AppUtils::validatePlayerColor($input['color'] ?? null);
 
             $result = $service->joinGame($gameId, $playerId, $playerName, $playerColor);
             $response = [
@@ -118,7 +119,7 @@ try {
             break;
 
         case 'start_round':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
 
             if (!$gameId) {
                 throw new Exception('game_id requerido');
@@ -140,8 +141,8 @@ try {
             break;
 
         case 'submit_answers':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
-            $playerId = sanitizePlayerId($input['player_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+            $playerId = AppUtils::sanitizePlayerId($input['player_id'] ?? null);
 
             if (!$gameId || !$playerId) {
                 throw new Exception('game_id y player_id requeridos');
@@ -162,7 +163,7 @@ try {
             break;
 
         case 'end_round':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
 
             if (!$gameId) {
                 throw new Exception('game_id requerido');
@@ -183,7 +184,7 @@ try {
             break;
 
         case 'update_round_timer':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
 
             if (!$gameId) {
                 throw new Exception('game_id requerido');
@@ -202,7 +203,7 @@ try {
             break;
 
         case 'reset_game':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
 
             if (!$gameId) {
                 throw new Exception('game_id requerido');
@@ -219,8 +220,8 @@ try {
             break;
 
         case 'leave_game':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
-            $playerId = sanitizePlayerId($input['player_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+            $playerId = AppUtils::sanitizePlayerId($input['player_id'] ?? null);
 
             if (!$gameId || !$playerId) {
                 throw new Exception('game_id y player_id requeridos');
@@ -235,8 +236,8 @@ try {
             break;
 
         case 'update_player_name':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
-            $playerId = sanitizePlayerId($input['player_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+            $playerId = AppUtils::sanitizePlayerId($input['player_id'] ?? null);
 
             if (!$gameId || !$playerId) {
                 throw new Exception('game_id y player_id requeridos');
@@ -255,14 +256,14 @@ try {
             break;
 
         case 'update_player_color':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
-            $playerId = sanitizePlayerId($input['player_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+            $playerId = AppUtils::sanitizePlayerId($input['player_id'] ?? null);
 
             if (!$gameId || !$playerId) {
                 throw new Exception('game_id y player_id requeridos');
             }
 
-            $newColor = validatePlayerColor($input['color'] ?? null);
+            $newColor = AppUtils::validatePlayerColor($input['color'] ?? null);
 
             $result = $service->updatePlayerColor($gameId, $playerId, $newColor);
             $response = [
@@ -275,8 +276,8 @@ try {
             break;
 
         case 'typing':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
-            $playerId = sanitizePlayerId($input['player_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+            $playerId = AppUtils::sanitizePlayerId($input['player_id'] ?? null);
 
             if (!$gameId || !$playerId) {
                 throw new Exception('game_id y player_id requeridos para typing');
@@ -301,7 +302,7 @@ try {
             break;
 
         case 'get_state':
-            $gameId = sanitizeGameId($input['game_id'] ?? null);
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
 
             if (!$gameId) {
                 throw new Exception('game_id requerido');
