@@ -190,6 +190,14 @@
             color: var(--text);
         }
 
+        .empty-state p {
+            margin-bottom: 20px;
+        }
+
+        .empty-state .btn {
+            margin: 0 auto;
+        }
+
         /* Section */
         .section {
             margin-bottom: 40px;
@@ -427,8 +435,9 @@
 
             <div class="content" id="content">
                 <div class="empty-state">
-                    <h3>Selecciona una categoría</h3>
-                    <p>Elige una categoría para editar sus consignas y palabras válidas</p>
+                    <h3>Bienvenido al Gestor de Diccionario</h3>
+                    <p>Comienza creando una categoría para organizar tus consignas</p>
+                    <button class="btn btn-primary" onclick="openCategoryModal()">Crear Primera Categoría</button>
                 </div>
             </div>
         </div>
@@ -526,7 +535,7 @@
                     const li = document.createElement('li');
                     li.className = 'category-item';
                     li.innerHTML = `
-                        <button class="category-btn ${currentCategory === cat.id ? 'active' : ''}" onclick="selectCategory(${cat.id}, '${cat.name}')">  
+                        <button class="category-btn ${currentCategory === cat.id ? 'active' : ''}" onclick="selectCategory(${cat.id}, '${cat.name}')">
                             ${cat.name}
                         </button>
                         <div class="category-actions">
@@ -537,6 +546,10 @@
                     list.appendChild(li);
                 });
                 updateStats();
+
+                if (result.data.length === 0) {
+                    document.getElementById('content').innerHTML = '<div class="empty-state"><h3>Sin categorías</h3><p>Crea la primera categoría para comenzar</p><button class="btn btn-primary" onclick="openCategoryModal()">Crear Categoría</button></div>';
+                }
             }
         }
 
@@ -545,7 +558,7 @@
             const content = document.getElementById('content');
             
             if (!result.success || result.data.length === 0) {
-                content.innerHTML = '<div class="empty-state"><h3>Sin consignas</h3><p>Agrega una consigna para comenzar</p></div>';
+                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button></div><div class="empty-state"><p>Sin consignas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera consigna para esta categoría</p></div></div>';
                 return;
             }
 
@@ -553,13 +566,13 @@
             
             result.data.forEach(prompt => {
                 html += `
-                    <div class="list-item" onclick="selectPrompt(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}')">
+                    <div class="list-item" onclick="selectPrompt(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}')"
                         <div class="list-item-content">
                             <p class="list-item-text">${prompt.text}</p>
                             <p class="list-item-info">${prompt.word_count} palabra${prompt.word_count !== 1 ? 's' : ''}</p>
                         </div>
                         <div class="list-item-actions">
-                            <button class="btn-icon" onclick="event.stopPropagation(); editPromptModal(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}', ${JSON.stringify(prompt.category_ids)})" title="Editar">✏️</button>
+                            <button class="btn-icon" onclick="event.stopPropagation(); editPromptModal(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}", ${JSON.stringify(prompt.category_ids)})" title="Editar">✏️</button>
                             <button class="btn-icon delete" onclick="event.stopPropagation(); deletePrompt(${prompt.id})" title="Eliminar">🗑️</button>
                         </div>
                     </div>
@@ -575,7 +588,7 @@
             const content = document.getElementById('content');
             
             if (!result.success || result.data.length === 0) {
-                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button></div><div class="empty-state"><p>Sin palabras válidas</p></div></div>';
+                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button></div><div class="empty-state"><p>Sin palabras válidas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera palabra para esta consigna</p></div></div>';
                 return;
             }
 
@@ -588,7 +601,7 @@
                             <p class="list-item-text">${word.word_entry}</p>
                         </div>
                         <div class="list-item-actions">
-                            <button class="btn-icon" onclick="editWordModal(${word.id}, '${word.word_entry.replace(/'/g, "\\'")}')" title="Editar">✏️</button>
+                            <button class="btn-icon" onclick="editWordModal(${word.id}, '${word.word_entry.replace(/'/g, "\\'")}")" title="Editar">✏️</button>
                             <button class="btn-icon delete" onclick="deleteWord(${word.id})" title="Eliminar">🗑️</button>
                         </div>
                     </div>
@@ -677,7 +690,7 @@
         // PROMPT OPERATIONS
         function openPromptModal(edit = null) {
             if (!currentCategory && !edit) {
-                alert('Selecciona una categoría primero');
+                showAlert('promptAlert', 'Selecciona una categoría primero', 'error');
                 return;
             }
             editingItem = edit;
@@ -685,7 +698,7 @@
             document.getElementById('promptText').value = edit ? edit.text : '';
             document.getElementById('promptAlert').innerHTML = '';
             
-            selectedCategories = edit ? edit.categoryIds : [currentCategory];
+            selectedCategories = edit ? edit.categoryIds : (currentCategory ? [currentCategory] : []);
             loadCategoryCheckboxes();
             
             document.getElementById('promptModal').classList.add('open');
@@ -704,6 +717,10 @@
         function loadCategoryCheckboxes() {
             const container = document.getElementById('categoryCheckboxes');
             container.innerHTML = '';
+            if (allCategories.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 20px;">Crea una categoría primero</p>';
+                return;
+            }
             allCategories.forEach(cat => {
                 const isSelected = selectedCategories.includes(cat.id);
                 const div = document.createElement('div');
@@ -754,8 +771,8 @@
 
         // WORD OPERATIONS
         function openWordModal(edit = null) {
-            if (!currentPrompt) {
-                alert('Selecciona una consigna primero');
+            if (!currentPrompt && !edit) {
+                showAlert('wordAlert', 'Selecciona una consigna primero', 'error');
                 return;
             }
             editingItem = edit;
