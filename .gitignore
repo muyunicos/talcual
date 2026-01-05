@@ -9,8 +9,8 @@ game_states/
 images/
 favicon.ico
 
-# Dictionary
-app/diccionario.json
+# Data
+data/
 
 # Logs
 debug.log
