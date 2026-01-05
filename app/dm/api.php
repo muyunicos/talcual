@@ -225,15 +225,29 @@ class DictionaryManager {
     public function getGames() {
         try {
             $sql = 'SELECT 
-                g.id, g.code, g.host_name, g.status, g.current_round, g.created_at,
-                COUNT(DISTINCT gp.id) as player_count
+                g.id,
+                g.id as code,
+                g.status,
+                g.round as current_round,
+                g.updated_at,
+                COUNT(DISTINCT p.id) as player_count
             FROM games g
-            LEFT JOIN game_players gp ON g.id = gp.game_id
-            GROUP BY g.id, g.code, g.host_name, g.status, g.current_round, g.created_at
-            ORDER BY g.created_at DESC';
+            LEFT JOIN players p ON g.id = p.game_id
+            GROUP BY g.id
+            ORDER BY g.updated_at DESC
+            LIMIT 100';
             
             $stmt = $this->pdo->query($sql);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($games as &$game) {
+                $game['host_name'] = 'TalCual';
+                $game['player_count'] = (int)$game['player_count'];
+                $game['current_round'] = (int)$game['current_round'];
+                $game['created_at'] = date('Y-m-d H:i:s', $game['updated_at']);
+            }
+            
+            return $games;
         } catch (PDOException $e) {
             throw new Exception('Error fetching games: ' . $e->getMessage());
         }
@@ -241,9 +255,20 @@ class DictionaryManager {
 
     public function getGameByCode($code) {
         try {
-            $stmt = $this->pdo->prepare('SELECT * FROM games WHERE code = ? LIMIT 1');
+            $stmt = $this->pdo->prepare('SELECT 
+                id, status, round as current_round, updated_at, 
+                (SELECT COUNT(*) FROM players WHERE game_id = games.id) as player_count
+            FROM games WHERE id = ? LIMIT 1');
             $stmt->execute([$code]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            $game = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($game) {
+                $game['code'] = $game['id'];
+                $game['host_name'] = 'TalCual';
+                $game['created_at'] = date('Y-m-d H:i:s', $game['updated_at']);
+            }
+            
+            return $game;
         } catch (PDOException $e) {
             throw new Exception('Error fetching game: ' . $e->getMessage());
         }
@@ -251,14 +276,8 @@ class DictionaryManager {
 
     public function deleteGame($code) {
         try {
-            $game = $this->getGameByCode($code);
-            if (!$game) throw new Exception('Game not found');
-            
-            $gameId = $game['id'];
-            
-            $this->pdo->prepare('DELETE FROM game_players WHERE game_id = ?')->execute([$gameId]);
-            $this->pdo->prepare('DELETE FROM games WHERE id = ?')->execute([$gameId]);
-            
+            $this->pdo->prepare('DELETE FROM players WHERE game_id = ?')->execute([$code]);
+            $this->pdo->prepare('DELETE FROM games WHERE id = ?')->execute([$code]);
             return true;
         } catch (PDOException $e) {
             throw new Exception('Error deleting game: ' . $e->getMessage());
