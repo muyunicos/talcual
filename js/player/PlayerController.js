@@ -616,8 +616,8 @@ class PlayerManager extends BaseController {
     const selectedAura = this.view.getSelectedEditAura();
     if (selectedAura && selectedAura !== this.playerColor) {
       this.playerColor = selectedAura;
-      applyColorGradient(this.playerColor);
-      savePlayerColor(this.playerColor);
+      auraModuleInstance.applyColorGradient(this.playerColor);
+      auraModuleInstance.savePlayerColor(this.playerColor);
     }
 
     this.saveSession(this.gameId, this.playerId, trimmedName, this.playerColor);
