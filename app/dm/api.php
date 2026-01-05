@@ -72,17 +72,26 @@ class DictionaryManager {
     public function getPromptsWithStats($categoryId) {
         try {
             $sql = 'SELECT 
-                p.id, p.category_id, p.text,
+                p.id, p.text,
+                GROUP_CONCAT(pc.category_id, ",") as category_ids,
                 COUNT(vw.id) as word_count
             FROM prompts p
+            JOIN prompt_categories pc ON p.id = pc.prompt_id
             LEFT JOIN valid_words vw ON p.id = vw.prompt_id
-            WHERE p.category_id = ?
-            GROUP BY p.id, p.category_id, p.text
+            WHERE pc.category_id = ?
+            GROUP BY p.id, p.text
             ORDER BY p.text';
             
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$categoryId]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($results as &$row) {
+                $row['category_ids'] = array_map('intval', explode(',', $row['category_ids'] ?? ''));
+                $row['word_count'] = (int)$row['word_count'];
+            }
+            
+            return $results;
         } catch (PDOException $e) {
             throw new Exception('Error fetching prompts: ' . $e->getMessage());
         }
@@ -91,12 +100,31 @@ class DictionaryManager {
     public function getPrompts($categoryId = null) {
         try {
             if ($categoryId) {
-                $stmt = $this->pdo->prepare('SELECT id, category_id, text FROM prompts WHERE category_id = ? ORDER BY text');
+                $stmt = $this->pdo->prepare(
+                    'SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids '
+                    . 'FROM prompts p '
+                    . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
+                    . 'WHERE pc.category_id = ? '
+                    . 'GROUP BY p.id, p.text '
+                    . 'ORDER BY p.text'
+                );
                 $stmt->execute([$categoryId]);
             } else {
-                $stmt = $this->pdo->query('SELECT id, category_id, text FROM prompts ORDER BY category_id, text');
+                $stmt = $this->pdo->query(
+                    'SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids '
+                    . 'FROM prompts p '
+                    . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
+                    . 'GROUP BY p.id, p.text '
+                    . 'ORDER BY p.text'
+                );
             }
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($results as &$row) {
+                $row['category_ids'] = array_map('intval', explode(',', $row['category_ids'] ?? ''));
+            }
+            
+            return $results;
         } catch (PDOException $e) {
             throw new Exception('Error fetching prompts: ' . $e->getMessage());
         }
@@ -104,41 +132,109 @@ class DictionaryManager {
 
     public function getPromptById($promptId) {
         try {
-            $stmt = $this->pdo->prepare('SELECT id, category_id, text FROM prompts WHERE id = ?');
+            $stmt = $this->pdo->prepare(
+                'SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids '
+                . 'FROM prompts p '
+                . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
+                . 'WHERE p.id = ? '
+                . 'GROUP BY p.id, p.text'
+            );
             $stmt->execute([$promptId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                $result['category_ids'] = array_map('intval', explode(',', $result['category_ids'] ?? ''));
+            }
+            
+            return $result;
         } catch (PDOException $e) {
             throw new Exception('Error fetching prompt: ' . $e->getMessage());
         }
     }
 
-    public function addPrompt($categoryId, $promptText) {
+    public function addPrompt($categoryIds, $promptText) {
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO prompts (category_id, text) VALUES (?, ?)');
-            $stmt->execute([$categoryId, $promptText]);
-            return $this->pdo->lastInsertId();
-        } catch (PDOException $e) {
+            if (is_string($categoryIds)) {
+                $categoryIds = [$categoryIds];
+            } elseif (!is_array($categoryIds)) {
+                throw new Exception('Invalid categoryIds format');
+            }
+            
+            if (empty($categoryIds)) {
+                throw new Exception('At least one category is required');
+            }
+            
+            $this->db->beginTransaction();
+            
+            $stmt = $this->pdo->prepare('INSERT INTO prompts (text) VALUES (?)');
+            $stmt->execute([$promptText]);
+            $promptId = $this->pdo->lastInsertId();
+            
+            $relStmt = $this->pdo->prepare('INSERT INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
+            foreach ($categoryIds as $catId) {
+                $relStmt->execute([$promptId, $catId]);
+            }
+            
+            $this->db->commit();
+            
+            return $promptId;
+        } catch (Exception $e) {
+            $this->db->rollback();
             throw new Exception('Error adding prompt: ' . $e->getMessage());
         }
     }
 
-    public function updatePrompt($promptId, $newText) {
+    public function updatePrompt($promptId, $newText, $categoryIds = null) {
         try {
+            $this->db->beginTransaction();
+            
             $stmt = $this->pdo->prepare('UPDATE prompts SET text = ? WHERE id = ?');
             $stmt->execute([$newText, $promptId]);
-            return $stmt->rowCount() > 0;
-        } catch (PDOException $e) {
+            
+            if ($categoryIds !== null) {
+                if (is_string($categoryIds)) {
+                    $categoryIds = [$categoryIds];
+                } elseif (!is_array($categoryIds)) {
+                    throw new Exception('Invalid categoryIds format');
+                }
+                
+                $this->pdo->prepare('DELETE FROM prompt_categories WHERE prompt_id = ?')->execute([$promptId]);
+                
+                if (!empty($categoryIds)) {
+                    $relStmt = $this->pdo->prepare('INSERT INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
+                    foreach ($categoryIds as $catId) {
+                        $relStmt->execute([$promptId, $catId]);
+                    }
+                }
+            }
+            
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
             throw new Exception('Error updating prompt: ' . $e->getMessage());
         }
     }
 
     public function deletePrompt($promptId) {
         try {
+            $this->pdo->prepare('DELETE FROM prompt_categories WHERE prompt_id = ?')->execute([$promptId]);
             $stmt = $this->pdo->prepare('DELETE FROM prompts WHERE id = ?');
             $stmt->execute([$promptId]);
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
             throw new Exception('Error deleting prompt: ' . $e->getMessage());
+        }
+    }
+
+    public function getPromptCategories($promptId) {
+        try {
+            $stmt = $this->pdo->prepare('SELECT category_id FROM prompt_categories WHERE prompt_id = ? ORDER BY category_id');
+            $stmt->execute([$promptId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return array_map(function($row) { return (int)$row['category_id']; }, $rows);
+        } catch (PDOException $e) {
+            throw new Exception('Error fetching prompt categories: ' . $e->getMessage());
         }
     }
 
@@ -288,7 +384,7 @@ class DictionaryManager {
         try {
             $inspection = [
                 'categories' => $this->pdo->query('SELECT id, name FROM categories ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
-                'prompts' => $this->pdo->query('SELECT id, category_id, text FROM prompts ORDER BY category_id, id')->fetchAll(PDO::FETCH_ASSOC),
+                'prompts' => $this->pdo->query('SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids FROM prompts p LEFT JOIN prompt_categories pc ON p.id = pc.prompt_id GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
                 'words' => $this->pdo->query('SELECT id, prompt_id, word_entry FROM valid_words ORDER BY prompt_id, id')->fetchAll(PDO::FETCH_ASSOC),
                 'games' => $this->pdo->query('SELECT id, status, round, updated_at FROM games ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
                 'players' => $this->pdo->query('SELECT id, game_id, name, score FROM players ORDER BY game_id, id')->fetchAll(PDO::FETCH_ASSOC),
@@ -332,6 +428,7 @@ try {
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
     $id = $_GET['id'] ?? $_POST['id'] ?? null;
     $categoryId = $_GET['category_id'] ?? $_POST['category_id'] ?? null;
+    $categoryIds = isset($_POST['category_ids']) ? json_decode($_POST['category_ids'], true) : null;
     $promptId = $_GET['prompt_id'] ?? $_POST['prompt_id'] ?? null;
     $code = $_GET['code'] ?? $_POST['code'] ?? null;
 
@@ -377,16 +474,17 @@ try {
             break;
 
         case 'add_prompt':
-            if (!$categoryId) throw new Exception('Missing category_id');
+            $cats = $categoryIds ?? (isset($_POST['category_id']) ? [$_POST['category_id']] : null);
+            if (!$cats) throw new Exception('Missing category_id or category_ids');
             if (!isset($_POST['text']) || empty($_POST['text'])) throw new Exception('Missing prompt text');
-            $promptId = $manager->addPrompt($categoryId, $_POST['text']);
+            $promptId = $manager->addPrompt($cats, $_POST['text']);
             $response = ['success' => true, 'data' => ['id' => $promptId], 'message' => 'Prompt added'];
             break;
 
         case 'update_prompt':
             if (!$id) throw new Exception('Missing prompt_id');
             if (!isset($_POST['text']) || empty($_POST['text'])) throw new Exception('Missing prompt text');
-            $manager->updatePrompt($id, $_POST['text']);
+            $manager->updatePrompt($id, $_POST['text'], $categoryIds);
             $response = ['success' => true, 'message' => 'Prompt updated'];
             break;
 
