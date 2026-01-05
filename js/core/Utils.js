@@ -192,14 +192,6 @@ const StorageManager = {
 };
 
 class GameTimer {
-    constructor(element, onTick = null) {
-        this.element = element;
-        this.onTick = onTick;
-        this.intervalId = null;
-        this.remainingMs = 0;
-        this.icon = '⏳';
-    }
-
     static getRemaining(roundStartedAt, roundDuration) {
         if (!roundStartedAt || !roundDuration) return null;
         const now = timeSync.getServerTime();
@@ -218,60 +210,6 @@ class GameTimer {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         element.textContent = `${icon} ${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    start(durationMs, startTime = null) {
-        this.stop();
-        this.remainingMs = durationMs;
-        const refTime = startTime || performance.now();
-        
-        this.intervalId = setInterval(() => {
-            const elapsed = performance.now() - refTime;
-            const newRemaining = Math.max(durationMs - elapsed, 0);
-            
-            if (newRemaining !== this.remainingMs) {
-                this.remainingMs = newRemaining;
-                this.updateUI();
-            }
-            
-            if (this.remainingMs <= 0) {
-                this.stop();
-            }
-        }, 100);
-    }
-
-    updateUI() {
-        if (this.element) {
-            GameTimer.updateDisplay(this.remainingMs, this.element, this.icon);
-        }
-        if (typeof this.onTick === 'function') {
-            this.onTick(this.remainingMs);
-        }
-    }
-
-    stop() {
-        if (this.intervalId !== null) {
-            clearInterval(this.intervalId);
-            this.intervalId = null;
-        }
-    }
-
-    setIcon(icon) {
-        this.icon = icon;
-    }
-
-    getRemaining() {
-        return this.remainingMs;
-    }
-
-    isRunning() {
-        return this.intervalId !== null;
-    }
-
-    destroy() {
-        this.stop();
-        this.element = null;
-        this.onTick = null;
     }
 }
 
