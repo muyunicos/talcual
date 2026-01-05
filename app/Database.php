@@ -40,6 +40,7 @@ class Database {
             $this->pdo->exec('PRAGMA journal_mode = WAL');
             $this->pdo->exec('PRAGMA foreign_keys = ON');
             $this->pdo->exec('PRAGMA synchronous = NORMAL');
+            $this->pdo->exec('PRAGMA wal_autocheckpoint = 1000');
 
             logMessage('SQLite connected: ' . $this->dbPath, 'DEBUG');
 
@@ -138,6 +139,15 @@ class Database {
         return $this->dbPath;
     }
 
+    public function checkpoint() {
+        try {
+            $this->getConnection()->exec('PRAGMA wal_checkpoint(RESTART)');
+            logMessage('WAL checkpoint completed', 'DEBUG');
+        } catch (PDOException $e) {
+            logMessage('WAL checkpoint failed: ' . $e->getMessage(), 'ERROR');
+        }
+    }
+
     public function beginTransaction() {
         try {
             $this->getConnection()->beginTransaction();
@@ -150,6 +160,7 @@ class Database {
     public function commit() {
         try {
             $this->getConnection()->commit();
+            $this->checkpoint();
         } catch (PDOException $e) {
             logMessage('Transaction commit failed: ' . $e->getMessage(), 'ERROR');
             throw new Exception('Transaction error: ' . $e->getMessage());
@@ -187,6 +198,15 @@ class Database {
 
     public function lastInsertId() {
         return $this->getConnection()->lastInsertId();
+    }
+
+    public function __destruct() {
+        if ($this->pdo !== null) {
+            try {
+                $this->checkpoint();
+            } catch (Exception $e) {
+            }
+        }
     }
 }
 ?>
