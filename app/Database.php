@@ -104,12 +104,19 @@ class Database {
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS prompts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL UNIQUE
+            )');
+
+            $this->pdo->exec('CREATE TABLE IF NOT EXISTS prompt_categories (
+                prompt_id INTEGER NOT NULL,
                 category_id INTEGER NOT NULL,
-                text TEXT NOT NULL,
+                PRIMARY KEY (prompt_id, category_id),
+                FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
                 FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
             )');
 
-            $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_prompts_category_id ON prompts(category_id)');
+            $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_prompt_categories_prompt ON prompt_categories(prompt_id)');
+            $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_prompt_categories_category ON prompt_categories(category_id)');
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS valid_words (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,11 +127,47 @@ class Database {
 
             $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)');
 
+            $this->migratePromptCategories();
+
             logMessage('Database tables initialized successfully', 'DEBUG');
 
         } catch (PDOException $e) {
             logMessage('Error initializing tables: ' . $e->getMessage(), 'ERROR');
             throw new Exception('Database initialization error: ' . $e->getMessage());
+        }
+    }
+
+    private function migratePromptCategories() {
+        try {
+            $stmt = $this->pdo->query("PRAGMA table_info(prompts)");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $hasOldColumn = false;
+
+            foreach ($columns as $column) {
+                if ($column['name'] === 'category_id') {
+                    $hasOldColumn = true;
+                    break;
+                }
+            }
+
+            if ($hasOldColumn) {
+                logMessage('Migrating old prompts.category_id to prompt_categories table', 'INFO');
+
+                $this->pdo->beginTransaction();
+
+                $stmt = $this->pdo->query('SELECT id, category_id FROM prompts WHERE category_id IS NOT NULL');
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $insertStmt = $this->pdo->prepare('INSERT OR IGNORE INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
+                foreach ($rows as $row) {
+                    $insertStmt->execute([$row['id'], $row['category_id']]);
+                }
+
+                $this->pdo->commit();
+                logMessage('Migration completed: ' . count($rows) . ' records migrated', 'INFO');
+            }
+        } catch (Exception $e) {
+            logMessage('Migration error (non-critical): ' . $e->getMessage(), 'WARNING');
         }
     }
 
