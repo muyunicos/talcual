@@ -41,10 +41,6 @@ class BaseController {
     }
   }
 
-  createPlayerAuraNode(player) {
-    return this.auraModule.renderPlayerNode(player);
-  }
-
   applyPlayerAura(colorStr) {
     this.auraModule.applyColorGradient(colorStr);
   }
