@@ -104,8 +104,7 @@ class Database {
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS prompts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                text TEXT NOT NULL UNIQUE,
-                category_id INTEGER
+                text TEXT NOT NULL UNIQUE
             )');
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS prompt_categories (
@@ -213,7 +212,16 @@ class Database {
                 $insertStmt->execute([$row['id'], $row['category_id']]);
             }
 
-            logMessage('Migration completed: ' . count($rows) . ' records migrated', 'INFO');
+            $this->pdo->exec('CREATE TABLE prompts_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL UNIQUE
+            )');
+
+            $this->pdo->exec('INSERT INTO prompts_new (id, text) SELECT id, text FROM prompts');
+            $this->pdo->exec('DROP TABLE prompts');
+            $this->pdo->exec('ALTER TABLE prompts_new RENAME TO prompts');
+
+            logMessage('Migration completed: ' . count($rows) . ' records migrated and category_id column removed', 'INFO');
         } catch (Exception $e) {
             logMessage('Migration error (non-critical): ' . $e->getMessage(), 'WARNING');
         }
