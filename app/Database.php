@@ -129,12 +129,60 @@ class Database {
             $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)');
 
             $this->migratePromptCategories();
+            $this->seedDefaultData();
 
             logMessage('Database tables initialized successfully', 'DEBUG');
 
         } catch (PDOException $e) {
             logMessage('Error initializing tables: ' . $e->getMessage(), 'ERROR');
             throw new Exception('Database initialization error: ' . $e->getMessage());
+        }
+    }
+
+    private function seedDefaultData() {
+        try {
+            $stmt = $this->pdo->query('SELECT COUNT(*) as count FROM categories');
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ((int)$result['count'] > 0) {
+                return;
+            }
+            
+            logMessage('Seeding default data', 'INFO');
+            
+            $this->pdo->beginTransaction();
+            
+            $stmt = $this->pdo->prepare('INSERT INTO categories (name) VALUES (?)');
+            $stmt->execute(['General']);
+            $categoryId = $this->pdo->lastInsertId();
+            
+            $stmt = $this->pdo->prepare('INSERT INTO prompts (text) VALUES (?)');
+            $stmt->execute(['Países del mundo']);
+            $promptId = $this->pdo->lastInsertId();
+            
+            $stmt = $this->pdo->prepare('INSERT INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
+            $stmt->execute([$promptId, $categoryId]);
+            
+            $defaultWords = [
+                'ARGENTINA', 'BRASIL', 'CHILE', 'PERU', 'MEXICO',
+                'ESPAÑA', 'FRANCIA', 'ITALIA', 'ALEMANIA', 'PORTUGAL',
+                'JAPÓN', 'CHINA', 'INDIA', 'AUSTRALIA', 'CANADÁ',
+                'USA', 'RUSIA', 'GRECIA', 'TURQUÍA', 'SUECIA'
+            ];
+            
+            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_entry) VALUES (?, ?)');
+            foreach ($defaultWords as $word) {
+                $stmt->execute([$promptId, $word]);
+            }
+            
+            $this->pdo->commit();
+            logMessage('Default data seed completed: 1 category, 1 prompt, ' . count($defaultWords) . ' words', 'INFO');
+            
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            logMessage('Seed error (non-critical): ' . $e->getMessage(), 'WARNING');
         }
     }
 
