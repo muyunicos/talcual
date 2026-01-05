@@ -29,8 +29,13 @@ class PlayerView {
       playerNameDisplay: getElement('player-name-display')
     };
 
-    this.elements.maxWordsDisplay.textContent = this.maxWords;
-    this.elements.headerTimer.textContent = '⏳ 00:00';
+    if (elements.maxWordsDisplay) {
+      elements.maxWordsDisplay.textContent = this.maxWords;
+    }
+
+    if (elements.headerTimer) {
+      elements.headerTimer.textContent = '⏳ 00:00';
+    }
 
     return elements;
   }
