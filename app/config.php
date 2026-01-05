@@ -83,7 +83,10 @@ function getTopicCard($category) {
         $categoryId = $categoryRow['id'];
         
         $promptStmt = $pdo->prepare(
-            'SELECT id, text FROM prompts WHERE category_id = ? ORDER BY RANDOM() LIMIT 1'
+            'SELECT p.id, p.text FROM prompts p '
+            . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
+            . 'WHERE pc.category_id = ? '
+            . 'ORDER BY RANDOM() LIMIT 1'
         );
         $promptStmt->execute([$categoryId]);
         $promptRow = $promptStmt->fetch(PDO::FETCH_ASSOC);
@@ -127,7 +130,8 @@ function getAllResponsesByCategory($category) {
         $sql = 'SELECT DISTINCT vw.word_entry '
              . 'FROM valid_words vw '
              . 'JOIN prompts p ON vw.prompt_id = p.id '
-             . 'JOIN categories c ON p.category_id = c.id '
+             . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
+             . 'JOIN categories c ON pc.category_id = c.id '
              . 'WHERE c.name = ? '
              . 'ORDER BY vw.word_entry ASC';
         
@@ -167,7 +171,8 @@ function getRandomWordByCategoryFiltered($category, $maxLength = null) {
             $sql = 'SELECT vw.word_entry '
                  . 'FROM valid_words vw '
                  . 'JOIN prompts p ON vw.prompt_id = p.id '
-                 . 'WHERE p.category_id = ? '
+                 . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
+                 . 'WHERE pc.category_id = ? '
                  . 'ORDER BY RANDOM() '
                  . 'LIMIT 1';
             
