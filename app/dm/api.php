@@ -221,6 +221,49 @@ class DictionaryManager {
             throw new Exception('Error fetching stats: ' . $e->getMessage());
         }
     }
+
+    public function getGames() {
+        try {
+            $sql = 'SELECT 
+                g.id, g.code, g.host_name, g.status, g.current_round, g.created_at,
+                COUNT(DISTINCT gp.id) as player_count
+            FROM games g
+            LEFT JOIN game_players gp ON g.id = gp.game_id
+            GROUP BY g.id, g.code, g.host_name, g.status, g.current_round, g.created_at
+            ORDER BY g.created_at DESC';
+            
+            $stmt = $this->pdo->query($sql);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            throw new Exception('Error fetching games: ' . $e->getMessage());
+        }
+    }
+
+    public function getGameByCode($code) {
+        try {
+            $stmt = $this->pdo->prepare('SELECT * FROM games WHERE code = ? LIMIT 1');
+            $stmt->execute([$code]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            throw new Exception('Error fetching game: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteGame($code) {
+        try {
+            $game = $this->getGameByCode($code);
+            if (!$game) throw new Exception('Game not found');
+            
+            $gameId = $game['id'];
+            
+            $this->pdo->prepare('DELETE FROM game_players WHERE game_id = ?')->execute([$gameId]);
+            $this->pdo->prepare('DELETE FROM games WHERE id = ?')->execute([$gameId]);
+            
+            return true;
+        } catch (PDOException $e) {
+            throw new Exception('Error deleting game: ' . $e->getMessage());
+        }
+    }
 }
 
 header('Content-Type: application/json; charset=utf-8');
@@ -239,6 +282,7 @@ try {
     $id = $_GET['id'] ?? $_POST['id'] ?? null;
     $categoryId = $_GET['category_id'] ?? $_POST['category_id'] ?? null;
     $promptId = $_GET['prompt_id'] ?? $_POST['prompt_id'] ?? null;
+    $code = $_GET['code'] ?? $_POST['code'] ?? null;
 
     $response = ['success' => false, 'message' => 'Unknown action'];
 
@@ -334,6 +378,21 @@ try {
 
         case 'stats':
             $response = ['success' => true, 'data' => $manager->getStats()];
+            break;
+
+        case 'get_games':
+            $response = ['success' => true, 'data' => $manager->getGames()];
+            break;
+
+        case 'get_game':
+            if (!$code) throw new Exception('Missing game code');
+            $response = ['success' => true, 'data' => $manager->getGameByCode($code)];
+            break;
+
+        case 'delete_game':
+            if (!$code) throw new Exception('Missing game code');
+            $manager->deleteGame($code);
+            $response = ['success' => true, 'message' => 'Game deleted'];
             break;
     }
 
