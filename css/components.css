@@ -213,7 +213,33 @@
     background: rgba(34, 197, 94, 0.3);
 }
 
-/* PLAYER SQUARCLE */
+/* ========== AURA UTILITY CLASSES ========== */
+.aura-gradient {
+    background: var(--aura-gradient, linear-gradient(135deg, #FF0055 0%, #00F0FF 100%));
+}
+
+/* Pre-defined aura gradients (for common cases) */
+.aura-gradient--neon-pink-cyan {
+    background: linear-gradient(135deg, #FF0055 0%, #00F0FF 100%);
+}
+
+.aura-gradient--purple-cyan {
+    background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%);
+}
+
+.aura-gradient--magenta-teal {
+    background: linear-gradient(135deg, #D946EF 0%, #14B8A6 100%);
+}
+
+.aura-gradient--orange-pink {
+    background: linear-gradient(135deg, #EA580C 0%, #EC4899 100%);
+}
+
+.aura-gradient--blue-green {
+    background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%);
+}
+
+/* ========== PLAYER SQUARCLE ========== */
 .player-squarcle {
     position: relative;
     width: 8em;
