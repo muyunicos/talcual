@@ -13,7 +13,6 @@ class HostManager extends BaseController {
     this.hurryUpActive = false;
     this.categories = [];
     this.categoryWordsMap = {};
-    this._roundMonitor = null;
 
     this.view = new HostView();
 
@@ -55,7 +54,7 @@ class HostManager extends BaseController {
 
   async loadConfigAndInit() {
     try {
-      debug('⚳ Cargando configuración...', null, 'info');
+      debug('ⳳ Cargando configuración...', null, 'info');
       
       const configResult = await configService.load();
 
@@ -561,29 +560,21 @@ class HostManager extends BaseController {
     }
   }
 
-  startContinuousTimer(state) {
-    super.startContinuousTimer(state);
-
-    if (this._roundMonitor) clearInterval(this._roundMonitor);
+  checkRoundTimeout() {
+    if (!this.gameState || this.gameState.status !== 'playing') {
+      return;
+    }
     
-    this._roundMonitor = setInterval(() => {
-      if (!this.gameState || this.gameState.status !== 'playing') {
-        clearInterval(this._roundMonitor);
-        return;
-      }
-      
-      const remaining = GameTimer.getRemaining(
-        this.gameState.round_started_at,
-        this.gameState.round_duration
-      );
-      
-      if (remaining <= 0 && !this.roundEnded) {
-        debug('⏰ Tiempo agotado - Host finalizando ronda...', null, 'info');
-        this.roundEnded = true;
-        this.endRound();
-        clearInterval(this._roundMonitor);
-      }
-    }, 1000);
+    const remaining = GameTimer.getRemaining(
+      this.gameState.round_started_at,
+      this.gameState.round_duration
+    );
+    
+    if (remaining <= 0 && !this.roundEnded) {
+      debug('⏰ Tiempo agotado - Host finalizando ronda...', null, 'info');
+      this.roundEnded = true;
+      this.endRound();
+    }
   }
 }
 
