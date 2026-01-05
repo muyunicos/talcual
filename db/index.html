@@ -572,12 +572,21 @@
         let draggedClue = null;
         let draggedFromCat = null;
         
+        function fixConsignasStructure() {
+            if (!db.consignas) db.consignas = {};
+            if (Array.isArray(db.consignas)) {
+                console.warn('consignas es un array, convirtiendo a objeto');
+                db.consignas = {};
+            }
+        }
+        
         async function loadDB() {
             try {
                 const res = await fetch('dmanager.php?action=get-db');
                 const result = await res.json();
                 if (result.success && result.data) {
                     db = result.data;
+                    fixConsignasStructure();
                     renderTree();
                     updateStats();
                 } else {
@@ -616,7 +625,7 @@
                     <ul class="tree-clues">
                         ${catData.consignas.map((clueId, idx) => {
                             const clue = db.consignas[clueId];
-                            if (!clue) return '';
+                            if (!clue) return `<li style="padding: 10px 30px; color: #c62828; font-size: 12px;">⚠️ Consigna ${clueId} no existe</li>`;
                             const pregunta = clue.pregunta.substring(0, 40) + (clue.pregunta.length > 40 ? '...' : '');
                             return `
                                 <li class="tree-clue" draggable="true" 
@@ -902,6 +911,7 @@
                     const result = await res.json();
                     if (result.success) {
                         db = result.data;
+                        fixConsignasStructure();
                         renderTree();
                         updateStats();
                         loadRawJSON();
@@ -934,6 +944,7 @@
         async function saveRawJSON() {
             try {
                 db = JSON.parse(document.getElementById('rawJSON').value);
+                fixConsignasStructure();
                 await saveDB();
                 renderTree();
                 updateStats();
@@ -944,6 +955,7 @@
         }
         
         async function saveDB() {
+            fixConsignasStructure();
             const res = await fetch('dmanager.php?action=save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
