@@ -5,6 +5,7 @@ class HostView {
     this.leaderboard = new LeaderboardComponent();
     this.leaderboard.mount(this.elements.gameScreen);
     this.initializeVisibility();
+    this.resultsContainerId = 'round-results-container';
   }
 
   cacheElements() {
@@ -182,6 +183,7 @@ class HostView {
 
   showPlayingState(state, readyCount) {
     safeHideElement(this.elements.countdownOverlay);
+    this.hideRoundResultsComponent();
 
     this.elements.currentWord.textContent = state.current_prompt || '???';
     safeShowElement(this.elements.currentWord);
@@ -296,6 +298,79 @@ class HostView {
       this.elements.countdownNumber.textContent = seconds.toString();
     } else {
       this.elements.countdownNumber.textContent = '';
+    }
+  }
+
+  showRoundResultsComponent(results, players, topWords) {
+    if (!results || typeof results !== 'object') {
+      debug('⚠️ showRoundResultsComponent: invalid results', null, 'warn');
+      return;
+    }
+
+    let container = document.getElementById(this.resultsContainerId);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = this.resultsContainerId;
+      container.className = 'round-results-component';
+      this.elements.centerStage.appendChild(container);
+    }
+
+    const topWordsHtml = (topWords || []).slice(0, 5).map(tw => `
+      <div class="result-top-word">
+        <span class="result-word-text">${sanitizeText(tw.word)}</span>
+        <span class="result-word-count">${tw.count}</span>
+      </div>
+    `).join('');
+
+    const playerResultsHtml = Object.entries(results).map(([pid, pResult]) => {
+      const player = players && players[pid];
+      const playerName = player ? sanitizeText(player.name || 'Jugador') : 'Jugador';
+      const scoreDelta = pResult.scoreDelta || 0;
+      const scoreDeltaClass = scoreDelta > 0 ? 'positive' : (scoreDelta < 0 ? 'negative' : 'neutral');
+      const scoreDeltaText = scoreDelta > 0 ? `+${scoreDelta}` : `${scoreDelta}`;
+
+      const answersHtml = (pResult.answers || []).map(ans => {
+        const hasMatches = ans.matches && ans.matches.length > 0;
+        const icon = hasMatches ? '✅' : '❌';
+        const matchText = hasMatches ? `(${ans.matches.length})` : '';
+        return `<div class="result-player-answer ${hasMatches ? 'matched' : 'unmatched'}">${icon} ${sanitizeText(ans.word)} ${matchText}</div>`;
+      }).join('');
+
+      return `
+        <div class="result-player-group">
+          <div class="result-player-header">
+            <span class="result-player-name">👤 ${playerName}</span>
+            <span class="result-player-score ${scoreDeltaClass}">${scoreDeltaText} pts</span>
+          </div>
+          <div class="result-player-answers">${answersHtml || '<div class="result-no-answers">Sin respuestas</div>'}</div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="results-header">
+        <h3 class="results-title">🏆 Resultados de la Ronda</h3>
+      </div>
+      <div class="results-content">
+        <div class="results-top-words">
+          <h4>📈 Palabras Top</h4>
+          <div class="top-words-list">${topWordsHtml || '<div class="no-top-words">Sin coincidencias</div>'}</div>
+        </div>
+        <div class="results-player-scores">
+          <h4>📋 Puntuaciones</h4>
+          <div class="player-scores-list">${playerResultsHtml}</div>
+        </div>
+      </div>
+    `;
+
+    container.style.display = 'block';
+    debug('🏆 Componente de resultados mostrado', null, 'success');
+  }
+
+  hideRoundResultsComponent() {
+    const container = document.getElementById(this.resultsContainerId);
+    if (container) {
+      container.style.display = 'none';
     }
   }
 }
