@@ -6,364 +6,77 @@
     <title>TalCual - DB Admin Panel</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; }
         .header h1 { font-size: 24px; margin-bottom: 5px; }
         .header p { font-size: 12px; opacity: 0.9; }
-        
-        .container {
-            max-width: 1400px;
-            margin: 20px auto;
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 20px;
-            padding: 0 20px;
-        }
-        
+        .container { max-width: 1400px; margin: 20px auto; display: grid; grid-template-columns: 1fr 350px; gap: 20px; padding: 0 20px; }
         .main { display: flex; flex-direction: column; gap: 20px; }
-        
-        .panel {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .panel-header {
-            background: #f8f9fa;
-            padding: 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .panel-header h2 { font-size: 16px; }
-        
+        .panel { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
         .panel-body { padding: 20px; }
-        
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .tab {
-            padding: 12px 20px;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            background: #f8f9fa;
-            transition: all 0.2s;
-            flex: 1;
-            text-align: center;
-            font-size: 13px;
-        }
-        
-        .tab.active {
-            border-bottom-color: #667eea;
-            background: white;
-            font-weight: 600;
-        }
-        
+        .tabs { display: flex; border-bottom: 1px solid #e0e0e0; }
+        .tab { padding: 12px 20px; cursor: pointer; border-bottom: 2px solid transparent; background: #f8f9fa; flex: 1; text-align: center; font-size: 13px; }
+        .tab.active { border-bottom-color: #667eea; background: white; font-weight: 600; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
-        .tree {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .tree-item {
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
+        .tree { list-style: none; padding: 0; }
+        .tree-item { border-bottom: 1px solid #f0f0f0; }
         .tree-item:last-child { border-bottom: none; }
-        
-        .tree-category {
-            padding: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #fafafa;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
+        .tree-category { padding: 15px; display: flex; align-items: center; gap: 10px; background: #fafafa; cursor: pointer; }
         .tree-category:hover { background: #f0f0f0; }
-        
-        .tree-category .toggle { width: 20px; text-align: center; user-select: none; }
+        .tree-category .toggle { width: 20px; text-align: center; }
         .tree-category .name { flex: 1; font-weight: 600; }
         .tree-category .count { font-size: 12px; color: #999; }
         .tree-category .actions { display: flex; gap: 5px; }
-        
-        .tree-clues {
-            display: none;
-            background: white;
-            border-left: 3px solid #667eea;
-            margin-left: 0;
-        }
-        
+        .tree-clues { display: none; background: white; border-left: 3px solid #667eea; }
         .tree-clues.visible { display: block; }
-        
-        .tree-clue {
-            padding: 12px 15px 12px 30px;
-            border-bottom: 1px solid #f0f0f0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 13px;
-            transition: background 0.2s;
-        }
-        
+        .tree-clue { padding: 12px 15px 12px 30px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; font-size: 13px; }
         .tree-clue:hover { background: #f9f9f9; }
-        .tree-clue.dragging { opacity: 0.5; background: #fffbea; }
-        
         .tree-clue .pregunta { flex: 1; }
         .tree-clue .respuesta-count { font-size: 11px; color: #999; }
-        .tree-clue .actions { display: flex; gap: 5px; }
-        
-        .tree-clue-add {
-            padding: 10px 15px 10px 30px;
-            font-size: 12px;
-            color: #667eea;
-            cursor: pointer;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .tree-clue-add:hover { background: #f9f9f9; }
-        
-        button {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
+        .tree-clue-add { padding: 10px 15px 10px 30px; font-size: 12px; color: #667eea; cursor: pointer; }
+        button { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-primary { background: #667eea; color: white; }
         .btn-primary:hover { background: #5568d3; }
-        
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-        
+        .btn-secondary { background: #f0f0f0; color: #333; }
         .btn-secondary:hover { background: #e0e0e0; }
-        
-        .btn-sm {
-            padding: 4px 8px;
-            font-size: 11px;
-        }
-        
-        .btn-icon {
-            padding: 6px;
-            width: 28px;
-            height: 28px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #f0f0f0;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-            border: none;
-        }
-        
+        .btn-icon { padding: 6px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; }
         .btn-icon:hover { background: #e0e0e0; }
         .btn-icon.delete:hover { background: #ffebee; color: #c62828; }
-        
-        .toolbar {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .toolbar-label { font-size: 12px; font-weight: 600; }
-        
-        .toolbar select {
-            padding: 6px 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .sidebar-panel {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .sidebar-panel h3 {
-            background: #f8f9fa;
-            padding: 12px 15px;
-            font-size: 13px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .sidebar-panel-body {
-            padding: 15px;
-            font-size: 12px;
-        }
-        
-        .stat {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        .sidebar-panel { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .sidebar-panel h3 { background: #f8f9fa; padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar-panel-body { padding: 15px; font-size: 12px; }
+        .stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
         .stat:last-child { border-bottom: none; }
         .stat-label { font-weight: 600; }
         .stat-value { color: #667eea; font-weight: 700; }
-        
-        .message {
-            padding: 12px 15px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            display: none;
-        }
-        
+        .message { padding: 12px 15px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; display: none; }
         .message.show { display: block; }
         .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
         .modal.show { display: flex; }
-        
-        .modal-content {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease;
-        }
-        
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
+        .modal-content { background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
         .modal-header h2 { font-size: 16px; }
         .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; }
-        
         .modal-body { padding: 20px; }
         .modal-footer { padding: 15px 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; justify-content: flex-end; }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        .form-group label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
-            font-family: inherit;
-        }
-        
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-            font-family: 'Monaco', monospace;
-        }
-        
-        .clue-select {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .clue-select-item {
-            padding: 10px;
-            border-bottom: 1px solid #f0f0f0;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
+        .form-group textarea { resize: vertical; min-height: 100px; font-family: monospace; }
+        .clue-select { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
+        .clue-select-item { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; align-items: center; gap: 10px; }
         .clue-select-item:hover { background: #f9f9f9; }
-        .clue-select-item input { cursor: pointer; }
-        
-        .search-box {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 13px;
-            margin-bottom: 15px;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #999;
-        }
-        
-        .empty-state-icon { font-size: 40px; margin-bottom: 10px; }
+        .search-box { width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+        .optimize-report { background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; }
+        .optimize-report h4 { margin-bottom: 10px; color: #333; }
+        .optimize-report p { margin: 5px 0; }
+        .optimize-report .issue { color: #c62828; }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -390,7 +103,7 @@
                         </div>
                         <ul class="tree" id="tree"></ul>
                         <div id="emptyState" class="empty-state">
-                            <div class="empty-state-icon">📚</div>
+                            <div style="font-size: 40px; margin-bottom: 10px;">📚</div>
                             <p>No hay datos. Importa un JSON o crea una nueva categoría.</p>
                         </div>
                     </div>
@@ -402,10 +115,6 @@
                             <label>Importar archivo JSON</label>
                             <input type="file" id="fileInput" accept=".json">
                         </div>
-                        <div id="importPreview" style="background: #f8f9fa; padding: 15px; border-radius: 4px; display: none; margin-bottom: 15px;">
-                            <p style="font-size: 12px; font-weight: 600; margin-bottom: 10px;">Preview de cambios:</p>
-                            <div id="importPreviewContent" style="font-size: 11px; max-height: 300px; overflow-y: auto;"></div>
-                        </div>
                         <div style="display: flex; gap: 10px;">
                             <button class="btn-primary" onclick="importJSON()">Importar</button>
                             <button class="btn-secondary" onclick="exportJSON()">Exportar</button>
@@ -415,10 +124,14 @@
                 
                 <div id="raw" class="tab-content">
                     <div class="panel-body">
-                        <textarea id="rawJSON" style="width: 100%; height: 400px; font-family: monospace; font-size: 11px;"></textarea>
+                        <div class="toolbar">
+                            <button class="btn-primary" onclick="optimizeJSON()">🔧 Optimizar</button>
+                            <button class="btn-secondary" onclick="loadRawJSON()">Recargar</button>
+                        </div>
+                        <div id="optimizeReport" class="optimize-report" style="display: none;"></div>
+                        <textarea id="rawJSON" style="width: 100%; height: 350px; font-family: monospace; font-size: 11px; border: 1px solid #ddd; border-radius: 4px; padding: 10px;"></textarea>
                         <div style="margin-top: 15px; display: flex; gap: 10px;">
                             <button class="btn-primary" onclick="saveRawJSON()">Guardar cambios</button>
-                            <button class="btn-secondary" onclick="loadRawJSON()">Recargar</button>
                         </div>
                     </div>
                 </div>
@@ -447,22 +160,20 @@
             <div class="sidebar-panel">
                 <h3>⚜️ Ayuda</h3>
                 <div class="sidebar-panel-body">
-                    <p><strong>+:</strong> Agregar (categoría o consigna)</p>
-                    <p><strong>✎:</strong> Editar pregunta</p>
-                    <p><strong>↑↓:</strong> Mover consigna</p>
-                    <p><strong>🗑:</strong> Quitar de categoría</p>
+                    <p><strong>+:</strong> Agregar consigna</p>
+                    <p><strong>🌟:</strong> Nueva consigna rápido</p>
+                    <p><strong>✎:</strong> Editar</p>
+                    <p><strong>↑↓:</strong> Mover</p>
+                    <p><strong>🗑:</strong> Quitar/Eliminar</p>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Modal: Nueva Categoría -->
+    <!-- Modales -->
     <div class="modal" id="newCategoryModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Nueva Categoría</h2>
-                <button class="modal-close" onclick="closeModal('newCategoryModal')">×</button>
-            </div>
+            <div class="modal-header"><h2>Nueva Categoría</h2><button class="modal-close" onclick="closeModal('newCategoryModal')">×</button></div>
             <div class="modal-body">
                 <div class="form-group">
                     <label>Nombre</label>
@@ -476,13 +187,9 @@
         </div>
     </div>
     
-    <!-- Modal: Nueva Consigna -->
     <div class="modal" id="newClueModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Nueva Consigna</h2>
-                <button class="modal-close" onclick="closeModal('newClueModal')">×</button>
-            </div>
+            <div class="modal-header"><h2>Nueva Consigna</h2><button class="modal-close" onclick="closeModal('newClueModal')">×</button></div>
             <div class="modal-body">
                 <div class="form-group">
                     <label>Pregunta</label>
@@ -500,13 +207,9 @@
         </div>
     </div>
     
-    <!-- Modal: Editar Consigna -->
     <div class="modal" id="editClueModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Editar Consigna</h2>
-                <button class="modal-close" onclick="closeModal('editClueModal')">×</button>
-            </div>
+            <div class="modal-header"><h2>Editar Consigna</h2><button class="modal-close" onclick="closeModal('editClueModal')">×</button></div>
             <div class="modal-body">
                 <div class="form-group">
                     <label>Pregunta</label>
@@ -516,7 +219,7 @@
                     <label>Respuestas (una por línea)</label>
                     <textarea id="editClueRespuestas"></textarea>
                 </div>
-                <button class="btn-secondary btn-sm" onclick="deleteClueCompletely()" style="background: #ffebee; color: #c62828;">Eliminar completamente</button>
+                <button class="btn-secondary" onclick="deleteClueCompletely()" style="background: #ffebee; color: #c62828;">Eliminar completamente</button>
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeModal('editClueModal')">Cancelar</button>
@@ -525,13 +228,9 @@
         </div>
     </div>
     
-    <!-- Modal: Editar Categoría -->
     <div class="modal" id="editCategoryModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Editar Categoría</h2>
-                <button class="modal-close" onclick="closeModal('editCategoryModal')">×</button>
-            </div>
+            <div class="modal-header"><h2>Editar Categoría</h2><button class="modal-close" onclick="closeModal('editCategoryModal')">×</button></div>
             <div class="modal-body">
                 <div class="form-group">
                     <label>Nombre</label>
@@ -541,18 +240,14 @@
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeModal('editCategoryModal')">Cancelar</button>
                 <button class="btn-primary" onclick="saveEditCategory()">Guardar</button>
-                <button class="btn-secondary btn-sm" onclick="deleteCategory()" style="background: #ffebee; color: #c62828;">Eliminar</button>
+                <button class="btn-secondary" onclick="deleteCategory()" style="background: #ffebee; color: #c62828;">Eliminar</button>
             </div>
         </div>
     </div>
     
-    <!-- Modal: Agregar Consigna Existente -->
     <div class="modal" id="addExistingClueModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Agregar Consigna Existente</h2>
-                <button class="modal-close" onclick="closeModal('addExistingClueModal')">×</button>
-            </div>
+            <div class="modal-header"><h2>Agregar Consigna Existente</h2><button class="modal-close" onclick="closeModal('addExistingClueModal')">×</button></div>
             <div class="modal-body">
                 <input type="text" id="clueSearchBox" placeholder="Buscar consigna..." class="search-box" oninput="filterClueList()">
                 <div class="clue-select" id="clueSelectList"></div>
@@ -569,15 +264,12 @@
         let currentEditingClue = null;
         let currentEditingCategory = null;
         let currentCategoryForAdd = null;
-        let draggedClue = null;
-        let draggedFromCat = null;
         
-        function fixConsignasStructure() {
+        function fixDB() {
+            if (!db.categorias) db.categorias = {};
             if (!db.consignas) db.consignas = {};
-            if (Array.isArray(db.consignas)) {
-                console.warn('consignas es un array, convirtiendo a objeto');
-                db.consignas = {};
-            }
+            if (Array.isArray(db.categorias)) db.categorias = {};
+            if (Array.isArray(db.consignas)) db.consignas = {};
         }
         
         async function loadDB() {
@@ -586,14 +278,14 @@
                 const result = await res.json();
                 if (result.success && result.data) {
                     db = result.data;
-                    fixConsignasStructure();
+                    fixDB();
                     renderTree();
                     updateStats();
                 } else {
                     db = { categorias: {}, consignas: {} };
                 }
             } catch (err) {
-                showMessage('Error al cargar: ' + err.message, 'error');
+                showMessage('❌ Error al cargar: ' + err.message, 'error');
             }
         }
         
@@ -616,71 +308,46 @@
                         <span class="name">${catName}</span>
                         <span class="count">${catData.consignas.length}</span>
                         <div class="actions">
-                            <span class="btn-icon" onclick="event.stopPropagation(); showAddExistingClueModal('${catName}')" title="+ Consigna existente">+</span>
-                            <span class="btn-icon" onclick="event.stopPropagation(); showNewClueModal('${catName}')" title="+ Nueva consigna">🌟</span>
+                            <span class="btn-icon" onclick="event.stopPropagation(); showAddExistingClueModal('${catName}')" title="+ Existente">+</span>
+                            <span class="btn-icon" onclick="event.stopPropagation(); showNewClueModal('${catName}')" title="+ Nueva">🌟</span>
                             <span class="btn-icon" onclick="event.stopPropagation(); showEditCategoryModal('${catName}')" title="Editar">✎</span>
                             <span class="btn-icon delete" onclick="event.stopPropagation(); deleteCategory('${catName}')" title="Eliminar">🗑</span>
                         </div>
                     </div>
                     <ul class="tree-clues">
-                        ${catData.consignas.map((clueId, idx) => {
+                        ${catData.consignas.map((clueId) => {
                             const clue = db.consignas[clueId];
-                            if (!clue) return `<li style="padding: 10px 30px; color: #c62828; font-size: 12px;">⚠️ Consigna ${clueId} no existe</li>`;
-                            const pregunta = clue.pregunta.substring(0, 40) + (clue.pregunta.length > 40 ? '...' : '');
+                            if (!clue) return `<li style="padding: 10px 30px; color: #c62828; font-size: 11px;">⚠ Consigna ${clueId} inexistente</li>`;
+                            const preg = clue.pregunta.substring(0, 35);
                             return `
-                                <li class="tree-clue" draggable="true" 
-                                    ondragstart="startDragClue('${catName}', '${clueId}', event)"
-                                    ondragover="dragOver(event)"
-                                    ondrop="dropClue('${catName}', event)">
-                                    <span class="pregunta">${pregunta}</span>
+                                <li class="tree-clue">
+                                    <span class="pregunta" title="${clue.pregunta}">${preg}${clue.pregunta.length > 35 ? '...' : ''}</span>
                                     <span class="respuesta-count">${clue.respuestas.length}</span>
                                     <div class="actions">
-                                        <span class="btn-icon" onclick="event.stopPropagation(); moveClue('${catName}', '${clueId}', -1)" title="↑">↑</span>
-                                        <span class="btn-icon" onclick="event.stopPropagation(); moveClue('${catName}', '${clueId}', 1)" title="↓">↓</span>
-                                        <span class="btn-icon" onclick="event.stopPropagation(); editClue('${clueId}')" title="Editar">✎</span>
-                                        <span class="btn-icon delete" onclick="event.stopPropagation(); removeClueFromCategory('${catName}', '${clueId}')" title="Quitar">🗑</span>
+                                        <span class="btn-icon" onclick="event.stopPropagation(); moveClue('${catName}', '${clueId}', -1)">↑</span>
+                                        <span class="btn-icon" onclick="event.stopPropagation(); moveClue('${catName}', '${clueId}', 1)">↓</span>
+                                        <span class="btn-icon" onclick="event.stopPropagation(); editClue('${clueId}')">✎</span>
+                                        <span class="btn-icon delete" onclick="event.stopPropagation(); removeClueFromCategory('${catName}', '${clueId}')">🗑</span>
                                     </div>
                                 </li>
                             `;
                         }).join('')}
-                        <li class="tree-clue-add" onclick="showNewClueModal('${catName}')">
-                            <span>+</span> Agregar consigna
-                        </li>
                     </ul>
                 </li>
             `).join('');
         }
         
         function toggleCategory(el) {
-            const isExpanded = el.classList.contains('expanded');
+            const isExp = el.classList.contains('expanded');
             el.classList.toggle('expanded');
-            el.querySelector('.toggle').textContent = isExpanded ? '▶' : '▼';
+            el.querySelector('.toggle').textContent = isExp ? '▶' : '▼';
             el.nextElementSibling.classList.toggle('visible');
         }
         
-        function startDragClue(catName, clueId, event) {
-            draggedClue = clueId;
-            draggedFromCat = catName;
-            event.dataTransfer.effectAllowed = 'move';
-        }
-        
-        function dragOver(event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-        }
-        
-        function dropClue(catName, event) {
-            event.preventDefault();
-            if (!draggedClue || draggedFromCat !== catName) return;
-            draggedClue = null;
-            draggedFromCat = null;
-        }
-        
-        function moveClue(catName, clueId, direction) {
+        function moveClue(catName, clueId, dir) {
             const clues = db.categorias[catName].consignas;
             const idx = clues.indexOf(clueId);
-            const newIdx = idx + direction;
-            
+            const newIdx = idx + dir;
             if (newIdx >= 0 && newIdx < clues.length) {
                 [clues[idx], clues[newIdx]] = [clues[newIdx], clues[idx]];
                 saveDB().then(() => renderTree());
@@ -701,15 +368,8 @@
         
         async function createCategory() {
             const name = document.getElementById('newCatName').value.trim();
-            if (!name) {
-                showMessage('El nombre no puede estar vacío', 'error');
-                return;
-            }
-            
-            if (db.categorias[name]) {
-                showMessage('La categoría ya existe', 'error');
-                return;
-            }
+            if (!name) { showMessage('❌ Nombre requerido', 'error'); return; }
+            if (db.categorias[name]) { showMessage('❌ La categoría ya existe', 'error'); return; }
             
             const orden = Math.max(...Object.values(db.categorias).map(c => c.orden || 0), 0) + 1;
             db.categorias[name] = { orden, consignas: [] };
@@ -723,10 +383,7 @@
             const pregunta = document.getElementById('newCluePregunta').value.trim();
             const respuestasText = document.getElementById('newClueRespuestas').value.trim();
             
-            if (!pregunta || !respuestasText) {
-                showMessage('Pregunta y respuestas requeridas', 'error');
-                return;
-            }
+            if (!pregunta || !respuestasText) { showMessage('❌ Pregunta y respuestas requeridas', 'error'); return; }
             
             const respuestas = respuestasText.split('\n').map(r => r.trim()).filter(r => r);
             const clueId = 'clue_' + Date.now();
@@ -763,10 +420,7 @@
             const pregunta = document.getElementById('editCluePregunta').value.trim();
             const respuestasText = document.getElementById('editClueRespuestas').value.trim();
             
-            if (!pregunta || !respuestasText) {
-                showMessage('Pregunta y respuestas requeridas', 'error');
-                return;
-            }
+            if (!pregunta || !respuestasText) { showMessage('❌ Campos requeridos', 'error'); return; }
             
             const respuestas = respuestasText.split('\n').map(r => r.trim()).filter(r => r);
             db.consignas[currentEditingClue].pregunta = pregunta;
@@ -779,8 +433,7 @@
         }
         
         function deleteClueCompletely() {
-            if (!currentEditingClue) return;
-            if (!confirm('Eliminar completamente esta consigna de TODAS las categorías?')) return;
+            if (!currentEditingClue || !confirm('¿Eliminar consigna de TODAS las categorías?')) return;
             
             for (const cat of Object.values(db.categorias)) {
                 cat.consignas = cat.consignas.filter(id => id !== currentEditingClue);
@@ -808,17 +461,9 @@
         
         async function saveEditCategory() {
             if (!currentEditingCategory) return;
-            
             const newName = document.getElementById('editCatName').value.trim();
-            if (!newName) {
-                showMessage('El nombre no puede estar vacío', 'error');
-                return;
-            }
-            
-            if (newName !== currentEditingCategory && db.categorias[newName]) {
-                showMessage('La categoría ya existe', 'error');
-                return;
-            }
+            if (!newName) { showMessage('❌ Nombre requerido', 'error'); return; }
+            if (newName !== currentEditingCategory && db.categorias[newName]) { showMessage('❌ Ya existe', 'error'); return; }
             
             if (newName !== currentEditingCategory) {
                 db.categorias[newName] = db.categorias[currentEditingCategory];
@@ -832,9 +477,7 @@
         }
         
         function deleteCategory(catName = currentEditingCategory) {
-            if (!catName) return;
-            if (!confirm(`¿Eliminar categoría "${catName}"? (Las consignas se conservarán)`)) return;
-            
+            if (!catName || !confirm(`¿Eliminar "${catName}"?`)) return;
             delete db.categorias[catName];
             saveDB().then(() => {
                 closeModal('editCategoryModal');
@@ -853,10 +496,15 @@
             const list = document.getElementById('clueSelectList');
             const existingClues = new Set(db.categorias[currentCategoryForAdd]?.consignas || []);
             
+            if (Object.keys(db.consignas).length === 0) {
+                list.innerHTML = '<div style="padding: 10px; color: #999;">No hay consignas disponibles</div>';
+                return;
+            }
+            
             list.innerHTML = Object.entries(db.consignas).map(([clueId, clue]) => `
                 <div class="clue-select-item">
                     <input type="checkbox" id="clue_${clueId}" value="${clueId}" ${existingClues.has(clueId) ? 'checked disabled' : ''}>
-                    <label for="clue_${clueId}" style="flex: 1; cursor: pointer;">${clue.pregunta.substring(0, 50)}</label>
+                    <label for="clue_${clueId}" style="flex: 1;">${clue.pregunta.substring(0, 50)}</label>
                 </div>
             `).join('');
         }
@@ -873,10 +521,7 @@
             const checked = document.querySelectorAll('#clueSelectList input:checked:not(:disabled)');
             const clueIds = Array.from(checked).map(cb => cb.value);
             
-            if (clueIds.length === 0) {
-                showMessage('Selecciona al menos una consigna', 'error');
-                return;
-            }
+            if (clueIds.length === 0) { showMessage('❌ Selecciona consignas', 'error'); return; }
             
             clueIds.forEach(clueId => {
                 if (!db.categorias[currentCategoryForAdd].consignas.includes(clueId)) {
@@ -892,16 +537,12 @@
         
         async function importJSON() {
             const file = document.getElementById('fileInput').files[0];
-            if (!file) {
-                showMessage('Selecciona un archivo JSON', 'error');
-                return;
-            }
+            if (!file) { showMessage('❌ Selecciona archivo', 'error'); return; }
             
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
                     const imported = JSON.parse(e.target.result);
-                    
                     const res = await fetch('dmanager.php?action=import', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -911,16 +552,16 @@
                     const result = await res.json();
                     if (result.success) {
                         db = result.data;
-                        fixConsignasStructure();
+                        fixDB();
                         renderTree();
                         updateStats();
                         loadRawJSON();
-                        showMessage('✅ Importado correctamente', 'success');
+                        showMessage('✅ Importado', 'success');
                     } else {
                         showMessage('❌ ' + result.message, 'error');
                     }
                 } catch (err) {
-                    showMessage('Error: ' + err.message, 'error');
+                    showMessage('❌ ' + err.message, 'error');
                 }
             };
             reader.readAsText(file);
@@ -939,32 +580,64 @@
         
         function loadRawJSON() {
             document.getElementById('rawJSON').value = JSON.stringify(db, null, 2);
+            document.getElementById('optimizeReport').style.display = 'none';
+        }
+        
+        async function optimizeJSON() {
+            const res = await fetch('dmanager.php?action=optimize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(db)
+            });
+            
+            const result = await res.json();
+            if (result.success) {
+                db = result.data.data;
+                fixDB();
+                loadRawJSON();
+                renderTree();
+                updateStats();
+                
+                const report = result.data.report;
+                const reportHTML = `
+                    <h4>🚧 Reporte de Optimización</h4>
+                    <p><strong>Antes:</strong> ${report.before.categorias} cat, ${report.before.consignas} consignas, ${report.before.respuestas} respuestas</p>
+                    <p><strong>Después:</strong> ${report.after.categorias} cat, ${report.after.consignas} consignas, ${report.after.respuestas} respuestas</p>
+                    ${report.issues.length > 0 ? '<p class="issue"><strong>👆 Problemas corregidos:</strong></p>' + report.issues.map(i => `<p class="issue">• ${i}</p>`).join('') : '<p>✅ Sin problemas detectados</p>'}
+                `;
+                
+                const reportEl = document.getElementById('optimizeReport');
+                reportEl.innerHTML = reportHTML;
+                reportEl.style.display = 'block';
+                
+                showMessage('✅ Base de datos optimizada', 'success');
+            } else {
+                showMessage('❌ ' + result.message, 'error');
+            }
         }
         
         async function saveRawJSON() {
             try {
                 db = JSON.parse(document.getElementById('rawJSON').value);
-                fixConsignasStructure();
+                fixDB();
                 await saveDB();
                 renderTree();
                 updateStats();
-                showMessage('✅ Cambios guardados', 'success');
+                showMessage('✅ Guardado', 'success');
             } catch (err) {
                 showMessage('❌ JSON inválido: ' + err.message, 'error');
             }
         }
         
         async function saveDB() {
-            fixConsignasStructure();
+            fixDB();
             const res = await fetch('dmanager.php?action=save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(db)
             });
             const result = await res.json();
-            if (!result.success) {
-                showMessage('❌ Error al guardar', 'error');
-            }
+            if (!result.success) showMessage('❌ Error al guardar', 'error');
         }
         
         function updateStats() {
@@ -982,7 +655,6 @@
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById(tabName).classList.add('active');
-            
             if (tabName === 'raw') loadRawJSON();
         }
         
