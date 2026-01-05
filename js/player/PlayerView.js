@@ -102,11 +102,11 @@ class PlayerView {
     `;
 
     const auraSelector = container.querySelector('#modal-aura-selector');
-    const availableAuras = generateRandomAuras();
+    const availableAuras = auraModuleInstance.generateRandomAuras();
     const randomAura = availableAuras[Math.floor(Math.random() * availableAuras.length)];
 
     let selectedColor = randomAura.hex;
-    renderAuraSelectors(
+    auraModuleInstance.renderAuraSelectors(
       auraSelector,
       availableAuras,
       randomAura.hex,
@@ -150,7 +150,7 @@ class PlayerView {
 
   showGameScreen(playerName, gameCode, playerColor) {
     if (playerColor) {
-      applyColorGradient(playerColor);
+      auraModuleInstance.applyColorGradient(playerColor);
     }
 
     ModalSystem_Instance.close(1);
@@ -453,7 +453,7 @@ class PlayerView {
     nameInput.value = currentName;
 
     let selectedAura = currentColor;
-    renderAuraSelectorsEdit(
+    auraModuleInstance.renderAuraSelectorsEdit(
       auraSelector,
       currentColor,
       (aura) => {
