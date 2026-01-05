@@ -14,3 +14,7 @@
 <FilesMatch "\.sql$">
     Deny from all
 </FilesMatch>
+
+<FilesMatch "^(admin-api|admin)">
+    Allow from all
+</FilesMatch>
