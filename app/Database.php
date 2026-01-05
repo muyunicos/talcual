@@ -60,37 +60,46 @@ class Database {
 
     private function initializeTables() {
         try {
-            $this->pdo->exec('CREATE TABLE IF NOT EXISTS games (
-                id TEXT PRIMARY KEY,
-                status TEXT NOT NULL,
-                round INTEGER NOT NULL DEFAULT 0,
-                total_rounds INTEGER NOT NULL DEFAULT 0,
-                current_prompt TEXT,
-                current_category TEXT,
-                selected_category TEXT,
-                min_players INTEGER NOT NULL DEFAULT 2,
-                round_duration INTEGER,
-                countdown_duration INTEGER,
-                round_started_at INTEGER,
-                round_starts_at INTEGER,
-                round_ends_at INTEGER,
-                data TEXT NOT NULL,
-                updated_at INTEGER NOT NULL DEFAULT 0
-            )');
+            $this->pdo->exec('DROP TABLE IF EXISTS players');
+            $this->pdo->exec('DROP TABLE IF EXISTS games');
 
-            $this->pdo->exec('CREATE TABLE IF NOT EXISTS players (
-                id TEXT NOT NULL,
-                game_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                score INTEGER NOT NULL DEFAULT 0,
-                status TEXT NOT NULL DEFAULT "connected",
-                color TEXT,
-                answers TEXT NOT NULL DEFAULT "[]",
-                round_results TEXT NOT NULL DEFAULT "{}",
-                disconnected INTEGER NOT NULL DEFAULT 0,
-                PRIMARY KEY (id, game_id),
-                FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-            )');
+            $this->pdo->exec('
+                CREATE TABLE games (
+                    id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL DEFAULT "waiting",
+                    round INTEGER NOT NULL DEFAULT 0,
+                    current_prompt TEXT,
+                    current_category TEXT,
+                    round_started_at INTEGER,
+                    round_ends_at INTEGER,
+                    created_at INTEGER,
+                    updated_at INTEGER,
+                    total_rounds INTEGER NOT NULL,
+                    round_duration INTEGER NOT NULL,
+                    min_players INTEGER NOT NULL,
+                    max_players INTEGER NOT NULL,
+                    start_countdown INTEGER,
+                    hurry_up_threshold INTEGER,
+                    max_words_per_player INTEGER,
+                    max_word_length INTEGER,
+                    data TEXT
+                )
+            ');
+
+            $this->pdo->exec('
+                CREATE TABLE players (
+                    id TEXT NOT NULL,
+                    game_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    color TEXT,
+                    avatar TEXT,
+                    status TEXT DEFAULT "connected",
+                    current_answers TEXT,
+                    round_history TEXT DEFAULT "{}",
+                    PRIMARY KEY (id, game_id),
+                    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+                )
+            ');
 
             $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_players_game_id ON players(game_id)');
 
@@ -124,55 +133,11 @@ class Database {
 
             $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)');
 
-            $this->migratePromptCategories();
-
             logMessage('Database tables initialized successfully', 'DEBUG');
 
         } catch (PDOException $e) {
             logMessage('Error initializing tables: ' . $e->getMessage(), 'ERROR');
             throw new Exception('Database initialization error: ' . $e->getMessage());
-        }
-    }
-
-    private function migratePromptCategories() {
-        try {
-            $stmt = $this->pdo->query("PRAGMA table_info(prompts)");
-            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $hasOldColumn = false;
-
-            foreach ($columns as $column) {
-                if ($column['name'] === 'category_id') {
-                    $hasOldColumn = true;
-                    break;
-                }
-            }
-
-            if (!$hasOldColumn) {
-                return;
-            }
-
-            logMessage('Migrating prompts.category_id to prompt_categories', 'INFO');
-
-            $stmt = $this->pdo->query('SELECT id, category_id FROM prompts WHERE category_id IS NOT NULL');
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $insertStmt = $this->pdo->prepare('INSERT OR IGNORE INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
-            foreach ($rows as $row) {
-                $insertStmt->execute([$row['id'], $row['category_id']]);
-            }
-
-            $this->pdo->exec('CREATE TABLE prompts_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                text TEXT NOT NULL UNIQUE
-            )');
-
-            $this->pdo->exec('INSERT INTO prompts_new (id, text) SELECT id, text FROM prompts');
-            $this->pdo->exec('DROP TABLE prompts');
-            $this->pdo->exec('ALTER TABLE prompts_new RENAME TO prompts');
-
-            logMessage('Migration completed: ' . count($rows) . ' records migrated and category_id column removed', 'INFO');
-        } catch (Exception $e) {
-            logMessage('Migration error (non-critical): ' . $e->getMessage(), 'WARNING');
         }
     }
 
