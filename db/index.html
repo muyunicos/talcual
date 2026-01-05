@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Diccionario - TalCual Party</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2180A0;
+            --primary-dark: #1a6580;
+            --success: #22C55E;
+            --error: #EF4444;
+            --warning: #F59E0B;
+            --bg: #F9FAFB;
+            --surface: #FFFFFF;
+            --border: #E5E7EB;
+            --text: #1F2937;
+            --text-secondary: #6B7280;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .sidebar h1 {
+            font-size: 20px;
+            margin-bottom: 30px;
+            color: var(--primary);
+        }
+
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .categories-list {
+            list-style: none;
+        }
+
+        .category-item {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+
+        .category-btn {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .category-btn:hover {
+            background: #F3F4F6;
+            border-color: var(--border);
+        }
+
+        .category-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .category-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-icon {
+            padding: 6px 8px;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .btn-icon:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(33, 128, 160, 0.05);
+        }
+
+        .btn-icon.delete:hover {
+            border-color: var(--error);
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .btn-add-category {
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-add-category:hover {
+            background: #16A34A;
+        }
+
+        /* Main */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h2 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        /* List */
+        .list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .list-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 6px rgba(33, 128, 160, 0.1);
+        }
+
+        .list-item-content {
+            flex: 1;
+        }
+
+        .list-item-text {
+            font-size: 14px;
+            margin: 0 0 4px 0;
+        }
+
+        .list-item-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .list-item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .modal.open {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(33, 128, 160, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .category-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: #D1D5DB;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background: #FEF2F2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+        }
+
+        .alert-success {
+            background: #ECFDF5;
+            color: #065F46;
+            border: 1px solid #A7F3D0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h1>📚 TalCual</h1>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title">Diccionario</div>
+                <ul class="categories-list" id="categoriesList"></ul>
+                <button class="btn-add-category" id="btnAddCategory">+ Nueva Categoría</button>
+            </div>
+        </div>
+
+        <!-- Main -->
+        <div class="main">
+            <div class="header">
+                <div>
+                    <h2 id="headerTitle">Gestor de Diccionario</h2>
+                    <div class="stats" id="stats"></div>
+                </div>
+            </div>
+
+            <div class="content" id="content">
+                <div class="empty-state">
+                    <h3>Selecciona una categoría</h3>
+                    <p>Elige una categoría para editar sus consignas y palabras válidas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="categoryModal">
+        <div class="modal-content">
+            <div class="modal-header" id="categoryTitle">Nueva Categoría</div>
+            <div id="categoryAlert"></div>
+            <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="categoryName" placeholder="Ej: Películas">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCategoryModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveCategory()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="promptModal">
+        <div class="modal-content">
+            <div class="modal-header" id="promptTitle">Nueva Consigna</div>
+            <div id="promptAlert"></div>
+            <div class="form-group">
+                <label>Consigna</label>
+                <textarea id="promptText" placeholder="Ej: Nombra una película de acción"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Categorías</label>
+                <div class="category-checkboxes" id="categoryCheckboxes"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePromptModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePrompt()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="wordModal">
+        <div class="modal-content">
+            <div class="modal-header" id="wordTitle">Nueva Palabra</div>
+            <div id="wordAlert"></div>
+            <div class="form-group">
+                <label>Palabra Válida</label>
+                <input type="text" id="wordEntry" placeholder="Ej: Avengers">
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 15px 0;">
+                💡 Usa | para añadir variantes: "Avengers|Avenger"
+            </p>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeWordModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveWord()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'api.php';
+        let currentCategory = null;
+        let currentPrompt = null;
+        let editingItem = null;
+        let allCategories = [];
+        let selectedCategories = [];
+
+        async function api(action, method = 'GET', data = null) {
+            const params = new URLSearchParams({ action });
+            if (data) {
+                Object.entries(data).forEach(([key, value]) => {
+                    if (Array.isArray(value)) {
+                        params.append(key, JSON.stringify(value));
+                    } else {
+                        params.append(key, value);
+                    }
+                });
+            }
+
+            const url = method === 'GET' ? `${API_URL}?${params}` : API_URL;
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: method === 'POST' ? params : undefined
+            });
+            return res.json();
+        }
+
+        async function loadCategories() {
+            const result = await api('get_categories');
+            if (result.success) {
+                allCategories = result.data;
+                const list = document.getElementById('categoriesList');
+                list.innerHTML = '';
+                result.data.forEach(cat => {
+                    const li = document.createElement('li');
+                    li.className = 'category-item';
+                    li.innerHTML = `
+                        <button class="category-btn ${currentCategory === cat.id ? 'active' : ''}" onclick="selectCategory(${cat.id}, '${cat.name}')">  
+                            ${cat.name}
+                        </button>
+                        <div class="category-actions">
+                            <button class="btn-icon" onclick="editCategoryModal(${cat.id}, '${cat.name}')" title="Editar">✏️</button>
+                            <button class="btn-icon delete" onclick="deleteCategory(${cat.id})" title="Eliminar">🗑️</button>
+                        </div>
+                    `;
+                    list.appendChild(li);
+                });
+                updateStats();
+            }
+        }
+
+        async function loadPrompts(categoryId) {
+            const result = await api('get_prompts', 'GET', { category_id: categoryId });
+            const content = document.getElementById('content');
+            
+            if (!result.success || result.data.length === 0) {
+                content.innerHTML = '<div class="empty-state"><h3>Sin consignas</h3><p>Agrega una consigna para comenzar</p></div>';
+                return;
+            }
+
+            let html = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button></div><div class="list">';
+            
+            result.data.forEach(prompt => {
+                html += `
+                    <div class="list-item" onclick="selectPrompt(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}')">
+                        <div class="list-item-content">
+                            <p class="list-item-text">${prompt.text}</p>
+                            <p class="list-item-info">${prompt.word_count} palabra${prompt.word_count !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div class="list-item-actions">
+                            <button class="btn-icon" onclick="event.stopPropagation(); editPromptModal(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}', ${JSON.stringify(prompt.category_ids)})" title="Editar">✏️</button>
+                            <button class="btn-icon delete" onclick="event.stopPropagation(); deletePrompt(${prompt.id})" title="Eliminar">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            content.innerHTML = html;
+        }
+
+        async function loadWords(promptId) {
+            const result = await api('get_words', 'GET', { prompt_id: promptId });
+            const content = document.getElementById('content');
+            
+            if (!result.success || result.data.length === 0) {
+                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button></div><div class="empty-state"><p>Sin palabras válidas</p></div></div>';
+                return;
+            }
+
+            let html = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button></div><div class="list">';
+            
+            result.data.forEach(word => {
+                html += `
+                    <div class="list-item">
+                        <div class="list-item-content">
+                            <p class="list-item-text">${word.word_entry}</p>
+                        </div>
+                        <div class="list-item-actions">
+                            <button class="btn-icon" onclick="editWordModal(${word.id}, '${word.word_entry.replace(/'/g, "\\'")}')" title="Editar">✏️</button>
+                            <button class="btn-icon delete" onclick="deleteWord(${word.id})" title="Eliminar">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            content.innerHTML = html;
+        }
+
+        function selectCategory(id, name) {
+            currentCategory = id;
+            currentPrompt = null;
+            document.getElementById('headerTitle').textContent = name;
+            loadPrompts(id);
+            loadCategories();
+        }
+
+        function selectPrompt(id, text) {
+            currentPrompt = id;
+            document.getElementById('headerTitle').textContent = text;
+            loadWords(id);
+        }
+
+        async function updateStats() {
+            const result = await api('get_stats');
+            if (result.success) {
+                const stats = result.data;
+                document.getElementById('stats').innerHTML = `
+                    <div>Categorías: <strong>${stats.categories}</strong></div>
+                    <div>Consignas: <strong>${stats.prompts}</strong></div>
+                    <div>Palabras: <strong>${stats.words}</strong></div>
+                `;
+            }
+        }
+
+        // CATEGORY OPERATIONS
+        function openCategoryModal(edit = null) {
+            editingItem = edit;
+            document.getElementById('categoryTitle').textContent = edit ? 'Editar Categoría' : 'Nueva Categoría';
+            document.getElementById('categoryName').value = edit ? edit.name : '';
+            document.getElementById('categoryAlert').innerHTML = '';
+            document.getElementById('categoryModal').classList.add('open');
+            document.getElementById('categoryName').focus();
+        }
+
+        function editCategoryModal(id, name) {
+            openCategoryModal({ id, name });
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('open');
+            editingItem = null;
+        }
+
+        async function saveCategory() {
+            const name = document.getElementById('categoryName').value.trim();
+            if (!name) {
+                showAlert('categoryAlert', 'Ingresa un nombre', 'error');
+                return;
+            }
+
+            const action = editingItem ? 'update_category' : 'add_category';
+            const data = { name };
+            if (editingItem) data.id = editingItem.id;
+            
+            const result = await api(action, 'POST', data);
+            if (result.success) {
+                closeCategoryModal();
+                loadCategories();
+            } else {
+                showAlert('categoryAlert', result.message, 'error');
+            }
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm('¿Eliminar esta categoría y todas sus consignas?')) return;
+            const result = await api('delete_category', 'POST', { id });
+            if (result.success) {
+                currentCategory = null;
+                loadCategories();
+                document.getElementById('content').innerHTML = '<div class="empty-state"><h3>Categoría eliminada</h3></div>';
+            }
+        }
+
+        // PROMPT OPERATIONS
+        function openPromptModal(edit = null) {
+            if (!currentCategory && !edit) {
+                alert('Selecciona una categoría primero');
+                return;
+            }
+            editingItem = edit;
+            document.getElementById('promptTitle').textContent = edit ? 'Editar Consigna' : 'Nueva Consigna';
+            document.getElementById('promptText').value = edit ? edit.text : '';
+            document.getElementById('promptAlert').innerHTML = '';
+            
+            selectedCategories = edit ? edit.categoryIds : [currentCategory];
+            loadCategoryCheckboxes();
+            
+            document.getElementById('promptModal').classList.add('open');
+            document.getElementById('promptText').focus();
+        }
+
+        function editPromptModal(id, text, categoryIds) {
+            openPromptModal({ id, text, categoryIds });
+        }
+
+        function closePromptModal() {
+            document.getElementById('promptModal').classList.remove('open');
+            editingItem = null;
+        }
+
+        function loadCategoryCheckboxes() {
+            const container = document.getElementById('categoryCheckboxes');
+            container.innerHTML = '';
+            allCategories.forEach(cat => {
+                const isSelected = selectedCategories.includes(cat.id);
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="cat-${cat.id}" value="${cat.id}" ${isSelected ? 'checked' : ''} onchange="updateSelectedCategories()">
+                    <label for="cat-${cat.id}">${cat.name}</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateSelectedCategories() {
+            const checkboxes = document.querySelectorAll('#categoryCheckboxes input[type="checkbox"]:checked');
+            selectedCategories = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
+
+        async function savePrompt() {
+            const text = document.getElementById('promptText').value.trim();
+            updateSelectedCategories();
+            
+            if (!text || selectedCategories.length === 0) {
+                showAlert('promptAlert', 'Completa todos los campos', 'error');
+                return;
+            }
+
+            const action = editingItem ? 'update_prompt' : 'add_prompt';
+            const data = { text, category_ids: selectedCategories };
+            if (editingItem) data.id = editingItem.id;
+            
+            const result = await api(action, 'POST', data);
+            if (result.success) {
+                closePromptModal();
+                loadPrompts(currentCategory);
+            } else {
+                showAlert('promptAlert', result.message, 'error');
+            }
+        }
+
+        async function deletePrompt(id) {
+            if (!confirm('¿Eliminar esta consigna?')) return;
+            const result = await api('delete_prompt', 'POST', { id });
+            if (result.success) {
+                currentPrompt = null;
+                loadPrompts(currentCategory);
+            }
+        }
+
+        // WORD OPERATIONS
+        function openWordModal(edit = null) {
+            if (!currentPrompt) {
+                alert('Selecciona una consigna primero');
+                return;
+            }
+            editingItem = edit;
+            document.getElementById('wordTitle').textContent = edit ? 'Editar Palabra' : 'Nueva Palabra';
+            document.getElementById('wordEntry').value = edit ? edit.word_entry : '';
+            document.getElementById('wordAlert').innerHTML = '';
+            document.getElementById('wordModal').classList.add('open');
+            document.getElementById('wordEntry').focus();
+        }
+
+        function editWordModal(id, word) {
+            openWordModal({ id, word_entry: word });
+        }
+
+        function closeWordModal() {
+            document.getElementById('wordModal').classList.remove('open');
+            editingItem = null;
+        }
+
+        async function saveWord() {
+            const word = document.getElementById('wordEntry').value.trim();
+            if (!word) {
+                showAlert('wordAlert', 'Ingresa una palabra', 'error');
+                return;
+            }
+
+            const action = editingItem ? 'update_word' : 'add_word';
+            const data = { word, prompt_id: currentPrompt };
+            if (editingItem) data.id = editingItem.id;
+            
+            const result = await api(action, 'POST', data);
+            if (result.success) {
+                closeWordModal();
+                loadWords(currentPrompt);
+            } else {
+                showAlert('wordAlert', result.message, 'error');
+            }
+        }
+
+        async function deleteWord(id) {
+            if (!confirm('¿Eliminar esta palabra?')) return;
+            const result = await api('delete_word', 'POST', { id });
+            if (result.success) {
+                loadWords(currentPrompt);
+            }
+        }
+
+        function showAlert(elementId, message, type) {
+            const alert = document.getElementById(elementId);
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+        }
+
+        document.getElementById('btnAddCategory').onclick = () => openCategoryModal();
+
+        loadCategories();
+        updateStats();
+        setInterval(updateStats, 5000);
+    </script>
+</body>
+</html>
