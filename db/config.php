@@ -2,7 +2,7 @@
 
 define('APP_ENV', getenv('APP_ENV') ?: 'development');
 define('APP_DEBUG', APP_ENV === 'development');
-define('DB_PATH', __DIR__ . '/talcual.db');
+define('DB_PATH', __DIR__ . '/../data/talcual.db');
 define('LOG_PATH', __DIR__ . '/logs');
 define('MAX_GAME_DURATION', 3600);
 define('MAX_CATEGORY_LENGTH', 100);
