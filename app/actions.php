@@ -48,44 +48,7 @@ function notifyGameChanged($gameId, $data = null, $isHostOnly = false) {
     }
 }
 
-function checkRateLimit() {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $cacheKey = 'rate_limit:' . md5($ip);
-    $cacheFile = sys_get_temp_dir() . '/' . $cacheKey . '.txt';
-
-    $limit = RATE_LIMIT_REQUESTS;
-    $window = RATE_LIMIT_WINDOW;
-
-    if (file_exists($cacheFile)) {
-        $raw = file_get_contents($cacheFile);
-        $data = json_decode($raw, true);
-
-        if (!is_array($data) || !isset($data['timestamp'], $data['count'])) {
-            $data = ['timestamp' => time(), 'count' => 0];
-        }
-
-        $elapsed = time() - (int)$data['timestamp'];
-
-        if ($elapsed < $window) {
-            $data['count']++;
-            if ($data['count'] > $limit) {
-                http_response_code(429);
-                echo json_encode(['success' => false, 'message' => 'Límite de solicitudes excedido']);
-                exit;
-            }
-        } else {
-            $data = ['timestamp' => time(), 'count' => 1];
-        }
-        file_put_contents($cacheFile, json_encode($data));
-    } else {
-        $data = ['timestamp' => time(), 'count' => 1];
-        file_put_contents($cacheFile, json_encode($data));
-    }
-}
-
 try {
-    checkRateLimit();
-
     $inputRaw = file_get_contents('php://input');
     $input = json_decode($inputRaw, true);
 
