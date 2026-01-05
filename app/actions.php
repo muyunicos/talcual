@@ -5,6 +5,7 @@ ini_set('log_errors', '1');
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/GameRepository.php';
+require_once __DIR__ . '/DictionaryRepository.php';
 require_once __DIR__ . '/GameService.php';
 
 header('Content-Type: application/json');
@@ -62,7 +63,8 @@ try {
     logMessage("API Action: {$action} | game_id: " . ($input['game_id'] ?? 'N/A') . " | player_id: " . ($input['player_id'] ?? 'N/A'), 'DEBUG');
 
     $repository = new GameRepository();
-    $service = new GameService($repository);
+    $dictionaryRepository = new DictionaryRepository();
+    $service = new GameService($repository, $dictionaryRepository);
 
     $response = ['success' => false, 'message' => 'Acción no válida'];
 
@@ -334,7 +336,7 @@ try {
             break;
 
         case 'get_categories':
-            $categories = getCategories();
+            $categories = $dictionaryRepository->getCategories();
 
             if (empty($categories)) {
                 throw new Exception('No hay categorías');
@@ -356,7 +358,7 @@ try {
                 'success' => true,
                 'server_now' => intval(microtime(true) * 1000),
                 'stats' => [
-                    'dictionary' => getDictionaryStats(),
+                    'dictionary' => $dictionaryRepository->getDictionaryStats(),
                     'dev_mode' => DEV_MODE
                 ]
             ];
