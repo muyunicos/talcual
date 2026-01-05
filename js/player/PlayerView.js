@@ -7,33 +7,27 @@ class PlayerView {
 
   cacheElements() {
     const elements = {
-      gameScreen: safeGetElement('game-screen'),
-      headerRound: safeGetElement('header-round'),
-      headerTimer: safeGetElement('header-timer'),
-      headerCode: safeGetElement('header-code'),
-      playerScore: safeGetElement('player-score'),
-      categoryLabel: safeGetElement('category-label'),
-      currentWord: safeGetElement('current-word'),
-      waitingMessage: safeGetElement('waiting-message'),
-      wordsInputSection: safeGetElement('words-input-section'),
-      currentWordInput: safeGetElement('current-word-input'),
-      btnAddWord: safeGetElement('btn-add-word'),
-      wordsListContainer: safeGetElement('words-list-container'),
-      wordsList: safeGetElement('words-list'),
-      wordCount: safeGetElement('word-count'),
-      maxWordsDisplay: safeGetElement('max-words'),
-      btnSubmit: safeGetElement('btn-submit'),
-      resultsSection: safeGetElement('results-section'),
-      countdownOverlay: safeGetElement('countdown-overlay'),
-      countdownNumber: safeGetElement('countdown-number'),
-      playerNameDisplay: safeGetElement('player-name-display')
+      gameScreen: getElement('game-screen'),
+      headerRound: getElement('header-round'),
+      headerTimer: getElement('header-timer'),
+      headerCode: getElement('header-code'),
+      playerScore: getElement('player-score'),
+      categoryLabel: getElement('category-label'),
+      currentWord: getElement('current-word'),
+      waitingMessage: getElement('waiting-message'),
+      wordsInputSection: getElement('words-input-section'),
+      currentWordInput: getElement('current-word-input'),
+      btnAddWord: getElement('btn-add-word'),
+      wordsListContainer: getElement('words-list-container'),
+      wordsList: getElement('words-list'),
+      wordCount: getElement('word-count'),
+      maxWordsDisplay: getElement('max-words'),
+      btnSubmit: getElement('btn-submit'),
+      resultsSection: getElement('results-section'),
+      countdownOverlay: document.getElementById('countdown-overlay'),
+      countdownNumber: document.getElementById('countdown-number'),
+      playerNameDisplay: getElement('player-name-display')
     };
-
-    Object.entries(elements).forEach(([key, el]) => {
-      if (!el && key !== 'countdownOverlay' && key !== 'countdownNumber') {
-        throw new Error(`[PlayerView] Critical element not found: ${key}`);
-      }
-    });
 
     if (elements.maxWordsDisplay) {
       elements.maxWordsDisplay.textContent = this.maxWords;
@@ -302,7 +296,7 @@ class PlayerView {
     if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
     if (this.elements.btnSubmit) {
       this.elements.btnSubmit.disabled = false;
-      this.elements.btnSubmit.textContent = '👍 LISTO';
+      this.elements.btnSubmit.textContent = '👏 LISTO';
     }
 
     if (this.elements.waitingMessage) {
