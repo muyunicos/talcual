@@ -104,7 +104,8 @@ class Database {
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS prompts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                text TEXT NOT NULL UNIQUE
+                text TEXT NOT NULL UNIQUE,
+                category_id INTEGER
             )');
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS prompt_categories (
@@ -154,44 +155,19 @@ class Database {
                 return;
             }
 
-            logMessage('Starting migration of prompts.category_id to prompt_categories table', 'INFO');
+            logMessage('Migrating prompts.category_id to prompt_categories', 'INFO');
 
-            $this->pdo->beginTransaction();
+            $stmt = $this->pdo->query('SELECT id, category_id FROM prompts WHERE category_id IS NOT NULL');
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $oldPrompts = $this->pdo->query('SELECT id, text, category_id FROM prompts')->fetchAll(PDO::FETCH_ASSOC);
-            logMessage('Found ' . count($oldPrompts) . ' prompts to migrate', 'INFO');
-
-            $this->pdo->exec('CREATE TABLE prompts_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                text TEXT NOT NULL UNIQUE
-            )');
-
-            $insertStmt = $this->pdo->prepare('INSERT INTO prompts_new (id, text) VALUES (?, ?)');
-            foreach ($oldPrompts as $prompt) {
-                $insertStmt->execute([$prompt['id'], $prompt['text']]);
+            $insertStmt = $this->pdo->prepare('INSERT OR IGNORE INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
+            foreach ($rows as $row) {
+                $insertStmt->execute([$row['id'], $row['category_id']]);
             }
 
-            $relStmt = $this->pdo->prepare('INSERT OR IGNORE INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
-            foreach ($oldPrompts as $prompt) {
-                if ($prompt['category_id'] !== null) {
-                    $relStmt->execute([$prompt['id'], $prompt['category_id']]);
-                }
-            }
-
-            $this->pdo->exec('DROP TABLE prompts');
-            $this->pdo->exec('ALTER TABLE prompts_new RENAME TO prompts');
-
-            $this->pdo->commit();
-
-            logMessage('Migration completed successfully', 'INFO');
-
+            logMessage('Migration completed: ' . count($rows) . ' records migrated', 'INFO');
         } catch (Exception $e) {
-            try {
-                $this->pdo->rollback();
-            } catch (Exception $rollbackError) {
-            }
-            logMessage('Migration error: ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Migration failed: ' . $e->getMessage());
+            logMessage('Migration error (non-critical): ' . $e->getMessage(), 'WARNING');
         }
     }
 
