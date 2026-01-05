@@ -169,11 +169,7 @@ try {
                 throw new Exception('game_id requerido');
             }
 
-            $roundResults = $input['round_results'] ?? [];
-            $topWords = $input['top_words'] ?? [];
-            $scoreDeltas = $input['score_deltas'] ?? [];
-
-            $result = $service->endRound($gameId, $roundResults, $topWords, $scoreDeltas);
+            $result = $service->endRound($gameId);
             $response = [
                 'success' => true,
                 'message' => $result['message'],
