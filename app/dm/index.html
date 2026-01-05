@@ -461,6 +461,17 @@
             color: #15803D;
         }
 
+        .badge-category {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: rgba(33, 128, 160, 0.1);
+            color: var(--color-primary);
+            margin-right: 6px;
+            margin-bottom: 4px;
+        }
+
         /* Game cards */
         .game-grid {
             display: grid;
@@ -563,7 +574,8 @@
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--color-border);
@@ -574,7 +586,8 @@
         }
 
         .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
             outline: none;
             border-color: var(--color-primary);
             box-shadow: 0 0 0 3px rgba(33, 128, 160, 0.1);
@@ -583,6 +596,38 @@
         .form-group textarea {
             resize: vertical;
             min-height: 80px;
+        }
+
+        .category-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            background: #F9FAFB;
+            border-radius: 6px;
+            border: 1px solid var(--color-border);
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--color-text);
+            flex: 1;
         }
 
         .modal-footer {
@@ -710,6 +755,10 @@
                     <label>Consigna</label>
                     <textarea id="promptText" placeholder="Ej: Nombra una película de acción"></textarea>
                 </div>
+                <div class="form-group">
+                    <label>Categorías</label>
+                    <div class="category-checkboxes" id="categoryCheckboxes"></div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closePromptModal()">Cancelar</button>
@@ -749,11 +798,19 @@
         let updateStatsTimer = null;
         let games = [];
         let dbInspection = null;
+        let allCategories = [];
+        let selectedCategories = [];
 
         async function apiCall(action, method = 'GET', data = null) {
             const params = new URLSearchParams({ action });
             if (data) {
-                Object.keys(data).forEach(key => params.append(key, data[key]));
+                Object.keys(data).forEach(key => {
+                    if (Array.isArray(data[key])) {
+                        params.append(key, JSON.stringify(data[key]));
+                    } else {
+                        params.append(key, data[key]);
+                    }
+                });
             }
 
             const url = method === 'GET' ? `${API_URL}?${params}` : API_URL;
@@ -836,7 +893,7 @@
                             <p><strong>Ronda:</strong> ${game.current_round || 1}</p>
                         </div>
                         <div class="game-card-actions">
-                            <button class="btn-icon" onclick="deleteGame('${game.code}')">🗑️</button>
+                            <button class="btn-icon" onclick="deleteGame('${game.code})">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -972,6 +1029,7 @@
         async function loadCategories() {
             const result = await apiCall('get_categories');
             if (result.success) {
+                allCategories = result.data || [];
                 const list = document.getElementById('categoriesList');
                 list.innerHTML = '';
                 result.data.forEach(cat => {
@@ -1020,15 +1078,22 @@
                 html += '<div class="list">';
                 prompts.data.forEach(prompt => {
                     const wordCount = prompt.word_count || 0;
+                    const catIds = prompt.category_ids || [];
+                    const catBadges = catIds.map(id => {
+                        const cat = allCategories.find(c => c.id === id);
+                        return `<span class="badge-category">${cat ? cat.name : 'N/A'}</span>`;
+                    }).join('');
+                    
                     html += `
                         <div class="list-item">
                             <div class="list-item-content" onclick="selectPrompt(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}')">
                                 <p class="list-item-text">${prompt.text}</p>
                                 <p class="list-item-info">${wordCount} palabra${wordCount !== 1 ? 's' : ''}</p>
+                                <div>${catBadges}</div>
                             </div>
                             <div class="list-item-actions">
-                                <button class="btn-icon" onclick="editPrompt(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}')">✏️ Editar</button>
-                                <button class="btn-icon delete" onclick="deletePrompt(${prompt.id})">🗑️ Borrar</button>
+                                <button class="btn-icon" onclick="editPromptModal(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}', ${JSON.stringify(prompt.category_ids || []).replace(/"/g, '&quot;')})" title="Editar">✏️</button>
+                                <button class="btn-icon delete" onclick="deletePrompt(${prompt.id})" title="Borrar">🗑️</button>
                             </div>
                         </div>
                     `;
@@ -1057,8 +1122,8 @@
                                 <p class="list-item-text">${word.word_entry}</p>
                             </div>
                             <div class="list-item-actions">
-                                <button class="btn-icon" onclick="editWord(${word.id}, '${word.word_entry.replace(/'/g, "\\'")}')">✏️ Editar</button>
-                                <button class="btn-icon delete" onclick="deleteWord(${word.id})">🗑️ Borrar</button>
+                                <button class="btn-icon" onclick="editWord(${word.id}, '${word.word_entry.replace(/'/g, "\\'")}')" title="Editar">✏️</button>
+                                <button class="btn-icon delete" onclick="deleteWord(${word.id})" title="Borrar">🗑️</button>
                             </div>
                         </div>
                     `;
@@ -1074,7 +1139,7 @@
             currentCategory = id;
             currentPrompt = null;
             document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelector('.category-btn').classList.add('active');
             document.getElementById('headerTitle').textContent = name;
             loadContent(id);
         }
@@ -1150,8 +1215,33 @@
             }
         }
 
+        async function loadCategoryCheckboxes() {
+            const container = document.getElementById('categoryCheckboxes');
+            if (allCategories.length === 0) {
+                const result = await apiCall('get_categories');
+                allCategories = result.success ? result.data : [];
+            }
+            
+            container.innerHTML = '';
+            allCategories.forEach(cat => {
+                const isSelected = selectedCategories.includes(cat.id);
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'checkbox-item';
+                checkboxDiv.innerHTML = `
+                    <input type="checkbox" id="cat-${cat.id}" value="${cat.id}" ${isSelected ? 'checked' : ''} onchange="updateSelectedCategories()">
+                    <label for="cat-${cat.id}">${cat.name}</label>
+                `;
+                container.appendChild(checkboxDiv);
+            });
+        }
+
+        function updateSelectedCategories() {
+            const checkboxes = document.querySelectorAll('#categoryCheckboxes input[type="checkbox"]:checked');
+            selectedCategories = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
+
         function openPromptModal(edit = null) {
-            if (!currentCategory) {
+            if (!currentCategory && !edit) {
                 alert('Selecciona una categoría primero');
                 return;
             }
@@ -1159,13 +1249,27 @@
             document.getElementById('promptModalTitle').textContent = edit ? 'Editar Consigna' : 'Nueva Consigna';
             document.getElementById('promptText').value = edit ? edit.text : '';
             document.getElementById('promptAlert').innerHTML = '';
-            document.getElementById('promptModal').classList.add('open');
-            document.getElementById('promptText').focus();
+            
+            if (edit) {
+                selectedCategories = edit.categoryIds || [];
+            } else {
+                selectedCategories = currentCategory ? [currentCategory] : [];
+            }
+            
+            loadCategoryCheckboxes().then(() => {
+                document.getElementById('promptModal').classList.add('open');
+                document.getElementById('promptText').focus();
+            });
+        }
+
+        function editPromptModal(id, text, categoryIds) {
+            openPromptModal({ id, text, categoryIds });
         }
 
         function closePromptModal() {
             document.getElementById('promptModal').classList.remove('open');
             editingPrompt = null;
+            selectedCategories = [];
         }
 
         async function savePrompt() {
@@ -1174,8 +1278,13 @@
                 showAlert('promptAlert', 'Por favor ingresa una consigna', 'error');
                 return;
             }
+            if (selectedCategories.length === 0) {
+                showAlert('promptAlert', 'Selecciona al menos una categoría', 'error');
+                return;
+            }
+            
             const action = editingPrompt ? 'update_prompt' : 'add_prompt';
-            const data = { text, category_id: currentCategory };
+            const data = { text, category_ids: selectedCategories };
             if (editingPrompt) data.id = editingPrompt.id;
             const result = await apiCall(action, 'POST', data);
             if (result.success) {
@@ -1196,10 +1305,6 @@
                     scheduleStatsUpdate();
                 }
             }
-        }
-
-        function editPrompt(id, text) {
-            openPromptModal({ id, text });
         }
 
         function openWordModal(edit = null) {
