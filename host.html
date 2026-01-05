@@ -60,7 +60,7 @@
         <button class="hamburger-option" id="hamburger-restart-round">🔄 Reiniciar Ronda</button>
         <button class="hamburger-option" id="hamburger-new-game">🎮 Nuevo Juego</button>
         <button class="hamburger-option" id="hamburger-settings">⚠️ Opciones</button>
-        <button class="hamburger-option hamburger-danger" id="hamburger-terminate">🚫 Terminar</button>
+        <button class="hamburger-option hamburger-danger" id="hamburger-terminate">🚻 Terminar</button>
         <a href="./index.html" class="hamburger-option hamburger-home">🏠 Inicio</a>
     </nav>
 
@@ -97,25 +97,9 @@
             <div class="players-grid" id="players-grid"></div>
         </div>
 
-        <div class="floating-side-panel" id="floating-side-panel" role="complementary" aria-label="Panel lateral con ranking">
-            <div class="category-sticker" id="category-sticker" aria-label="Categoría actual">Sin categoría</div>
-
-            <div class="panel-tabs" role="tablist" aria-label="Vistas del panel lateral">
-                <div class="panel-tab active" data-tab="ranking" role="tab" aria-selected="true" aria-label="Ver ranking de jugadores">🏆 Ranking</div>
-            </div>
-
-            <div class="panel-content" role="tabpanel">
-                <div class="panel-view active" data-view="ranking">
-                    <div class="panel-list" id="players-list">
-                        <div class="panel-item"><div class="name">Sin jugadores aún</div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="control-buttons" style="display: none;">
             <button class="btn" id="btn-select-category" aria-label="Seleccionar categoría para esta ronda">📚 Categoría</button>
-            <button class="btn" id="btn-end-game" aria-label="Terminar el juego">🚫 Terminar</button>
+            <button class="btn" id="btn-end-game" aria-label="Terminar el juego">🚻 Terminar</button>
         </div>
     </div>
 
@@ -127,6 +111,7 @@
     <script src="./js/components/GameSettings.js"></script>
     <script src="./js/core/PlayerAura.js"></script>
     <script src="./js/components/ActionMenuManager.js"></script>
+    <script src="./js/components/Leaderboard.js"></script>
     <script src="./js/host/GameSetup.js"></script>
     <script src="./js/host/HostView.js"></script>
     <script src="./js/host/HostController.js"></script>
