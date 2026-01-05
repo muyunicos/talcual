@@ -60,46 +60,39 @@ class Database {
 
     private function initializeTables() {
         try {
-            $this->pdo->exec('DROP TABLE IF EXISTS players');
-            $this->pdo->exec('DROP TABLE IF EXISTS games');
+            $this->pdo->exec('CREATE TABLE IF NOT EXISTS games (
+                id TEXT PRIMARY KEY,
+                status TEXT NOT NULL DEFAULT "waiting",
+                round INTEGER NOT NULL DEFAULT 0,
+                current_prompt TEXT,
+                current_category TEXT,
+                round_started_at INTEGER,
+                round_ends_at INTEGER,
+                created_at INTEGER,
+                updated_at INTEGER,
+                total_rounds INTEGER NOT NULL,
+                round_duration INTEGER NOT NULL,
+                min_players INTEGER NOT NULL,
+                max_players INTEGER NOT NULL,
+                start_countdown INTEGER,
+                hurry_up_threshold INTEGER,
+                max_words_per_player INTEGER,
+                max_word_length INTEGER,
+                data TEXT
+            )');
 
-            $this->pdo->exec('
-                CREATE TABLE games (
-                    id TEXT PRIMARY KEY,
-                    status TEXT NOT NULL DEFAULT "waiting",
-                    round INTEGER NOT NULL DEFAULT 0,
-                    current_prompt TEXT,
-                    current_category TEXT,
-                    round_started_at INTEGER,
-                    round_ends_at INTEGER,
-                    created_at INTEGER,
-                    updated_at INTEGER,
-                    total_rounds INTEGER NOT NULL,
-                    round_duration INTEGER NOT NULL,
-                    min_players INTEGER NOT NULL,
-                    max_players INTEGER NOT NULL,
-                    start_countdown INTEGER,
-                    hurry_up_threshold INTEGER,
-                    max_words_per_player INTEGER,
-                    max_word_length INTEGER,
-                    data TEXT
-                )
-            ');
-
-            $this->pdo->exec('
-                CREATE TABLE players (
-                    id TEXT NOT NULL,
-                    game_id TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    color TEXT,
-                    avatar TEXT,
-                    status TEXT DEFAULT "connected",
-                    current_answers TEXT,
-                    round_history TEXT DEFAULT "{}",
-                    PRIMARY KEY (id, game_id),
-                    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-                )
-            ');
+            $this->pdo->exec('CREATE TABLE IF NOT EXISTS players (
+                id TEXT NOT NULL,
+                game_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                color TEXT,
+                avatar TEXT,
+                status TEXT DEFAULT "connected",
+                current_answers TEXT,
+                round_history TEXT DEFAULT "{}",
+                PRIMARY KEY (id, game_id),
+                FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+            )');
 
             $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_players_game_id ON players(game_id)');
 
