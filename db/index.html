@@ -3,392 +3,769 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TalCual - Database Manager</title>
+    <title>TalCual - DB Admin Panel</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            max-width: 900px;
-            width: 100%;
-            padding: 40px;
-        }
-
-        h1 {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
             color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
         }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-
-        .upload-section {
-            border: 2px dashed #667eea;
-            border-radius: 8px;
-            padding: 30px;
-            text-align: center;
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-        }
-
-        .upload-section.dragover {
-            background: #f0f4ff;
-            border-color: #764ba2;
-        }
-
-        .upload-section input[type="file"] {
-            display: none;
-        }
-
-        .upload-label {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            gap: 12px;
-        }
-
-        .upload-icon {
-            font-size: 40px;
-        }
-
-        .upload-text {
-            color: #333;
-            font-weight: 500;
-        }
-
-        .upload-hint {
-            color: #999;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
+        
+        .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .header p { font-size: 12px; opacity: 0.9; }
+        
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            padding: 0 20px;
         }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        
+        .main { display: flex; flex-direction: column; gap: 20px; }
+        
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-
+        
+        .panel-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-header h2 { font-size: 16px; }
+        
+        .panel-body { padding: 20px; }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            background: #f8f9fa;
+            transition: all 0.2s;
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
+        }
+        
+        .tab.active {
+            border-bottom-color: #667eea;
+            background: white;
+            font-weight: 600;
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .tree {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .tree-item {
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .tree-item:last-child { border-bottom: none; }
+        
+        .tree-category {
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .tree-category:hover { background: #f0f0f0; }
+        
+        .tree-category.expanded ~ .tree-clues { display: block; }
+        
+        .tree-category .toggle { width: 20px; text-align: center; }
+        .tree-category .name { flex: 1; font-weight: 600; }
+        .tree-category .count { font-size: 12px; color: #999; }
+        .tree-category .actions { display: flex; gap: 5px; }
+        
+        .tree-clues {
+            display: none;
+            background: white;
+            border-left: 3px solid #667eea;
+            margin-left: 0;
+        }
+        
+        .tree-clue {
+            padding: 12px 15px 12px 30px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        
+        .tree-clue:hover { background: #f9f9f9; }
+        
+        .tree-clue .pregunta { flex: 1; }
+        .tree-clue .respuesta-count { font-size: 11px; color: #999; }
+        .tree-clue .actions { display: flex; gap: 5px; }
+        
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover { background: #5568d3; }
+        
         .btn-secondary {
             background: #f0f0f0;
             color: #333;
         }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
+        
+        .btn-secondary:hover { background: #e0e0e0; }
+        
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 11px;
         }
-
-        .message {
-            padding: 16px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .message.show {
-            display: block;
-        }
-
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .preview {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 20px;
-            max-height: 400px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .preview.show {
-            display: block;
-        }
-
-        .preview-header {
-            color: #666;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
-
-        pre {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 12px;
-            color: #333;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .stat-box {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            text-align: center;
-            border-left: 4px solid #667eea;
-        }
-
-        .stat-label {
-            color: #666;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            color: #333;
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .file-name {
-            color: #667eea;
-            font-weight: 600;
-            margin-top: 10px;
+        
+        .btn-icon {
+            padding: 6px;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 13px;
+            transition: all 0.2s;
         }
+        
+        .btn-icon:hover { background: #e0e0e0; }
+        .btn-icon.delete:hover { background: #ffebee; color: #c62828; }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .sidebar-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .sidebar-panel h3 {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            font-size: 13px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .sidebar-panel-body {
+            padding: 15px;
+            font-size: 12px;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .stat:last-child { border-bottom: none; }
+        .stat-label { font-weight: 600; }
+        .stat-value { color: #667eea; font-weight: 700; }
+        
+        .message {
+            padding: 12px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .message.show { display: block; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show { display: flex; }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 { font-size: 16px; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; }
+        
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 15px 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; justify-content: flex-end; }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Monaco', monospace;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon { font-size: 40px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
+    <div class="header">
+        <h1>🎮 TalCual - Database Admin Panel</h1>
+        <p>Gestiona categorías, consignas y respuestas</p>
+    </div>
+    
     <div class="container">
-        <h1>🎮 TalCual - Database Manager</h1>
-        <p class="subtitle">Importa, normaliza y gestiona la base de datos del juego</p>
-
-        <div class="message" id="message"></div>
-
-        <div class="upload-section" id="uploadSection">
-            <label class="upload-label">
-                <div class="upload-icon">📁</div>
-                <div>
-                    <div class="upload-text">Arrastra tu archivo JSON aquí</div>
-                    <div class="upload-hint">o haz clic para seleccionar</div>
+        <div class="main">
+            <div class="message" id="message"></div>
+            
+            <div class="panel">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('explorer')">Explorer</div>
+                    <div class="tab" onclick="switchTab('import')">Importar</div>
+                    <div class="tab" onclick="switchTab('raw')">JSON Raw</div>
                 </div>
-                <input type="file" id="fileInput" accept=".json" />
-            </label>
-            <div class="file-name" id="fileName"></div>
+                
+                <div id="explorer" class="tab-content active">
+                    <div class="panel-body">
+                        <div style="margin-bottom: 15px;">
+                            <input type="text" class="search-box" id="searchBox" placeholder="Buscar categorías o consignas...">
+                            <button class="btn-primary" onclick="showNewCategoryModal()">+ Nueva Categoría</button>
+                        </div>
+                        <ul class="tree" id="tree"></ul>
+                        <div id="emptyState" class="empty-state">
+                            <div class="empty-state-icon">📚</div>
+                            <p>No hay datos. Importa un JSON o crea una nueva categoría.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="import" class="tab-content">
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Importar archivo JSON</label>
+                            <input type="file" id="fileInput" accept=".json">
+                        </div>
+                        <div id="importPreview" style="background: #f8f9fa; padding: 15px; border-radius: 4px; display: none;">
+                            <p style="font-size: 12px; margin-bottom: 10px;"><strong>Preview:</strong></p>
+                            <pre id="importPreviewContent" style="font-size: 11px; max-height: 300px; overflow-y: auto;"></pre>
+                        </div>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn-primary" onclick="importJSON()">Importar</button>
+                            <button class="btn-secondary" onclick="exportJSON()">Exportar</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="raw" class="tab-content">
+                    <div class="panel-body">
+                        <textarea id="rawJSON" style="width: 100%; height: 400px; font-family: monospace; font-size: 11px;"></textarea>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn-primary" onclick="saveRawJSON()">Guardar cambios</button>
+                            <button class="btn-secondary" onclick="loadRawJSON()">Recargar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <div class="button-group">
-            <button class="btn-primary" id="importBtn" disabled>Importar y normalizar</button>
-            <button class="btn-secondary" id="loadBtn">Cargar DB actual</button>
+        
+        <div class="sidebar">
+            <div class="sidebar-panel">
+                <h3>📊 Estadísticas</h3>
+                <div class="sidebar-panel-body">
+                    <div class="stat">
+                        <span class="stat-label">Categorías:</span>
+                        <span class="stat-value" id="statCats">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Consignas:</span>
+                        <span class="stat-value" id="statClues">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Respuestas:</span>
+                        <span class="stat-value" id="statResps">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-panel">
+                <h3>⚜️ Ayuda</h3>
+                <div class="sidebar-panel-body">
+                    <p><strong>Arrastrar:</strong> Reordena categorías</p>
+                    <p><strong>Editar:</strong> Modifica consignas y respuestas</p>
+                    <p><strong>Eliminar:</strong> Quita de categoría (no borra la consigna)</p>
+                    <p><strong>Raw JSON:</strong> Edita datos crudos</p>
+                </div>
+            </div>
         </div>
-
-        <div class="preview" id="preview">
-            <div class="preview-header">Preview del JSON procesado</div>
-            <pre id="previewContent"></pre>
+    </div>
+    
+    <!-- Modal: Nueva Categoría -->
+    <div class="modal" id="newCategoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nueva Categoría</h2>
+                <button class="modal-close" onclick="closeModal('newCategoryModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nombre de la categoría</label>
+                    <input type="text" id="newCatName" placeholder="Ej: AMOR Y CITAS ❤️">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('newCategoryModal')">Cancelar</button>
+                <button class="btn-primary" onclick="createCategory()">Crear</button>
+            </div>
         </div>
-
-        <div class="stats" id="stats"></div>
+    </div>
+    
+    <!-- Modal: Nueva Consigna -->
+    <div class="modal" id="newClueModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nueva Consigna</h2>
+                <button class="modal-close" onclick="closeModal('newClueModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Pregunta</label>
+                    <textarea id="newCluePregunta" placeholder="Ej: Un lugar para una primera cita"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Respuestas (una por línea, con | para sinónimos)</label>
+                    <textarea id="newClueRespuestas" placeholder="CINE&#10;BAR|BARCITO&#10;RESTAURANTE|COMEDOR"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('newClueModal')">Cancelar</button>
+                <button class="btn-primary" onclick="createClue()">Crear</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Editar Consigna -->
+    <div class="modal" id="editClueModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editar Consigna</h2>
+                <button class="modal-close" onclick="closeModal('editClueModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Pregunta</label>
+                    <textarea id="editCluePregunta"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Respuestas (una por línea)</label>
+                    <textarea id="editClueRespuestas"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('editClueModal')">Cancelar</button>
+                <button class="btn-primary" onclick="saveEditClue()">Guardar</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const uploadSection = document.getElementById('uploadSection');
-        const importBtn = document.getElementById('importBtn');
-        const loadBtn = document.getElementById('loadBtn');
-        const messageDiv = document.getElementById('message');
-        const preview = document.getElementById('preview');
-        const previewContent = document.getElementById('previewContent');
-        const fileNameSpan = document.getElementById('fileName');
-        const statsDiv = document.getElementById('stats');
-
-        let selectedFile = null;
-        let parsedJSON = null;
-
-        uploadSection.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadSection.classList.add('dragover');
-        });
-
-        uploadSection.addEventListener('dragleave', () => {
-            uploadSection.classList.remove('dragover');
-        });
-
-        uploadSection.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadSection.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length) handleFileSelect(files[0]);
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) handleFileSelect(e.target.files[0]);
-        });
-
-        function handleFileSelect(file) {
-            selectedFile = file;
-            fileNameSpan.textContent = `📄 ${file.name}`;
-            importBtn.disabled = false;
-
+        let db = { categorias: {}, consignas: {} };
+        let currentEditingClue = null;
+        let currentEditingCategory = null;
+        
+        async function loadDB() {
+            try {
+                const res = await fetch('dmanager.php?action=get-db');
+                const result = await res.json();
+                if (result.success) {
+                    db = result.data;
+                    renderTree();
+                    updateStats();
+                    loadRawJSON();
+                } else {
+                    showMessage('Base de datos vacía', 'success');
+                    db = { categorias: {}, consignas: {} };
+                }
+            } catch (err) {
+                showMessage('Error al cargar: ' + err.message, 'error');
+            }
+        }
+        
+        function renderTree() {
+            const tree = document.getElementById('tree');
+            const categories = Object.entries(db.categorias).sort((a, b) => a[1].orden - b[1].orden);
+            
+            if (categories.length === 0) {
+                tree.innerHTML = '';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('emptyState').style.display = 'none';
+            
+            tree.innerHTML = categories.map(([catName, catData]) => `
+                <li class="tree-item">
+                    <div class="tree-category" onclick="toggleCategory(this)" draggable="true" ondragstart="dragCategory(event, '${catName}')">
+                        <span class="toggle">▶</span>
+                        <span class="name">${catName}</span>
+                        <span class="count">${catData.consignas.length} consignas</span>
+                        <div class="actions">
+                            <span class="btn-icon" onclick="event.stopPropagation(); showNewClueModal('${catName}')" title="+ Consigna">+</span>
+                            <span class="btn-icon delete" onclick="event.stopPropagation(); deleteCategory('${catName}')" title="Eliminar">🗑</span>
+                        </div>
+                    </div>
+                    <ul class="tree-clues">
+                        ${catData.consignas.map(clueId => {
+                            const clue = db.consignas[clueId];
+                            if (!clue) return '';
+                            const pregunta = clue.pregunta.substring(0, 50) + (clue.pregunta.length > 50 ? '...' : '');
+                            return `
+                                <li class="tree-clue">
+                                    <span class="pregunta">${pregunta}</span>
+                                    <span class="respuesta-count">${clue.respuestas.length} resp</span>
+                                    <div class="actions">
+                                        <span class="btn-icon" onclick="editClue('${clueId}')" title="Editar">✎</span>
+                                        <span class="btn-icon delete" onclick="removeClueFromCategory('${catName}', '${clueId}')" title="Quitar">🗑</span>
+                                    </div>
+                                </li>
+                            `;
+                        }).join('')}
+                    </ul>
+                </li>
+            `).join('');
+        }
+        
+        function toggleCategory(el) {
+            el.classList.toggle('expanded');
+            el.querySelector('.toggle').textContent = el.classList.contains('expanded') ? '▼' : '▶';
+        }
+        
+        function dragCategory(e, catName) {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text', catName);
+        }
+        
+        async function showNewClueModal(catName = null) {
+            currentEditingCategory = catName;
+            document.getElementById('newClueModal').classList.add('show');
+        }
+        
+        function showNewCategoryModal() {
+            document.getElementById('newCategoryModal').classList.add('show');
+        }
+        
+        async function createCategory() {
+            const name = document.getElementById('newCatName').value.trim();
+            if (!name) {
+                showMessage('El nombre no puede estar vacío', 'error');
+                return;
+            }
+            
+            if (db.categorias[name]) {
+                showMessage('La categoría ya existe', 'error');
+                return;
+            }
+            
+            const orden = Math.max(...Object.values(db.categorias).map(c => c.orden || 0), 0) + 1;
+            db.categorias[name] = { orden, consignas: [] };
+            await saveDB();
+            closeModal('newCategoryModal');
+            document.getElementById('newCatName').value = '';
+            renderTree();
+            updateStats();
+        }
+        
+        async function createClue() {
+            const pregunta = document.getElementById('newCluePregunta').value.trim();
+            const respuestasText = document.getElementById('newClueRespuestas').value.trim();
+            
+            if (!pregunta || !respuestasText) {
+                showMessage('Pregunta y respuestas son obligatorias', 'error');
+                return;
+            }
+            
+            const respuestas = respuestasText.split('\n').map(r => r.trim()).filter(r => r);
+            const clueId = 'clue_' + Date.now();
+            
+            db.consignas[clueId] = {
+                pregunta,
+                respuestas,
+                created_at: new Date().toISOString()
+            };
+            
+            if (currentEditingCategory && db.categorias[currentEditingCategory]) {
+                db.categorias[currentEditingCategory].consignas.push(clueId);
+            }
+            
+            await saveDB();
+            closeModal('newClueModal');
+            document.getElementById('newCluePregunta').value = '';
+            document.getElementById('newClueRespuestas').value = '';
+            renderTree();
+            updateStats();
+        }
+        
+        function editClue(clueId) {
+            currentEditingClue = clueId;
+            const clue = db.consignas[clueId];
+            if (clue) {
+                document.getElementById('editCluePregunta').value = clue.pregunta;
+                document.getElementById('editClueRespuestas').value = clue.respuestas.join('\n');
+                document.getElementById('editClueModal').classList.add('show');
+            }
+        }
+        
+        async function saveEditClue() {
+            if (!currentEditingClue) return;
+            
+            const pregunta = document.getElementById('editCluePregunta').value.trim();
+            const respuestasText = document.getElementById('editClueRespuestas').value.trim();
+            
+            if (!pregunta || !respuestasText) {
+                showMessage('Pregunta y respuestas son obligatorias', 'error');
+                return;
+            }
+            
+            const respuestas = respuestasText.split('\n').map(r => r.trim()).filter(r => r);
+            db.consignas[currentEditingClue].pregunta = pregunta;
+            db.consignas[currentEditingClue].respuestas = respuestas;
+            
+            await saveDB();
+            closeModal('editClueModal');
+            renderTree();
+            updateStats();
+        }
+        
+        function deleteCategory(catName) {
+            if (!confirm(`¿Eliminar categoría "${catName}"? (Las consignas se conservarán)`)) return;
+            delete db.categorias[catName];
+            saveDB().then(() => {
+                renderTree();
+                updateStats();
+            });
+        }
+        
+        function removeClueFromCategory(catName, clueId) {
+            if (!db.categorias[catName]) return;
+            db.categorias[catName].consignas = db.categorias[catName].consignas.filter(id => id !== clueId);
+            saveDB().then(() => {
+                renderTree();
+                updateStats();
+            });
+        }
+        
+        async function importJSON() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) {
+                showMessage('Selecciona un archivo JSON', 'error');
+                return;
+            }
+            
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
-                    parsedJSON = JSON.parse(e.target.result);
-                    showMessage(`JSON válido - ${file.name}`, 'success');
-                    displayPreview(parsedJSON);
-                    calculateStats(parsedJSON);
+                    const imported = JSON.parse(e.target.result);
+                    
+                    const res = await fetch('dmanager.php?action=import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(imported)
+                    });
+                    
+                    const result = await res.json();
+                    if (result.success) {
+                        db = result.data;
+                        renderTree();
+                        updateStats();
+                        loadRawJSON();
+                        showMessage('✅ Importado correctamente', 'success');
+                    } else {
+                        showMessage('❌ ' + result.message, 'error');
+                    }
                 } catch (err) {
-                    showMessage(`Error al parsear JSON: ${err.message}`, 'error');
-                    parsedJSON = null;
+                    showMessage('Error: ' + err.message, 'error');
                 }
             };
             reader.readAsText(file);
         }
-
-        importBtn.addEventListener('click', async () => {
-            if (!parsedJSON) return;
-
-            importBtn.disabled = true;
-            try {
-                const response = await fetch('dmanager.php?action=import', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(parsedJSON)
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    showMessage('✅ Base de datos importada y normalizada correctamente', 'success');
-                    displayPreview(result.data);
-                    calculateStats(result.data);
-                } else {
-                    showMessage(`❌ ${result.message}`, 'error');
-                }
-            } catch (err) {
-                showMessage(`Error de conexión: ${err.message}`, 'error');
-            } finally {
-                importBtn.disabled = false;
-            }
-        });
-
-        loadBtn.addEventListener('click', async () => {
-            try {
-                const response = await fetch('dmanager.php?action=get-db');
-                const result = await response.json();
-
-                if (result.success) {
-                    showMessage('✅ Base de datos cargada', 'success');
-                    displayPreview(result.data);
-                    calculateStats(result.data);
-                } else {
-                    showMessage(`❌ ${result.message}`, 'error');
-                }
-            } catch (err) {
-                showMessage(`Error de conexión: ${err.message}`, 'error');
-            }
-        });
-
-        function displayPreview(data) {
-            previewContent.textContent = JSON.stringify(data, null, 2);
-            preview.classList.add('show');
+        
+        function exportJSON() {
+            const dataStr = JSON.stringify(db, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `talcual-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
-
-        function calculateStats(data) {
-            let totalCategories = 0;
-            let totalPreguntas = 0;
-            let totalRespuestas = 0;
-
-            for (const category in data) {
-                totalCategories++;
-                const questions = data[category];
-                if (Array.isArray(questions)) {
-                    totalPreguntas += questions.length;
-                    questions.forEach(q => {
-                        if (q.respuestas) totalRespuestas += q.respuestas.length;
-                    });
-                }
-            }
-
-            statsDiv.innerHTML = `
-                <div class="stat-box">
-                    <div class="stat-label">Categorías</div>
-                    <div class="stat-value">${totalCategories}</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Preguntas</div>
-                    <div class="stat-value">${totalPreguntas}</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Respuestas</div>
-                    <div class="stat-value">${totalRespuestas}</div>
-                </div>
-            `;
+        
+        function loadRawJSON() {
+            document.getElementById('rawJSON').value = JSON.stringify(db, null, 2);
         }
-
+        
+        async function saveRawJSON() {
+            try {
+                db = JSON.parse(document.getElementById('rawJSON').value);
+                await saveDB();
+                renderTree();
+                updateStats();
+                showMessage('✅ Cambios guardados', 'success');
+            } catch (err) {
+                showMessage('❌ JSON inválido: ' + err.message, 'error');
+            }
+        }
+        
+        async function saveDB() {
+            const res = await fetch('dmanager.php?action=save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(db)
+            });
+            const result = await res.json();
+            if (!result.success) {
+                showMessage('❌ Error al guardar', 'error');
+            }
+        }
+        
+        function updateStats() {
+            const cats = Object.keys(db.categorias).length;
+            const clues = Object.keys(db.consignas).length;
+            const resps = Object.values(db.consignas).reduce((sum, c) => sum + (c.respuestas || []).length, 0);
+            
+            document.getElementById('statCats').textContent = cats;
+            document.getElementById('statClues').textContent = clues;
+            document.getElementById('statResps').textContent = resps;
+        }
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'raw') loadRawJSON();
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+        
         function showMessage(msg, type) {
-            messageDiv.textContent = msg;
-            messageDiv.className = `message show ${type}`;
-            if (type === 'success') {
-                setTimeout(() => messageDiv.classList.remove('show'), 5000);
-            }
+            const el = document.getElementById('message');
+            el.textContent = msg;
+            el.className = `message show ${type}`;
+            if (type === 'success') setTimeout(() => el.classList.remove('show'), 3000);
         }
+        
+        loadDB();
     </script>
 </body>
 </html>
