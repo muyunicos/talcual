@@ -7,32 +7,26 @@ class HostView {
 
   cacheElements() {
     const elements = {
-      gameScreen: safeGetElement('game-screen'),
-      headerCode: safeGetElement('header-code'),
-      headerRound: safeGetElement('header-round'),
-      headerTimer: safeGetElement('header-timer'),
-      playersList: safeGetElement('players-list'),
-      playersGrid: safeGetElement('players-grid'),
-      categoryLabel: safeGetElement('category-label'),
-      currentWord: safeGetElement('current-word'),
-      countdownOverlay: safeGetElement('countdown-overlay'),
-      countdownNumber: safeGetElement('countdown-number'),
-      statusMessage: safeGetElement('status-message'),
-      btnStartRound: safeGetElement('btn-start-round'),
-      btnHurryUp: safeGetElement('btn-hurry-up'),
-      btnEndGame: safeGetElement('btn-end-game'),
+      gameScreen: getElement('game-screen'),
+      headerCode: getElement('header-code'),
+      headerRound: getElement('header-round'),
+      headerTimer: getElement('header-timer'),
+      playersList: getElement('players-list'),
+      playersGrid: getElement('players-grid'),
+      categoryLabel: getElement('category-label'),
+      currentWord: getElement('current-word'),
+      countdownOverlay: document.getElementById('countdown-overlay'),
+      countdownNumber: document.getElementById('countdown-number'),
+      statusMessage: getElement('status-message'),
+      btnStartRound: getElement('btn-start-round'),
+      btnHurryUp: getElement('btn-hurry-up'),
+      btnEndGame: getElement('btn-end-game'),
       btnEndRound: null,
-      centerStage: safeGetElement('center-stage'),
-      categorySticker: safeGetElement('category-sticker')
+      centerStage: getElement('center-stage'),
+      categorySticker: getElement('category-sticker')
     };
 
     elements.btnEndRound = document.querySelector('[aria-label="Botón para terminar la ronda"], .btn-end-round');
-
-    Object.entries(elements).forEach(([key, el]) => {
-      if (!el && key !== 'btnEndRound' && key !== 'countdownOverlay' && key !== 'countdownNumber') {
-        throw new Error(`[HostView] Critical element not found: ${key}`);
-      }
-    });
 
     return elements;
   }
