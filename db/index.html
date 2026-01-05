@@ -210,6 +210,8 @@
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid var(--border);
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .section-title {
@@ -235,6 +237,24 @@
 
         .btn-primary:hover {
             background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: #D1D5DB;
+        }
+
+        .btn-bulk {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-bulk:hover {
+            background: #D97706;
         }
 
         /* List */
@@ -345,7 +365,21 @@
 
         .form-group textarea {
             resize: vertical;
-            min-height: 80px;
+            min-height: 120px;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 8px 0 15px 0;
+            background: var(--bg);
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid var(--warning);
+        }
+
+        .form-hint strong {
+            color: var(--text);
         }
 
         .category-checkboxes {
@@ -382,15 +416,6 @@
             margin-top: 20px;
         }
 
-        .btn-secondary {
-            background: var(--border);
-            color: var(--text);
-        }
-
-        .btn-secondary:hover {
-            background: #D1D5DB;
-        }
-
         .alert {
             padding: 12px 15px;
             border-radius: 6px;
@@ -408,6 +433,31 @@
             background: #ECFDF5;
             color: #065F46;
             border: 1px solid #A7F3D0;
+        }
+
+        .alert-info {
+            background: #EFF6FF;
+            color: #0C2340;
+            border: 1px solid #BFDBFE;
+        }
+
+        .import-preview {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .import-preview-item {
+            font-size: 12px;
+            padding: 4px 8px;
+            margin-bottom: 4px;
+            background: var(--surface);
+            border-radius: 3px;
+            border-left: 2px solid var(--primary);
         }
     </style>
 </head>
@@ -459,6 +509,25 @@
         </div>
     </div>
 
+    <div class="modal" id="categoryBulkModal">
+        <div class="modal-content">
+            <div class="modal-header">Importar Categorías</div>
+            <div id="categoryBulkAlert"></div>
+            <div class="form-group">
+                <label>Categorías (separadas por comas)</label>
+                <textarea id="categoryBulkText" placeholder="Ej: Películas, Libros, Deportes, Música"></textarea>
+            </div>
+            <div class="form-hint">
+                💡 Ingresa una categoría por línea o separadas por comas
+            </div>
+            <div class="import-preview" id="categoryBulkPreview" style="display: none;"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCategoryBulkModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveCategoryBulk()">Importar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="promptModal">
         <div class="modal-content">
             <div class="modal-header" id="promptTitle">Nueva Consigna</div>
@@ -478,6 +547,25 @@
         </div>
     </div>
 
+    <div class="modal" id="promptBulkModal">
+        <div class="modal-content">
+            <div class="modal-header">Importar Consignas</div>
+            <div id="promptBulkAlert"></div>
+            <div class="form-group">
+                <label>Consignas (separadas por comas)</label>
+                <textarea id="promptBulkText" placeholder="Ej: Nombra una película, Nombra un libro, Nombra un deporte"></textarea>
+            </div>
+            <div class="form-hint">
+                💡 Ingresa una consigna por línea o separadas por comas. Se asignarán a la categoría seleccionada.
+            </div>
+            <div class="import-preview" id="promptBulkPreview" style="display: none;"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePromptBulkModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePromptBulk()">Importar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="wordModal">
         <div class="modal-content">
             <div class="modal-header" id="wordTitle">Nueva Palabra</div>
@@ -492,6 +580,26 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeWordModal()">Cancelar</button>
                 <button class="btn btn-primary" onclick="saveWord()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="wordBulkModal">
+        <div class="modal-content">
+            <div class="modal-header">Importar Palabras</div>
+            <div id="wordBulkAlert"></div>
+            <div class="form-group">
+                <label>Palabras (separadas por comas)</label>
+                <textarea id="wordBulkText" placeholder='Ej: perro|can, gato|felino, tortuga, sapo'></textarea>
+            </div>
+            <div class="form-hint">
+                💡 <strong>Formato:</strong> palabra o palabra|variante1|variante2<br>
+                Ingresa una palabra por línea o separadas por comas
+            </div>
+            <div class="import-preview" id="wordBulkPreview" style="display: none;"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeWordBulkModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveWordBulk()">Importar</button>
             </div>
         </div>
     </div>
@@ -558,11 +666,11 @@
             const content = document.getElementById('content');
             
             if (!result.success || result.data.length === 0) {
-                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button></div><div class="empty-state"><p>Sin consignas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera consigna para esta categoría</p></div></div>';
+                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openPromptBulkModal()">📋 Importar</button></div></div><div class="empty-state"><p>Sin consignas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera consigna para esta categoría</p></div></div>';
                 return;
             }
 
-            let html = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button></div><div class="list">';
+            let html = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openPromptBulkModal()">📋 Importar</button></div></div><div class="list">';
             
             result.data.forEach(prompt => {
                 html += `
@@ -588,11 +696,11 @@
             const content = document.getElementById('content');
             
             if (!result.success || result.data.length === 0) {
-                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button></div><div class="empty-state"><p>Sin palabras válidas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera palabra para esta consigna</p></div></div>';
+                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openWordBulkModal()">📋 Importar</button></div></div><div class="empty-state"><p>Sin palabras válidas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera palabra para esta consigna</p></div></div>';
                 return;
             }
 
-            let html = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button></div><div class="list">';
+            let html = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openWordBulkModal()">📋 Importar</button></div></div><div class="list">';
             
             result.data.forEach(word => {
                 html += `
@@ -638,6 +746,30 @@
             }
         }
 
+        // PARSE BULK TEXT
+        function parseBulkText(text) {
+            return text
+                .split(/[,\n]|(?<=[.])\s+/)
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+        }
+
+        function updateBulkPreview(elementId, previewId, items) {
+            const preview = document.getElementById(previewId);
+            if (items.length > 0) {
+                preview.style.display = 'block';
+                preview.innerHTML = items
+                    .slice(0, 10)
+                    .map(item => `<div class="import-preview-item">${item}</div>`)
+                    .join('');
+                if (items.length > 10) {
+                    preview.innerHTML += `<div style="text-align: center; font-size: 12px; color: var(--text-secondary); margin-top: 8px;">+${items.length - 10} más</div>`;
+                }
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
         // CATEGORY OPERATIONS
         function openCategoryModal(edit = null) {
             editingItem = edit;
@@ -655,6 +787,22 @@
         function closeCategoryModal() {
             document.getElementById('categoryModal').classList.remove('open');
             editingItem = null;
+        }
+
+        function openCategoryBulkModal() {
+            document.getElementById('categoryBulkText').value = '';
+            document.getElementById('categoryBulkAlert').innerHTML = '';
+            document.getElementById('categoryBulkPreview').style.display = 'none';
+            document.getElementById('categoryBulkModal').classList.add('open');
+            document.getElementById('categoryBulkText').focus();
+            document.getElementById('categoryBulkText').addEventListener('input', () => {
+                const items = parseBulkText(document.getElementById('categoryBulkText').value);
+                updateBulkPreview('categoryBulkText', 'categoryBulkPreview', items);
+            });
+        }
+
+        function closeCategoryBulkModal() {
+            document.getElementById('categoryBulkModal').classList.remove('open');
         }
 
         async function saveCategory() {
@@ -675,6 +823,32 @@
             } else {
                 showAlert('categoryAlert', result.message, 'error');
             }
+        }
+
+        async function saveCategoryBulk() {
+            const text = document.getElementById('categoryBulkText').value.trim();
+            if (!text) {
+                showAlert('categoryBulkAlert', 'Ingresa al menos una categoría', 'error');
+                return;
+            }
+
+            const items = parseBulkText(text);
+            if (items.length === 0) {
+                showAlert('categoryBulkAlert', 'No se encontraron categorías válidas', 'error');
+                return;
+            }
+
+            let success = 0;
+            for (const name of items) {
+                const result = await api('add_category', 'POST', { name });
+                if (result.success) success++;
+            }
+
+            showAlert('categoryBulkAlert', `${success}/${items.length} categorías importadas`, 'success');
+            setTimeout(() => {
+                closeCategoryBulkModal();
+                loadCategories();
+            }, 1500);
         }
 
         async function deleteCategory(id) {
@@ -712,6 +886,26 @@
         function closePromptModal() {
             document.getElementById('promptModal').classList.remove('open');
             editingItem = null;
+        }
+
+        function openPromptBulkModal() {
+            if (!currentCategory) {
+                alert('Selecciona una categoría primero');
+                return;
+            }
+            document.getElementById('promptBulkText').value = '';
+            document.getElementById('promptBulkAlert').innerHTML = '';
+            document.getElementById('promptBulkPreview').style.display = 'none';
+            document.getElementById('promptBulkModal').classList.add('open');
+            document.getElementById('promptBulkText').focus();
+            document.getElementById('promptBulkText').addEventListener('input', () => {
+                const items = parseBulkText(document.getElementById('promptBulkText').value);
+                updateBulkPreview('promptBulkText', 'promptBulkPreview', items);
+            });
+        }
+
+        function closePromptBulkModal() {
+            document.getElementById('promptBulkModal').classList.remove('open');
         }
 
         function loadCategoryCheckboxes() {
@@ -760,6 +954,32 @@
             }
         }
 
+        async function savePromptBulk() {
+            const text = document.getElementById('promptBulkText').value.trim();
+            if (!text) {
+                showAlert('promptBulkAlert', 'Ingresa al menos una consigna', 'error');
+                return;
+            }
+
+            const items = parseBulkText(text);
+            if (items.length === 0) {
+                showAlert('promptBulkAlert', 'No se encontraron consignas válidas', 'error');
+                return;
+            }
+
+            let success = 0;
+            for (const text of items) {
+                const result = await api('add_prompt', 'POST', { text, category_ids: [currentCategory] });
+                if (result.success) success++;
+            }
+
+            showAlert('promptBulkAlert', `${success}/${items.length} consignas importadas`, 'success');
+            setTimeout(() => {
+                closePromptBulkModal();
+                loadPrompts(currentCategory);
+            }, 1500);
+        }
+
         async function deletePrompt(id) {
             if (!confirm('¿Eliminar esta consigna?')) return;
             const result = await api('delete_prompt', 'POST', { id });
@@ -792,6 +1012,26 @@
             editingItem = null;
         }
 
+        function openWordBulkModal() {
+            if (!currentPrompt) {
+                alert('Selecciona una consigna primero');
+                return;
+            }
+            document.getElementById('wordBulkText').value = '';
+            document.getElementById('wordBulkAlert').innerHTML = '';
+            document.getElementById('wordBulkPreview').style.display = 'none';
+            document.getElementById('wordBulkModal').classList.add('open');
+            document.getElementById('wordBulkText').focus();
+            document.getElementById('wordBulkText').addEventListener('input', () => {
+                const items = parseBulkText(document.getElementById('wordBulkText').value);
+                updateBulkPreview('wordBulkText', 'wordBulkPreview', items);
+            });
+        }
+
+        function closeWordBulkModal() {
+            document.getElementById('wordBulkModal').classList.remove('open');
+        }
+
         async function saveWord() {
             const word = document.getElementById('wordEntry').value.trim();
             if (!word) {
@@ -810,6 +1050,32 @@
             } else {
                 showAlert('wordAlert', result.message, 'error');
             }
+        }
+
+        async function saveWordBulk() {
+            const text = document.getElementById('wordBulkText').value.trim();
+            if (!text) {
+                showAlert('wordBulkAlert', 'Ingresa al menos una palabra', 'error');
+                return;
+            }
+
+            const items = parseBulkText(text);
+            if (items.length === 0) {
+                showAlert('wordBulkAlert', 'No se encontraron palabras válidas', 'error');
+                return;
+            }
+
+            let success = 0;
+            for (const word of items) {
+                const result = await api('add_word', 'POST', { word, prompt_id: currentPrompt });
+                if (result.success) success++;
+            }
+
+            showAlert('wordBulkAlert', `${success}/${items.length} palabras importadas`, 'success');
+            setTimeout(() => {
+                closeWordBulkModal();
+                loadWords(currentPrompt);
+            }, 1500);
         }
 
         async function deleteWord(id) {
