@@ -52,6 +52,45 @@
             color: var(--color-text);
         }
 
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            margin: 0 0 12px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-btn {
+            display: block;
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--color-bg);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            transition: all 0.2s;
+            color: var(--color-text);
+            margin-bottom: 6px;
+        }
+
+        .nav-btn:hover {
+            background: #F3F4F6;
+            border-color: var(--color-border);
+        }
+
+        .nav-btn.active {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
         .categories-list {
             list-style: none;
             padding: 0;
@@ -279,6 +318,78 @@
             color: var(--color-error);
         }
 
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: #15803D;
+        }
+
+        .badge-finished {
+            background: rgba(59, 130, 246, 0.15);
+            color: #1E40AF;
+        }
+
+        .badge-waiting {
+            background: rgba(245, 158, 11, 0.15);
+            color: #92400E;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 15px;
+        }
+
+        .game-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.2s;
+        }
+
+        .game-card:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 4px 12px rgba(33, 128, 160, 0.15);
+        }
+
+        .game-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .game-card-title {
+            font-weight: 600;
+            color: var(--color-text);
+            margin: 0;
+        }
+
+        .game-card-content {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .game-card-content p {
+            margin: 4px 0;
+        }
+
+        .game-card-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
         /* Modal */
         .modal {
             display: none;
@@ -411,9 +522,17 @@
     <div class="container">
         <!-- Sidebar -->
         <div class="sidebar">
-            <h2>Categorías</h2>
-            <ul class="categories-list" id="categoriesList"></ul>
-            <button class="btn-add-category" id="btnAddCategory">+ Nueva Categoría</button>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Navegación</div>
+                <button class="nav-btn" id="btnDictionary">Diccionario</button>
+                <button class="nav-btn" id="btnGames">Partidas</button>
+            </div>
+
+            <div class="sidebar-section" id="dictionarySection">
+                <h2>Categorías</h2>
+                <ul class="categories-list" id="categoriesList"></ul>
+                <button class="btn-add-category" id="btnAddCategory">+ Nueva Categoría</button>
+            </div>
         </div>
 
         <!-- Main Content -->
@@ -489,12 +608,14 @@
 
     <script>
         const API_URL = 'api.php';
+        let currentView = 'dictionary';
         let currentCategory = null;
         let currentPrompt = null;
         let editingCategory = null;
         let editingPrompt = null;
         let editingWord = null;
         let updateStatsTimer = null;
+        let games = [];
 
         async function apiCall(action, method = 'GET', data = null) {
             const params = new URLSearchParams({ action });
@@ -513,6 +634,119 @@
 
             const res = await fetch(url, options);
             return res.json();
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            if (view === 'dictionary') {
+                document.getElementById('btnDictionary').classList.add('active');
+                document.getElementById('dictionarySection').style.display = 'block';
+                currentCategory = null;
+                currentPrompt = null;
+                loadCategories();
+                document.getElementById('content').innerHTML = '<div class="empty-state"><h3>Selecciona una categoría</h3><p>Elige una categoría del listado para comenzar</p></div>';
+                document.getElementById('headerTitle').textContent = 'Dictionary Manager';
+            } else if (view === 'games') {
+                document.getElementById('btnGames').classList.add('active');
+                document.getElementById('dictionarySection').style.display = 'none';
+                document.getElementById('headerTitle').textContent = 'Partidas';
+                loadGames();
+            }
+        }
+
+        async function loadGames() {
+            try {
+                const response = await fetch('../../data/talcual.db');
+                const result = await apiCall('get_games');
+                if (result.success) {
+                    games = result.data || [];
+                    renderGames();
+                } else {
+                    document.getElementById('content').innerHTML = '<div class="empty-state"><h3>No se pudieron cargar las partidas</h3></div>';
+                }
+            } catch (e) {
+                loadGamesFromDB();
+            }
+        }
+
+        async function loadGamesFromDB() {
+            const result = await apiCall('get_games');
+            if (result.success) {
+                games = result.data || [];
+                renderGames();
+            } else {
+                document.getElementById('content').innerHTML = '<div class="empty-state"><h3>No se pudieron cargar las partidas</h3></div>';
+            }
+        }
+
+        function renderGames() {
+            const content = document.getElementById('content');
+            
+            if (!games || games.length === 0) {
+                content.innerHTML = '<div class="empty-state"><h3>Sin partidas</h3><p>No hay partidas registradas aún</p></div>';
+                return;
+            }
+
+            let html = '<div class="section"><div class="section-title">Partidas (' + games.length + ')</div><div class="game-grid">';
+            
+            games.forEach(game => {
+                const status = game.status || 'waiting';
+                const statusText = status === 'active' ? 'En curso' : status === 'finished' ? 'Finalizada' : 'Esperando';
+                const badgeClass = status === 'active' ? 'badge-active' : status === 'finished' ? 'badge-finished' : 'badge-waiting';
+                const createdDate = new Date(game.created_at).toLocaleDateString('es-ES');
+                const hostName = game.host_name || 'Host';
+                const playerCount = game.player_count || 0;
+
+                html += `
+                    <div class="game-card">
+                        <div class="game-card-header">
+                            <h3 class="game-card-title">${game.code || 'N/A'}</h3>
+                            <span class="badge ${badgeClass}">${statusText}</span>
+                        </div>
+                        <div class="game-card-content">
+                            <p><strong>Host:</strong> ${hostName}</p>
+                            <p><strong>Jugadores:</strong> ${playerCount}</p>
+                            <p><strong>Creada:</strong> ${createdDate}</p>
+                            <p><strong>Ronda:</strong> ${game.current_round || 1}</p>
+                        </div>
+                        <div class="game-card-actions">
+                            <button class="btn-icon" onclick="viewGameDetails('${game.code}')">👁️</button>
+                            <button class="btn-icon delete" onclick="deleteGame('${game.code}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            content.innerHTML = html;
+        }
+
+        function viewGameDetails(code) {
+            const game = games.find(g => g.code === code);
+            if (!game) return;
+            
+            const createdDate = new Date(game.created_at).toLocaleString('es-ES');
+            const details = `
+                <div class="empty-state" style="text-align: left; padding: 20px;">
+                    <h2>${game.code}</h2>
+                    <p><strong>Host:</strong> ${game.host_name}</p>
+                    <p><strong>Jugadores:</strong> ${game.player_count}</p>
+                    <p><strong>Estado:</strong> ${game.status}</p>
+                    <p><strong>Ronda Actual:</strong> ${game.current_round || 1}</p>
+                    <p><strong>Creada:</strong> ${createdDate}</p>
+                </div>
+            `;
+            document.getElementById('content').innerHTML = details;
+        }
+
+        async function deleteGame(code) {
+            if (confirm('¿Estás seguro? Se eliminará la partida y todos sus datos.')) {
+                const result = await apiCall('delete_game', 'POST', { code });
+                if (result.success) {
+                    loadGames();
+                }
+            }
         }
 
         async function loadCategories() {
@@ -783,6 +1017,8 @@
         }
 
         document.getElementById('btnAddCategory').onclick = () => openCategoryModal();
+        document.getElementById('btnDictionary').onclick = () => switchView('dictionary');
+        document.getElementById('btnGames').onclick = () => switchView('games');
 
         loadCategories();
         updateStats();
