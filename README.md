@@ -10,17 +10,17 @@
 - **Salas Semánticas:** Los códigos de sala son únicos y se generan usando palabras reales del diccionario (`data/talcual.db`) basadas en la categoría seleccionada.
 - **Tecnología SSE:** Actualizaciones en tiempo real mediante *Server-Sent Events*, optimizando la comunicación sin la sobrecarga de WebSockets.
 - **Interfaz Híbrida:** Optimizada para **Smart TV** (Vista Anfitrión/Host) y **Móviles** (Controlador de Jugador).
-- **Motor de Coincidencias:** Sistema inteligente de puntuación (`js/WordEngine.js`) que detecta coincidencias totales o parciales (género, plurales, sinónimos).
+- **Motor de Coincidencias:** Sistema inteligente de puntuación (`js/core/WordEngine.js`) que detecta coincidencias totales o parciales (género, plurales, sinónimos) dando un puntaje variable según el tipo de coincidencia.
 - **Personalización:** Sistema de **Auras** (gradientes de color) para identificar a cada jugador.
-- **Configuración Total:** Control granular de las mecánicas y el servidor mediante archivo `.env`.
+- **Configuración Total:** Control granular de las mecánicas y el servidor.
 
 ## 🧩 Sistema de Modales (UI)
 
 El juego implementa una arquitectura de interfaz robusta mediante un **Modal Manager** centralizado (`js/ModalSystem.js`). Este sistema gestiona las ventanas emergentes utilizando una pila (stack) con **3 capas jerárquicas**, permitiendo superponer alertas críticas sin cerrar los menús de configuración:
 
-1.  **Capa PRIMARY (Z-Index 1000):** Modales base del flujo de juego (ej. *Crear Partida*, *Unirse*).
-2.  **Capa SECONDARY (Z-Index 1100):** Formularios y opciones sobre la capa base (ej. *Configuración*, *Editar Nombre*).
-3.  **Capa CONFIRMATION (Z-Index 1200):** Alertas de sistema y confirmaciones críticas que requieren atención inmediata.
+1.  **Capa PRIMARY:** Modales base del flujo de juego (ej. *Crear Partida*, *Unirse*).
+2.  **Capa SECONDARY:** Formularios y opciones sobre la capa base (ej. *Configuración*, *Editar Nombre*).
+3.  **Capa CONFIRMATION:** Alertas de sistema y confirmaciones críticas que requieren atención inmediata.
 
 ## ⚙️ Configuración (.env)
 
@@ -55,7 +55,7 @@ El juego es altamente personalizable mediante el archivo `.env`.
 ### 📺 Para el Anfitrión (Host)
 1. Abre `index.html` en un Smart TV o monitor grande.
 2. Haz clic en **"Crear Partida"**.
-3. El sistema elegirá una **Categoría** al azar y generará un código de sala único (basado en una palabra de esa categoría). *Puedes modificar el código si lo deseas*.
+3. El sistema elegirá una **Categoría** al azar y generará un código de sala único (basado en una palabra de esa categoría). *Puedes modificar el código si lo deseas antes de iniciar el juego*.
 4. Espera a que los jugadores se unan.
 5. Cuando todos estén listos, presiona `ENTER` o haz clic en **"Iniciar Ronda"**.
 6. **Botón Remate:** Durante la ronda, si el juego se estanca, puedes usar el botón "Remate". Esto bajará el temporizador inmediatamente a `HURRY_UP_THRESHOLD` segundos para presionar a los jugadores.
@@ -70,7 +70,7 @@ El juego es altamente personalizable mediante el archivo `.env`.
 6. **Juego:** Escribe palabras relacionadas con la consigna.
    - Puedes **editar** una palabra enviada tocando el icono del lápiz ✏️.
    - Si terminas antes de tiempo, usa el botón **"Terminé/Paso"**.
-7. Al final, verás tus puntos y la tabla de coincidencias completa.
+7. Al final de cada ronda, verás si alguna de tus palabras coincidió y generó puntos. Al final de la partida veras la tabla de coincidencias completa de todas las rondas y puntuación acumulada.
 
 ## ⏳ Dinámica de la Ronda (Paso a Paso)
 
@@ -82,7 +82,7 @@ El juego es altamente personalizable mediante el archivo `.env`.
 6. **Finalización Voluntaria:** El botón "Terminé/Paso" cambia de estado. Si la lista está vacía dice "Paso", si tiene palabras dice "Terminé". Al pulsarlo, finalizas tu turno.
 7. **Sanción / Remate Automático:** Si queda un solo jugador activo y el tiempo restante es mayor al de remate, el reloj se reduce automáticamente a `HURRY_UP_THRESHOLD` segundos.
 8. **Envío Automático:** Si el tiempo llega a 0 y tenías una palabra escrita en el input sin enviar, esta se valida y se envía automáticamente.
-9. **Cálculo de Puntos:** El Host procesa las respuestas, busca coincidencias y notifica los resultados a los clientes.
+9. **Cálculo de Puntos:** El servidor notifica al final de cada ronda las respuestas de los jugadores a los clientes, estos calculan y muestran el resultado, al final de la partida se envian los resultados de todas las rondas.
 
 ## 🛠️ Menú de Opciones
 
