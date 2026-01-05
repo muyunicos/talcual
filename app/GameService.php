@@ -2,15 +2,15 @@
 
 class GameService {
     private $repository;
-    private $dictionaryRepository;
+    private $gameDictionary;
 
-    public function __construct(GameRepository $repository, DictionaryRepository $dictionaryRepository = null) {
+    public function __construct(GameRepository $repository, GameDictionary $gameDictionary = null) {
         $this->repository = $repository;
-        $this->dictionaryRepository = $dictionaryRepository ?? new DictionaryRepository();
+        $this->gameDictionary = $gameDictionary ?? new GameDictionary();
     }
 
     private function generateGameCode() {
-        $categories = $this->dictionaryRepository->getCategories();
+        $categories = $this->gameDictionary->getCategories();
         
         if (empty($categories)) {
             $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -27,7 +27,7 @@ class GameService {
         $roomCodeCandidates = [];
         
         foreach ($categories as $category) {
-            $word = $this->dictionaryRepository->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+            $word = $this->gameDictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
             
             if ($word && !$this->repository->exists($word)) {
                 $roomCodeCandidates[] = $word;
@@ -55,7 +55,7 @@ class GameService {
     }
 
     public function getGameCandidates() {
-        $categories = $this->dictionaryRepository->getCategories();
+        $categories = $this->gameDictionary->getCategories();
 
         if (empty($categories)) {
             throw new Exception('No hay categorías disponibles');
@@ -69,7 +69,7 @@ class GameService {
             $code = null;
 
             while ($categoryAttempts < $maxCategoryAttempts) {
-                $word = $this->dictionaryRepository->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+                $word = $this->gameDictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
 
                 if (!$word || $this->repository->exists($word)) {
                     $categoryAttempts++;
@@ -115,7 +115,7 @@ class GameService {
             }
 
             if ($requestedCategory) {
-                $availableCategories = $this->dictionaryRepository->getCategories();
+                $availableCategories = $this->gameDictionary->getCategories();
                 if (!in_array($requestedCategory, $availableCategories)) {
                     throw new Exception('Categoría no válida');
                 }
@@ -237,13 +237,13 @@ class GameService {
 
         $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
         if (!$preferredCategory) {
-            $categories = $this->dictionaryRepository->getCategories();
+            $categories = $this->gameDictionary->getCategories();
             if (!empty($categories)) {
                 $preferredCategory = $categories[array_rand($categories)];
             }
         }
 
-        $card = $this->dictionaryRepository->getTopicCard($preferredCategory);
+        $card = $this->gameDictionary->getTopicCard($preferredCategory);
         $roundQuestion = $card['question'];
         $commonAnswers = $card['answers'];
 
