@@ -128,6 +128,7 @@ class Database {
             $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)');
 
             $this->migratePromptCategories();
+            $this->removeOldCategoryIdColumn();
 
             logMessage('Database tables initialized successfully', 'DEBUG');
 
@@ -168,6 +169,50 @@ class Database {
             }
         } catch (Exception $e) {
             logMessage('Migration error (non-critical): ' . $e->getMessage(), 'WARNING');
+        }
+    }
+
+    private function removeOldCategoryIdColumn() {
+        try {
+            $stmt = $this->pdo->query("PRAGMA table_info(prompts)");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $hasOldColumn = false;
+
+            foreach ($columns as $column) {
+                if ($column['name'] === 'category_id') {
+                    $hasOldColumn = true;
+                    break;
+                }
+            }
+
+            if (!$hasOldColumn) {
+                return;
+            }
+
+            logMessage('Removing old prompts.category_id column', 'INFO');
+
+            $this->pdo->beginTransaction();
+
+            $this->pdo->exec('CREATE TABLE prompts_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL UNIQUE
+            )');
+
+            $this->pdo->exec('INSERT INTO prompts_new (id, text) SELECT id, text FROM prompts');
+
+            $this->pdo->exec('DROP TABLE prompts');
+
+            $this->pdo->exec('ALTER TABLE prompts_new RENAME TO prompts');
+
+            $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)');
+
+            $this->pdo->commit();
+
+            logMessage('Old category_id column removed successfully', 'INFO');
+
+        } catch (Exception $e) {
+            $this->pdo->rollback();
+            logMessage('Column removal error: ' . $e->getMessage(), 'ERROR');
         }
     }
 
