@@ -3,10 +3,11 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'import') {
-    handleImport();
-} elseif ($action === 'get-db') {
-    getDatabase();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'import') handleImport();
+    elseif ($action === 'save') handleSave();
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if ($action === 'get-db') getDatabase();
 }
 
 function handleImport() {
@@ -17,41 +18,102 @@ function handleImport() {
         return;
     }
     
-    $normalized = normalizeDatabase($json);
-    saveToDatabase($normalized);
-    respondSuccess('Base de datos importada y normalizada', $normalized);
+    $currentDb = loadDatabase();
+    $merged = mergeDatabase($currentDb, $json);
+    respondSuccess('Base de datos importada inteligentemente', $merged);
 }
 
-function getDatabase() {
-    $dbPath = getDatabasePath();
+function handleSave() {
+    $json = json_decode(file_get_contents('php://input'), true);
     
-    if (!file_exists($dbPath)) {
-        respondError('Base de datos no encontrada');
+    if (!$json) {
+        respondError('JSON inválido');
         return;
     }
     
-    $data = json_decode(file_get_contents($dbPath), true);
-    respondSuccess('Base de datos cargada', $data);
+    $normalized = normalizeDatabase($json);
+    saveToDatabase($normalized);
+    respondSuccess('Base de datos guardada', $normalized);
 }
 
-function normalizeDatabase($data) {
-    $normalized = [];
+function getDatabase() {
+    $db = loadDatabase();
+    if (!$db) {
+        respondError('Base de datos no encontrada');
+        return;
+    }
+    respondSuccess('Base de datos cargada', $db);
+}
+
+function mergeDatabase($current, $imported) {
+    if (empty($current)) {
+        return normalizeDatabase($imported);
+    }
     
-    foreach ($data as $category => $questions) {
-        $normalized[$category] = [];
+    $categories = $current['categorias'] ?? [];
+    $consignas = $current['consignas'] ?? [];
+    
+    $importedCategories = $imported['categorias'] ?? [];
+    $importedConsignas = $imported['consignas'] ?? [];
+    
+    $nextOrder = empty($categories) ? 1 : max(array_column($categories, 'orden', null) ?? [0]) + 1;
+    
+    foreach ($importedCategories as $catName => $catData) {
+        if (!isset($categories[$catName])) {
+            $categories[$catName] = [
+                'orden' => $nextOrder++,
+                'consignas' => []
+            ];
+        }
         
-        if (is_array($questions)) {
-            foreach ($questions as $item) {
-                if (isset($item['pregunta']) && isset($item['respuestas'])) {
-                    $normalizedRespuestas = array_map(fn($r) => normalizeResponse($r), $item['respuestas']);
-                    
-                    $normalized[$category][] = [
-                        'pregunta' => $item['pregunta'],
-                        'respuestas' => $normalizedRespuestas
-                    ];
+        if (isset($catData['consignas']) && is_array($catData['consignas'])) {
+            foreach ($catData['consignas'] as $clueId) {
+                if (!in_array($clueId, $categories[$catName]['consignas'])) {
+                    $categories[$catName]['consignas'][] = $clueId;
                 }
             }
         }
+    }
+    
+    foreach ($importedConsignas as $clueId => $clueData) {
+        if (!isset($consignas[$clueId])) {
+            $consignas[$clueId] = [
+                'pregunta' => $clueData['pregunta'] ?? '',
+                'respuestas' => array_map(fn($r) => normalizeResponse($r), $clueData['respuestas'] ?? []),
+                'created_at' => $clueData['created_at'] ?? date('c')
+            ];
+        }
+    }
+    
+    return [
+        'categorias' => $categories,
+        'consignas' => $consignas
+    ];
+}
+
+function normalizeDatabase($data) {
+    $normalized = [
+        'categorias' => [],
+        'consignas' => []
+    ];
+    
+    $importedCategories = $data['categorias'] ?? [];
+    $importedConsignas = $data['consignas'] ?? [];
+    
+    $order = 1;
+    foreach ($importedCategories as $catName => $catData) {
+        $normalized['categorias'][$catName] = [
+            'orden' => $order++,
+            'consignas' => $catData['consignas'] ?? []
+        ];
+    }
+    
+    foreach ($importedConsignas as $clueId => $clueData) {
+        $normalized['consignas'][$clueId] = [
+            'pregunta' => $clueData['pregunta'] ?? '',
+            'respuestas' => array_map(fn($r) => normalizeResponse($r), $clueData['respuestas'] ?? []),
+            'created_at' => $clueData['created_at'] ?? date('c')
+        ];
     }
     
     return $normalized;
@@ -68,10 +130,19 @@ function normalizeResponse($text) {
     ];
     
     $text = strtr($text, $replacements);
-    
     $text = preg_replace('/[^A-Z0-9|.]/u', '', $text);
     
     return $text;
+}
+
+function loadDatabase() {
+    $dbPath = getDatabasePath();
+    
+    if (!file_exists($dbPath)) {
+        return null;
+    }
+    
+    return json_decode(file_get_contents($dbPath), true);
 }
 
 function saveToDatabase($data) {
@@ -92,7 +163,7 @@ function saveToDatabase($data) {
 }
 
 function getDatabasePath() {
-    return __DIR__ . '/../game_states/game_db.json';
+    return __DIR__ . '/../data/talcual.db';
 }
 
 function respondSuccess($msg, $data = null) {
