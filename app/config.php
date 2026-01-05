@@ -417,8 +417,4 @@ function getDictionaryStats() {
         ];
     }
 }
-
-if (rand(1, 100) <= (CLEANUP_PROBABILITY * 100)) {
-    cleanupOldGames();
-}
 ?>
