@@ -18,8 +18,12 @@ const AURA_BASE_COLORS = [
 
 class AuraModule {
     constructor() {
+        if (AuraModule._instance) {
+            return AuraModule._instance;
+        }
         this.currentAura = null;
         this.backgroundTextureApplied = false;
+        AuraModule._instance = this;
     }
 
     generateRandomAuras() {
@@ -280,64 +284,54 @@ class AuraModule {
     }
 }
 
+const auraModuleInstance = new AuraModule();
+
 function generateRandomAuras() {
-    const module = new AuraModule();
-    return module.generateRandomAuras();
+    return auraModuleInstance.generateRandomAuras();
 }
 
 function getRandomAura() {
-    const module = new AuraModule();
-    return module.getRandomAura();
+    return auraModuleInstance.getRandomAura();
 }
 
 function savePlayerColor(colorStr) {
-    const module = new AuraModule();
-    module.savePlayerColor(colorStr);
+    auraModuleInstance.savePlayerColor(colorStr);
 }
 
 function loadPlayerColor() {
-    const module = new AuraModule();
-    return module.loadPlayerColor();
+    return auraModuleInstance.loadPlayerColor();
 }
 
 function clearPlayerColor() {
-    const module = new AuraModule();
-    module.clearPlayerColor();
+    auraModuleInstance.clearPlayerColor();
 }
 
 function applyColorGradient(colorStr) {
-    const module = new AuraModule();
-    module.applyColorGradient(colorStr);
+    auraModuleInstance.applyColorGradient(colorStr);
 }
 
 function addBackgroundTextureOverlay() {
-    const module = new AuraModule();
-    module.addBackgroundTextureOverlay();
+    auraModuleInstance.addBackgroundTextureOverlay();
 }
 
 function encodeAuraColors(color1, color2) {
-    const module = new AuraModule();
-    return module.encodeAuraColors(color1, color2);
+    return auraModuleInstance.encodeAuraColors(color1, color2);
 }
 
 function decodeAuraColors(encoded) {
-    const module = new AuraModule();
-    return module.decodeAuraColors(encoded);
+    return auraModuleInstance.decodeAuraColors(encoded);
 }
 
 function renderAuraSelectors(container, auras, selectedAura = null, onSelect = null) {
-    const module = new AuraModule();
-    module.renderAuraSelectors(container, auras, selectedAura, onSelect);
+    auraModuleInstance.renderAuraSelectors(container, auras, selectedAura, onSelect);
 }
 
 function renderAuraSelectorsEdit(container, currentAura, onSelect = null) {
-    const module = new AuraModule();
-    module.renderAuraSelectorsEdit(container, currentAura, onSelect);
+    auraModuleInstance.renderAuraSelectorsEdit(container, currentAura, onSelect);
 }
 
 function isValidAura(colorStr) {
-    const module = new AuraModule();
-    return module.isValidAura(colorStr);
+    return auraModuleInstance.isValidAura(colorStr);
 }
 
-console.log('%c✅ PlayerAura.js (AuraModule)', 'color: #00aa00; font-weight: bold');
+console.log('%c✅ PlayerAura.js (AuraModule Singleton)', 'color: #00aa00; font-weight: bold');
