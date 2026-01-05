@@ -283,6 +283,38 @@ class DictionaryManager {
             throw new Exception('Error deleting game: ' . $e->getMessage());
         }
     }
+
+    public function getDatabaseInspection() {
+        try {
+            $inspection = [
+                'categories' => $this->pdo->query('SELECT id, name FROM categories ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+                'prompts' => $this->pdo->query('SELECT id, category_id, text FROM prompts ORDER BY category_id, id')->fetchAll(PDO::FETCH_ASSOC),
+                'words' => $this->pdo->query('SELECT id, prompt_id, word_entry FROM valid_words ORDER BY prompt_id, id')->fetchAll(PDO::FETCH_ASSOC),
+                'games' => $this->pdo->query('SELECT id, status, round, updated_at FROM games ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+                'players' => $this->pdo->query('SELECT id, game_id, name, score FROM players ORDER BY game_id, id')->fetchAll(PDO::FETCH_ASSOC),
+                'stats' => [
+                    'categories_count' => $this->pdo->query('SELECT COUNT(*) as count FROM categories')->fetch()['count'],
+                    'prompts_count' => $this->pdo->query('SELECT COUNT(*) as count FROM prompts')->fetch()['count'],
+                    'words_count' => $this->pdo->query('SELECT COUNT(*) as count FROM valid_words')->fetch()['count'],
+                    'games_count' => $this->pdo->query('SELECT COUNT(*) as count FROM games')->fetch()['count'],
+                    'players_count' => $this->pdo->query('SELECT COUNT(*) as count FROM players')->fetch()['count']
+                ]
+            ];
+            return $inspection;
+        } catch (PDOException $e) {
+            throw new Exception('Error inspecting database: ' . $e->getMessage());
+        }
+    }
+
+    public function vacuumDatabase() {
+        try {
+            $this->pdo->exec('VACUUM');
+            $this->db->checkpoint();
+            return true;
+        } catch (PDOException $e) {
+            throw new Exception('Error vacuuming database: ' . $e->getMessage());
+        }
+    }
 }
 
 header('Content-Type: application/json; charset=utf-8');
@@ -412,6 +444,15 @@ try {
             if (!$code) throw new Exception('Missing game code');
             $manager->deleteGame($code);
             $response = ['success' => true, 'message' => 'Game deleted'];
+            break;
+
+        case 'inspect_db':
+            $response = ['success' => true, 'data' => $manager->getDatabaseInspection()];
+            break;
+
+        case 'vacuum_db':
+            $manager->vacuumDatabase();
+            $response = ['success' => true, 'message' => 'Database vacuumed and optimized'];
             break;
     }
 
