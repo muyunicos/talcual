@@ -57,6 +57,28 @@ class HostView {
     });
   }
 
+  getAuraGradientClass(aura) {
+    if (!aura || typeof aura !== 'string') return 'aura-gradient--neon-pink-cyan';
+
+    const normalized = aura.toLowerCase().trim();
+    
+    const auraMap = {
+      '#ff0055,#00f0ff': 'aura-gradient--neon-pink-cyan',
+      '#8b5cf6,#06b6d4': 'aura-gradient--purple-cyan',
+      '#d946ef,#14b8a6': 'aura-gradient--magenta-teal',
+      '#ea580c,#ec4899': 'aura-gradient--orange-pink',
+      '#3b82f6,#10b981': 'aura-gradient--blue-green'
+    };
+
+    for (const [key, className] of Object.entries(auraMap)) {
+      if (normalized === key || normalized === key.replace(/#/g, '')) {
+        return className;
+      }
+    }
+
+    return 'aura-gradient';
+  }
+
   renderPlayerCards(players) {
     if (!players) return;
 
@@ -74,14 +96,15 @@ class HostView {
         ? player.color
         : null;
 
-      const initialStyle = aura
-        ? `background: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);`
+      const auraClass = aura ? this.getAuraGradientClass(aura) : 'aura-gradient';
+      const customGradientStyle = aura
+        ? `style="--aura-gradient: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);"`
         : '';
 
       return `
         <div class="player-squarcle ${status}" data-player-id="${pid}">
           <button class="btn-remove-player" data-player-id="${pid}" aria-label="Expulsar jugador" type="button">&times;</button>
-          <div class="player-initial" style="${initialStyle}">
+          <div class="player-initial ${auraClass}" ${customGradientStyle}>
             ${initial}
           </div>
           <div class="player-name-label" title="${name}">
