@@ -25,7 +25,9 @@ const SSE_EVENT_NAMES = [
   'timer_updated', 'typing', 'connection', 'error'
 ];
 
-const COMM_CONFIG = {
+const KNOWN_EVENTS = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'timer_updated', 'typing', 'connection', 'connected'];
+
+const COMM_CONFIG_DEFAULTS = {
   HEARTBEAT_INTERVAL: 15000,
   MESSAGE_TIMEOUT: 35000,
   HEARTBEAT_CHECK_INTERVAL: 5000,
@@ -46,6 +48,18 @@ const COMM_CONFIG = {
   MAX_PLAYERS: 20,
   START_COUNTDOWN: 5
 };
+
+const COMM_CONFIG = { ...COMM_CONFIG_DEFAULTS };
+
+function getCommConfig(key) {
+  if (typeof configService !== 'undefined' && configService.isConfigReady && configService.isConfigReady()) {
+    const serverValue = configService.get(key);
+    if (serverValue !== undefined && serverValue !== null) {
+      return serverValue;
+    }
+  }
+  return COMM_CONFIG[key];
+}
 
 function syncCommConfigWithServer(serverConfig) {
   if (!serverConfig || typeof serverConfig !== 'object') {
@@ -77,13 +91,13 @@ function validateAPIResponse(response) {
 
 function calculateReconnectDelay(attemptNumber) {
   const exponentialDelay = Math.min(
-    COMM_CONFIG.RECONNECT_INITIAL_DELAY * Math.pow(
-      COMM_CONFIG.RECONNECT_BACKOFF_MULTIPLIER,
+    getCommConfig('RECONNECT_INITIAL_DELAY') * Math.pow(
+      getCommConfig('RECONNECT_BACKOFF_MULTIPLIER'),
       attemptNumber - 1
     ),
-    COMM_CONFIG.RECONNECT_MAX_DELAY
+    getCommConfig('RECONNECT_MAX_DELAY')
   );
-  const jitter = Math.random() * COMM_CONFIG.RECONNECT_JITTER_MAX;
+  const jitter = Math.random() * getCommConfig('RECONNECT_JITTER_MAX');
   return exponentialDelay + jitter;
 }
 
@@ -94,10 +108,10 @@ function getConnectionHealth(connectionMetrics) {
   const timeSinceLastMessage = Date.now() - lastMessageTime;
   const errorRate = errorCount / Math.max(messageCount, 1);
   
-  if (errorRate > 0.5 || timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT) {
+  if (errorRate > 0.5 || timeSinceLastMessage > getCommConfig('MESSAGE_TIMEOUT')) {
     return 'critical';
   }
-  if (errorRate > 0.2 || timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT / 2) {
+  if (errorRate > 0.2 || timeSinceLastMessage > getCommConfig('MESSAGE_TIMEOUT') / 2) {
     return 'degraded';
   }
   return 'healthy';
@@ -356,29 +370,10 @@ class GameClient {
         
         this.emit(eventName, eventPayload);
         
-        const knownEvents = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'timer_updated', 'typing', 'connection', 'connected'];
-        
-        if (knownEvents.includes(eventName)) {
+        if (KNOWN_EVENTS.includes(eventName)) {
           this.unknownEventCount = 0;
           console.log(`✅ Lightweight event: ${eventName}`);
-          
-          if (eventName === 'player_joined') {
-            this.emit('event:player_joined', eventPayload);
-          } else if (eventName === 'player_ready') {
-            this.emit('event:player_ready', eventPayload);
-          } else if (eventName === 'player_left') {
-            this.emit('event:player_left', eventPayload);
-          } else if (eventName === 'player_updated') {
-            this.emit('event:player_updated', eventPayload);
-          } else if (eventName === 'timer_updated') {
-            this.emit('event:timer_updated', eventPayload);
-          } else if (eventName === 'typing') {
-            this.emit('event:typing', eventPayload);
-          } else if (eventName === 'connection') {
-            this.emit('event:connection', eventPayload);
-          } else if (eventName === 'connected') {
-            this.emit('event:connected', eventPayload);
-          }
+          this.emit(`event:${eventName}`, eventPayload);
         } else {
           this.unknownEventCount++;
           console.warn(`[WARN] Unknown event type: ${eventName}`);
@@ -415,15 +410,15 @@ class GameClient {
     this.heartbeatCheckInterval = setInterval(() => {
       const timeSinceLastMessage = Date.now() - this.lastMessageTime;
       
-      if (timeSinceLastMessage > COMM_CONFIG.MESSAGE_TIMEOUT && this.isConnected) {
+      if (timeSinceLastMessage > getCommConfig('MESSAGE_TIMEOUT') && this.isConnected) {
         console.warn(`[WARN] No messages for ${timeSinceLastMessage}ms`);
         this.handleReconnect();
       }
-    }, COMM_CONFIG.HEARTBEAT_CHECK_INTERVAL);
+    }, getCommConfig('HEARTBEAT_CHECK_INTERVAL'));
   }
 
   handleReconnect() {
-    if (this.reconnectAttempts >= COMM_CONFIG.RECONNECT_MAX_ATTEMPTS) {
+    if (this.reconnectAttempts >= getCommConfig('RECONNECT_MAX_ATTEMPTS')) {
       console.error(`[ERROR] Max reconnect attempts reached (${this.reconnectAttempts})`);
       this.emit('connection:failed', { attempts: this.reconnectAttempts });
       if (this.onConnectionLost) {
@@ -602,3 +597,5 @@ if (typeof module !== 'undefined' && module.exports) {
     GameClient
   };
 }
+
+console.log('%c✅ NetworkManager.js', 'color: #00aa00; font-weight: bold');
