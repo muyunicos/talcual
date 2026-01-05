@@ -2,6 +2,8 @@ class HostView {
   constructor() {
     this.elements = this.cacheElements();
     this.eventHandlers = new Map();
+    this.leaderboard = new LeaderboardComponent();
+    this.leaderboard.mount(this.elements.gameScreen);
     this.initializeVisibility();
   }
 
@@ -11,7 +13,6 @@ class HostView {
       headerCode: getElement('header-code'),
       headerRound: getElement('header-round'),
       headerTimer: getElement('header-timer'),
-      playersList: getElement('players-list'),
       playersGrid: getElement('players-grid'),
       categoryLabel: getElement('category-label'),
       currentWord: getElement('current-word'),
@@ -22,8 +23,7 @@ class HostView {
       btnHurryUp: getElement('btn-hurry-up'),
       btnEndGame: getElement('btn-end-game'),
       btnEndRound: document.querySelector('[aria-label="Botón para terminar la ronda"], .btn-end-round'),
-      centerStage: getElement('center-stage'),
-      categorySticker: getElement('category-sticker')
+      centerStage: getElement('center-stage')
     };
 
     return elements;
@@ -141,25 +141,7 @@ class HostView {
   }
 
   updatePlayerList(players) {
-    if (!players) return;
-
-    const sidebarHtml = Object.entries(players).map(([pid, player]) => {
-      const ready = player.status === 'ready';
-      const readyIcon = ready ? '✅' : '⏳';
-      const wordCount = player.answers ? player.answers.length : 0;
-      return `
-        <div class="player-item ${ready ? 'ready' : 'waiting'}" data-player-id="${pid}">
-          <div class="player-name" style="color: ${player.color ? player.color.split(',')[0] : '#999'}">
-            ${readyIcon} ${sanitizeText(player.name)}
-          </div>
-          <div class="player-words">${wordCount} palabras</div>
-          <div class="player-score">${player.score || 0} pts</div>
-          <div class="player-status-indicator" data-player-status></div>
-        </div>
-      `;
-    }).join('');
-
-    this.elements.playersList.innerHTML = sidebarHtml || '<div class="panel-item"><div class="name">Sin jugadores aún</div></div>';
+    this.leaderboard.updateList(players);
     this.renderPlayerCards(players);
   }
 
@@ -272,7 +254,7 @@ class HostView {
   }
 
   setCategoryLabel(category) {
-    this.elements.categorySticker.textContent = category || 'Sin categoría';
+    this.leaderboard.setCategory(category);
     this.elements.categoryLabel.textContent = `Categoría: ${category}`;
   }
 
