@@ -7,7 +7,7 @@
 ## 📋 Características Principales
 
 - **Multijugador Real-Time:** Soporte para múltiples jugadores (1+) conectados simultáneamente.
-- **Salas Semánticas:** Los códigos de sala son únicos y se generan usando palabras reales del diccionario (`app/diccionario.json`) basadas en la categoría seleccionada.
+- **Salas Semánticas:** Los códigos de sala son únicos y se generan usando palabras reales del diccionario (`data/talcual.db`) basadas en la categoría seleccionada.
 - **Tecnología SSE:** Actualizaciones en tiempo real mediante *Server-Sent Events*, optimizando la comunicación sin la sobrecarga de WebSockets.
 - **Interfaz Híbrida:** Optimizada para **Smart TV** (Vista Anfitrión/Host) y **Móviles** (Controlador de Jugador).
 - **Motor de Coincidencias:** Sistema inteligente de puntuación (`js/WordEngine.js`) que detecta coincidencias totales o parciales (género, plurales, sinónimos).
