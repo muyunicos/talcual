@@ -144,6 +144,37 @@
             background: #16A34A;
         }
 
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid var(--border);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .nav-tab:hover {
+            background: #F3F4F6;
+        }
+
+        .nav-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
         /* Main */
         .main {
             flex: 1;
@@ -257,6 +288,80 @@
             background: #D97706;
         }
 
+        /* Table */
+        .table-wrapper {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background: var(--bg);
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text);
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background: #F9FAFB;
+        }
+
+        .cell-json {
+            background: var(--bg);
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--primary);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .action-btn-delete {
+            background: var(--error);
+        }
+
+        .action-btn-delete:hover {
+            background: #DC2626;
+        }
+
         /* List */
         .list {
             display: flex;
@@ -323,7 +428,7 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
@@ -333,6 +438,17 @@
             font-size: 20px;
             font-weight: 600;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
         }
 
         .form-group {
@@ -347,7 +463,8 @@
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border);
@@ -357,7 +474,8 @@
         }
 
         .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(33, 128, 160, 0.1);
@@ -459,6 +577,34 @@
             border-radius: 3px;
             border-left: 2px solid var(--primary);
         }
+
+        .pagination {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .page-btn {
+            padding: 6px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .page-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .page-btn:hover {
+            border-color: var(--primary);
+        }
     </style>
 </head>
 <body>
@@ -471,6 +617,11 @@
                 <div class="sidebar-title">Diccionario</div>
                 <ul class="categories-list" id="categoriesList"></ul>
                 <button class="btn-add-category" id="btnAddCategory">+ Nueva Categoría</button>
+            </div>
+
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('dictionary')">📚 Dict</button>
+                <button class="nav-tab" onclick="switchTab('database')">🎮 DB</button>
             </div>
         </div>
 
@@ -485,18 +636,20 @@
 
             <div class="content" id="content">
                 <div class="empty-state">
-                    <h3>Bienvenido al Gestor de Diccionario</h3>
-                    <p>Comienza creando una categoría para organizar tus consignas</p>
-                    <button class="btn btn-primary" onclick="openCategoryModal()">Crear Primera Categoría</button>
+                    <h3>Bienvenido al Gestor</h3>
+                    <p>Comienza creando una categoría o accede a la base de datos</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals Dictionary -->
     <div class="modal" id="categoryModal">
         <div class="modal-content">
-            <div class="modal-header" id="categoryTitle">Nueva Categoría</div>
+            <div class="modal-header">
+                <span id="categoryTitle">Nueva Categoría</span>
+                <button class="modal-close" onclick="closeCategoryModal()">×</button>
+            </div>
             <div id="categoryAlert"></div>
             <div class="form-group">
                 <label>Nombre</label>
@@ -511,15 +664,16 @@
 
     <div class="modal" id="categoryBulkModal">
         <div class="modal-content">
-            <div class="modal-header">Importar Categorías</div>
+            <div class="modal-header">
+                <span>Importar Categorías</span>
+                <button class="modal-close" onclick="closeCategoryBulkModal()">×</button>
+            </div>
             <div id="categoryBulkAlert"></div>
             <div class="form-group">
                 <label>Categorías (separadas por comas)</label>
                 <textarea id="categoryBulkText" placeholder="Ej: Películas, Libros, Deportes, Música"></textarea>
             </div>
-            <div class="form-hint">
-                💡 Ingresa una categoría por línea o separadas por comas
-            </div>
+            <div class="form-hint">💡 Ingresa una categoría por línea o separadas por comas</div>
             <div class="import-preview" id="categoryBulkPreview" style="display: none;"></div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeCategoryBulkModal()">Cancelar</button>
@@ -530,7 +684,10 @@
 
     <div class="modal" id="promptModal">
         <div class="modal-content">
-            <div class="modal-header" id="promptTitle">Nueva Consigna</div>
+            <div class="modal-header">
+                <span id="promptTitle">Nueva Consigna</span>
+                <button class="modal-close" onclick="closePromptModal()">×</button>
+            </div>
             <div id="promptAlert"></div>
             <div class="form-group">
                 <label>Consigna</label>
@@ -549,15 +706,16 @@
 
     <div class="modal" id="promptBulkModal">
         <div class="modal-content">
-            <div class="modal-header">Importar Consignas</div>
+            <div class="modal-header">
+                <span>Importar Consignas</span>
+                <button class="modal-close" onclick="closePromptBulkModal()">×</button>
+            </div>
             <div id="promptBulkAlert"></div>
             <div class="form-group">
                 <label>Consignas (separadas por comas)</label>
                 <textarea id="promptBulkText" placeholder="Ej: Nombra una película, Nombra un libro, Nombra un deporte"></textarea>
             </div>
-            <div class="form-hint">
-                💡 Ingresa una consigna por línea o separadas por comas. Se asignarán a la categoría seleccionada.
-            </div>
+            <div class="form-hint">💡 Ingresa una consigna por línea o separadas por comas. Se asignarán a la categoría seleccionada.</div>
             <div class="import-preview" id="promptBulkPreview" style="display: none;"></div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closePromptBulkModal()">Cancelar</button>
@@ -568,15 +726,16 @@
 
     <div class="modal" id="wordModal">
         <div class="modal-content">
-            <div class="modal-header" id="wordTitle">Nueva Palabra</div>
+            <div class="modal-header">
+                <span id="wordTitle">Nueva Palabra</span>
+                <button class="modal-close" onclick="closeWordModal()">×</button>
+            </div>
             <div id="wordAlert"></div>
             <div class="form-group">
                 <label>Palabra Válida</label>
                 <input type="text" id="wordEntry" placeholder="Ej: Avengers">
             </div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 15px 0;">
-                💡 Usa | para añadir variantes: "Avengers|Avenger"
-            </p>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 15px 0;">💡 Usa | para añadir variantes: "Avengers|Avenger"</p>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeWordModal()">Cancelar</button>
                 <button class="btn btn-primary" onclick="saveWord()">Guardar</button>
@@ -586,16 +745,16 @@
 
     <div class="modal" id="wordBulkModal">
         <div class="modal-content">
-            <div class="modal-header">Importar Palabras</div>
+            <div class="modal-header">
+                <span>Importar Palabras</span>
+                <button class="modal-close" onclick="closeWordBulkModal()">×</button>
+            </div>
             <div id="wordBulkAlert"></div>
             <div class="form-group">
                 <label>Palabras (separadas por comas)</label>
                 <textarea id="wordBulkText" placeholder='Ej: perro|can, gato|felino, tortuga, sapo'></textarea>
             </div>
-            <div class="form-hint">
-                💡 <strong>Formato:</strong> palabra o palabra|variante1|variante2<br>
-                Ingresa una palabra por línea o separadas por comas
-            </div>
+            <div class="form-hint">💡 <strong>Formato:</strong> palabra o palabra|variante1|variante2<br>Ingresa una palabra por línea o separadas por comas</div>
             <div class="import-preview" id="wordBulkPreview" style="display: none;"></div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeWordBulkModal()">Cancelar</button>
@@ -604,13 +763,34 @@
         </div>
     </div>
 
+    <!-- Database Modals -->
+    <div class="modal" id="dbEditModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="dbEditTitle">Editar Registro</span>
+                <button class="modal-close" onclick="closeDbEditModal()">×</button>
+            </div>
+            <div id="dbEditForm"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDbEditModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveDbRecord()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = 'api.php';
+        const DB_API_URL = 'admin-api.php';
+        let currentTab = 'dictionary';
         let currentCategory = null;
         let currentPrompt = null;
         let editingItem = null;
         let allCategories = [];
         let selectedCategories = [];
+        let currentDbTable = null;
+        let currentDbPage = 0;
+        const DB_ROWS_PER_PAGE = 15;
+        let editingDbRecord = null;
 
         async function api(action, method = 'GET', data = null) {
             const params = new URLSearchParams({ action });
@@ -631,6 +811,36 @@
                 body: method === 'POST' ? params : undefined
             });
             return res.json();
+        }
+
+        async function dbApi(action, method = 'GET', data = null) {
+            const url = `${DB_API_URL}?action=${action}`;
+            if (method === 'GET') {
+                const params = new URLSearchParams();
+                if (data) Object.entries(data).forEach(([k, v]) => params.append(k, v));
+                return fetch(url + '&' + params).then(r => r.json());
+            } else {
+                return fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }).then(r => r.json());
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('content').innerHTML = '';
+            
+            if (tab === 'dictionary') {
+                document.getElementById('headerTitle').textContent = 'Gestor de Diccionario';
+                loadCategories();
+            } else {
+                document.getElementById('headerTitle').textContent = 'Base de Datos';
+                loadDbTables();
+            }
         }
 
         async function loadCategories() {
@@ -666,7 +876,7 @@
             const content = document.getElementById('content');
             
             if (!result.success || result.data.length === 0) {
-                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openPromptBulkModal()">📋 Importar</button></div></div><div class="empty-state"><p>Sin consignas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera consigna para esta categoría</p></div></div>';
+                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Consignas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openPromptModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openPromptBulkModal()">📋 Importar</button></div></div><div class="empty-state"><p>Sin consignas</p></div></div>';
                 return;
             }
 
@@ -674,13 +884,13 @@
             
             result.data.forEach(prompt => {
                 html += `
-                    <div class="list-item" onclick="selectPrompt(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}')"
+                    <div class="list-item" onclick="selectPrompt(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}')">
                         <div class="list-item-content">
                             <p class="list-item-text">${prompt.text}</p>
                             <p class="list-item-info">${prompt.word_count} palabra${prompt.word_count !== 1 ? 's' : ''}</p>
                         </div>
                         <div class="list-item-actions">
-                            <button class="btn-icon" onclick="event.stopPropagation(); editPromptModal(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}", ${JSON.stringify(prompt.category_ids)})" title="Editar">✏️</button>
+                            <button class="btn-icon" onclick="event.stopPropagation(); editPromptModal(${prompt.id}, '${prompt.text.replace(/'/g, "\\'")}', ${JSON.stringify(prompt.category_ids)})" title="Editar">✏️</button>
                             <button class="btn-icon delete" onclick="event.stopPropagation(); deletePrompt(${prompt.id})" title="Eliminar">🗑️</button>
                         </div>
                     </div>
@@ -696,7 +906,7 @@
             const content = document.getElementById('content');
             
             if (!result.success || result.data.length === 0) {
-                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openWordBulkModal()">📋 Importar</button></div></div><div class="empty-state"><p>Sin palabras válidas</p><p style="font-size: 12px; margin-top: 10px;">Agrega la primera palabra para esta consigna</p></div></div>';
+                content.innerHTML = '<div class="section"><div class="section-header"><h3 class="section-title">Palabras Válidas</h3><div style="display: flex; gap: 10px;"><button class="btn btn-primary" onclick="openWordModal()">+ Agregar</button><button class="btn btn-bulk" onclick="openWordBulkModal()">📋 Importar</button></div></div><div class="empty-state"><p>Sin palabras válidas</p></div></div>';
                 return;
             }
 
@@ -709,7 +919,7 @@
                             <p class="list-item-text">${word.word_entry}</p>
                         </div>
                         <div class="list-item-actions">
-                            <button class="btn-icon" onclick="editWordModal(${word.id}, '${word.word_entry.replace(/'/g, "\\'")}")" title="Editar">✏️</button>
+                            <button class="btn-icon" onclick="editWordModal(${word.id}, '${word.word_entry.replace(/'/g, "\\'")}')" title="Editar">✏️</button>
                             <button class="btn-icon delete" onclick="deleteWord(${word.id})" title="Eliminar">🗑️</button>
                         </div>
                     </div>
@@ -720,6 +930,175 @@
             content.innerHTML = html;
         }
 
+        // === DATABASE FUNCTIONS ===
+        async function loadDbTables() {
+            const result = await dbApi('get_tables');
+            const content = document.getElementById('content');
+            
+            let html = '<div class="section"><div class="section-header"><h3 class="section-title">Tablas de la Base de Datos</h3></div><div class="list">';
+            
+            if (result.tables && result.tables.length > 0) {
+                result.tables.forEach(table => {
+                    html += `<div class="list-item" style="cursor: pointer;" onclick="selectDbTable('${table}')">
+                        <div class="list-item-content">
+                            <p class="list-item-text">📊 ${table}</p>
+                        </div>
+                        <div class="list-item-actions">
+                            <button class="action-btn" onclick="event.stopPropagation(); selectDbTable('${table}')">Abrir</button>
+                        </div>
+                    </div>`;
+                });
+            }
+            
+            html += '</div></div>';
+            content.innerHTML = html;
+        }
+
+        async function selectDbTable(table) {
+            currentDbTable = table;
+            currentDbPage = 0;
+            document.getElementById('headerTitle').textContent = `Base de Datos - ${table}`;
+            loadDbTableData();
+        }
+
+        async function loadDbTableData() {
+            const result = await dbApi('get_table_data', 'GET', { 
+                table: currentDbTable, 
+                limit: DB_ROWS_PER_PAGE, 
+                offset: currentDbPage * DB_ROWS_PER_PAGE 
+            });
+            
+            const content = document.getElementById('content');
+            let html = `<div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">${currentDbTable}</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="goToDbPage(${Math.max(0, currentDbPage - 1)})">← Atrás</button>
+                        <span style="align-self: center; font-size: 13px; color: var(--text-secondary);">Página ${currentDbPage + 1} / ${Math.ceil(result.total / DB_ROWS_PER_PAGE)}</span>
+                        <button class="btn btn-secondary" onclick="goToDbPage(${currentDbPage + 1})">Adelante →</button>
+                    </div>
+                </div>
+            `;
+
+            if (result.data && result.data.length > 0) {
+                const columns = Object.keys(result.data[0]);
+                html += '<div class="table-wrapper"><table><thead><tr>';
+                columns.forEach(col => html += `<th>${col}</th>`);
+                html += '<th>Acciones</th></tr></thead><tbody>';
+
+                result.data.forEach((row, idx) => {
+                    html += '<tr>';
+                    columns.forEach(col => {
+                        let value = row[col];
+                        if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+                            html += `<td><div class="cell-json">${value.substring(0, 40)}...</div></td>`;
+                        } else {
+                            html += `<td>${value !== null ? value : '—'}</td>`;
+                        }
+                    });
+                    html += `<td><div class="table-actions">
+                        <button class="action-btn" onclick="editDbRecord('${row[columns[0]]}', '${columns[0]}')" title="Editar">✏️</button>
+                        <button class="action-btn action-btn-delete" onclick="deleteDbRecord('${row[columns[0]]}', '${columns[0]}')">🗑️</button>
+                    </div></td></tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+            } else {
+                html += '<div class="empty-state"><p>Sin registros</p></div>';
+            }
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        async function editDbRecord(id, idColumn) {
+            const schemaResult = await dbApi('get_schema', 'GET', { table: currentDbTable });
+            const dataResult = await dbApi('get_table_data', 'GET', { 
+                table: currentDbTable, 
+                limit: 1000 
+            });
+            
+            const record = dataResult.data.find(r => r[idColumn] === id || String(r[idColumn]) === String(id));
+            if (!record) return;
+
+            let formHtml = '';
+            const columns = schemaResult.columns || [];
+            
+            columns.forEach(col => {
+                const value = record[col.name] || '';
+                const isJson = typeof value === 'string' && (value.startsWith('{') || value.startsWith('['));
+                const isReadonly = col.name === idColumn;
+                
+                if (isJson) {
+                    formHtml += `<div class="form-group">
+                        <label>${col.name}</label>
+                        <textarea id="dbfield_${col.name}" ${isReadonly ? 'readonly' : ''}>${value}</textarea>
+                    </div>`;
+                } else {
+                    formHtml += `<div class="form-group">
+                        <label>${col.name}</label>
+                        <input type="text" id="dbfield_${col.name}" value="${value}" ${isReadonly ? 'readonly' : ''}>
+                    </div>`;
+                }
+            });
+
+            document.getElementById('dbEditTitle').textContent = `Editar ${currentDbTable}`;
+            document.getElementById('dbEditForm').innerHTML = formHtml;
+            editingDbRecord = { id, idColumn, record };
+            document.getElementById('dbEditModal').classList.add('open');
+        }
+
+        async function saveDbRecord() {
+            const updates = {};
+            const inputs = document.querySelectorAll('#dbEditForm input:not([readonly]), #dbEditForm textarea:not([readonly])');
+            
+            inputs.forEach(input => {
+                const fieldName = input.id.replace('dbfield_', '');
+                updates[fieldName] = input.value;
+            });
+
+            const result = await dbApi('update_record', 'POST', {
+                table: currentDbTable,
+                id: editingDbRecord.id,
+                id_column: editingDbRecord.idColumn,
+                updates
+            });
+
+            if (result.success) {
+                closeDbEditModal();
+                loadDbTableData();
+                showNotification('Registro actualizado');
+            } else {
+                showNotification('Error: ' + result.error, true);
+            }
+        }
+
+        async function deleteDbRecord(id, idColumn) {
+            if (!confirm('¿Eliminar este registro?')) return;
+            
+            const result = await dbApi('delete_record', 'POST', {
+                table: currentDbTable,
+                id,
+                id_column: idColumn
+            });
+
+            if (result.success) {
+                loadDbTableData();
+                showNotification('Registro eliminado');
+            }
+        }
+
+        function goToDbPage(page) {
+            currentDbPage = Math.max(0, page);
+            loadDbTableData();
+        }
+
+        function closeDbEditModal() {
+            document.getElementById('dbEditModal').classList.remove('open');
+            editingDbRecord = null;
+        }
+
+        // === DICTIONARY FUNCTIONS (UNCHANGED) ===
         function selectCategory(id, name) {
             currentCategory = id;
             currentPrompt = null;
@@ -746,10 +1125,9 @@
             }
         }
 
-        // PARSE BULK TEXT
         function parseBulkText(text) {
             return text
-                .split(/[,\n]|(?<=[.])\s+/)
+                .split(/[,\n]|(?<=[.]\s+)/)
                 .map(item => item.trim())
                 .filter(item => item.length > 0);
         }
@@ -770,7 +1148,6 @@
             }
         }
 
-        // CATEGORY OPERATIONS
         function openCategoryModal(edit = null) {
             editingItem = edit;
             document.getElementById('categoryTitle').textContent = edit ? 'Editar Categoría' : 'Nueva Categoría';
@@ -861,7 +1238,6 @@
             }
         }
 
-        // PROMPT OPERATIONS
         function openPromptModal(edit = null) {
             if (!currentCategory && !edit) {
                 showAlert('promptAlert', 'Selecciona una categoría primero', 'error');
@@ -989,7 +1365,6 @@
             }
         }
 
-        // WORD OPERATIONS
         function openWordModal(edit = null) {
             if (!currentPrompt && !edit) {
                 showAlert('wordAlert', 'Selecciona una consigna primero', 'error');
@@ -1092,8 +1467,17 @@
             alert.textContent = message;
         }
 
+        function showNotification(message, isError = false) {
+            const notification = document.createElement('div');
+            notification.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: ' + (isError ? '#EF4444' : '#22C55E') + '; color: white; padding: 12px 16px; border-radius: 6px; font-size: 14px; z-index: 2000; animation: slideIn 0.3s ease-out;';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
         document.getElementById('btnAddCategory').onclick = () => openCategoryModal();
 
+        // Initialize
         loadCategories();
         updateStats();
         setInterval(updateStats, 5000);
