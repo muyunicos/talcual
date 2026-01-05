@@ -89,7 +89,20 @@ class GameService {
         }
 
         if (empty($candidates)) {
-            throw new Exception('No se pudieron generar códigos para las categorías');
+            logMessage('No valid codes found for any category, falling back to alphabet codes', 'WARNING');
+            
+            foreach ($categories as $category) {
+                $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                $code = '';
+                for ($i = 0; $i < MAX_CODE_LENGTH; $i++) {
+                    $code .= $chars[rand(0, strlen($chars) - 1)];
+                }
+                
+                $candidates[] = [
+                    'category' => $category,
+                    'code' => $code
+                ];
+            }
         }
 
         return $candidates;
