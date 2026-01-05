@@ -151,7 +151,7 @@ class HostManager extends BaseController {
         this.currentCategory = cat;
         this.view.setCategoryLabel(cat);
 
-        ModalManager_Instance.close();
+        ModalSystem_Instance.close();
         showNotification(`📂 Categoría: ${cat}`, 'success');
       } else {
         showNotification('❌ Error estableciendo categoría', 'error');
