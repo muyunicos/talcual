@@ -15,49 +15,37 @@ class HostView {
       playersGrid: getElement('players-grid'),
       categoryLabel: getElement('category-label'),
       currentWord: getElement('current-word'),
-      countdownOverlay: document.getElementById('countdown-overlay'),
-      countdownNumber: document.getElementById('countdown-number'),
+      countdownOverlay: getElement('countdown-overlay'),
+      countdownNumber: getElement('countdown-number'),
       statusMessage: getElement('status-message'),
       btnStartRound: getElement('btn-start-round'),
       btnHurryUp: getElement('btn-hurry-up'),
       btnEndGame: getElement('btn-end-game'),
-      btnEndRound: null,
+      btnEndRound: document.querySelector('[aria-label="Botón para terminar la ronda"], .btn-end-round'),
       centerStage: getElement('center-stage'),
       categorySticker: getElement('category-sticker')
     };
-
-    elements.btnEndRound = document.querySelector('[aria-label="Botón para terminar la ronda"], .btn-end-round');
 
     return elements;
   }
 
   initializeVisibility() {
-    if (this.elements.countdownOverlay) {
-      safeHideElement(this.elements.countdownOverlay);
-    }
+    safeHideElement(this.elements.countdownOverlay);
   }
 
   bindStartGame(handler) {
-    if (this.elements.btnStartRound) {
-      this.elements.btnStartRound.addEventListener('click', () => handler());
-    }
+    this.elements.btnStartRound.addEventListener('click', () => handler());
   }
 
   bindHurryUp(handler) {
-    if (this.elements.btnHurryUp) {
-      this.elements.btnHurryUp.addEventListener('click', () => handler());
-    }
+    this.elements.btnHurryUp.addEventListener('click', () => handler());
   }
 
   bindEndGame(handler) {
-    if (this.elements.btnEndGame) {
-      this.elements.btnEndGame.addEventListener('click', () => handler());
-    }
+    this.elements.btnEndGame.addEventListener('click', () => handler());
   }
 
   bindRemovePlayer(handler) {
-    if (!this.elements.playersGrid) return;
-
     this.elements.playersGrid.addEventListener('click', (event) => {
       const target = event.target;
       if (!target || !target.classList.contains('btn-remove-player')) return;
@@ -70,7 +58,7 @@ class HostView {
   }
 
   renderPlayerCards(players) {
-    if (!this.elements.playersGrid || !players) return;
+    if (!players) return;
 
     const html = Object.entries(players).map(([pid, player]) => {
       const name = sanitizeText(player.name || 'Jugador');
@@ -114,20 +102,14 @@ class HostView {
   }
 
   renderRoomCode(code) {
-    if (this.elements.headerCode) {
-      this.elements.headerCode.textContent = code;
-    }
+    this.elements.headerCode.textContent = code;
   }
 
   setRoundInfo(round, total) {
-    if (this.elements.headerRound) {
-      this.elements.headerRound.textContent = `${round}/${total}`;
-    }
+    this.elements.headerRound.textContent = `${round}/${total}`;
   }
 
   updateTimer(remaining, totalDuration) {
-    if (!this.elements.headerTimer) return;
-
     if (remaining === null || remaining === undefined) {
       this.elements.headerTimer.textContent = '⏳ --:--';
       this.elements.headerTimer.style.opacity = '1';
@@ -154,10 +136,8 @@ class HostView {
   }
 
   clearTimer() {
-    if (this.elements.headerTimer) {
-      this.elements.headerTimer.textContent = '⏳ 00:00';
-      this.elements.headerTimer.style.opacity = '1';
-    }
+    this.elements.headerTimer.textContent = '⏳ 00:00';
+    this.elements.headerTimer.style.opacity = '1';
   }
 
   updatePlayerList(players) {
@@ -179,10 +159,7 @@ class HostView {
       `;
     }).join('');
 
-    if (this.elements.playersList) {
-      this.elements.playersList.innerHTML = sidebarHtml || '<div class="panel-item"><div class="name">Sin jugadores aún</div></div>';
-    }
-
+    this.elements.playersList.innerHTML = sidebarHtml || '<div class="panel-item"><div class="name">Sin jugadores aún</div></div>';
     this.renderPlayerCards(players);
   }
 
@@ -192,9 +169,7 @@ class HostView {
     safeHideElement(this.elements.countdownOverlay);
     safeHideElement(this.elements.btnHurryUp);
 
-    if (this.elements.statusMessage) {
-      this.elements.statusMessage.textContent = '⏳ En espera de jugadores (mín. 2)';
-    }
+    this.elements.statusMessage.textContent = '⏳ En espera de jugadores (mín. 2)';
 
     const hasMinPlayers = playerCount >= 2;
     this.setStartButtonState(hasMinPlayers ? 'ready' : 'disabled');
@@ -203,20 +178,16 @@ class HostView {
   showPlayingState(state, readyCount) {
     safeHideElement(this.elements.countdownOverlay);
 
-    if (this.elements.currentWord) {
-      this.elements.currentWord.textContent = state.current_prompt || '???';
-      safeShowElement(this.elements.currentWord);
-    }
+    this.elements.currentWord.textContent = state.current_prompt || '???';
+    safeShowElement(this.elements.currentWord);
 
-    if (this.elements.categoryLabel && state.current_category) {
+    if (state.current_category) {
       this.elements.categoryLabel.textContent = `Categoría: ${state.current_category}`;
       safeShowElement(this.elements.categoryLabel);
     }
 
     const total = state.players ? Object.keys(state.players).length : 0;
-    if (this.elements.statusMessage) {
-      this.elements.statusMessage.textContent = `🎮 Jugando... (${readyCount}/${total} listos)`;
-    }
+    this.elements.statusMessage.textContent = `🎮 Jugando... (${readyCount}/${total} listos)`;
 
     this.setStartButtonState('playing');
     this.setHurryUpButtonState('active');
@@ -228,9 +199,7 @@ class HostView {
     safeHideElement(this.elements.countdownOverlay);
     safeHideElement(this.elements.btnHurryUp);
 
-    if (this.elements.statusMessage) {
-      this.elements.statusMessage.textContent = '✅ Ronda Finalizada - Mostrando Resultados';
-    }
+    this.elements.statusMessage.textContent = '✅ Ronda Finalizada - Mostrando Resultados';
 
     this.setStartButtonState('next_round');
   }
@@ -239,16 +208,12 @@ class HostView {
     safeHideElement(this.elements.countdownOverlay);
     safeHideElement(this.elements.btnHurryUp);
 
-    if (this.elements.statusMessage) {
-      this.elements.statusMessage.textContent = '🏆 ¡Juego Finalizado!';
-    }
+    this.elements.statusMessage.textContent = '🏆 ¡Juego Finalizado!';
 
     this.setStartButtonState('finished');
   }
 
   setStartButtonState(state) {
-    if (!this.elements.btnStartRound) return;
-
     const states = {
       'disabled': { disabled: true, text: '🔐 Esperando', visible: true },
       'ready': { disabled: false, text: '🎮 Iniciar Ronda', visible: true },
@@ -266,8 +231,6 @@ class HostView {
   }
 
   setHurryUpButtonState(state) {
-    if (!this.elements.btnHurryUp) return;
-
     const states = {
       'active': { disabled: false, text: '⚡ REMATE', visible: true },
       'active_used': { disabled: true, text: '⚡ REMATE ACTIVO', visible: true },
@@ -285,70 +248,43 @@ class HostView {
   }
 
   setEndRoundButtonLoading() {
-    if (!this.elements.btnEndRound) {
-      this.elements.btnEndRound = document.querySelector('.btn-end-round, [aria-label*="Terminar"]');
-    }
-    if (this.elements.btnEndRound) {
-      this.elements.btnEndRound.disabled = true;
-      this.elements.btnEndRound.textContent = '⏳ Finalizando...';
-      this.elements.btnEndRound.classList.add('loading');
-    }
+    if (!this.elements.btnEndRound) return;
+    this.elements.btnEndRound.disabled = true;
+    this.elements.btnEndRound.textContent = '⏳ Finalizando...';
+    this.elements.btnEndRound.classList.add('loading');
   }
 
   setEndRoundButtonState(state) {
-    if (!this.elements.btnEndRound) {
-      this.elements.btnEndRound = document.querySelector('.btn-end-round, [aria-label*="Terminar"]');
-    }
-    if (this.elements.btnEndRound) {
-      this.elements.btnEndRound.disabled = false;
-      this.elements.btnEndRound.textContent = '🎯 Terminar Ronda';
-      this.elements.btnEndRound.classList.remove('loading');
-    }
+    if (!this.elements.btnEndRound) return;
+    this.elements.btnEndRound.disabled = false;
+    this.elements.btnEndRound.textContent = '🎯 Terminar Ronda';
+    this.elements.btnEndRound.classList.remove('loading');
   }
 
   setStartButtonLoading() {
-    if (this.elements.btnStartRound) {
-      this.elements.btnStartRound.disabled = true;
-      this.elements.btnStartRound.textContent = '⏳ Iniciando...';
-    }
+    this.elements.btnStartRound.disabled = true;
+    this.elements.btnStartRound.textContent = '⏳ Iniciando...';
   }
 
   setHurryUpButtonLoading() {
-    if (this.elements.btnHurryUp) {
-      this.elements.btnHurryUp.disabled = true;
-      this.elements.btnHurryUp.textContent = '⏳ Enviando...';
-    }
+    this.elements.btnHurryUp.disabled = true;
+    this.elements.btnHurryUp.textContent = '⏳ Enviando...';
   }
 
   setCategoryLabel(category) {
-    if (this.elements.categorySticker) {
-      this.elements.categorySticker.textContent = category || 'Sin categoría';
-    }
-    if (this.elements.categoryLabel) {
-      this.elements.categoryLabel.textContent = `Categoría: ${category}`;
-    }
+    this.elements.categorySticker.textContent = category || 'Sin categoría';
+    this.elements.categoryLabel.textContent = `Categoría: ${category}`;
   }
 
   showCountdownOverlay() {
-    if (this.elements.countdownOverlay) {
-      safeShowElement(this.elements.countdownOverlay);
-    } else {
-      debug('⚠️ [HostView] countdownOverlay element not found, skipping show', null, 'warn');
-    }
+    safeShowElement(this.elements.countdownOverlay);
   }
 
   hideCountdownOverlay() {
-    if (this.elements.countdownOverlay) {
-      safeHideElement(this.elements.countdownOverlay);
-    }
+    safeHideElement(this.elements.countdownOverlay);
   }
 
   updateCountdownNumber(seconds) {
-    if (!this.elements.countdownNumber) {
-      debug('⚠️ [HostView] countdownNumber element not found, skipping update', null, 'warn');
-      return;
-    }
-
     if (seconds > 3) {
       this.elements.countdownNumber.textContent = '¿Preparado?';
     } else if (seconds > 0) {
