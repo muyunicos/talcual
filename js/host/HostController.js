@@ -215,97 +215,41 @@ class HostManager extends BaseController {
     }
   }
 
-  processRoundResults(state) {
-    const roundResults = {};
-    const scoreDeltas = {};
-    const wordMatches = {};
-    const maxPointsPerPlayer = (this.gameState?.players && Object.keys(this.gameState.players).length > 0) ? 6 : 0;
-
-    if (!state.roundData || !state.roundData.validMatches) {
-      debug('⚠️ processRoundResults: no roundData', null, 'warn');
-      return { roundResults, scoreDeltas, topWords: [] };
+  calculateHostViewStats(state) {
+    if (!state.players) {
+      return { topWords: [] };
     }
 
-    const validAnswers = state.roundData.validMatches;
-    if (!Array.isArray(validAnswers)) {
-      debug('⚠️ processRoundResults: validMatches not array', null, 'warn');
-      return { roundResults, scoreDeltas, topWords: [] };
-    }
+    const globalResults = wordEngine.calculateGlobalMatches(
+        state.players,
+        state.roundData
+    );
 
-    if (!wordEngine.isReady()) {
-      debug('⚠️ WordEngine not ready, using fallback mode', null, 'warn');
-    }
-
-    wordEngine.initializeFromRoundContext({
-      roundQuestion: state.current_prompt || '',
-      commonAnswers: validAnswers
+    const wordFrequency = {};
+    
+    Object.values(globalResults).forEach(pResult => {
+        pResult.answers.forEach(ans => {
+            if (ans.matches.length > 0) {
+                const key = ans.canonical || ans.word;
+                if (!wordFrequency[key]) {
+                    wordFrequency[key] = {
+                        word: ans.word,
+                        count: 1,
+                        matches: ans.matches
+                    };
+                } else {
+                    wordFrequency[key].count++;
+                }
+            }
+        });
     });
 
-    for (const [playerId, player] of Object.entries(state.players)) {
-      if (!player || !Array.isArray(player.answers)) continue;
+    const topWords = Object.values(wordFrequency)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
 
-      const playerResults = {};
-
-      player.answers.forEach(playerWord => {
-        let bestMatch = null;
-        let bestMatchType = null;
-
-        for (const validWord of validAnswers) {
-          const comparison = wordEngine.areEquivalentWithType(playerWord, validWord);
-          
-          if (comparison.match) {
-            bestMatch = validWord;
-            bestMatchType = comparison.type;
-            break;
-          }
-        }
-
-        playerResults[playerWord] = {
-          matched: bestMatch !== null,
-          matchedWord: bestMatch,
-          matchType: bestMatchType
-        };
-
-        if (bestMatch !== null) {
-          if (!wordMatches[bestMatch]) {
-            wordMatches[bestMatch] = [];
-          }
-          wordMatches[bestMatch].push({
-            player: player.name,
-            playerWord,
-            matchType: bestMatchType
-          });
-        }
-      });
-
-      roundResults[playerId] = playerResults;
-
-      const pointsEarned = Object.values(playerResults).filter(r => r.matched).length;
-      scoreDeltas[playerId] = pointsEarned;
-
-      if (pointsEarned > maxPointsPerPlayer) {
-        console.error(`❌ VALIDATION FAILED: Player ${playerId} earned ${pointsEarned} points (max: ${maxPointsPerPlayer})`);
-        console.error('Player answers:', player.answers);
-        console.error('Round results:', playerResults);
-        throw new Error(`Invalid points calculated: ${pointsEarned} > ${maxPointsPerPlayer}`);
-      }
-    }
-
-    const topWords = Object.entries(wordMatches)
-      .map(([word, matches]) => ({
-        word,
-        count: matches.length,
-        matches
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    debug('✅ processRoundResults completed', {
-      playerCount: Object.keys(roundResults).length,
-      topWordsCount: topWords.length
-    }, 'success');
-
-    return { roundResults, scoreDeltas, topWords };
+    debug('✅ calculateHostViewStats completed', { topWordsCount: topWords.length }, 'success');
+    return { topWords };
   }
 
   handleStateUpdate(state) {
@@ -504,22 +448,16 @@ class HostManager extends BaseController {
 
     try {
       await this.client.forceRefresh();
-      debug('✅ Estado sincronizado antes de procesar resultados', null, 'success');
+      debug('✅ Estado sincronizado antes de finalizar', null, 'success');
       
       if (!this.gameState) {
         throw new Error('gameState no disponible después de refresh');
       }
 
-      const { roundResults, scoreDeltas, topWords } = this.processRoundResults(this.gameState);
-
-      const result = await this.client.sendAction('end_round', {
-        round_results: roundResults,
-        score_deltas: scoreDeltas,
-        top_words: topWords
-      });
+      const result = await this.client.sendAction('end_round', {});
 
       if (result.success) {
-        debug('✅ Ronda finalizada', null, 'success');
+        debug('✅ Ronda finalizada (payload minimal enviado al servidor)', null, 'success');
         this.handleStateUpdate(result.state || this.gameState);
       } else {
         showNotification('❌ Error finalizando ronda', 'error');
