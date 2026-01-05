@@ -73,7 +73,7 @@ class DictionaryManager {
         try {
             $sql = 'SELECT 
                 p.id, p.text,
-                GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids,
+                (SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids,
                 COUNT(DISTINCT vw.id) as word_count
             FROM prompts p
             JOIN prompt_categories pc ON p.id = pc.prompt_id
@@ -87,7 +87,7 @@ class DictionaryManager {
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($results as &$row) {
-                $row['category_ids'] = array_map('intval', explode(',', $row['category_ids'] ?? ''));
+                $row['category_ids'] = array_map('intval', array_filter(explode(',', $row['category_ids'] ?? '')));
                 $row['word_count'] = (int)$row['word_count'];
             }
             
@@ -100,28 +100,27 @@ class DictionaryManager {
     public function getPrompts($categoryId = null) {
         try {
             if ($categoryId) {
-                $stmt = $this->pdo->prepare(
-                    'SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids '
+                $sql = 'SELECT p.id, p.text, '
+                    . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
                     . 'FROM prompts p '
                     . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
                     . 'WHERE pc.category_id = ? '
                     . 'GROUP BY p.id, p.text '
-                    . 'ORDER BY p.text'
-                );
+                    . 'ORDER BY p.text';
+                $stmt = $this->pdo->prepare($sql);
                 $stmt->execute([$categoryId]);
             } else {
-                $stmt = $this->pdo->query(
-                    'SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids '
+                $sql = 'SELECT p.id, p.text, '
+                    . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
                     . 'FROM prompts p '
-                    . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
                     . 'GROUP BY p.id, p.text '
-                    . 'ORDER BY p.text'
-                );
+                    . 'ORDER BY p.text';
+                $stmt = $this->pdo->query($sql);
             }
             
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             foreach ($results as &$row) {
-                $row['category_ids'] = array_map('intval', explode(',', $row['category_ids'] ?? ''));
+                $row['category_ids'] = array_map('intval', array_filter(explode(',', $row['category_ids'] ?? '')));
             }
             
             return $results;
@@ -132,18 +131,16 @@ class DictionaryManager {
 
     public function getPromptById($promptId) {
         try {
-            $stmt = $this->pdo->prepare(
-                'SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids '
+            $sql = 'SELECT p.id, p.text, '
+                . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
                 . 'FROM prompts p '
-                . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
-                . 'WHERE p.id = ? '
-                . 'GROUP BY p.id, p.text'
-            );
+                . 'WHERE p.id = ?';
+            $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$promptId]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($result) {
-                $result['category_ids'] = array_map('intval', explode(',', $result['category_ids'] ?? ''));
+                $result['category_ids'] = array_map('intval', array_filter(explode(',', $result['category_ids'] ?? '')));
             }
             
             return $result;
@@ -384,7 +381,7 @@ class DictionaryManager {
         try {
             $inspection = [
                 'categories' => $this->pdo->query('SELECT id, name FROM categories ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
-                'prompts' => $this->pdo->query('SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids FROM prompts p LEFT JOIN prompt_categories pc ON p.id = pc.prompt_id GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
+                'prompts' => $this->pdo->query('SELECT p.id, p.text, (SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids FROM prompts p GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
                 'words' => $this->pdo->query('SELECT id, prompt_id, word_entry FROM valid_words ORDER BY prompt_id, id')->fetchAll(PDO::FETCH_ASSOC),
                 'games' => $this->pdo->query('SELECT id, status, round, updated_at FROM games ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
                 'players' => $this->pdo->query('SELECT id, game_id, name, score FROM players ORDER BY game_id, id')->fetchAll(PDO::FETCH_ASSOC),
