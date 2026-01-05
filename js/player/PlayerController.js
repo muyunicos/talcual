@@ -327,7 +327,7 @@ class PlayerManager extends BaseController {
     if (!word) return;
 
     if (this.myWords.length >= this.maxWords) {
-      showNotification(`📃 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
+      showNotification(`📓 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
       return;
     }
 
@@ -361,7 +361,7 @@ class PlayerManager extends BaseController {
     this.view.focusInput();
 
     if (this.myWords.length === this.maxWords) {
-      debug(`📃 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
+      debug(`📓 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
       this.updateInputAndButtons();
     }
   }
@@ -622,7 +622,7 @@ class PlayerManager extends BaseController {
       }
     }
 
-    ModalManager_Instance.close();
+    ModalSystem_Instance.close();
   }
 }
 
