@@ -56,6 +56,9 @@ class BaseController {
     }
   }
 
+  checkRoundTimeout() {
+  }
+
   startContinuousTimer(state) {
     if (!this.view) {
       throw new Error('View not initialized before startContinuousTimer');
@@ -80,6 +83,8 @@ class BaseController {
       const remaining = GameTimer.getRemaining(roundStartedAt, roundDuration);
 
       this.view.updateTimer(remaining, roundDuration);
+
+      this.checkRoundTimeout();
 
       this.timerRAFId = requestAnimationFrame(timerLoop);
     };
