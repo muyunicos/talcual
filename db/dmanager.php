@@ -51,10 +51,10 @@ function mergeDatabase($current, $imported) {
     }
     
     $categories = $current['categorias'] ?? [];
-    $consignas = $current['consignas'] ?? [];
+    $consignas = ensureConsignasIsObject($current['consignas'] ?? []);
     
     $importedCategories = $imported['categorias'] ?? [];
-    $importedConsignas = $imported['consignas'] ?? [];
+    $importedConsignas = ensureConsignasIsObject($imported['consignas'] ?? []);
     
     $nextOrder = empty($categories) ? 1 : max(array_column($categories, 'orden', null) ?? [0]) + 1;
     
@@ -98,7 +98,7 @@ function normalizeDatabase($data) {
     ];
     
     $importedCategories = $data['categorias'] ?? [];
-    $importedConsignas = $data['consignas'] ?? [];
+    $importedConsignas = ensureConsignasIsObject($data['consignas'] ?? []);
     
     $order = 1;
     foreach ($importedCategories as $catName => $catData) {
@@ -117,6 +117,13 @@ function normalizeDatabase($data) {
     }
     
     return $normalized;
+}
+
+function ensureConsignasIsObject($consignas) {
+    if (is_array($consignas) && (empty($consignas) || isset($consignas[0]))) {
+        return [];
+    }
+    return is_array($consignas) ? $consignas : [];
 }
 
 function normalizeResponse($text) {
