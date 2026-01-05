@@ -16,6 +16,7 @@ class PlayerManager extends BaseController {
     this.lastTypingTime = 0;
     this.typingThrottleMs = 2000;
 
+    this._autoSubmitInterval = null;
     this.view = null;
   }
 
@@ -555,21 +556,31 @@ class PlayerManager extends BaseController {
     this.view.showFinalResults();
   }
 
-  updateTimerFromState(state) {
-    if (!state.round_started_at) {
-      this.stopTimer();
-      return;
-    }
+  startContinuousTimer(state) {
+    super.startContinuousTimer(state);
 
-    const remaining = GameTimer.getRemaining(state.round_started_at, state.round_duration);
+    if (this._autoSubmitInterval) clearInterval(this._autoSubmitInterval);
 
-    if (remaining <= 500 && this.gameState.status === 'playing') {
-      const me = this.gameState.players?.[this.playerId];
-      if (me?.status !== 'ready') {
-        debug('🔵 Auto-enviando palabras al terminar el tiempo', 'info');
-        this.autoSubmitWords();
+    this._autoSubmitInterval = setInterval(() => {
+      if (!this.gameState || this.gameState.status !== 'playing') {
+        clearInterval(this._autoSubmitInterval);
+        return;
       }
-    }
+
+      const remaining = GameTimer.getRemaining(
+        this.gameState.round_started_at,
+        this.gameState.round_duration
+      );
+
+      if (remaining !== null && remaining <= 500) {
+        const me = this.gameState.players?.[this.playerId];
+        if (me && me.status !== 'ready') {
+          debug('🔵 Auto-enviando palabras al terminar el tiempo', null, 'info');
+          this.autoSubmitWords();
+          clearInterval(this._autoSubmitInterval);
+        }
+      }
+    }, 1000);
   }
 
   async autoSubmitWords() {
@@ -623,6 +634,14 @@ class PlayerManager extends BaseController {
     }
 
     ModalSystem_Instance.close();
+  }
+
+  destroy() {
+    if (this._autoSubmitInterval) {
+      clearInterval(this._autoSubmitInterval);
+      this._autoSubmitInterval = null;
+    }
+    super.destroy();
   }
 }
 
