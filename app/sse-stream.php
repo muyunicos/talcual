@@ -4,6 +4,7 @@ set_time_limit(0);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/GameRepository.php';
+require_once __DIR__ . '/AppUtils.php';
 
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
@@ -27,8 +28,8 @@ ini_set('output_buffering', 'off');
 ini_set('zlib.output_compression', 'off');
 ini_set('implicit_flush', 'on');
 
-$gameId = sanitizeGameId($_GET['game_id'] ?? null);
-$playerId = sanitizePlayerId($_GET['player_id'] ?? null);
+$gameId = AppUtils::sanitizeGameId($_GET['game_id'] ?? null);
+$playerId = AppUtils::sanitizePlayerId($_GET['player_id'] ?? null);
 
 if (!$gameId) {
     echo "event: error\n";
@@ -39,7 +40,17 @@ if (!$gameId) {
 
 logMessage("SSE iniciado para game: {$gameId}, player: {$playerId}", 'DEBUG');
 
-if (!gameExists($gameId)) {
+try {
+    $db = Database::getInstance();
+    $repo = new GameRepository();
+} catch (Exception $e) {
+    echo "event: error\n";
+    echo "data: {\"message\": \"Error inicializando repositorio\"}\n\n";
+    flush();
+    exit;
+}
+
+if (!$repo->exists($gameId)) {
     echo "event: error\n";
     echo "data: {\"message\": \"Juego no encontrado\"}\n\n";
     flush();
@@ -140,21 +151,11 @@ $heartbeatInterval = defined('SSE_HEARTBEAT_INTERVAL') && SSE_HEARTBEAT_INTERVAL
 $lastHeartbeatTime = microtime(true);
 $pollingInterval = 2;
 
-try {
-    $db = Database::getInstance();
-    $repo = new GameRepository();
-} catch (Exception $e) {
-    echo "event: error\n";
-    echo "data: {\"message\": \"Error inicializando repositorio\"}\n\n";
-    flush();
-    exit;
-}
-
 sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with APCu-based event notifications + Phase 4 distributed calculation',
+    'method' => 'SSE with APCu-based event notifications',
     'max_duration_seconds' => $maxDuration
 ]);
 
@@ -168,7 +169,7 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         break;
     }
     
-    if (!gameExists($gameId)) {
+    if (!$repo->exists($gameId)) {
         sendSSE('game_ended', ['message' => 'El juego ha finalizado']);
         logMessage("SSE juego desaparecido: {$gameId}", 'INFO');
         break;
