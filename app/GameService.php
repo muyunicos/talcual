@@ -47,7 +47,7 @@ class GameService {
         } while ($this->repository->exists($code));
         
         if (mb_strlen($code) > MAX_CODE_LENGTH) {
-            logMessage('[WARNING] C\u00f3digo generado excede MAX_CODE_LENGTH: ' . $code, 'WARNING');
+            logMessage('[WARNING] Código generado excede MAX_CODE_LENGTH: ' . $code, 'WARNING');
             $code = substr($code, 0, MAX_CODE_LENGTH);
         }
         
@@ -58,7 +58,7 @@ class GameService {
         $categories = $this->dictionaryRepository->getCategories();
 
         if (empty($categories)) {
-            throw new Exception('No hay categor\u00edas disponibles');
+            throw new Exception('No hay categorías disponibles');
         }
 
         $candidates = [];
@@ -89,7 +89,7 @@ class GameService {
         }
 
         if (empty($candidates)) {
-            throw new Exception('No se pudieron generar c\u00f3digos para las categor\u00edas');
+            throw new Exception('No se pudieron generar códigos para las categorías');
         }
 
         return $candidates;
@@ -98,13 +98,13 @@ class GameService {
     public function createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers) {
         if ($gameId) {
             if ($this->repository->exists($gameId)) {
-                throw new Exception('El c\u00f3digo de sala ya est\u00e1 en uso');
+                throw new Exception('El código de sala ya está en uso');
             }
 
             if ($requestedCategory) {
                 $availableCategories = $this->dictionaryRepository->getCategories();
                 if (!in_array($requestedCategory, $availableCategories)) {
-                    throw new Exception('Categor\u00eda no v\u00e1lida');
+                    throw new Exception('Categoría no válida');
                 }
             }
         } else {
@@ -116,6 +116,7 @@ class GameService {
         if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
 
         $serverNow = intval(microtime(true) * 1000);
+        $now = time();
 
         $initialState = [
             'game_id' => $gameId,
@@ -127,12 +128,17 @@ class GameService {
             'current_category' => null,
             'selected_category' => $requestedCategory,
             'used_prompts' => [],
-            'round_duration' => $roundDuration * 1000,
+            'round_duration' => $roundDuration,
             'round_started_at' => null,
-            'round_starts_at' => null,
             'round_ends_at' => null,
-            'countdown_duration' => START_COUNTDOWN * 1000,
+            'created_at' => $now,
+            'updated_at' => $now,
+            'start_countdown' => START_COUNTDOWN,
+            'hurry_up_threshold' => 10,
+            'max_words_per_player' => MAX_WORDS_PER_PLAYER,
+            'max_word_length' => MAX_WORD_LENGTH,
             'min_players' => $minPlayers,
+            'max_players' => MAX_PLAYERS,
             'round_details' => [],
             'round_top_words' => [],
             'game_history' => [],
@@ -158,19 +164,21 @@ class GameService {
 
         $playerName = trim($playerName);
         if (strlen($playerName) < 2 || strlen($playerName) > 20) {
-            throw new Exception('Nombre inv\u00e1lido');
-        }
-
-        if (count($state['players']) >= MAX_PLAYERS) {
-            throw new Exception('Sala llena');
+            throw new Exception('Nombre inválido');
         }
 
         if (isset($state['players'][$playerId])) {
+            logMessage('Player reconnection: ' . $playerId . ' in game ' . $gameId, 'DEBUG');
             return [
-                'message' => 'Ya est\u00e1s en el juego',
+                'message' => 'Reconectado al juego',
                 'server_now' => intval(microtime(true) * 1000),
-                'state' => $state
+                'state' => $state,
+                'reconnected' => true
             ];
+        }
+
+        if (count($state['players']) >= $state['max_players']) {
+            throw new Exception('Sala llena');
         }
 
         $state['players'][$playerId] = [
@@ -181,7 +189,8 @@ class GameService {
             'status' => 'connected',
             'disconnected' => false,
             'answers' => [],
-            'round_results' => []
+            'current_answers' => [],
+            'round_history' => []
         ];
 
         $state['last_update'] = time();
@@ -191,7 +200,8 @@ class GameService {
         return [
             'message' => 'Te uniste al juego',
             'server_now' => intval(microtime(true) * 1000),
-            'state' => $state
+            'state' => $state,
+            'reconnected' => false
         ];
     }
 
@@ -209,7 +219,7 @@ class GameService {
         $minPlayers = $state['min_players'] ?? MIN_PLAYERS;
 
         if (count($activePlayers) < $minPlayers) {
-            throw new Exception('M\u00ednimo ' . $minPlayers . ' jugadores');
+            throw new Exception('Mínimo ' . $minPlayers . ' jugadores');
         }
 
         $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
@@ -241,11 +251,10 @@ class GameService {
         $state['round']++;
         $state['status'] = 'playing';
         $state['current_prompt'] = $roundQuestion;
-        $state['current_category'] = $preferredCategory ?: 'Sin categor\u00eda';
+        $state['current_category'] = $preferredCategory ?: 'Sin categoría';
         $state['round_duration'] = $duration;
         $state['total_rounds'] = $totalRounds;
-        $state['countdown_duration'] = $countdownDuration;
-        $state['round_starts_at'] = $roundStartsAt;
+        $state['start_countdown'] = START_COUNTDOWN;
         $state['round_started_at'] = $roundStartedAt;
         $state['round_ends_at'] = $roundEndsAt;
 
@@ -262,7 +271,7 @@ class GameService {
             }
             $state['players'][$pId]['status'] = 'playing';
             $state['players'][$pId]['answers'] = [];
-            $state['players'][$pId]['round_results'] = [];
+            $state['players'][$pId]['current_answers'] = [];
         }
 
         $this->repository->save($gameId, $state);
@@ -297,6 +306,7 @@ class GameService {
         }
 
         $state['players'][$playerId]['answers'] = $validAnswers;
+        $state['players'][$playerId]['current_answers'] = $validAnswers;
 
         if ($forcedPass) {
             $state['players'][$playerId]['status'] = 'ready';
@@ -327,6 +337,26 @@ class GameService {
             throw new Exception('No hay ronda en curso');
         }
 
+        foreach ($state['players'] as $pId => $player) {
+            $roundEntry = [
+                'round' => $state['round'],
+                'answers' => $player['current_answers'] ?? [],
+                'score' => 0
+            ];
+
+            if (!isset($state['players'][$pId]['round_history'])) {
+                $state['players'][$pId]['round_history'] = [];
+            }
+            if (!is_array($state['players'][$pId]['round_history'])) {
+                $state['players'][$pId]['round_history'] = [];
+            }
+
+            $state['players'][$pId]['round_history'][] = $roundEntry;
+            $state['players'][$pId]['answers'] = [];
+            $state['players'][$pId]['current_answers'] = [];
+            $state['players'][$pId]['status'] = 'connected';
+        }
+
         $isGameFinished = (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS));
 
         if ($isGameFinished) {
@@ -348,28 +378,17 @@ class GameService {
             $state['game_history'][] = $roundSnapshot;
         }
 
-        foreach ($state['players'] as $pId => $player) {
-            $state['players'][$pId]['status'] = 'connected';
-        }
-
         $state['last_update'] = time();
 
         if ($isGameFinished) {
             $state['status'] = 'finished';
             $state['roundData'] = null;
-
-            foreach ($state['players'] as $pId => $player) {
-                $state['players'][$pId]['answers'] = [];
-                $state['players'][$pId]['round_results'] = [];
-            }
         } else {
             $state['status'] = 'round_ended';
         }
 
         $state['round_started_at'] = null;
-        $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
-        $state['countdown_duration'] = null;
 
         $this->repository->save($gameId, $state);
 
@@ -392,7 +411,8 @@ class GameService {
             $state['players'][$pId]['status'] = 'connected';
             $state['players'][$pId]['disconnected'] = false;
             $state['players'][$pId]['answers'] = [];
-            $state['players'][$pId]['round_results'] = [];
+            $state['players'][$pId]['current_answers'] = [];
+            $state['players'][$pId]['round_history'] = [];
         }
 
         $state['round'] = 0;
@@ -400,9 +420,7 @@ class GameService {
         $state['current_prompt'] = null;
         $state['current_category'] = null;
         $state['round_started_at'] = null;
-        $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
-        $state['countdown_duration'] = null;
         $state['round_top_words'] = [];
         $state['roundData'] = null;
         $state['last_update'] = time();
@@ -428,7 +446,7 @@ class GameService {
         }
 
         if ($newEndTime <= 0) {
-            throw new Exception('Tiempo inv\u00e1lido');
+            throw new Exception('Tiempo inválido');
         }
 
         $state['round_ends_at'] = $newEndTime;
@@ -463,7 +481,7 @@ class GameService {
         }
 
         return [
-            'message' => 'Ya no est\u00e1s en el juego'
+            'message' => 'Ya no estás en el juego'
         ];
     }
 
@@ -476,7 +494,7 @@ class GameService {
 
         $newName = trim($newName);
         if (strlen($newName) < 2 || strlen($newName) > 20) {
-            throw new Exception('Nombre inv\u00e1lido');
+            throw new Exception('Nombre inválido');
         }
 
         $state['players'][$playerId]['name'] = $newName;
@@ -499,7 +517,7 @@ class GameService {
         }
 
         if (!$newColor) {
-            throw new Exception('Color inv\u00e1lido');
+            throw new Exception('Color inválido');
         }
 
         $state['players'][$playerId]['color'] = $newColor;
