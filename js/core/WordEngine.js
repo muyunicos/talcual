@@ -383,6 +383,103 @@ class WordEquivalenceEngine {
         return false;
     }
 
+    /**
+     * NUEVO: Calcula las coincidencias de todos los jugadores localmente.
+     * Devuelve una estructura optimizada para renderizar resultados.
+     * 
+     * @param {Object} players - Objeto con {playerId: {name, answers: [strings], ...}}
+     * @param {Object} roundContext - Contexto de la ronda (pregunta, respuestas válidas)
+     * @returns {Object} Estructura {playerId: {answers: [{word, canonical, matches: [], isValid}], scoreDelta}}
+     */
+    calculateGlobalMatches(players, roundContext) {
+        if (!players || typeof players !== 'object') {
+            debug('⚠️ calculateGlobalMatches: invalid players object', null, 'warn');
+            return {};
+        }
+
+        if (roundContext) {
+            this.initializeFromRoundContext(roundContext);
+        }
+
+        const results = {};
+        const activePlayerIds = Object.keys(players).filter(pid => players[pid]);
+
+        if (activePlayerIds.length === 0) {
+            debug('⚠️ calculateGlobalMatches: no active players', null, 'warn');
+            return results;
+        }
+
+        for (const pid of activePlayerIds) {
+            const player = players[pid];
+            results[pid] = {
+                answers: [],
+                scoreDelta: 0
+            };
+            
+            if (Array.isArray(player.answers)) {
+                player.answers.forEach(word => {
+                    results[pid].answers.push({
+                        word: word,
+                        canonical: this.getCanonical(word),
+                        matches: [],
+                        isValid: true
+                    });
+                });
+            }
+        }
+
+        for (let i = 0; i < activePlayerIds.length; i++) {
+            const pidA = activePlayerIds[i];
+            const wordsA = results[pidA].answers;
+
+            for (let j = i + 1; j < activePlayerIds.length; j++) {
+                const pidB = activePlayerIds[j];
+                const wordsB = results[pidB].answers;
+
+                for (const itemA of wordsA) {
+                    for (const itemB of wordsB) {
+                        const matchResult = this.areEquivalentWithType(itemA.word, itemB.word);
+                        
+                        if (matchResult.match) {
+                            itemA.matches.push({
+                                playerId: pidB,
+                                name: players[pidB].name || pidB,
+                                type: matchResult.type,
+                                matchedWord: itemB.word
+                            });
+
+                            itemB.matches.push({
+                                playerId: pidA,
+                                name: players[pidA].name || pidA,
+                                type: matchResult.type,
+                                matchedWord: itemA.word
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        for (const playerResult of Object.values(results)) {
+            let points = 0;
+            playerResult.answers.forEach(ans => {
+                if (ans.matches.length > 0) {
+                    points += 1;
+                }
+            });
+            playerResult.scoreDelta = points;
+        }
+
+        if (this.debugMode) {
+            debug('🎏 calculateGlobalMatches completed', {
+                players: activePlayerIds.length,
+                totalWords: Object.values(results).reduce((sum, r) => sum + r.answers.length, 0)
+            }, 'debug');
+        }
+
+        return results;
+    }
+
     enableDebug() {
         this.debugMode = true;
         console.log('%c🔧 Word Equivalence Engine in DEBUG mode', 'color: #FF6600; font-weight: bold');
