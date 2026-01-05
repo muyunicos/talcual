@@ -40,7 +40,7 @@ class GameRepository {
     }
 
     private function reconstructState($gameRow, $playerRows) {
-        $data = json_decode($gameRow['data'], true) ?? [];
+        $complexData = json_decode($gameRow['data'] ?? '{}', true) ?? [];
 
         $state = [
             'game_id' => $gameRow['id'],
@@ -49,32 +49,49 @@ class GameRepository {
             'total_rounds' => (int)$gameRow['total_rounds'],
             'current_prompt' => $gameRow['current_prompt'],
             'current_category' => $gameRow['current_category'],
-            'selected_category' => $gameRow['selected_category'],
-            'min_players' => (int)$gameRow['min_players'],
-            'round_duration' => $gameRow['round_duration'] !== null ? (int)$gameRow['round_duration'] : null,
-            'countdown_duration' => $gameRow['countdown_duration'] !== null ? (int)$gameRow['countdown_duration'] : null,
             'round_started_at' => $gameRow['round_started_at'] !== null ? (int)$gameRow['round_started_at'] : null,
-            'round_starts_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_ends_at' => $gameRow['round_ends_at'] !== null ? (int)$gameRow['round_ends_at'] : null,
+            'created_at' => $gameRow['created_at'] !== null ? (int)$gameRow['created_at'] : null,
+            'min_players' => (int)$gameRow['min_players'],
+            'max_players' => (int)$gameRow['max_players'],
+            'round_duration' => (int)$gameRow['round_duration'],
+            'start_countdown' => (int)$gameRow['start_countdown'],
+            'hurry_up_threshold' => (int)$gameRow['hurry_up_threshold'],
+            'max_words_per_player' => (int)$gameRow['max_words_per_player'],
+            'max_word_length' => (int)$gameRow['max_word_length'],
             'last_update' => (int)$gameRow['updated_at'],
             '_updated_at' => (int)$gameRow['updated_at'],
             '_version' => 1
         ];
 
-        $state = array_merge($state, $data);
+        $state = array_merge($state, $complexData);
 
         $state['players'] = [];
         foreach ($playerRows as $playerRow) {
             $playerId = $playerRow['id'];
+            $roundHistory = json_decode($playerRow['round_history'] ?? '{}', true) ?? [];
+            $currentAnswers = json_decode($playerRow['current_answers'] ?? '[]', true) ?? [];
+
+            $score = 0;
+            if (is_array($roundHistory)) {
+                foreach ($roundHistory as $roundData) {
+                    if (is_array($roundData) && isset($roundData['score'])) {
+                        $score += (int)$roundData['score'];
+                    }
+                }
+            }
+
             $state['players'][$playerId] = [
                 'id' => $playerId,
                 'name' => $playerRow['name'],
-                'score' => (int)$playerRow['score'],
+                'score' => $score,
                 'status' => $playerRow['status'],
                 'color' => $playerRow['color'],
-                'answers' => json_decode($playerRow['answers'], true) ?? [],
-                'round_results' => json_decode($playerRow['round_results'], true) ?? [],
-                'disconnected' => (bool)$playerRow['disconnected']
+                'avatar' => $playerRow['avatar'],
+                'answers' => $currentAnswers,
+                'current_answers' => $currentAnswers,
+                'round_history' => $roundHistory,
+                'disconnected' => false
             ];
         }
 
@@ -95,28 +112,27 @@ class GameRepository {
             $state['_updated_at'] = $now;
             $state['_version'] = 1;
 
-            $nonRelationalFields = [
-                'used_prompts',
-                'round_details',
-                'round_top_words',
-                'game_history',
-                'roundData'
+            $complexData = [
+                'used_prompts' => $state['used_prompts'] ?? [],
+                'round_details' => $state['round_details'] ?? [],
+                'round_top_words' => $state['round_top_words'] ?? [],
+                'game_history' => $state['game_history'] ?? [],
+                'roundData' => $state['roundData'] ?? null,
+                'selected_category' => $state['selected_category'] ?? null
             ];
 
-            $dataToStore = [];
-            foreach ($nonRelationalFields as $field) {
-                if (isset($state[$field])) {
-                    $dataToStore[$field] = $state[$field];
-                }
-            }
+            $dataJson = json_encode($complexData, JSON_UNESCAPED_UNICODE);
 
-            $dataJson = json_encode($dataToStore, JSON_UNESCAPED_UNICODE);
+            $stmt = $pdo->prepare('
+                INSERT OR REPLACE INTO games (
+                    id, status, round, total_rounds, current_prompt, current_category,
+                    round_started_at, round_ends_at, created_at, updated_at,
+                    min_players, max_players, round_duration, start_countdown,
+                    hurry_up_threshold, max_words_per_player, max_word_length, data
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ');
 
-            $stmt = $pdo->prepare('INSERT OR REPLACE INTO games (
-                id, status, round, total_rounds, current_prompt, current_category, selected_category,
-                min_players, round_duration, countdown_duration, round_started_at, round_starts_at,
-                round_ends_at, data, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $createdAt = $state['created_at'] ?? $now;
 
             $stmt->execute([
                 $gameId,
@@ -125,39 +141,47 @@ class GameRepository {
                 (int)($state['total_rounds'] ?? 0),
                 $state['current_prompt'] ?? null,
                 $state['current_category'] ?? null,
-                $state['selected_category'] ?? null,
-                (int)($state['min_players'] ?? 2),
-                $state['round_duration'] ?? null,
-                $state['countdown_duration'] ?? null,
                 $state['round_started_at'] ?? null,
-                $state['round_starts_at'] ?? null,
                 $state['round_ends_at'] ?? null,
-                $dataJson,
-                $now
+                $createdAt,
+                $now,
+                (int)($state['min_players'] ?? 2),
+                (int)($state['max_players'] ?? 8),
+                (int)($state['round_duration'] ?? 60),
+                (int)($state['start_countdown'] ?? 5),
+                (int)($state['hurry_up_threshold'] ?? 10),
+                (int)($state['max_words_per_player'] ?? 5),
+                (int)($state['max_word_length'] ?? 20),
+                $dataJson
             ]);
 
-            if (isset($state['players']) && is_array($state['players'])) {
-                $stmt = $pdo->prepare('DELETE FROM players WHERE game_id = ?');
-                $stmt->execute([$gameId]);
+            $stmt = $pdo->prepare('DELETE FROM players WHERE game_id = ?');
+            $stmt->execute([$gameId]);
 
-                $insertStmt = $pdo->prepare('INSERT INTO players (
-                    id, game_id, name, score, status, color, answers, round_results, disconnected
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            if (isset($state['players']) && is_array($state['players'])) {
+                $insertStmt = $pdo->prepare('
+                    INSERT INTO players (
+                        id, game_id, name, color, avatar, status,
+                        current_answers, round_history
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ');
 
                 foreach ($state['players'] as $playerId => $player) {
-                    $answersJson = json_encode($player['answers'] ?? [], JSON_UNESCAPED_UNICODE);
-                    $resultsJson = json_encode($player['round_results'] ?? [], JSON_UNESCAPED_UNICODE);
+                    $currentAnswers = $player['current_answers'] ?? $player['answers'] ?? [];
+                    $roundHistory = $player['round_history'] ?? [];
+
+                    $currentAnswersJson = json_encode($currentAnswers, JSON_UNESCAPED_UNICODE);
+                    $roundHistoryJson = json_encode($roundHistory, JSON_UNESCAPED_UNICODE);
 
                     $insertStmt->execute([
                         $playerId,
                         $gameId,
                         $player['name'] ?? 'Jugador',
-                        (int)($player['score'] ?? 0),
-                        $player['status'] ?? 'connected',
                         $player['color'] ?? null,
-                        $answersJson,
-                        $resultsJson,
-                        (int)(bool)($player['disconnected'] ?? false)
+                        $player['avatar'] ?? null,
+                        $player['status'] ?? 'connected',
+                        $currentAnswersJson,
+                        $roundHistoryJson
                     ]);
                 }
             }
