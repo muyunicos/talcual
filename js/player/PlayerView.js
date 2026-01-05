@@ -24,52 +24,37 @@ class PlayerView {
       maxWordsDisplay: getElement('max-words'),
       btnSubmit: getElement('btn-submit'),
       resultsSection: getElement('results-section'),
-      countdownOverlay: document.getElementById('countdown-overlay'),
-      countdownNumber: document.getElementById('countdown-number'),
+      countdownOverlay: getElement('countdown-overlay'),
+      countdownNumber: getElement('countdown-number'),
       playerNameDisplay: getElement('player-name-display')
     };
 
-    if (elements.maxWordsDisplay) {
-      elements.maxWordsDisplay.textContent = this.maxWords;
-    }
-
-    if (elements.headerTimer) {
-      elements.headerTimer.textContent = '⏳ 00:00';
-    }
+    this.elements.maxWordsDisplay.textContent = this.maxWords;
+    this.elements.headerTimer.textContent = '⏳ 00:00';
 
     return elements;
   }
 
   initializeVisibility() {
-    if (this.elements.countdownOverlay) {
-      safeHideElement(this.elements.countdownOverlay);
-    }
+    safeHideElement(this.elements.countdownOverlay);
   }
 
   bindAddWord(handler) {
-    if (this.elements.btnAddWord) {
-      this.elements.btnAddWord.addEventListener('click', () => handler());
-    }
+    this.elements.btnAddWord.addEventListener('click', () => handler());
   }
 
   bindKeyPressInInput(handler) {
-    if (this.elements.currentWordInput) {
-      this.elements.currentWordInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handler();
-      });
-    }
+    this.elements.currentWordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handler();
+    });
   }
 
   bindInputEvent(handler) {
-    if (this.elements.currentWordInput) {
-      this.elements.currentWordInput.addEventListener('input', () => handler());
-    }
+    this.elements.currentWordInput.addEventListener('input', () => handler());
   }
 
   bindSubmit(handler) {
-    if (this.elements.btnSubmit) {
-      this.elements.btnSubmit.addEventListener('click', () => handler());
-    }
+    this.elements.btnSubmit.addEventListener('click', () => handler());
   }
 
   showJoinScreen() {
@@ -171,25 +156,19 @@ class PlayerView {
     ModalSystem_Instance.close(1);
     safeShowElement(this.elements.gameScreen);
 
-    if (this.elements.headerCode) this.elements.headerCode.textContent = gameCode;
-    if (this.elements.playerNameDisplay) this.elements.playerNameDisplay.textContent = playerName;
+    this.elements.headerCode.textContent = gameCode;
+    this.elements.playerNameDisplay.textContent = playerName;
   }
 
   setRoundInfo(round, total) {
-    if (this.elements.headerRound) {
-      this.elements.headerRound.textContent = `Ronda ${round}/${total}`;
-    }
+    this.elements.headerRound.textContent = `Ronda ${round}/${total}`;
   }
 
   setPlayerScore(score) {
-    if (this.elements.playerScore) {
-      this.elements.playerScore.textContent = score + ' pts';
-    }
+    this.elements.playerScore.textContent = score + ' pts';
   }
 
   updateTimer(remaining, totalDuration) {
-    if (!this.elements.headerTimer) return;
-
     if (remaining === null || remaining === undefined) {
       this.elements.headerTimer.textContent = '⏳ --:--';
       this.elements.headerTimer.style.opacity = '1';
@@ -216,19 +195,15 @@ class PlayerView {
   }
 
   clearTimer() {
-    if (this.elements.headerTimer) {
-      this.elements.headerTimer.textContent = '⏳ 00:00';
-      this.elements.headerTimer.style.opacity = '1';
-    }
+    this.elements.headerTimer.textContent = '⏳ 00:00';
+    this.elements.headerTimer.style.opacity = '1';
   }
 
   showWaitingState() {
     safeHideElement(this.elements.currentWord);
     safeHideElement(this.elements.categoryLabel);
     safeShowElement(this.elements.waitingMessage);
-    if (this.elements.waitingMessage) {
-      this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
-    }
+    this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
     safeHideElement(this.elements.wordsInputSection);
     safeHideElement(this.elements.resultsSection);
     safeHideElement(this.elements.countdownOverlay);
@@ -239,19 +214,15 @@ class PlayerView {
     safeHideElement(this.elements.resultsSection);
     safeHideElement(this.elements.waitingMessage);
 
-    if (this.elements.currentWord) this.elements.currentWord.classList.remove('hidden');
-    if (this.elements.wordsInputSection) this.elements.wordsInputSection.classList.remove('hidden');
+    this.elements.currentWord.classList.remove('hidden');
+    this.elements.wordsInputSection.classList.remove('hidden');
 
-    if (this.elements.currentWord) {
-      this.elements.currentWord.textContent = currentWord || '???';
-      safeShowElement(this.elements.currentWord);
-    }
+    this.elements.currentWord.textContent = currentWord || '???';
+    safeShowElement(this.elements.currentWord);
 
     if (category) {
-      if (this.elements.categoryLabel) {
-        this.elements.categoryLabel.textContent = `Categoría: ${category}`;
-        safeShowElement(this.elements.categoryLabel);
-      }
+      this.elements.categoryLabel.textContent = `Categoría: ${category}`;
+      safeShowElement(this.elements.categoryLabel);
     } else {
       safeHideElement(this.elements.categoryLabel);
     }
@@ -266,95 +237,70 @@ class PlayerView {
   setEditableMode(hasAnswers) {
     const isAtMax = hasAnswers >= this.maxWords;
 
-    if (this.elements.currentWordInput) {
-      this.elements.currentWordInput.disabled = isAtMax;
-      this.elements.currentWordInput.placeholder = isAtMax
-        ? `Máximo ${this.maxWords} palabras`
-        : 'Ingresa una palabra...';
-    }
+    this.elements.currentWordInput.disabled = isAtMax;
+    this.elements.currentWordInput.placeholder = isAtMax
+      ? `Máximo ${this.maxWords} palabras`
+      : 'Ingresa una palabra...';
 
-    if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
+    this.elements.btnAddWord.disabled = false;
 
-    if (this.elements.btnSubmit) {
-      this.elements.btnSubmit.disabled = false;
-      this.updateFinishButtonText(hasAnswers);
-    }
+    this.elements.btnSubmit.disabled = false;
+    this.updateFinishButtonText(hasAnswers);
 
     safeHideElement(this.elements.waitingMessage);
     safeShowElement(this.elements.wordsInputSection);
 
-    if (this.elements.wordsListContainer) {
-      this.elements.wordsListContainer.classList.remove('read-only');
-    }
+    this.elements.wordsListContainer.classList.remove('read-only');
   }
 
   setReadOnlyMode() {
-    if (this.elements.currentWordInput) {
-      this.elements.currentWordInput.disabled = true;
-      this.elements.currentWordInput.placeholder = '✅ Terminaste';
-    }
-    if (this.elements.btnAddWord) this.elements.btnAddWord.disabled = false;
-    if (this.elements.btnSubmit) {
-      this.elements.btnSubmit.disabled = false;
-      this.elements.btnSubmit.textContent = '👏 LISTO';
-    }
+    this.elements.currentWordInput.disabled = true;
+    this.elements.currentWordInput.placeholder = '✅ Terminaste';
+    this.elements.btnAddWord.disabled = false;
+    this.elements.btnSubmit.disabled = false;
+    this.elements.btnSubmit.textContent = '👏 LISTO';
 
-    if (this.elements.waitingMessage) {
-      this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
-      safeShowElement(this.elements.waitingMessage);
-    }
+    this.elements.waitingMessage.textContent = 'Esperando a los demás jugadores...';
+    safeShowElement(this.elements.waitingMessage);
 
-    if (this.elements.wordsListContainer) {
-      this.elements.wordsListContainer.classList.add('read-only');
-    }
+    this.elements.wordsListContainer.classList.add('read-only');
   }
 
   updateWordChips(words) {
-    if (this.elements.wordCount) {
-      this.elements.wordCount.textContent = words.length;
-    }
+    this.elements.wordCount.textContent = words.length;
 
     if (words.length > 0) {
-      if (this.elements.wordsListContainer) this.elements.wordsListContainer.classList.remove('hidden');
+      this.elements.wordsListContainer.classList.remove('hidden');
       safeShowElement(this.elements.wordsListContainer);
 
-      if (this.elements.wordsList) {
-        this.elements.wordsList.innerHTML = words.map((word, idx) => `
-          <div class="word-item" onclick="playerManager.removeWord(${idx})">
-            <span class="word-text">${sanitizeText(word)}</span>
-            <span class="word-delete">✍️</span>
-          </div>
-        `).join('');
-      }
+      this.elements.wordsList.innerHTML = words.map((word, idx) => `
+        <div class="word-item" onclick="playerManager.removeWord(${idx})">
+          <span class="word-text">${sanitizeText(word)}</span>
+          <span class="word-delete">✍️</span>
+        </div>
+      `).join('');
     } else {
       safeHideElement(this.elements.wordsListContainer);
     }
   }
 
   getInputValue() {
-    return this.elements.currentWordInput ? this.elements.currentWordInput.value.trim() : '';
+    return this.elements.currentWordInput.value.trim();
   }
 
   setInputValue(value) {
-    if (this.elements.currentWordInput) {
-      this.elements.currentWordInput.value = value;
-    }
+    this.elements.currentWordInput.value = value;
   }
 
   clearInput() {
-    if (this.elements.currentWordInput) {
-      this.elements.currentWordInput.value = '';
-    }
+    this.elements.currentWordInput.value = '';
   }
 
   focusInput() {
-    if (this.elements.currentWordInput) {
-      this.elements.currentWordInput.focus();
-    }
+    this.elements.currentWordInput.focus();
   }
 
   updateFinishButtonText(wordCount) {
-    if (!this.elements.btnSubmit) return;
     if (wordCount === this.maxWords) {
       this.elements.btnSubmit.textContent = '✍️ ENVÍAR';
     } else {
@@ -371,9 +317,7 @@ class PlayerView {
     this.clearTimer();
 
     if (!matches || matches.length === 0) {
-      if (this.elements.resultsSection) {
-        this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
-      }
+      this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
       safeShowElement(this.elements.resultsSection);
       return;
     }
@@ -397,10 +341,7 @@ class PlayerView {
       html += resultHtml;
     }
 
-    if (this.elements.resultsSection) {
-      this.elements.resultsSection.innerHTML = html;
-    }
-
+    this.elements.resultsSection.innerHTML = html;
     safeShowElement(this.elements.resultsSection);
   }
 
@@ -415,13 +356,9 @@ class PlayerView {
     if (!myResults || Object.keys(myResults).length === 0) {
       const sentAnswers = myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0;
       if (!sentAnswers) {
-        if (this.elements.resultsSection) {
-          this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
-        }
+        this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
       } else {
-        if (this.elements.resultsSection) {
-          this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
-        }
+        this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
       }
     } else {
       let html = '<div class="results-title">📊 Tus Resultados</div>';
@@ -441,42 +378,26 @@ class PlayerView {
       });
 
       html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
-
-      if (this.elements.resultsSection) {
-        this.elements.resultsSection.innerHTML = html;
-      }
+      this.elements.resultsSection.innerHTML = html;
     }
 
     safeShowElement(this.elements.resultsSection);
   }
 
   showFinalResults() {
-    if (this.elements.waitingMessage) {
-      this.elements.waitingMessage.textContent = '🎉 ¡Juego terminado!';
-      safeShowElement(this.elements.waitingMessage);
-    }
+    this.elements.waitingMessage.textContent = '🎉 ¡Juego terminado!';
+    safeShowElement(this.elements.waitingMessage);
   }
 
   showCountdownOverlay() {
-    if (this.elements.countdownOverlay) {
-      safeShowElement(this.elements.countdownOverlay);
-    } else {
-      debug('⚠️ [PlayerView] countdownOverlay element not found, skipping show', null, 'warn');
-    }
+    safeShowElement(this.elements.countdownOverlay);
   }
 
   hideCountdownOverlay() {
-    if (this.elements.countdownOverlay) {
-      safeHideElement(this.elements.countdownOverlay);
-    }
+    safeHideElement(this.elements.countdownOverlay);
   }
 
   updateCountdownNumber(seconds) {
-    if (!this.elements.countdownNumber) {
-      debug('⚠️ [PlayerView] countdownNumber element not found, skipping update', null, 'warn');
-      return;
-    }
-
     if (seconds > 3) {
       this.elements.countdownNumber.textContent = '¿Preparado?';
     } else if (seconds > 0) {
