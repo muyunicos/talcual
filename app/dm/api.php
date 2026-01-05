@@ -73,8 +73,8 @@ class DictionaryManager {
         try {
             $sql = 'SELECT 
                 p.id, p.text,
-                GROUP_CONCAT(pc.category_id, ",") as category_ids,
-                COUNT(vw.id) as word_count
+                GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids,
+                COUNT(DISTINCT vw.id) as word_count
             FROM prompts p
             JOIN prompt_categories pc ON p.id = pc.prompt_id
             LEFT JOIN valid_words vw ON p.id = vw.prompt_id
@@ -101,7 +101,7 @@ class DictionaryManager {
         try {
             if ($categoryId) {
                 $stmt = $this->pdo->prepare(
-                    'SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids '
+                    'SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids '
                     . 'FROM prompts p '
                     . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
                     . 'WHERE pc.category_id = ? '
@@ -111,7 +111,7 @@ class DictionaryManager {
                 $stmt->execute([$categoryId]);
             } else {
                 $stmt = $this->pdo->query(
-                    'SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids '
+                    'SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids '
                     . 'FROM prompts p '
                     . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
                     . 'GROUP BY p.id, p.text '
@@ -133,7 +133,7 @@ class DictionaryManager {
     public function getPromptById($promptId) {
         try {
             $stmt = $this->pdo->prepare(
-                'SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids '
+                'SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids '
                 . 'FROM prompts p '
                 . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
                 . 'WHERE p.id = ? '
@@ -384,7 +384,7 @@ class DictionaryManager {
         try {
             $inspection = [
                 'categories' => $this->pdo->query('SELECT id, name FROM categories ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
-                'prompts' => $this->pdo->query('SELECT p.id, p.text, GROUP_CONCAT(pc.category_id, ",") as category_ids FROM prompts p LEFT JOIN prompt_categories pc ON p.id = pc.prompt_id GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
+                'prompts' => $this->pdo->query('SELECT p.id, p.text, GROUP_CONCAT(DISTINCT pc.category_id, ",") as category_ids FROM prompts p LEFT JOIN prompt_categories pc ON p.id = pc.prompt_id GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
                 'words' => $this->pdo->query('SELECT id, prompt_id, word_entry FROM valid_words ORDER BY prompt_id, id')->fetchAll(PDO::FETCH_ASSOC),
                 'games' => $this->pdo->query('SELECT id, status, round, updated_at FROM games ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
                 'players' => $this->pdo->query('SELECT id, game_id, name, score FROM players ORDER BY game_id, id')->fetchAll(PDO::FETCH_ASSOC),
