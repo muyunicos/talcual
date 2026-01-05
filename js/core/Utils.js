@@ -1,22 +1,24 @@
-function safeGetElement(id) {
+function getElement(id) {
     const el = document.getElementById(id);
     if (!el) {
-        console.warn(`Element with id "${id}" not found`);
+        throw new Error(`Required DOM element "${id}" not found.`);
     }
     return el;
 }
 
 function safeShowElement(el) {
-    if (el) {
-        el.classList.remove('hidden');
-        el.style.display = '';
+    if (!el) {
+        throw new Error('Cannot show element: element is null or undefined');
     }
+    el.classList.remove('hidden');
+    el.style.display = '';
 }
 
 function safeHideElement(el) {
-    if (el) {
-        el.classList.add('hidden');
+    if (!el) {
+        throw new Error('Cannot hide element: element is null or undefined');
     }
+    el.classList.add('hidden');
 }
 
 function sanitizeText(text) {
