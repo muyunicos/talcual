@@ -102,9 +102,7 @@
         
         .tree-category:hover { background: #f0f0f0; }
         
-        .tree-category.expanded ~ .tree-clues { display: block; }
-        
-        .tree-category .toggle { width: 20px; text-align: center; }
+        .tree-category .toggle { width: 20px; text-align: center; user-select: none; }
         .tree-category .name { flex: 1; font-weight: 600; }
         .tree-category .count { font-size: 12px; color: #999; }
         .tree-category .actions { display: flex; gap: 5px; }
@@ -115,6 +113,8 @@
             border-left: 3px solid #667eea;
             margin-left: 0;
         }
+        
+        .tree-clues.visible { display: block; }
         
         .tree-clue {
             padding: 12px 15px 12px 30px;
@@ -127,10 +127,22 @@
         }
         
         .tree-clue:hover { background: #f9f9f9; }
+        .tree-clue.dragging { opacity: 0.5; background: #fffbea; }
         
         .tree-clue .pregunta { flex: 1; }
         .tree-clue .respuesta-count { font-size: 11px; color: #999; }
         .tree-clue .actions { display: flex; gap: 5px; }
+        
+        .tree-clue-add {
+            padding: 10px 15px 10px 30px;
+            font-size: 12px;
+            color: #667eea;
+            cursor: pointer;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .tree-clue-add:hover { background: #f9f9f9; }
         
         button {
             padding: 8px 12px;
@@ -175,10 +187,29 @@
             cursor: pointer;
             font-size: 13px;
             transition: all 0.2s;
+            border: none;
         }
         
         .btn-icon:hover { background: #e0e0e0; }
         .btn-icon.delete:hover { background: #ffebee; color: #c62828; }
+        
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .toolbar-label { font-size: 12px; font-weight: 600; }
+        
+        .toolbar select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
         
         .sidebar {
             display: flex;
@@ -265,7 +296,7 @@
         }
         
         .modal-header h2 { font-size: 16px; }
-        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; }
         
         .modal-body { padding: 20px; }
         .modal-footer { padding: 15px 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; justify-content: flex-end; }
@@ -297,6 +328,25 @@
             min-height: 100px;
             font-family: 'Monaco', monospace;
         }
+        
+        .clue-select {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .clue-select-item {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .clue-select-item:hover { background: #f9f9f9; }
+        .clue-select-item input { cursor: pointer; }
         
         .search-box {
             width: 100%;
@@ -336,7 +386,6 @@
                 <div id="explorer" class="tab-content active">
                     <div class="panel-body">
                         <div style="margin-bottom: 15px;">
-                            <input type="text" class="search-box" id="searchBox" placeholder="Buscar categorías o consignas...">
                             <button class="btn-primary" onclick="showNewCategoryModal()">+ Nueva Categoría</button>
                         </div>
                         <ul class="tree" id="tree"></ul>
@@ -353,11 +402,11 @@
                             <label>Importar archivo JSON</label>
                             <input type="file" id="fileInput" accept=".json">
                         </div>
-                        <div id="importPreview" style="background: #f8f9fa; padding: 15px; border-radius: 4px; display: none;">
-                            <p style="font-size: 12px; margin-bottom: 10px;"><strong>Preview:</strong></p>
-                            <pre id="importPreviewContent" style="font-size: 11px; max-height: 300px; overflow-y: auto;"></pre>
+                        <div id="importPreview" style="background: #f8f9fa; padding: 15px; border-radius: 4px; display: none; margin-bottom: 15px;">
+                            <p style="font-size: 12px; font-weight: 600; margin-bottom: 10px;">Preview de cambios:</p>
+                            <div id="importPreviewContent" style="font-size: 11px; max-height: 300px; overflow-y: auto;"></div>
                         </div>
-                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 10px;">
                             <button class="btn-primary" onclick="importJSON()">Importar</button>
                             <button class="btn-secondary" onclick="exportJSON()">Exportar</button>
                         </div>
@@ -398,10 +447,10 @@
             <div class="sidebar-panel">
                 <h3>⚜️ Ayuda</h3>
                 <div class="sidebar-panel-body">
-                    <p><strong>Arrastrar:</strong> Reordena categorías</p>
-                    <p><strong>Editar:</strong> Modifica consignas y respuestas</p>
-                    <p><strong>Eliminar:</strong> Quita de categoría (no borra la consigna)</p>
-                    <p><strong>Raw JSON:</strong> Edita datos crudos</p>
+                    <p><strong>+:</strong> Agregar (categoría o consigna)</p>
+                    <p><strong>✎:</strong> Editar pregunta</p>
+                    <p><strong>↑↓:</strong> Mover consigna</p>
+                    <p><strong>🗑:</strong> Quitar de categoría</p>
                 </div>
             </div>
         </div>
@@ -416,7 +465,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>Nombre de la categoría</label>
+                    <label>Nombre</label>
                     <input type="text" id="newCatName" placeholder="Ej: AMOR Y CITAS ❤️">
                 </div>
             </div>
@@ -437,11 +486,11 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label>Pregunta</label>
-                    <textarea id="newCluePregunta" placeholder="Ej: Un lugar para una primera cita"></textarea>
+                    <textarea id="newCluePregunta"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Respuestas (una por línea, con | para sinónimos)</label>
-                    <textarea id="newClueRespuestas" placeholder="CINE&#10;BAR|BARCITO&#10;RESTAURANTE|COMEDOR"></textarea>
+                    <label>Respuestas (una por línea, usa | para sinónimos)</label>
+                    <textarea id="newClueRespuestas"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -467,10 +516,50 @@
                     <label>Respuestas (una por línea)</label>
                     <textarea id="editClueRespuestas"></textarea>
                 </div>
+                <button class="btn-secondary btn-sm" onclick="deleteClueCompletely()" style="background: #ffebee; color: #c62828;">Eliminar completamente</button>
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeModal('editClueModal')">Cancelar</button>
                 <button class="btn-primary" onclick="saveEditClue()">Guardar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Editar Categoría -->
+    <div class="modal" id="editCategoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editar Categoría</h2>
+                <button class="modal-close" onclick="closeModal('editCategoryModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="editCatName">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('editCategoryModal')">Cancelar</button>
+                <button class="btn-primary" onclick="saveEditCategory()">Guardar</button>
+                <button class="btn-secondary btn-sm" onclick="deleteCategory()" style="background: #ffebee; color: #c62828;">Eliminar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Agregar Consigna Existente -->
+    <div class="modal" id="addExistingClueModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Consigna Existente</h2>
+                <button class="modal-close" onclick="closeModal('addExistingClueModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="clueSearchBox" placeholder="Buscar consigna..." class="search-box" oninput="filterClueList()">
+                <div class="clue-select" id="clueSelectList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('addExistingClueModal')">Cancelar</button>
+                <button class="btn-primary" onclick="addSelectedClues()">Agregar</button>
             </div>
         </div>
     </div>
@@ -479,18 +568,19 @@
         let db = { categorias: {}, consignas: {} };
         let currentEditingClue = null;
         let currentEditingCategory = null;
+        let currentCategoryForAdd = null;
+        let draggedClue = null;
+        let draggedFromCat = null;
         
         async function loadDB() {
             try {
                 const res = await fetch('dmanager.php?action=get-db');
                 const result = await res.json();
-                if (result.success) {
+                if (result.success && result.data) {
                     db = result.data;
                     renderTree();
                     updateStats();
-                    loadRawJSON();
                 } else {
-                    showMessage('Base de datos vacía', 'success');
                     db = { categorias: {}, consignas: {} };
                 }
             } catch (err) {
@@ -512,52 +602,91 @@
             
             tree.innerHTML = categories.map(([catName, catData]) => `
                 <li class="tree-item">
-                    <div class="tree-category" onclick="toggleCategory(this)" draggable="true" ondragstart="dragCategory(event, '${catName}')">
+                    <div class="tree-category" onclick="toggleCategory(this)">
                         <span class="toggle">▶</span>
                         <span class="name">${catName}</span>
-                        <span class="count">${catData.consignas.length} consignas</span>
+                        <span class="count">${catData.consignas.length}</span>
                         <div class="actions">
-                            <span class="btn-icon" onclick="event.stopPropagation(); showNewClueModal('${catName}')" title="+ Consigna">+</span>
+                            <span class="btn-icon" onclick="event.stopPropagation(); showAddExistingClueModal('${catName}')" title="+ Consigna existente">+</span>
+                            <span class="btn-icon" onclick="event.stopPropagation(); showNewClueModal('${catName}')" title="+ Nueva consigna">🌟</span>
+                            <span class="btn-icon" onclick="event.stopPropagation(); showEditCategoryModal('${catName}')" title="Editar">✎</span>
                             <span class="btn-icon delete" onclick="event.stopPropagation(); deleteCategory('${catName}')" title="Eliminar">🗑</span>
                         </div>
                     </div>
                     <ul class="tree-clues">
-                        ${catData.consignas.map(clueId => {
+                        ${catData.consignas.map((clueId, idx) => {
                             const clue = db.consignas[clueId];
                             if (!clue) return '';
-                            const pregunta = clue.pregunta.substring(0, 50) + (clue.pregunta.length > 50 ? '...' : '');
+                            const pregunta = clue.pregunta.substring(0, 40) + (clue.pregunta.length > 40 ? '...' : '');
                             return `
-                                <li class="tree-clue">
+                                <li class="tree-clue" draggable="true" 
+                                    ondragstart="startDragClue('${catName}', '${clueId}', event)"
+                                    ondragover="dragOver(event)"
+                                    ondrop="dropClue('${catName}', event)">
                                     <span class="pregunta">${pregunta}</span>
-                                    <span class="respuesta-count">${clue.respuestas.length} resp</span>
+                                    <span class="respuesta-count">${clue.respuestas.length}</span>
                                     <div class="actions">
-                                        <span class="btn-icon" onclick="editClue('${clueId}')" title="Editar">✎</span>
-                                        <span class="btn-icon delete" onclick="removeClueFromCategory('${catName}', '${clueId}')" title="Quitar">🗑</span>
+                                        <span class="btn-icon" onclick="event.stopPropagation(); moveClue('${catName}', '${clueId}', -1)" title="↑">↑</span>
+                                        <span class="btn-icon" onclick="event.stopPropagation(); moveClue('${catName}', '${clueId}', 1)" title="↓">↓</span>
+                                        <span class="btn-icon" onclick="event.stopPropagation(); editClue('${clueId}')" title="Editar">✎</span>
+                                        <span class="btn-icon delete" onclick="event.stopPropagation(); removeClueFromCategory('${catName}', '${clueId}')" title="Quitar">🗑</span>
                                     </div>
                                 </li>
                             `;
                         }).join('')}
+                        <li class="tree-clue-add" onclick="showNewClueModal('${catName}')">
+                            <span>+</span> Agregar consigna
+                        </li>
                     </ul>
                 </li>
             `).join('');
         }
         
         function toggleCategory(el) {
+            const isExpanded = el.classList.contains('expanded');
             el.classList.toggle('expanded');
-            el.querySelector('.toggle').textContent = el.classList.contains('expanded') ? '▼' : '▶';
+            el.querySelector('.toggle').textContent = isExpanded ? '▶' : '▼';
+            el.nextElementSibling.classList.toggle('visible');
         }
         
-        function dragCategory(e, catName) {
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text', catName);
+        function startDragClue(catName, clueId, event) {
+            draggedClue = clueId;
+            draggedFromCat = catName;
+            event.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function dragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+        }
+        
+        function dropClue(catName, event) {
+            event.preventDefault();
+            if (!draggedClue || draggedFromCat !== catName) return;
+            draggedClue = null;
+            draggedFromCat = null;
+        }
+        
+        function moveClue(catName, clueId, direction) {
+            const clues = db.categorias[catName].consignas;
+            const idx = clues.indexOf(clueId);
+            const newIdx = idx + direction;
+            
+            if (newIdx >= 0 && newIdx < clues.length) {
+                [clues[idx], clues[newIdx]] = [clues[newIdx], clues[idx]];
+                saveDB().then(() => renderTree());
+            }
         }
         
         async function showNewClueModal(catName = null) {
             currentEditingCategory = catName;
+            document.getElementById('newCluePregunta').value = '';
+            document.getElementById('newClueRespuestas').value = '';
             document.getElementById('newClueModal').classList.add('show');
         }
         
         function showNewCategoryModal() {
+            document.getElementById('newCatName').value = '';
             document.getElementById('newCategoryModal').classList.add('show');
         }
         
@@ -577,7 +706,6 @@
             db.categorias[name] = { orden, consignas: [] };
             await saveDB();
             closeModal('newCategoryModal');
-            document.getElementById('newCatName').value = '';
             renderTree();
             updateStats();
         }
@@ -587,7 +715,7 @@
             const respuestasText = document.getElementById('newClueRespuestas').value.trim();
             
             if (!pregunta || !respuestasText) {
-                showMessage('Pregunta y respuestas son obligatorias', 'error');
+                showMessage('Pregunta y respuestas requeridas', 'error');
                 return;
             }
             
@@ -606,8 +734,6 @@
             
             await saveDB();
             closeModal('newClueModal');
-            document.getElementById('newCluePregunta').value = '';
-            document.getElementById('newClueRespuestas').value = '';
             renderTree();
             updateStats();
         }
@@ -629,7 +755,7 @@
             const respuestasText = document.getElementById('editClueRespuestas').value.trim();
             
             if (!pregunta || !respuestasText) {
-                showMessage('Pregunta y respuestas son obligatorias', 'error');
+                showMessage('Pregunta y respuestas requeridas', 'error');
                 return;
             }
             
@@ -643,10 +769,17 @@
             updateStats();
         }
         
-        function deleteCategory(catName) {
-            if (!confirm(`¿Eliminar categoría "${catName}"? (Las consignas se conservarán)`)) return;
-            delete db.categorias[catName];
+        function deleteClueCompletely() {
+            if (!currentEditingClue) return;
+            if (!confirm('Eliminar completamente esta consigna de TODAS las categorías?')) return;
+            
+            for (const cat of Object.values(db.categorias)) {
+                cat.consignas = cat.consignas.filter(id => id !== currentEditingClue);
+            }
+            delete db.consignas[currentEditingClue];
+            
             saveDB().then(() => {
+                closeModal('editClueModal');
                 renderTree();
                 updateStats();
             });
@@ -655,10 +788,97 @@
         function removeClueFromCategory(catName, clueId) {
             if (!db.categorias[catName]) return;
             db.categorias[catName].consignas = db.categorias[catName].consignas.filter(id => id !== clueId);
+            saveDB().then(() => renderTree());
+        }
+        
+        function showEditCategoryModal(catName) {
+            currentEditingCategory = catName;
+            document.getElementById('editCatName').value = catName;
+            document.getElementById('editCategoryModal').classList.add('show');
+        }
+        
+        async function saveEditCategory() {
+            if (!currentEditingCategory) return;
+            
+            const newName = document.getElementById('editCatName').value.trim();
+            if (!newName) {
+                showMessage('El nombre no puede estar vacío', 'error');
+                return;
+            }
+            
+            if (newName !== currentEditingCategory && db.categorias[newName]) {
+                showMessage('La categoría ya existe', 'error');
+                return;
+            }
+            
+            if (newName !== currentEditingCategory) {
+                db.categorias[newName] = db.categorias[currentEditingCategory];
+                delete db.categorias[currentEditingCategory];
+            }
+            
+            await saveDB();
+            closeModal('editCategoryModal');
+            renderTree();
+            updateStats();
+        }
+        
+        function deleteCategory(catName = currentEditingCategory) {
+            if (!catName) return;
+            if (!confirm(`¿Eliminar categoría "${catName}"? (Las consignas se conservarán)`)) return;
+            
+            delete db.categorias[catName];
             saveDB().then(() => {
+                closeModal('editCategoryModal');
                 renderTree();
                 updateStats();
             });
+        }
+        
+        function showAddExistingClueModal(catName) {
+            currentCategoryForAdd = catName;
+            populateClueSelectList();
+            document.getElementById('addExistingClueModal').classList.add('show');
+        }
+        
+        function populateClueSelectList() {
+            const list = document.getElementById('clueSelectList');
+            const existingClues = new Set(db.categorias[currentCategoryForAdd]?.consignas || []);
+            
+            list.innerHTML = Object.entries(db.consignas).map(([clueId, clue]) => `
+                <div class="clue-select-item">
+                    <input type="checkbox" id="clue_${clueId}" value="${clueId}" ${existingClues.has(clueId) ? 'checked disabled' : ''}>
+                    <label for="clue_${clueId}" style="flex: 1; cursor: pointer;">${clue.pregunta.substring(0, 50)}</label>
+                </div>
+            `).join('');
+        }
+        
+        function filterClueList() {
+            const searchTerm = document.getElementById('clueSearchBox').value.toLowerCase();
+            document.querySelectorAll('.clue-select-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+            });
+        }
+        
+        async function addSelectedClues() {
+            const checked = document.querySelectorAll('#clueSelectList input:checked:not(:disabled)');
+            const clueIds = Array.from(checked).map(cb => cb.value);
+            
+            if (clueIds.length === 0) {
+                showMessage('Selecciona al menos una consigna', 'error');
+                return;
+            }
+            
+            clueIds.forEach(clueId => {
+                if (!db.categorias[currentCategoryForAdd].consignas.includes(clueId)) {
+                    db.categorias[currentCategoryForAdd].consignas.push(clueId);
+                }
+            });
+            
+            await saveDB();
+            closeModal('addExistingClueModal');
+            renderTree();
+            updateStats();
         }
         
         async function importJSON() {
