@@ -474,44 +474,6 @@ class PlayerManager extends BaseController {
     }
   }
 
-  calculateLocalMatches(myAnswers, allPlayers, myPlayerId) {
-    const matches = [];
-
-    if (!myAnswers || !Array.isArray(myAnswers) || myAnswers.length === 0) {
-      debug('⚠️ No hay respuestas para calcular', 'warn');
-      return matches;
-    }
-
-    for (const myWord of myAnswers) {
-      const myCanonical = this.getCanonicalForCompare(myWord);
-      const matchedPlayers = [];
-
-      for (const [otherPlayerId, otherPlayer] of Object.entries(allPlayers)) {
-        if (otherPlayerId === myPlayerId) continue;
-        if (!otherPlayer.answers || !Array.isArray(otherPlayer.answers)) continue;
-
-        for (const otherWord of otherPlayer.answers) {
-          const otherCanonical = this.getCanonicalForCompare(otherWord);
-          
-          if (myCanonical && otherCanonical && myCanonical === otherCanonical) {
-            matchedPlayers.push(otherPlayer.name || otherPlayerId);
-            break;
-          }
-        }
-      }
-
-      matches.push({
-        word: myWord,
-        matched: matchedPlayers.length > 0,
-        matchedPlayers: matchedPlayers,
-        count: matchedPlayers.length
-      });
-    }
-
-    debug('🎯 Coincidencias calculadas:', matches, 'debug');
-    return matches;
-  }
-
   ensureWordEngineInitialized(state) {
     if (!state.roundData || !state.roundData.validMatches) {
       debug('⚠️ No roundData disponible para inicializar WordEngine', 'warn');
@@ -525,32 +487,62 @@ class PlayerManager extends BaseController {
 
   showResults(state) {
     const me = state.players?.[this.playerId];
-    const myResults = me?.round_results;
-    const myAnswers = me?.answers;
+    if (!me) return;
 
     this.ensureWordEngineInitialized(state);
 
-    if (state.status === 'round_ended' && myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0) {
-      debug('🔍 Calculando coincidencias localmente en round_ended', 'debug');
-      const localMatches = this.calculateLocalMatches(myAnswers, state.players, this.playerId);
-      this.view.showRoundResults(localMatches, state.players, me?.score || 0);
-    } else {
-      this.view.showResults(myResults, myAnswers, this.isReady);
+    const globalResults = wordEngine.calculateGlobalMatches(
+        state.players,
+        state.roundData
+    );
+
+    const myResultData = globalResults[this.playerId];
+
+    if (state.status === 'round_ended' || state.status === 'finished') {
+      if (myResultData && myResultData.answers.length > 0) {
+        const formattedMatches = myResultData.answers.map(ans => ({
+            word: ans.word,
+            matched: ans.matches.length > 0,
+            matchedPlayers: ans.matches.map(m => m.name),
+            count: ans.matches.length,
+            matchType: ans.matches[0]?.type
+        }));
+
+        const currentScore = me.score || 0;
+        
+        this.view.showRoundResults(formattedMatches, state.players, currentScore);
+      } else {
+        this.view.showResults(null, [], this.isReady);
+      }
     }
   }
 
   showFinalResults(state) {
     const me = state.players?.[this.playerId];
-    const myAnswers = me?.answers;
+    if (!me) return;
 
     this.ensureWordEngineInitialized(state);
 
-    if (myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0) {
-      debug('🏁 Calculando coincidencias finales en finished', 'debug');
-      const localMatches = this.calculateLocalMatches(myAnswers, state.players, this.playerId);
-      this.view.showRoundResults(localMatches, state.players, me?.score || 0);
+    const globalResults = wordEngine.calculateGlobalMatches(
+        state.players,
+        state.roundData
+    );
+
+    const myResultData = globalResults[this.playerId];
+
+    if (myResultData && myResultData.answers.length > 0) {
+      const formattedMatches = myResultData.answers.map(ans => ({
+          word: ans.word,
+          matched: ans.matches.length > 0,
+          matchedPlayers: ans.matches.map(m => m.name),
+          count: ans.matches.length,
+          matchType: ans.matches[0]?.type
+      }));
+
+      const currentScore = me.score || 0;
+      this.view.showRoundResults(formattedMatches, state.players, currentScore);
     } else {
-      this.view.showResults(me?.round_results, myAnswers, this.isReady);
+      this.view.showResults(me?.round_results, [], this.isReady);
     }
 
     this.view.showFinalResults();
