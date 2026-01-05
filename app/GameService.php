@@ -2,13 +2,60 @@
 
 class GameService {
     private $repository;
+    private $dictionaryRepository;
 
-    public function __construct(GameRepository $repository) {
+    public function __construct(GameRepository $repository, DictionaryRepository $dictionaryRepository = null) {
         $this->repository = $repository;
+        $this->dictionaryRepository = $dictionaryRepository ?? new DictionaryRepository();
+    }
+
+    private function generateGameCode() {
+        $categories = $this->dictionaryRepository->getCategories();
+        
+        if (empty($categories)) {
+            $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            do {
+                $code = '';
+                for ($i = 0; $i < 4; $i++) {
+                    $code .= $chars[rand(0, strlen($chars) - 1)];
+                }
+            } while ($this->repository->exists($code));
+            
+            return $code;
+        }
+        
+        $roomCodeCandidates = [];
+        
+        foreach ($categories as $category) {
+            $word = $this->dictionaryRepository->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+            
+            if ($word && !$this->repository->exists($word)) {
+                $roomCodeCandidates[] = $word;
+            }
+        }
+        
+        if (!empty($roomCodeCandidates)) {
+            return $roomCodeCandidates[array_rand($roomCodeCandidates)];
+        }
+        
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        do {
+            $code = '';
+            for ($i = 0; $i < 4; $i++) {
+                $code .= $chars[rand(0, strlen($chars) - 1)];
+            }
+        } while ($this->repository->exists($code));
+        
+        if (mb_strlen($code) > MAX_CODE_LENGTH) {
+            logMessage('[WARNING] Código generado excede MAX_CODE_LENGTH: ' . $code, 'WARNING');
+            $code = substr($code, 0, MAX_CODE_LENGTH);
+        }
+        
+        return $code;
     }
 
     public function getGameCandidates() {
-        $categories = getCategories();
+        $categories = $this->dictionaryRepository->getCategories();
 
         if (empty($categories)) {
             throw new Exception('No hay categorías disponibles');
@@ -22,7 +69,7 @@ class GameService {
             $code = null;
 
             while ($categoryAttempts < $maxCategoryAttempts) {
-                $word = getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+                $word = $this->dictionaryRepository->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
 
                 if (!$word || $this->repository->exists($word)) {
                     $categoryAttempts++;
@@ -55,13 +102,13 @@ class GameService {
             }
 
             if ($requestedCategory) {
-                $availableCategories = getCategories();
+                $availableCategories = $this->dictionaryRepository->getCategories();
                 if (!in_array($requestedCategory, $availableCategories)) {
                     throw new Exception('Categoría no válida');
                 }
             }
         } else {
-            $gameId = generateGameCode();
+            $gameId = $this->generateGameCode();
         }
 
         if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = TOTAL_ROUNDS;
@@ -167,13 +214,13 @@ class GameService {
 
         $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
         if (!$preferredCategory) {
-            $categories = getCategories();
+            $categories = $this->dictionaryRepository->getCategories();
             if (!empty($categories)) {
                 $preferredCategory = $categories[array_rand($categories)];
             }
         }
 
-        $card = getTopicCard($preferredCategory);
+        $card = $this->dictionaryRepository->getTopicCard($preferredCategory);
         $roundQuestion = $card['question'];
         $commonAnswers = $card['answers'];
 
