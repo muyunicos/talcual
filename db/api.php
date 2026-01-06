@@ -228,29 +228,26 @@ class DatabaseManager {
         $promptId = self::sanitizeParam($promptId);
         
         if ($promptId) {
-            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group, normalized_word, gender FROM valid_words WHERE prompt_id = ? ORDER BY word_group');
+            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group FROM valid_words WHERE prompt_id = ? ORDER BY word_group');
             $stmt->execute([(int)$promptId]);
         } else {
-            $stmt = $this->pdo->query('SELECT id, prompt_id, word_group, normalized_word, gender FROM valid_words ORDER BY prompt_id, word_group');
+            $stmt = $this->pdo->query('SELECT id, prompt_id, word_group FROM valid_words ORDER BY prompt_id, word_group');
         }
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getWordByPromptAndGroup($promptId, $wordGroup) {
-        $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group, normalized_word, gender FROM valid_words WHERE prompt_id = ? AND word_group = ?');
+        $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group FROM valid_words WHERE prompt_id = ? AND word_group = ?');
         $stmt->execute([$promptId, $wordGroup]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function addWord($promptId, $wordGroup, $gender = null) {
+    public function addWord($promptId, $wordGroup) {
         if (empty(trim($wordGroup))) throw new Exception('Word group cannot be empty');
         
-        $firstWord = trim(explode('|', $wordGroup)[0]);
-        $normalized = mb_strtoupper($firstWord, 'UTF-8');
-        
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_group, normalized_word, gender) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$promptId, trim($wordGroup), $normalized, $gender]);
+            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_group) VALUES (?, ?)');
+            $stmt->execute([$promptId, trim($wordGroup)]);
             return $this->pdo->lastInsertId();
         } catch (PDOException $e) {
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
@@ -260,29 +257,11 @@ class DatabaseManager {
         }
     }
 
-    public function updateWord($id, $wordGroup = null, $gender = null) {
-        $updates = [];
-        $params = [];
+    public function updateWord($id, $wordGroup = null) {
+        if ($wordGroup === null) return false;
         
-        if ($wordGroup !== null) {
-            $firstWord = trim(explode('|', $wordGroup)[0]);
-            $normalized = mb_strtoupper($firstWord, 'UTF-8');
-            $updates[] = 'word_group = ?';
-            $params[] = trim($wordGroup);
-            $updates[] = 'normalized_word = ?';
-            $params[] = $normalized;
-        }
-        if ($gender !== null) {
-            $updates[] = 'gender = ?';
-            $params[] = $gender;
-        }
-        
-        if (empty($updates)) return false;
-        
-        $params[] = $id;
-        $sql = 'UPDATE valid_words SET ' . implode(', ', $updates) . ' WHERE id = ?';
-        $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute($params) && $stmt->rowCount() > 0;
+        $stmt = $this->pdo->prepare('UPDATE valid_words SET word_group = ? WHERE id = ?');
+        return $stmt->execute([trim($wordGroup), $id]) && $stmt->rowCount() > 0;
     }
 
     public function deleteWord($id) {
@@ -302,7 +281,7 @@ class DatabaseManager {
         $added = 0;
         foreach ($wordGroups as $wordGroup) {
             try {
-                $this->addWord($promptId, $wordGroup, null);
+                $this->addWord($promptId, $wordGroup);
                 $added++;
             } catch (Exception $e) {
                 logMessage('Word addition error: ' . $e->getMessage(), 'WARN');
@@ -525,7 +504,7 @@ function handleAddPrompt($db) {
         foreach ($data['words'] as $word) {
             if (!empty(trim($word))) {
                 try {
-                    $db->addWord($promptId, $word, null);
+                    $db->addWord($promptId, $word);
                 } catch (Exception $e) {
                     logMessage('Word error: ' . $e->getMessage(), 'WARN');
                 }
@@ -558,7 +537,7 @@ function handleAddWord($db) {
         throw new Exception('Missing prompt_id or word');
     }
     
-    $wordId = $db->addWord($data['prompt_id'], $data['word'], $data['gender'] ?? null);
+    $wordId = $db->addWord($data['prompt_id'], $data['word']);
     respondSuccess('Word added', ['word_id' => $wordId]);
 }
 
@@ -566,7 +545,7 @@ function handleUpdateWord($db) {
     $data = json_decode(file_get_contents('php://input'), true);
     if (!$data || !isset($data['id'])) throw new Exception('Missing id');
     
-    $db->updateWord($data['id'], $data['word'] ?? null, $data['gender'] ?? null);
+    $db->updateWord($data['id'], $data['word'] ?? null);
     respondSuccess('Word updated');
 }
 
@@ -664,7 +643,7 @@ function importStandardFormat($db, $json, &$stats) {
                 foreach ($promptData['words'] ?? [] as $word) {
                     if (!empty(trim($word))) {
                         try {
-                            $db->addWord($promptId, $word, null);
+                            $db->addWord($promptId, $word);
                             $stats['words_added']++;
                         } catch (Exception $e) {
                             logMessage('Word import error: ' . $e->getMessage(), 'WARN');
@@ -731,7 +710,7 @@ function importCompactFormat($db, $json, &$stats) {
                                     $existingWord = $db->getWordByPromptAndGroup($promptId, $wordGroup);
                                     
                                     if (!$existingWord) {
-                                        $db->addWord($promptId, $wordGroup, null);
+                                        $db->addWord($promptId, $wordGroup);
                                         $stats['words_added']++;
                                     }
                                 } catch (Exception $e) {
