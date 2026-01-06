@@ -272,6 +272,28 @@ class DatabaseManager {
         return $stmt->execute([$id]) && $stmt->rowCount() > 0;
     }
 
+    public function replacePromptWords($promptId, $wordGroups) {
+        if (!is_array($wordGroups)) $wordGroups = [$wordGroups];
+        
+        $wordGroups = array_map(function($w) { return trim($w); }, $wordGroups);
+        $wordGroups = array_filter($wordGroups, function($w) { return !empty($w); });
+        $wordGroups = array_unique($wordGroups);
+        
+        $this->pdo->prepare('DELETE FROM valid_words WHERE prompt_id = ?')->execute([$promptId]);
+        
+        $added = 0;
+        foreach ($wordGroups as $wordGroup) {
+            try {
+                $this->addWord($promptId, $wordGroup, null);
+                $added++;
+            } catch (Exception $e) {
+                logMessage('Word addition error: ' . $e->getMessage(), 'WARN');
+            }
+        }
+        
+        return ['deleted' => count($wordGroups), 'added' => $added];
+    }
+
     public function getDictionaryStats() {
         return [
             'categories' => (int)$this->pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn(),
@@ -418,6 +440,7 @@ function handlePost($db, $action) {
             'add-word' => handleAddWord($db),
             'update-word' => handleUpdateWord($db),
             'delete-word' => handleDeleteWord($db),
+            'replace-prompt-words' => handleReplacePromptWords($db),
             'reorder-categories' => handleReorderCategories($db),
             'import' => handleImport($db),
             'optimize' => handleOptimize($db),
@@ -535,6 +558,16 @@ function handleDeleteWord($db) {
     
     $db->deleteWord($data['id']);
     respondSuccess('Word deleted');
+}
+
+function handleReplacePromptWords($db) {
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data || !isset($data['prompt_id']) || !isset($data['words'])) {
+        throw new Exception('Missing prompt_id or words');
+    }
+    
+    $result = $db->replacePromptWords($data['prompt_id'], $data['words']);
+    respondSuccess('Prompt words replaced', $result);
 }
 
 function handleReorderCategories($db) {
