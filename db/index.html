@@ -3,681 +3,833 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TalCual - DB Admin Panel</title>
+    <title>TalCual - Admin de Base de Datos</title>
     <style>
+        :root {
+            --primary: #208C90;
+            --success: #2BB882;
+            --error: #C01533;
+            --warning: #A84D2F;
+            --info: #626C71;
+            --bg: #FCFCF9;
+            --surface: #FFFFFF;
+            --text: #134252;
+            --border: #DDD;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; }
-        .header h1 { font-size: 24px; margin-bottom: 5px; }
-        .header p { font-size: 12px; opacity: 0.9; }
-        .container { max-width: 1400px; margin: 20px auto; display: grid; grid-template-columns: 1fr 350px; gap: 20px; padding: 0 20px; }
-        .main { display: flex; flex-direction: column; gap: 20px; }
-        .panel { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
-        .panel-body { padding: 20px; }
-        .tabs { display: flex; border-bottom: 1px solid #e0e0e0; }
-        .tab { padding: 12px 20px; cursor: pointer; border-bottom: 2px solid transparent; background: #f8f9fa; flex: 1; text-align: center; font-size: 13px; }
-        .tab.active { border-bottom-color: #667eea; background: white; font-weight: 600; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 20px;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 2em; }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.05);
+            font-size: 0.9em;
+        }
+
+        .status-badge {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-badge.healthy { background: var(--success); }
+        .status-badge.degraded { background: var(--warning); }
+        .status-badge.corrupted { background: var(--error); }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 1em;
+            color: var(--info);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-btn:hover { color: var(--primary); }
+
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .tree { list-style: none; padding: 0; }
-        .tree-item { border-bottom: 1px solid #f0f0f0; }
-        .tree-item:last-child { border-bottom: none; }
-        .tree-category { padding: 15px; display: flex; align-items: center; gap: 10px; background: #fafafa; cursor: pointer; }
-        .tree-category:hover { background: #f0f0f0; }
-        .tree-category .toggle { width: 20px; text-align: center; }
-        .tree-category .name { flex: 1; font-weight: 600; }
-        .tree-category .count { font-size: 12px; color: #999; }
-        .tree-category .actions { display: flex; gap: 5px; }
-        .tree-clues { display: none; background: white; border-left: 3px solid #667eea; }
-        .tree-clues.visible { display: block; }
-        .tree-clue { padding: 12px 15px 12px 30px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; font-size: 13px; }
-        .tree-clue:hover { background: #f9f9f9; }
-        .tree-clue .pregunta { flex: 1; }
-        .tree-clue .respuesta-count { font-size: 11px; color: #999; }
-        .tree-clue-add { padding: 10px 15px 10px 30px; font-size: 12px; color: #667eea; cursor: pointer; }
-        button { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
-        .btn-primary { background: #667eea; color: white; }
-        .btn-primary:hover { background: #5568d3; }
-        .btn-secondary { background: #f0f0f0; color: #333; }
-        .btn-secondary:hover { background: #e0e0e0; }
-        .btn-icon { padding: 6px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; }
-        .btn-icon:hover { background: #e0e0e0; }
-        .btn-icon.delete:hover { background: #ffebee; color: #c62828; }
-        .sidebar { display: flex; flex-direction: column; gap: 20px; }
-        .sidebar-panel { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .sidebar-panel h3 { background: #f8f9fa; padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #e0e0e0; }
-        .sidebar-panel-body { padding: 15px; font-size: 12px; }
-        .stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
-        .stat:last-child { border-bottom: none; }
-        .stat-label { font-weight: 600; }
-        .stat-value { color: #667eea; font-weight: 700; }
-        .message { padding: 12px 15px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; display: none; }
-        .message.show { display: block; }
-        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal.show { display: flex; }
-        .modal-content { background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .modal-header { padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h2 { font-size: 16px; }
-        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; }
-        .modal-body { padding: 20px; }
-        .modal-footer { padding: 15px 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; justify-content: flex-end; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-        .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
-        .form-group textarea { resize: vertical; min-height: 100px; font-family: monospace; }
-        .clue-select { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
-        .clue-select-item { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; align-items: center; gap: 10px; }
-        .clue-select-item:hover { background: #f9f9f9; }
-        .search-box { width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
-        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
-        .optimize-report { background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; }
-        .optimize-report h4 { margin-bottom: 10px; color: #333; }
-        .optimize-report p { margin: 5px 0; }
-        .optimize-report .issue { color: #c62828; }
-        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; }
-        .cat-reorder { display: flex; gap: 5px; }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1a7a7d; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #239a6f; }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-danger:hover { background: #a01229; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-warning:hover { background: #924322; }
+
+        .button-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+
+        .message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.success {
+            background: rgba(43, 184, 130, 0.1);
+            border-left: 4px solid var(--success);
+            color: #1a5c3a;
+        }
+
+        .message.error {
+            background: rgba(192, 21, 47, 0.1);
+            border-left: 4px solid var(--error);
+            color: #5c0a19;
+        }
+
+        .message.info {
+            background: rgba(32, 140, 144, 0.1);
+            border-left: 4px solid var(--primary);
+            color: #0a3d40;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(32,140,144,0.1) 0%, rgba(32,140,144,0.05) 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value { font-size: 2em; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 0.85em; color: var(--info); margin-top: 5px; }
+
+        .table-wrapper { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        th {
+            background: rgba(32,140,144,0.1);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover { background: rgba(32,140,144,0.05); }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(32,140,144,0.1);
+        }
+
+        textarea { resize: vertical; min-height: 80px; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--info);
+        }
+
+        .empty-state-icon { font-size: 3em; margin-bottom: 10px; }
+
+        code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(32,140,144,0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🎮 TalCual - Database Admin Panel</h1>
-        <p>Gestiona categorías, consignas y respuestas</p>
-    </div>
-    
     <div class="container">
-        <div class="main">
-            <div class="message" id="message"></div>
-            
+        <header>
+            <h1>🎮 TalCual - Admin de Base de Datos</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-badge healthy" id="statusBadge"></span>
+                    <span id="statusText">Inicializando...</span>
+                </div>
+                <div class="status-item">
+                    📊 <span id="statsText">...</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="overview">📊 Resumen</button>
+            <button class="tab-btn" data-tab="categories">📁 Categorías</button>
+            <button class="tab-btn" data-tab="prompts">❓ Consignas</button>
+            <button class="tab-btn" data-tab="import">📥 Importar</button>
+            <button class="tab-btn" data-tab="export">📤 Exportar</button>
+            <button class="tab-btn" data-tab="tools">🔧 Herramientas</button>
+        </div>
+
+        <div id="messagesContainer"></div>
+
+        <!-- OVERVIEW TAB -->
+        <div class="tab-content active" id="overview">
             <div class="panel">
-                <div class="tabs">
-                    <div class="tab active" onclick="switchTab('explorer')">Explorer</div>
-                    <div class="tab" onclick="switchTab('import')">Importar</div>
-                    <div class="tab" onclick="switchTab('raw')">JSON Raw</div>
-                </div>
-                
-                <div id="explorer" class="tab-content active">
-                    <div class="panel-body">
-                        <div style="margin-bottom: 15px;">
-                            <button class="btn-primary" onclick="showNewCategoryModal()">+ Nueva Categoría</button>
-                        </div>
-                        <ul class="tree" id="tree"></ul>
-                        <div id="emptyState" class="empty-state">
-                            <div style="font-size: 40px; margin-bottom: 10px;">📚</div>
-                            <p>No hay datos. Importa un JSON o crea una nueva categoría.</p>
-                        </div>
+                <div class="panel-title">Estado de la Base de Datos</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statCategories">0</div>
+                        <div class="stat-label">Categorías</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statPrompts">0</div>
+                        <div class="stat-label">Consignas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statWords">0</div>
+                        <div class="stat-label">Respuestas</div>
                     </div>
                 </div>
-                
-                <div id="import" class="tab-content">
-                    <div class="panel-body">
-                        <div class="form-group">
-                            <label>Importar archivo JSON</label>
-                            <input type="file" id="fileInput" accept=".json">
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn-primary" onclick="importJSON()">Importar</button>
-                            <button class="btn-secondary" onclick="exportJSON()">Exportar</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="raw" class="tab-content">
-                    <div class="panel-body">
-                        <div class="toolbar">
-                            <button class="btn-primary" onclick="optimizeJSON()">🔧 Optimizar</button>
-                            <button class="btn-secondary" onclick="loadRawJSON()">Recargar</button>
-                        </div>
-                        <div id="optimizeReport" class="optimize-report" style="display: none;"></div>
-                        <textarea id="rawJSON" style="width: 100%; height: 350px; font-family: monospace; font-size: 11px; border: 1px solid #ddd; border-radius: 4px; padding: 10px;"></textarea>
-                        <div style="margin-top: 15px; display: flex; gap: 10px;">
-                            <button class="btn-primary" onclick="saveRawJSON()">Guardar cambios</button>
-                        </div>
-                    </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Acciones Rápidas</div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="refreshDatabase()">🔄 Actualizar</button>
+                    <button class="btn-success" onclick="optimizeDatabase()">⚡ Optimizar</button>
+                    <button class="btn-warning" onclick="showConfirm('repair')">🔧 Reparar</button>
+                    <button class="btn-danger" onclick="showConfirm('nuke')">💥 Nuke</button>
                 </div>
             </div>
         </div>
-        
-        <div class="sidebar">
-            <div class="sidebar-panel">
-                <h3>📊 Estadísticas</h3>
-                <div class="sidebar-panel-body">
-                    <div class="stat">
-                        <span class="stat-label">Categorías:</span>
-                        <span class="stat-value" id="statCats">0</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Consignas:</span>
-                        <span class="stat-value" id="statClues">0</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Respuestas:</span>
-                        <span class="stat-value" id="statResps">0</span>
+
+        <!-- CATEGORIES TAB -->
+        <div class="tab-content" id="categories">
+            <div class="panel">
+                <div class="panel-title">Agregar Categoría</div>
+                <div class="form-group">
+                    <label for="categoryName">Nombre de Categoría</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="categoryName" placeholder="Ej: Animales, Países...">
+                        <button class="btn-primary" onclick="addCategory()">Agregar</button>
                     </div>
                 </div>
             </div>
-            
-            <div class="sidebar-panel">
-                <h3>✌️ Ayuda</h3>
-                <div class="sidebar-panel-body">
-                    <p><strong>+:</strong> Agregar consigna</p>
-                    <p><strong>🌟:</strong> Nueva consigna rápido</p>
-                    <p><strong>✏️:</strong> Editar</p>
-                    <p><strong>↑↓:</strong> Reordenar (cat.)</p>
-                    <p><strong>🗑:</strong> Quitar/Eliminar</p>
-                </div>
+
+            <div class="panel">
+                <div class="panel-title">Categorías Existentes</div>
+                <div id="categoriesList">Cargando...</div>
             </div>
         </div>
-    </div>
-    
-    <!-- Modales -->
-    <div class="modal" id="newCategoryModal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Nueva Categoría</h2><button class="modal-close" onclick="closeModal('newCategoryModal')">×</button></div>
-            <div class="modal-body">
+
+        <!-- PROMPTS TAB -->
+        <div class="tab-content" id="prompts">
+            <div class="panel">
+                <div class="panel-title">Agregar Nueva Consigna</div>
                 <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="newCatName" placeholder="Ej: AMOR Y CITAS ❤️">
+                    <label for="promptText">Pregunta/Consigna</label>
+                    <textarea id="promptText" placeholder="Ej: Nombre un animal que vive en la selva..."></textarea>
                 </div>
+                <div class="form-group">
+                    <label for="promptCategory">Categoría</label>
+                    <select id="promptCategory">
+                        <option value="">Seleccionar categoría...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="promptWords">Respuestas Válidas (una por línea)</label>
+                    <textarea id="promptWords" placeholder="JAGUAR&#10;TIGRE&#10;SERPIENTE"></textarea>
+                </div>
+                <button class="btn-primary" onclick="addPrompt()">Agregar Consigna</button>
             </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('newCategoryModal')">Cancelar</button>
-                <button class="btn-primary" onclick="createCategory()">Crear</button>
+
+            <div class="panel">
+                <div class="panel-title">Consignas Existentes</div>
+                <div id="promptsList">Cargando...</div>
             </div>
         </div>
-    </div>
-    
-    <div class="modal" id="newClueModal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Nueva Consigna</h2><button class="modal-close" onclick="closeModal('newClueModal')">×</button></div>
-            <div class="modal-body">
+
+        <!-- IMPORT TAB -->
+        <div class="tab-content" id="import">
+            <div class="panel">
+                <div class="panel-title">Importar Diccionario</div>
                 <div class="form-group">
-                    <label>Pregunta</label>
-                    <textarea id="newCluePregunta"></textarea>
+                    <label for="importFile">Seleccionar archivo JSON</label>
+                    <input type="file" id="importFile" accept=".json">
                 </div>
-                <div class="form-group">
-                    <label>Respuestas (una por línea, usa | para sinónimos)</label>
-                    <textarea id="newClueRespuestas"></textarea>
-                </div>
+                <button class="btn-primary" onclick="importFile()">📥 Importar</button>
             </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('newClueModal')">Cancelar</button>
-                <button class="btn-primary" onclick="createClue()">Crear</button>
+        </div>
+
+        <!-- EXPORT TAB -->
+        <div class="tab-content" id="export">
+            <div class="panel">
+                <div class="panel-title">Exportar Diccionario</div>
+                <p>Descarga toda la base de datos en formato JSON compatible con importación.</p>
+                <button class="btn-success" onclick="exportDatabase()">📤 Descargar JSON</button>
+            </div>
+        </div>
+
+        <!-- TOOLS TAB -->
+        <div class="tab-content" id="tools">
+            <div class="panel">
+                <div class="panel-title">🔍 Diagnóstico</div>
+                <button class="btn-secondary" onclick="runDiagnostics()" style="background: #626C71; color: white;">Ejecutar Diagnóstico Completo</button>
+                <div id="diagnosticsResult" style="margin-top: 15px;"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">⚠️ Herramientas Avanzadas</div>
+                <p style="color: var(--warning); margin-bottom: 15px;">⚠️ Usa estas opciones solo si la BD está corrupta o dañada.</p>
+                <div class="button-group">
+                    <button class="btn-warning" onclick="showConfirm('repair')">🔧 Reparar BD</button>
+                    <button class="btn-danger" onclick="showConfirm('nuke')">💥 Nuke & Reinicializar</button>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div class="modal" id="editClueModal">
+
+    <!-- CONFIRM MODAL -->
+    <div class="modal" id="confirmModal">
         <div class="modal-content">
-            <div class="modal-header"><h2>Editar Consigna</h2><button class="modal-close" onclick="closeModal('editClueModal')">×</button></div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Pregunta</label>
-                    <textarea id="editCluePregunta"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Respuestas (una por línea)</label>
-                    <textarea id="editClueRespuestas"></textarea>
-                </div>
-                <button class="btn-secondary" onclick="deleteClueCompletely()" style="background: #ffebee; color: #c62828;">Eliminar completamente</button>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('editClueModal')">Cancelar</button>
-                <button class="btn-primary" onclick="saveEditClue()">Guardar</button>
-            </div>
-        </div>
-    </div>
-    
-    <div class="modal" id="editCategoryModal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Editar Categoría</h2><button class="modal-close" onclick="closeModal('editCategoryModal')">×</button></div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="editCatName">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('editCategoryModal')">Cancelar</button>
-                <button class="btn-primary" onclick="saveEditCategory()">Guardar</button>
-                <button class="btn-secondary" onclick="deleteCategory()" style="background: #ffebee; color: #c62828;">Eliminar</button>
-            </div>
-        </div>
-    </div>
-    
-    <div class="modal" id="addExistingClueModal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Agregar Consigna Existente</h2><button class="modal-close" onclick="closeModal('addExistingClueModal')">×</button></div>
-            <div class="modal-body">
-                <input type="text" id="clueSearchBox" placeholder="Buscar consigna..." class="search-box" oninput="filterClueList()">
-                <div class="clue-select" id="clueSelectList"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('addExistingClueModal')">Cancelar</button>
-                <button class="btn-primary" onclick="addSelectedClues()">Agregar</button>
+            <div class="modal-title" id="confirmTitle">Confirmar</div>
+            <p id="confirmMessage"></p>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button class="btn-danger" id="confirmBtn" onclick="executeConfirmedAction()">Confirmar</button>
             </div>
         </div>
     </div>
 
     <script>
-        let db = { categorias: {}, consignas: {} };
-        let currentEditingClue = null;
-        let currentEditingCategory = null;
-        let currentCategoryForAdd = null;
-        
-        function fixDB() {
-            if (!db.categorias) db.categorias = {};
-            if (!db.consignas) db.consignas = {};
-            if (Array.isArray(db.categorias)) db.categorias = {};
-            if (Array.isArray(db.consignas)) db.consignas = {};
-        }
-        
-        async function loadDB() {
+        let pendingAction = null;
+
+        async function initDatabase() {
             try {
+                showMessage('Inicializando base de datos...', 'info');
                 const res = await fetch('dmanager.php?action=get-db');
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: No se pudo cargar la BD`);
+                }
                 const result = await res.json();
-                if (result.success && result.data) {
-                    db = result.data;
-                    fixDB();
-                    renderTree();
-                    updateStats();
+                if (result.success) {
+                    showMessage('✅ Base de datos cargada', 'success');
+                    updateStatusBadge('HEALTHY');
                 } else {
-                    db = { categorias: {}, consignas: {} };
+                    throw new Error(result.message);
                 }
             } catch (err) {
-                showMessage('❌ Error al cargar: ' + err.message, 'error');
+                console.error('initDatabase:', err);
+                showMessage('⚠️ Problema detectado: ' + err.message + '. Intentando reparar...', 'error');
+                await attemptAutoRepair();
             }
+            loadAllData();
         }
-        
-        function renderTree() {
-            const tree = document.getElementById('tree');
-            const categories = Object.entries(db.categorias).sort((a, b) => a[1].orden - b[1].orden);
-            
-            if (categories.length === 0) {
-                tree.innerHTML = '';
-                document.getElementById('emptyState').style.display = 'block';
-                return;
-            }
-            
-            document.getElementById('emptyState').style.display = 'none';
-            
-            tree.innerHTML = categories.map(([catName, catData], idx) => `
-                <li class="tree-item">
-                    <div class="tree-category" onclick="toggleCategory(this)">
-                        <span class="toggle">▶</span>
-                        <span class="name">${catName}</span>
-                        <span class="count">${catData.consignas.length}</span>
-                        <div class="actions">
-                            ${idx > 0 ? `<span class="btn-icon" onclick="event.stopPropagation(); moveCategory('${catName}', -1)">↑</span>` : ''}
-                            ${idx < categories.length - 1 ? `<span class="btn-icon" onclick="event.stopPropagation(); moveCategory('${catName}', 1)">↓</span>` : ''}
-                            <span class="btn-icon" onclick="event.stopPropagation(); showAddExistingClueModal('${catName}')">+</span>
-                            <span class="btn-icon" onclick="event.stopPropagation(); showNewClueModal('${catName}')">🌟</span>
-                            <span class="btn-icon" onclick="event.stopPropagation(); showEditCategoryModal('${catName}')">✏️</span>
-                            <span class="btn-icon delete" onclick="event.stopPropagation(); deleteCategory('${catName}')">🗑</span>
-                        </div>
-                    </div>
-                    <ul class="tree-clues">
-                        ${catData.consignas.map((clueId) => {
-                            const clue = db.consignas[clueId];
-                            if (!clue) return `<li style="padding: 10px 30px; color: #c62828; font-size: 11px;">⚠ Consigna ${clueId} inexistente</li>`;
-                            const preg = clue.pregunta.substring(0, 35);
-                            return `
-                                <li class="tree-clue">
-                                    <span class="pregunta" title="${clue.pregunta}">${preg}${clue.pregunta.length > 35 ? '...' : ''}</span>
-                                    <span class="respuesta-count">${clue.respuestas.length}</span>
-                                    <div class="actions">
-                                        <span class="btn-icon" onclick="event.stopPropagation(); editClue('${clueId}')">✏️</span>
-                                        <span class="btn-icon delete" onclick="event.stopPropagation(); removeClueFromCategory('${catName}', '${clueId}')">🗑</span>
-                                    </div>
-                                </li>
-                            `;
-                        }).join('')}
-                    </ul>
-                </li>
-            `).join('');
-        }
-        
-        function toggleCategory(el) {
-            const isExp = el.classList.contains('expanded');
-            el.classList.toggle('expanded');
-            el.querySelector('.toggle').textContent = isExp ? '▶' : '▼';
-            el.nextElementSibling.classList.toggle('visible');
-        }
-        
-        function moveCategory(catName, dir) {
-            const categories = Object.entries(db.categorias).sort((a, b) => a[1].orden - b[1].orden);
-            const idx = categories.findIndex(([name]) => name === catName);
-            const newIdx = idx + dir;
-            
-            if (newIdx >= 0 && newIdx < categories.length) {
-                const neworden = categories[newIdx][1].orden;
-                db.categorias[catName].orden = neworden;
-                db.categorias[categories[newIdx][0]].orden = db.categorias[catName].orden;
-                
-                [db.categorias[catName].orden, db.categorias[categories[newIdx][0]].orden] = 
-                [db.categorias[categories[newIdx][0]].orden, db.categorias[catName].orden];
-                
-                saveDB().then(() => renderTree());
-            }
-        }
-        
-        async function showNewClueModal(catName = null) {
-            currentEditingCategory = catName;
-            document.getElementById('newCluePregunta').value = '';
-            document.getElementById('newClueRespuestas').value = '';
-            document.getElementById('newClueModal').classList.add('show');
-        }
-        
-        function showNewCategoryModal() {
-            document.getElementById('newCatName').value = '';
-            document.getElementById('newCategoryModal').classList.add('show');
-        }
-        
-        async function createCategory() {
-            const name = document.getElementById('newCatName').value.trim();
-            if (!name) { showMessage('❌ Nombre requerido', 'error'); return; }
-            if (db.categorias[name]) { showMessage('❌ La categoría ya existe', 'error'); return; }
-            
-            const orden = Math.max(...Object.values(db.categorias).map(c => c.orden || 0), 0) + 1;
-            db.categorias[name] = { orden, consignas: [] };
-            await saveDB();
-            closeModal('newCategoryModal');
-            renderTree();
-            updateStats();
-        }
-        
-        async function createClue() {
-            const pregunta = document.getElementById('newCluePregunta').value.trim();
-            const respuestasText = document.getElementById('newClueRespuestas').value.trim();
-            
-            if (!pregunta || !respuestasText) { showMessage('❌ Pregunta y respuestas requeridas', 'error'); return; }
-            
-            const respuestas = respuestasText.split('\n').map(r => r.trim()).filter(r => r);
-            const clueId = 'clue_' + Date.now();
-            
-            db.consignas[clueId] = {
-                pregunta,
-                respuestas,
-                created_at: new Date().toISOString()
-            };
-            
-            if (currentEditingCategory && db.categorias[currentEditingCategory]) {
-                db.categorias[currentEditingCategory].consignas.push(clueId);
-            }
-            
-            await saveDB();
-            closeModal('newClueModal');
-            renderTree();
-            updateStats();
-        }
-        
-        function editClue(clueId) {
-            currentEditingClue = clueId;
-            const clue = db.consignas[clueId];
-            if (clue) {
-                document.getElementById('editCluePregunta').value = clue.pregunta;
-                document.getElementById('editClueRespuestas').value = clue.respuestas.join('\n');
-                document.getElementById('editClueModal').classList.add('show');
-            }
-        }
-        
-        async function saveEditClue() {
-            if (!currentEditingClue) return;
-            
-            const pregunta = document.getElementById('editCluePregunta').value.trim();
-            const respuestasText = document.getElementById('editClueRespuestas').value.trim();
-            
-            if (!pregunta || !respuestasText) { showMessage('❌ Campos requeridos', 'error'); return; }
-            
-            const respuestas = respuestasText.split('\n').map(r => r.trim()).filter(r => r);
-            db.consignas[currentEditingClue].pregunta = pregunta;
-            db.consignas[currentEditingClue].respuestas = respuestas;
-            
-            await saveDB();
-            closeModal('editClueModal');
-            renderTree();
-            updateStats();
-        }
-        
-        function deleteClueCompletely() {
-            if (!currentEditingClue || !confirm('¿Eliminar consigna de TODAS las categorías?')) return;
-            
-            for (const cat of Object.values(db.categorias)) {
-                cat.consignas = cat.consignas.filter(id => id !== currentEditingClue);
-            }
-            delete db.consignas[currentEditingClue];
-            
-            saveDB().then(() => {
-                closeModal('editClueModal');
-                renderTree();
-                updateStats();
-            });
-        }
-        
-        function removeClueFromCategory(catName, clueId) {
-            if (!db.categorias[catName]) return;
-            db.categorias[catName].consignas = db.categorias[catName].consignas.filter(id => id !== clueId);
-            saveDB().then(() => renderTree());
-        }
-        
-        function showEditCategoryModal(catName) {
-            currentEditingCategory = catName;
-            document.getElementById('editCatName').value = catName;
-            document.getElementById('editCategoryModal').classList.add('show');
-        }
-        
-        async function saveEditCategory() {
-            if (!currentEditingCategory) return;
-            const newName = document.getElementById('editCatName').value.trim();
-            if (!newName) { showMessage('❌ Nombre requerido', 'error'); return; }
-            if (newName !== currentEditingCategory && db.categorias[newName]) { showMessage('❌ Ya existe', 'error'); return; }
-            
-            if (newName !== currentEditingCategory) {
-                db.categorias[newName] = db.categorias[currentEditingCategory];
-                delete db.categorias[currentEditingCategory];
-            }
-            
-            await saveDB();
-            closeModal('editCategoryModal');
-            renderTree();
-            updateStats();
-        }
-        
-        function deleteCategory(catName = currentEditingCategory) {
-            if (!catName || !confirm(`¿Eliminar "${catName}"?`)) return;
-            delete db.categorias[catName];
-            saveDB().then(() => {
-                closeModal('editCategoryModal');
-                renderTree();
-                updateStats();
-            });
-        }
-        
-        function showAddExistingClueModal(catName) {
-            currentCategoryForAdd = catName;
-            populateClueSelectList();
-            document.getElementById('addExistingClueModal').classList.add('show');
-        }
-        
-        function populateClueSelectList() {
-            const list = document.getElementById('clueSelectList');
-            const existingClues = new Set(db.categorias[currentCategoryForAdd]?.consignas || []);
-            
-            if (Object.keys(db.consignas).length === 0) {
-                list.innerHTML = '<div style="padding: 10px; color: #999;">No hay consignas disponibles</div>';
-                return;
-            }
-            
-            list.innerHTML = Object.entries(db.consignas).map(([clueId, clue]) => `
-                <div class="clue-select-item">
-                    <input type="checkbox" id="clue_${clueId}" value="${clueId}" ${existingClues.has(clueId) ? 'checked disabled' : ''}>
-                    <label for="clue_${clueId}" style="flex: 1;">${clue.pregunta.substring(0, 50)}</label>
-                </div>
-            `).join('');
-        }
-        
-        function filterClueList() {
-            const searchTerm = document.getElementById('clueSearchBox').value.toLowerCase();
-            document.querySelectorAll('.clue-select-item').forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
-            });
-        }
-        
-        async function addSelectedClues() {
-            const checked = document.querySelectorAll('#clueSelectList input:checked:not(:disabled)');
-            const clueIds = Array.from(checked).map(cb => cb.value);
-            
-            if (clueIds.length === 0) { showMessage('❌ Selecciona consignas', 'error'); return; }
-            
-            clueIds.forEach(clueId => {
-                if (!db.categorias[currentCategoryForAdd].consignas.includes(clueId)) {
-                    db.categorias[currentCategoryForAdd].consignas.push(clueId);
-                }
-            });
-            
-            await saveDB();
-            closeModal('addExistingClueModal');
-            renderTree();
-            updateStats();
-        }
-        
-        async function importJSON() {
-            const file = document.getElementById('fileInput').files[0];
-            if (!file) { showMessage('❌ Selecciona archivo', 'error'); return; }
-            
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    const res = await fetch('dmanager.php?action=import', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(imported)
-                    });
-                    
-                    const result = await res.json();
-                    if (result.success) {
-                        db = result.data;
-                        fixDB();
-                        renderTree();
-                        updateStats();
-                        loadRawJSON();
-                        showMessage('✅ Importado', 'success');
-                    } else {
-                        showMessage('❌ ' + result.message, 'error');
-                    }
-                } catch (err) {
-                    showMessage('❌ ' + err.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-        }
-        
-        function exportJSON() {
-            const dataStr = JSON.stringify(db, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `talcual-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-        
-        function loadRawJSON() {
-            document.getElementById('rawJSON').value = JSON.stringify(db, null, 2);
-            document.getElementById('optimizeReport').style.display = 'none';
-        }
-        
-        async function optimizeJSON() {
-            const res = await fetch('dmanager.php?action=optimize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(db)
-            });
-            
-            const result = await res.json();
-            if (result.success) {
-                db = result.data.data;
-                fixDB();
-                loadRawJSON();
-                renderTree();
-                updateStats();
-                
-                const report = result.data.report;
-                const reportHTML = `
-                    <h4>🚧 Reporte de Optimización</h4>
-                    <p><strong>Antes:</strong> ${report.before.categorias} cat, ${report.before.consignas} consignas, ${report.before.respuestas} respuestas</p>
-                    <p><strong>Después:</strong> ${report.after.categorias} cat, ${report.after.consignas} consignas, ${report.after.respuestas} respuestas</p>
-                    ${report.issues.length > 0 ? '<p class="issue"><strong>👇 Problemas corregidos:</strong></p>' + report.issues.map(i => `<p class="issue">• ${i}</p>`).join('') : '<p>✅ Sin problemas detectados</p>'}
-                `;
-                
-                const reportEl = document.getElementById('optimizeReport');
-                reportEl.innerHTML = reportHTML;
-                reportEl.style.display = 'block';
-                
-                showMessage('✅ Base de datos optimizada', 'success');
-            } else {
-                showMessage('❌ ' + result.message, 'error');
-            }
-        }
-        
-        async function saveRawJSON() {
+
+        async function attemptAutoRepair() {
             try {
-                db = JSON.parse(document.getElementById('rawJSON').value);
-                fixDB();
-                await saveDB();
-                renderTree();
-                updateStats();
-                showMessage('✅ Guardado', 'success');
+                const res = await fetch('dmanager.php?action=repair', { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showMessage('✅ BD reparada automáticamente', 'success');
+                } else {
+                    showMessage('❌ Auto-repair falló. Ve a Herramientas → Nuke & Reinicializar', 'error');
+                }
             } catch (err) {
-                showMessage('❌ JSON inválido: ' + err.message, 'error');
+                showMessage('❌ No se pudo reparar automáticamente: ' + err.message, 'error');
             }
         }
-        
-        async function saveDB() {
-            fixDB();
-            const res = await fetch('dmanager.php?action=save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(db)
-            });
-            const result = await res.json();
-            if (!result.success) showMessage('❌ Error al guardar', 'error');
+
+        function loadAllData() {
+            refreshDatabase();
+            loadCategories();
+            loadPrompts();
         }
-        
-        function updateStats() {
-            const cats = Object.keys(db.categorias).length;
-            const clues = Object.keys(db.consignas).length;
-            const resps = Object.values(db.consignas).reduce((sum, c) => sum + (c.respuestas || []).length, 0);
+
+        async function refreshDatabase() {
+            try {
+                const res = await fetch('dmanager.php?action=inspect');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const result = await res.json();
+                if (!result.success) throw new Error(result.message);
+
+                const stats = result.data?.stats || {};
+                document.getElementById('statCategories').textContent = stats.categories || 0;
+                document.getElementById('statPrompts').textContent = stats.prompts || 0;
+                document.getElementById('statWords').textContent = stats.words || 0;
+                document.getElementById('statsText').textContent = `${stats.categories || 0} cat, ${stats.prompts || 0} cons, ${stats.words || 0} resp`;
+
+                const status = result.data?.status || 'HEALTHY';
+                updateStatusBadge(status);
+            } catch (err) {
+                console.error('refreshDatabase:', err);
+                showMessage('❌ Error al actualizar: ' + err.message, 'error');
+            }
+        }
+
+        function updateStatusBadge(status) {
+            const badge = document.getElementById('statusBadge');
+            const text = document.getElementById('statusText');
+            const statusLower = status.toLowerCase();
+            badge.className = 'status-badge ' + statusLower;
+            text.textContent = status === 'HEALTHY' ? '✅ Saludable' : '⚠️ ' + status;
+        }
+
+        async function loadCategories() {
+            try {
+                const res = await fetch('dmanager.php?action=get-categories');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const result = await res.json();
+                if (!result.success) throw new Error(result.message);
+
+                const cats = result.data || [];
+                const select = document.getElementById('promptCategory');
+                select.innerHTML = '<option value="">Seleccionar categoría...</option>';
+                cats.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat.id;
+                    opt.textContent = cat.name;
+                    select.appendChild(opt);
+                });
+
+                const list = document.getElementById('categoriesList');
+                if (cats.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📁</div><p>Sin categorías</p></div>';
+                } else {
+                    const html = cats.map(cat => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                            <span><strong>${cat.name}</strong></span>
+                            <button class="btn-danger" style="padding: 6px 12px;" onclick="deleteCategory(${cat.id})">Eliminar</button>
+                        </div>
+                    `).join('');
+                    list.innerHTML = html;
+                }
+            } catch (err) {
+                console.error('loadCategories:', err);
+                document.getElementById('categoriesList').innerHTML = `<div class="message error">${err.message}</div>`;
+            }
+        }
+
+        async function addCategory() {
+            const name = document.getElementById('categoryName').value.trim();
+            if (!name) {
+                showMessage('⚠️ Ingresa un nombre de categoría', 'error');
+                return;
+            }
+            try {
+                const res = await fetch('dmanager.php?action=add-category', {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showMessage('✅ Categoría agregada', 'success');
+                    document.getElementById('categoryName').value = '';
+                    loadCategories();
+                    refreshDatabase();
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm('¿Eliminar esta categoría?')) return;
+            try {
+                const res = await fetch('dmanager.php?action=delete-category', {
+                    method: 'POST',
+                    body: JSON.stringify({ id })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showMessage('✅ Categoría eliminada', 'success');
+                    loadCategories();
+                    refreshDatabase();
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        async function loadPrompts() {
+            try {
+                const res = await fetch('dmanager.php?action=get-prompts');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const result = await res.json();
+                if (!result.success) throw new Error(result.message);
+
+                const prompts = result.data || [];
+                const list = document.getElementById('promptsList');
+                if (prompts.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❓</div><p>Sin consignas</p></div>';
+                } else {
+                    const html = prompts.map(p => `
+                        <div style="background: rgba(32,140,144,0.05); padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid var(--primary);">
+                            <div style="font-weight: 600; margin-bottom: 5px;">${p.text}</div>
+                            <div style="font-size: 0.9em; color: var(--info); margin-bottom: 8px;">
+                                📝 ${p.word_count || 0} respuestas
+                            </div>
+                            <button class="btn-danger" style="padding: 6px 12px;" onclick="deletePrompt(${p.id})">Eliminar</button>
+                        </div>
+                    `).join('');
+                    list.innerHTML = html;
+                }
+            } catch (err) {
+                console.error('loadPrompts:', err);
+                document.getElementById('promptsList').innerHTML = `<div class="message error">${err.message}</div>`;
+            }
+        }
+
+        async function addPrompt() {
+            const text = document.getElementById('promptText').value.trim();
+            const categoryId = document.getElementById('promptCategory').value;
+            const words = document.getElementById('promptWords').value.split('\n').filter(w => w.trim());
+
+            if (!text || !categoryId || words.length === 0) {
+                showMessage('⚠️ Completa todos los campos', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('dmanager.php?action=add-prompt', {
+                    method: 'POST',
+                    body: JSON.stringify({ text, category_id: parseInt(categoryId), words })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showMessage('✅ Consigna agregada', 'success');
+                    document.getElementById('promptText').value = '';
+                    document.getElementById('promptWords').value = '';
+                    loadPrompts();
+                    refreshDatabase();
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        async function deletePrompt(id) {
+            if (!confirm('¿Eliminar esta consigna?')) return;
+            try {
+                const res = await fetch('dmanager.php?action=delete-prompt', {
+                    method: 'POST',
+                    body: JSON.stringify({ id })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showMessage('✅ Consigna eliminada', 'success');
+                    loadPrompts();
+                    refreshDatabase();
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        async function importFile() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) {
+                showMessage('⚠️ Selecciona un archivo', 'error');
+                return;
+            }
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                const res = await fetch('dmanager.php?action=import', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    const stats = result.data || {};
+                    showMessage(`✅ Importado: ${stats.prompts_added || 0} consignas, ${stats.words_added || 0} respuestas`, 'success');
+                    loadAllData();
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        async function exportDatabase() {
+            try {
+                const res = await fetch('dmanager.php?action=export');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const result = await res.json();
+                if (result.success) {
+                    const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'talcual-' + new Date().toISOString().split('T')[0] + '.json';
+                    a.click();
+                    showMessage('✅ Diccionario exportado', 'success');
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        async function optimizeDatabase() {
+            try {
+                showMessage('Optimizando...', 'info');
+                const res = await fetch('dmanager.php?action=optimize', { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showMessage('⚡ Base de datos optimizada', 'success');
+                    loadAllData();
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        async function runDiagnostics() {
+            try {
+                showMessage('Ejecutando diagnóstico...', 'info');
+                const res = await fetch('dmanager.php?action=diagnose', { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    const diag = result.data || {};
+                    const html = `
+                        <div class="message success">
+                            <strong>✅ Diagnóstico Completado</strong><br>
+                            Tablas: ${diag.tables_ok ? '✅' : '❌'}<br>
+                            Integridad: ${diag.integrity_ok ? '✅' : '❌'}<br>
+                            Índices: ${diag.indexes_ok ? '✅' : '❌'}<br>
+                            ${diag.errors ? '<pre style="margin-top: 10px;">' + diag.errors + '</pre>' : ''}
+                        </div>
+                    `;
+                    document.getElementById('diagnosticsResult').innerHTML = html;
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        function showConfirm(action) {
+            pendingAction = action;
+            const modal = document.getElementById('confirmModal');
             
-            document.getElementById('statCats').textContent = cats;
-            document.getElementById('statClues').textContent = clues;
-            document.getElementById('statResps').textContent = resps;
+            if (action === 'repair') {
+                document.getElementById('confirmTitle').textContent = 'Reparar Base de Datos';
+                document.getElementById('confirmMessage').textContent = '¿Ejecutar diagnóstico y reparación de BD?';
+                document.getElementById('confirmBtn').textContent = '🔧 Reparar';
+            } else if (action === 'nuke') {
+                document.getElementById('confirmTitle').textContent = '⚠️ Nuke & Reinicializar';
+                document.getElementById('confirmMessage').textContent = '¡CUIDADO! Esto eliminará TODO de la BD y la reinicializará vacía. ¿Continuar?';
+                document.getElementById('confirmBtn').textContent = '💥 NUKE';
+                document.getElementById('confirmBtn').className = 'btn-danger';
+            }
+            
+            modal.classList.add('active');
         }
-        
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-            if (tabName === 'raw') loadRawJSON();
+
+        async function executeConfirmedAction() {
+            closeModal();
+            if (!pendingAction) return;
+
+            try {
+                showMessage('Ejecutando...', 'info');
+                const res = await fetch('dmanager.php?action=' + pendingAction, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showMessage(pendingAction === 'repair' ? '✅ BD reparada' : '💥 BD reinicializada', 'success');
+                    setTimeout(initDatabase, 500);
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+            }
         }
-        
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('show');
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            pendingAction = null;
         }
-        
+
         function showMessage(msg, type) {
-            const el = document.getElementById('message');
-            el.textContent = msg;
-            el.className = `message show ${type}`;
-            if (type === 'success') setTimeout(() => el.classList.remove('show'), 3000);
+            const div = document.createElement('div');
+            div.className = 'message ' + type;
+            div.textContent = msg;
+            const container = document.getElementById('messagesContainer');
+            container.insertBefore(div, container.firstChild);
+            if (type === 'success') setTimeout(() => div.remove(), 5000);
         }
-        
-        loadDB();
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                e.target.classList.add('active');
+                const tab = e.target.dataset.tab;
+                document.getElementById(tab).classList.add('active');
+            });
+        });
+
+        // Initialize on page load
+        window.addEventListener('load', initDatabase);
     </script>
 </body>
 </html>
