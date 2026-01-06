@@ -1,1 +1,92 @@
-<?php\nheader('Content-Type: application/json');\n\n$dbPath = __DIR__ . '/../../data/talcual.db';\nif (!file_exists($dbPath)) {\n    http_response_code(500);\n    echo json_encode(['error' => 'Database not initialized']);\n    exit;\n}\n\n$pdo = new PDO('sqlite:' . $dbPath);\n$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);\n$pdo->exec('PRAGMA foreign_keys = ON');\n\n$action = $_GET['action'] ?? $_POST['action'] ?? '';\n\ntry {\n    if ($action === 'list') {\n        $promptId = $_GET['prompt_id'] ?? null;\n        if ($promptId) {\n            $stmt = $pdo->prepare('SELECT * FROM words WHERE prompt_id = ? ORDER BY id ASC');\n            $stmt->execute([$promptId]);\n        } else {\n            $stmt = $pdo->query('SELECT * FROM words ORDER BY id ASC');\n        }\n        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));\n    } elseif ($action === 'create') {\n        $data = json_decode(file_get_contents('php://input'), true);\n        $promptId = $data['prompt_id'] ?? null;\n        $word = $data['word'] ?? '';\n\n        if (!$promptId || !$word) {\n            throw new Exception('Prompt ID and word are required');\n        }\n\n        $stmt = $pdo->prepare('INSERT INTO words (prompt_id, word) VALUES (?, ?)');\n        $stmt->execute([$promptId, $word]);\n        echo json_encode(['id' => $pdo->lastInsertId()]);\n    } elseif ($action === 'batch_create') {\n        $data = json_decode(file_get_contents('php://input'), true);\n        $promptId = $data['prompt_id'] ?? null;\n        $wordsText = $data['words'] ?? '';\n\n        if (!$promptId) {\n            throw new Exception('Prompt ID is required');\n        }\n\n        $wordsList = array_filter(array_map('trim', explode(',', $wordsText)));\n        if (empty($wordsList)) {\n            throw new Exception('No words provided');\n        }\n\n        $pdo->beginTransaction();\n        $inserted = 0;\n        foreach ($wordsList as $word) {\n            try {\n                $stmt = $pdo->prepare('INSERT INTO words (prompt_id, word) VALUES (?, ?)');\n                $stmt->execute([$promptId, $word]);\n                $inserted++;\n            } catch (PDOException $e) {\n            }\n        }\n        $pdo->commit();\n        echo json_encode(['inserted' => $inserted, 'total' => count($wordsList)]);\n    } elseif ($action === 'update') {\n        $data = json_decode(file_get_contents('php://input'), true);\n        $id = $data['id'] ?? null;\n        $word = $data['word'] ?? '';\n\n        if (!$id) {\n            throw new Exception('ID is required');\n        }\n\n        $stmt = $pdo->prepare('UPDATE words SET word = ? WHERE id = ?');\n        $stmt->execute([$word, $id]);\n        echo json_encode(['success' => true]);\n    } elseif ($action === 'delete') {\n        $id = $_POST['id'] ?? null;\n        if (!$id) {\n            throw new Exception('ID is required');\n        }\n\n        $stmt = $pdo->prepare('DELETE FROM words WHERE id = ?');\n        $stmt->execute([$id]);\n        echo json_encode(['success' => true]);\n    } else {\n        throw new Exception('Unknown action');\n    }\n} catch (Exception $e) {\n    http_response_code(400);\n    echo json_encode(['error' => $e->getMessage()]);\n}\n
+<?php
+header('Content-Type: application/json');
+
+$dbPath = __DIR__ . '/../../data/talcual.db';
+if (!file_exists($dbPath)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Database not initialized']);
+    exit;
+}
+
+$pdo = new PDO('sqlite:' . $dbPath);
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->exec('PRAGMA foreign_keys = ON');
+
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+try {
+    if ($action === 'list') {
+        $promptId = $_GET['prompt_id'] ?? null;
+        if ($promptId) {
+            $stmt = $pdo->prepare('SELECT * FROM words WHERE prompt_id = ? ORDER BY id ASC');
+            $stmt->execute([$promptId]);
+        } else {
+            $stmt = $pdo->query('SELECT * FROM words ORDER BY id ASC');
+        }
+        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    } elseif ($action === 'create') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $promptId = $data['prompt_id'] ?? null;
+        $word = $data['word'] ?? '';
+
+        if (!$promptId || !$word) {
+            throw new Exception('Prompt ID and word are required');
+        }
+
+        $stmt = $pdo->prepare('INSERT INTO words (prompt_id, word) VALUES (?, ?)');
+        $stmt->execute([$promptId, $word]);
+        echo json_encode(['id' => $pdo->lastInsertId()]);
+    } elseif ($action === 'batch_create') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $promptId = $data['prompt_id'] ?? null;
+        $wordsText = $data['words'] ?? '';
+
+        if (!$promptId) {
+            throw new Exception('Prompt ID is required');
+        }
+
+        $wordsList = array_filter(array_map('trim', explode(',', $wordsText)));
+        if (empty($wordsList)) {
+            throw new Exception('No words provided');
+        }
+
+        $pdo->beginTransaction();
+        $inserted = 0;
+        foreach ($wordsList as $word) {
+            try {
+                $stmt = $pdo->prepare('INSERT INTO words (prompt_id, word) VALUES (?, ?)');
+                $stmt->execute([$promptId, $word]);
+                $inserted++;
+            } catch (PDOException $e) {
+            }
+        }
+        $pdo->commit();
+        echo json_encode(['inserted' => $inserted, 'total' => count($wordsList)]);
+    } elseif ($action === 'update') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $id = $data['id'] ?? null;
+        $word = $data['word'] ?? '';
+
+        if (!$id) {
+            throw new Exception('ID is required');
+        }
+
+        $stmt = $pdo->prepare('UPDATE words SET word = ? WHERE id = ?');
+        $stmt->execute([$word, $id]);
+        echo json_encode(['success' => true]);
+    } elseif ($action === 'delete') {
+        $id = $_POST['id'] ?? null;
+        if (!$id) {
+            throw new Exception('ID is required');
+        }
+
+        $stmt = $pdo->prepare('DELETE FROM words WHERE id = ?');
+        $stmt->execute([$id]);
+        echo json_encode(['success' => true]);
+    } else {
+        throw new Exception('Unknown action');
+    }
+} catch (Exception $e) {
+    http_response_code(400);
+    echo json_encode(['error' => $e->getMessage()]);
+}
