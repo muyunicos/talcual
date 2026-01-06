@@ -578,8 +578,8 @@
                     <h3 style="margin-bottom: 20px;">📤 Importar / Exportar</h3>
                     
                     <div class="form-group">
-                        <label>Importar JSON:</label>
-                        <textarea id="importData" placeholder="Pega JSON aquí..."></textarea>
+                        <label>Importar JSON (soporta formato estándar y compacto):</label>
+                        <textarea id="importData" placeholder='Formato compacto:{"AMOR Y CITAS ❤️":[{"Un lugar para una primera cita",["Cine|Cinema|Peli","Bar|Pub|Boliche"],1}]}\n\nFormato estándar:{"categories":[{"id":1,"name":"Cat1"}],"prompts":[{"text":"Prompt","category_ids":[1],"difficulty":1,"words":["Word1"]}]}'></textarea>
                     </div>
                     
                     <div class="button-group">
@@ -1050,7 +1050,7 @@
                 
                 if (res.success) {
                     const stats = res.data;
-                    showMessage(`✓ Importado: ${stats.categories_added} categorías, ${stats.prompts_added} consignas, ${stats.words_added} palabras`, 'success');
+                    showMessage(`✓ Importado [${stats.format}]: ${stats.categories_added} categorías, ${stats.prompts_added} consignas, ${stats.words_added} palabras`, 'success');
                     document.getElementById('importData').value = '';
                     loadDictionary();
                     updateStats();
