@@ -211,9 +211,9 @@ class DatabaseManager {
     }
 
     public function getWords($promptId = null) {
-        if ($promptId) {
+        if ($promptId !== null && $promptId !== '') {
             $stmt = $this->pdo->prepare('SELECT id, prompt_id, word, normalized_word, gender FROM valid_words WHERE prompt_id = ? ORDER BY word');
-            $stmt->execute([$promptId]);
+            $stmt->execute([(int)$promptId]);
         } else {
             $stmt = $this->pdo->query('SELECT id, prompt_id, word, normalized_word, gender FROM valid_words ORDER BY prompt_id, word');
         }
