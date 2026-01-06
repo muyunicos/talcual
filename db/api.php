@@ -640,37 +640,38 @@ function importCompactFormat($db, $json, &$stats) {
                 $words = [];
                 $difficulty = 1;
                 
-                if (is_string($promptItem[0] ?? null)) {
-                    $promptText = $promptItem[0];
+                if (is_string($promptItem[0] ?? null) && !empty(trim($promptItem[0]))) {
+                    $promptText = trim($promptItem[0]);
                 }
                 
                 if (isset($promptItem[1])) {
                     if (is_array($promptItem[1])) {
-                        $words = $promptItem[1];
+                        foreach ($promptItem[1] as $wordEntry) {
+                            if (is_string($wordEntry)) {
+                                $words = array_merge($words, explodeWords($wordEntry));
+                            }
+                        }
                     } elseif (is_string($promptItem[1])) {
                         $words = explodeWords($promptItem[1]);
                     }
                 }
                 
-                if (isset($promptItem[2])) {
+                if (isset($promptItem[2]) && is_numeric($promptItem[2])) {
                     $difficulty = (int)$promptItem[2];
                 }
                 
-                if (!empty($promptText)) {
+                if (!empty($promptText) && !empty($words)) {
                     try {
                         $promptId = $db->addPrompt($categoryId, $promptText, $difficulty);
                         $stats['prompts_added']++;
                         
-                        foreach ($words as $wordEntry) {
-                            $wordList = explodeWords($wordEntry);
-                            foreach ($wordList as $word) {
-                                if (!empty(trim($word))) {
-                                    try {
-                                        $db->addWord($promptId, $word, null);
-                                        $stats['words_added']++;
-                                    } catch (Exception $e) {
-                                        logMessage('Word import error: ' . $e->getMessage(), 'WARN');
-                                    }
+                        foreach ($words as $word) {
+                            if (!empty(trim($word))) {
+                                try {
+                                    $db->addWord($promptId, $word, null);
+                                    $stats['words_added']++;
+                                } catch (Exception $e) {
+                                    logMessage('Word import error: ' . $e->getMessage(), 'WARN');
                                 }
                             }
                         }
