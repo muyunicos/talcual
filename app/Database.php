@@ -90,10 +90,8 @@ class Database {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 prompt_id INTEGER NOT NULL,
                 word_group TEXT NOT NULL,
-                normalized_word TEXT NOT NULL,
-                gender TEXT,
                 FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
-                UNIQUE(prompt_id, normalized_word)
+                UNIQUE(prompt_id, word_group)
             )');
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS games (
@@ -208,17 +206,6 @@ class Database {
             }
             
             $tableInfo = $this->pdo->query("PRAGMA table_info(valid_words)")->fetchAll(PDO::FETCH_COLUMN, 1);
-            if (!in_array('normalized_word', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN normalized_word TEXT');
-                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN gender TEXT');
-                
-                $words = $this->pdo->query('SELECT id, word FROM valid_words')->fetchAll(PDO::FETCH_ASSOC);
-                $stmt = $this->pdo->prepare('UPDATE valid_words SET normalized_word = ?, word_group = ? WHERE id = ?');
-                foreach ($words as $w) {
-                    $normalized = mb_strtoupper(trim($w['word']), 'UTF-8');
-                    $stmt->execute([$normalized, $w['word'], $w['id']]);
-                }
-            }
             if (!in_array('word_group', $tableInfo)) {
                 $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN word_group TEXT');
                 $this->pdo->exec('UPDATE valid_words SET word_group = word WHERE word_group IS NULL');
