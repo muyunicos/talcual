@@ -322,6 +322,15 @@ class DatabaseManager {
         }
         return true;
     }
+
+    public function getInspectionData() {
+        return [
+            'stats' => $this->getDictionaryStats(),
+            'games_sample' => $this->getGames(10),
+            'dictionary_size' => filesize($this->dbFile) ?? 0,
+            'schema_version' => 2
+        ];
+    }
 }
 
 function handlePost($db, $action) {
@@ -334,6 +343,7 @@ function handlePost($db, $action) {
             'update-prompt' => handleUpdatePrompt($db),
             'delete-prompt' => handleDeletePrompt($db),
             'add-word' => handleAddWord($db),
+            'update-word' => handleUpdateWord($db),
             'delete-word' => handleDeleteWord($db),
             'reorder-categories' => handleReorderCategories($db),
             'import' => handleImport($db),
@@ -354,7 +364,9 @@ function handleGet($db, $action) {
             'get-words' => respondSuccess('Words loaded', $db->getWords($_GET['prompt_id'] ?? null)),
             'get-stats' => respondSuccess('Stats loaded', $db->getDictionaryStats()),
             'get-games' => respondSuccess('Games loaded', $db->getGames()),
-            'inspect' => respondSuccess('Inspection completed', ['stats' => $db->getDictionaryStats()]),
+            'get-game' => respondSuccess('Game loaded', $db->getGameById($_GET['id'] ?? '')),
+            'get-game-players' => respondSuccess('Players loaded', $db->getGamePlayers($_GET['game_id'] ?? '')),
+            'inspect' => respondSuccess('Inspection completed', $db->getInspectionData()),
             default => respondError('Unknown GET action: ' . $action)
         };
     } catch (Exception $e) {
@@ -433,6 +445,14 @@ function handleAddWord($db) {
     
     $wordId = $db->addWord($data['prompt_id'], $data['word'], $data['gender'] ?? null);
     respondSuccess('Word added', ['word_id' => $wordId]);
+}
+
+function handleUpdateWord($db) {
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data || !isset($data['id'])) throw new Exception('Missing id');
+    
+    $db->updateWord($data['id'], $data['word'] ?? null, $data['gender'] ?? null);
+    respondSuccess('Word updated');
 }
 
 function handleDeleteWord($db) {
