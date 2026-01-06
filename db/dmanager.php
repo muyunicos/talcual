@@ -1,6 +1,11 @@
 <?php
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../app/Database.php';
+require_once __DIR__ . '/../app/Traits/WordNormalizer.php';
+require_once __DIR__ . '/../app/AdminDictionary.php';
+require_once __DIR__ . '/../app/AppUtils.php';
+
 $action = $_GET['action'] ?? null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -9,86 +14,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($action === 'optimize') handleOptimize();
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($action === 'get-db') getDatabase();
+    elseif ($action === 'inspect') inspectDatabase();
 }
 
 function handleImport() {
-    $json = json_decode(file_get_contents('php://input'), true);
-    
-    if (!$json) {
-        respondError('JSON inválido');
-        return;
+    try {
+        $json = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$json) {
+            respondError('JSON inválido');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $json = validateStructure($json);
+        
+        $stats = importData($admin, $json);
+        
+        respondSuccess('Base de datos importada inteligentemente', $stats);
+    } catch (Exception $e) {
+        respondError($e->getMessage());
     }
-    
-    $json = validateStructure($json);
-    $currentDb = loadDatabase();
-    $merged = mergeDatabase($currentDb, $json);
-    $merged = cleanDatabase($merged);
-    respondSuccess('Base de datos importada inteligentemente', $merged);
 }
 
 function handleSave() {
-    $json = json_decode(file_get_contents('php://input'), true);
-    
-    if (!$json) {
-        respondError('JSON inválido');
-        return;
+    try {
+        $json = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$json) {
+            respondError('JSON inválido');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $json = validateStructure($json);
+        $json = cleanDatabase($admin, $json);
+        
+        saveToDatabase($admin, $json);
+        
+        $stats = $admin->getDictionaryStats();
+        respondSuccess('Base de datos guardada', $stats);
+    } catch (Exception $e) {
+        respondError($e->getMessage());
     }
-    
-    $json = validateStructure($json);
-    $normalized = normalizeDatabase($json);
-    $normalized = cleanDatabase($normalized);
-    saveToDatabase($normalized);
-    respondSuccess('Base de datos guardada', $normalized);
 }
 
 function handleOptimize() {
-    $db = loadDatabase();
-    if (!$db) {
-        respondError('Base de datos no encontrada');
-        return;
-    }
-    
-    $db = validateStructure($db);
-    $report = [
-        'before' => countDB($db),
-        'issues' => []
-    ];
-    
-    $orphanedClues = findOrphanedClues($db);
-    if (!empty($orphanedClues)) {
-        $report['issues'][] = 'Consignas huérfanas encontradas: ' . implode(', ', $orphanedClues);
-        foreach ($orphanedClues as $clueId) {
-            unset($db['consignas'][$clueId]);
+    try {
+        $admin = new AdminDictionary();
+        
+        $beforeStats = $admin->getDictionaryStats();
+        $report = [
+            'before' => $beforeStats,
+            'issues' => []
+        ];
+        
+        $orphanCount = removeOrphanedPrompts($admin);
+        if ($orphanCount > 0) {
+            $report['issues'][] = 'Consignas huérfanas eliminadas: ' . $orphanCount;
         }
-    }
-    
-    $deadRefs = findDeadReferences($db);
-    if (!empty($deadRefs)) {
-        $report['issues'][] = 'Referencias muertas limpiadas: ' . count($deadRefs);
-        foreach ($deadRefs as $catName => $clueIds) {
-            foreach ($clueIds as $clueId) {
-                $db['categorias'][$catName]['consignas'] = array_values(
-                    array_filter($db['categorias'][$catName]['consignas'], fn($id) => $id !== $clueId)
-                );
-            }
+        
+        $deadCount = removeDeadReferences($admin);
+        if ($deadCount > 0) {
+            $report['issues'][] = 'Referencias muertas limpiadas: ' . $deadCount;
         }
+        
+        $admin->vacuumDatabase();
+        
+        $afterStats = $admin->getDictionaryStats();
+        $report['after'] = $afterStats;
+        
+        respondSuccess('Base de datos optimizada', $report);
+    } catch (Exception $e) {
+        respondError($e->getMessage());
     }
-    
-    $db = cleanDatabase($db);
-    saveToDatabase($db);
-    
-    $report['after'] = countDB($db);
-    respondSuccess('Base de datos optimizada', ['report' => $report, 'data' => $db]);
 }
 
 function getDatabase() {
-    $db = loadDatabase();
-    if (!$db) {
-        respondError('Base de datos no encontrada');
-        return;
+    try {
+        $admin = new AdminDictionary();
+        $inspection = $admin->getDatabaseInspection();
+        respondSuccess('Base de datos cargada', $inspection);
+    } catch (Exception $e) {
+        respondError($e->getMessage());
     }
-    $db = validateStructure($db);
-    respondSuccess('Base de datos cargada', $db);
+}
+
+function inspectDatabase() {
+    try {
+        $admin = new AdminDictionary();
+        $stats = $admin->getDictionaryStats();
+        $games = $admin->getGames();
+        
+        $inspection = [
+            'stats' => $stats,
+            'games' => $games,
+            'database_file' => '/data/talcual.db',
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+        
+        respondSuccess('Inspección de base de datos', $inspection);
+    } catch (Exception $e) {
+        respondError($e->getMessage());
+    }
 }
 
 function validateStructure($data) {
@@ -109,18 +137,108 @@ function validateStructure($data) {
     return $data;
 }
 
-function cleanDatabase($db) {
-    $db = validateStructure($db);
+function importData($admin, $data) {
+    $imported = [
+        'categories_added' => 0,
+        'categories_existing' => 0,
+        'prompts_added' => 0,
+        'prompts_existing' => 0,
+        'words_added' => 0,
+        'words_existing' => 0
+    ];
     
-    foreach ($db['categorias'] as $catName => &$catData) {
+    $categoryMap = [];
+    foreach ($data['categorias'] ?? [] as $catName => $catData) {
+        try {
+            $existing = $admin->getCategoryByName($catName);
+            if ($existing) {
+                $imported['categories_existing']++;
+                $categoryMap[$catName] = $existing['id'];
+            } else {
+                $cat = $admin->addCategory($catName);
+                $imported['categories_added']++;
+                $categoryMap[$catName] = $cat['id'];
+            }
+        } catch (Exception $e) {
+            logMessage('Import category error: ' . $e->getMessage(), 'ERROR');
+        }
+    }
+    
+    foreach ($data['consignas'] ?? [] as $promptId => $consigna) {
+        try {
+            $promptText = $consigna['pregunta'] ?? '';
+            $categoriesForPrompt = [];
+            
+            foreach ($data['categorias'] ?? [] as $catName => $catData) {
+                if (isset($catData['consignas']) && in_array($promptId, $catData['consignas'])) {
+                    if (isset($categoryMap[$catName])) {
+                        $categoriesForPrompt[] = $categoryMap[$catName];
+                    }
+                }
+            }
+            
+            if (empty($categoriesForPrompt)) {
+                continue;
+            }
+            
+            $newPromptId = $admin->addPrompt($categoriesForPrompt, $promptText);
+            $imported['prompts_added']++;
+            
+            foreach ($consigna['respuestas'] ?? [] as $word) {
+                try {
+                    $normalized = normalizeWordForImport($word);
+                    if (!empty($normalized)) {
+                        $admin->addValidWord($newPromptId, $normalized);
+                        $imported['words_added']++;
+                    }
+                } catch (Exception $e) {
+                    logMessage('Import word error: ' . $e->getMessage(), 'ERROR');
+                }
+            }
+        } catch (Exception $e) {
+            logMessage('Import prompt error: ' . $e->getMessage(), 'ERROR');
+        }
+    }
+    
+    return $imported;
+}
+
+function saveToDatabase($admin, $data) {
+    $admin->pdo->beginTransaction();
+    
+    try {
+        $pdo = Database::getInstance()->getConnection();
+        
+        foreach ($data['categorias'] ?? [] as $catName => $catData) {
+            try {
+                $existing = $admin->getCategoryByName($catName);
+                if (!$existing) {
+                    $admin->addCategory($catName);
+                }
+            } catch (Exception $e) {
+                logMessage('Save category error: ' . $e->getMessage(), 'ERROR');
+            }
+        }
+        
+        $admin->pdo->commit();
+    } catch (Exception $e) {
+        $admin->pdo->rollback();
+        throw new Exception('Error saving database: ' . $e->getMessage());
+    }
+}
+
+function cleanDatabase($admin, $data) {
+    $data = validateStructure($data);
+    
+    foreach ($data['categorias'] as $catName => &$catData) {
         if (!is_array($catData['consignas'] ?? null)) {
             $catData['consignas'] = [];
         }
-        $catData['consignas'] = array_filter($catData['consignas'], fn($id) => isset($db['consignas'][$id]));
+        $catData['consignas'] = array_filter($catData['consignas'], fn($id) => isset($data['consignas'][$id]));
         $catData['consignas'] = array_values($catData['consignas']);
     }
     
-    foreach ($db['consignas'] as &$clue) {
+    foreach ($data['consignas'] as &$clue) {
         if (!is_array($clue['respuestas'] ?? null)) {
             $clue['respuestas'] = [];
         }
@@ -128,114 +246,64 @@ function cleanDatabase($db) {
         $clue['respuestas'] = array_values($clue['respuestas']);
     }
     
-    return $db;
+    return $data;
 }
 
-function findOrphanedClues($db) {
-    $usedClues = [];
-    foreach ($db['categorias'] as $catData) {
-        $usedClues = array_merge($usedClues, $catData['consignas'] ?? []);
-    }
-    
-    return array_diff(array_keys($db['consignas']), $usedClues);
-}
-
-function findDeadReferences($db) {
-    $deadRefs = [];
-    foreach ($db['categorias'] as $catName => $catData) {
-        foreach ($catData['consignas'] ?? [] as $clueId) {
-            if (!isset($db['consignas'][$clueId])) {
-                if (!isset($deadRefs[$catName])) $deadRefs[$catName] = [];
-                $deadRefs[$catName][] = $clueId;
+function removeOrphanedPrompts($admin) {
+    try {
+        $pdo = Database::getInstance()->getConnection();
+        $stmt = $pdo->query(
+            'SELECT p.id FROM prompts p '
+            . 'WHERE NOT EXISTS (SELECT 1 FROM prompt_categories WHERE prompt_id = p.id)'
+        );
+        
+        $orphans = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $count = 0;
+        
+        foreach ($orphans as $promptId) {
+            try {
+                $admin->deletePrompt($promptId);
+                $count++;
+            } catch (Exception $e) {
+                logMessage('Delete orphaned prompt error: ' . $e->getMessage(), 'ERROR');
             }
-        }
-    }
-    return $deadRefs;
-}
-
-function countDB($db) {
-    return [
-        'categorias' => count($db['categorias'] ?? []),
-        'consignas' => count($db['consignas'] ?? []),
-        'respuestas' => array_sum(array_map(fn($c) => count($c['respuestas'] ?? []), $db['consignas'] ?? []))
-    ];
-}
-
-function mergeDatabase($current, $imported) {
-    if (empty($current)) {
-        return normalizeDatabase($imported);
-    }
-    
-    $categories = $current['categorias'] ?? [];
-    $consignas = $current['consignas'] ?? [];
-    
-    $importedCategories = $imported['categorias'] ?? [];
-    $importedConsignas = $imported['consignas'] ?? [];
-    
-    $nextOrder = empty($categories) ? 1 : max(array_column($categories, 'orden', null) ?? [0]) + 1;
-    
-    foreach ($importedCategories as $catName => $catData) {
-        if (!isset($categories[$catName])) {
-            $categories[$catName] = [
-                'orden' => $nextOrder++,
-                'consignas' => []
-            ];
         }
         
-        if (isset($catData['consignas']) && is_array($catData['consignas'])) {
-            foreach ($catData['consignas'] as $clueId) {
-                if (!in_array($clueId, $categories[$catName]['consignas'])) {
-                    $categories[$catName]['consignas'][] = $clueId;
-                }
+        return $count;
+    } catch (Exception $e) {
+        logMessage('Cleanup orphaned prompts error: ' . $e->getMessage(), 'ERROR');
+        return 0;
+    }
+}
+
+function removeDeadReferences($admin) {
+    try {
+        $pdo = Database::getInstance()->getConnection();
+        $stmt = $pdo->query(
+            'SELECT vw.id FROM valid_words vw '
+            . 'WHERE NOT EXISTS (SELECT 1 FROM prompts WHERE id = vw.prompt_id)'
+        );
+        
+        $deadWords = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $count = 0;
+        
+        foreach ($deadWords as $wordId) {
+            try {
+                $admin->deleteValidWord($wordId);
+                $count++;
+            } catch (Exception $e) {
+                logMessage('Delete dead reference error: ' . $e->getMessage(), 'ERROR');
             }
         }
+        
+        return $count;
+    } catch (Exception $e) {
+        logMessage('Cleanup dead references error: ' . $e->getMessage(), 'ERROR');
+        return 0;
     }
-    
-    foreach ($importedConsignas as $clueId => $clueData) {
-        if (!isset($consignas[$clueId])) {
-            $consignas[$clueId] = [
-                'pregunta' => $clueData['pregunta'] ?? '',
-                'respuestas' => array_map(fn($r) => normalizeResponse($r), $clueData['respuestas'] ?? []),
-                'created_at' => $clueData['created_at'] ?? date('c')
-            ];
-        }
-    }
-    
-    return [
-        'categorias' => $categories,
-        'consignas' => $consignas
-    ];
 }
 
-function normalizeDatabase($data) {
-    $normalized = [
-        'categorias' => [],
-        'consignas' => []
-    ];
-    
-    $importedCategories = $data['categorias'] ?? [];
-    $importedConsignas = $data['consignas'] ?? [];
-    
-    $order = 1;
-    foreach ($importedCategories as $catName => $catData) {
-        $normalized['categorias'][$catName] = [
-            'orden' => $order++,
-            'consignas' => $catData['consignas'] ?? []
-        ];
-    }
-    
-    foreach ($importedConsignas as $clueId => $clueData) {
-        $normalized['consignas'][$clueId] = [
-            'pregunta' => $clueData['pregunta'] ?? '',
-            'respuestas' => array_map(fn($r) => normalizeResponse($r), $clueData['respuestas'] ?? []),
-            'created_at' => $clueData['created_at'] ?? date('c')
-        ];
-    }
-    
-    return $normalized;
-}
-
-function normalizeResponse($text) {
+function normalizeWordForImport($text) {
     $text = mb_strtoupper($text, 'UTF-8');
     
     $replacements = [
@@ -249,37 +317,6 @@ function normalizeResponse($text) {
     $text = preg_replace('/[^A-Z0-9|.]/u', '', $text);
     
     return $text;
-}
-
-function loadDatabase() {
-    $dbPath = getDatabasePath();
-    
-    if (!file_exists($dbPath)) {
-        return null;
-    }
-    
-    return json_decode(file_get_contents($dbPath), true);
-}
-
-function saveToDatabase($data) {
-    $dbPath = getDatabasePath();
-    
-    if (!is_dir(dirname($dbPath))) {
-        mkdir(dirname($dbPath), 0755, true);
-    }
-    
-    $handle = fopen($dbPath, 'c');
-    if (flock($handle, LOCK_EX)) {
-        ftruncate($handle, 0);
-        rewind($handle);
-        fwrite($handle, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        flock($handle, LOCK_UN);
-    }
-    fclose($handle);
-}
-
-function getDatabasePath() {
-    return __DIR__ . '/../data/talcual.db';
 }
 
 function respondSuccess($msg, $data = null) {
