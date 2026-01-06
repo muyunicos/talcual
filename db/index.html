@@ -235,7 +235,7 @@
         
         .form-group textarea {
             resize: vertical;
-            min-height: 100px;
+            min-height: 120px;
             font-family: 'Courier New', monospace;
             font-size: 12px;
         }
@@ -416,6 +416,12 @@
             color: #fde047;
         }
         
+        .alert-info {
+            background: #1e3a8a;
+            border: 1px solid #3b82f6;
+            color: #bfdbfe;
+        }
+        
         .schema-table {
             background: #1e293b;
             border: 1px solid #334155;
@@ -468,6 +474,66 @@
             font-weight: 600;
             margin-right: 10px;
             margin-bottom: 5px;
+        }
+        
+        .batch-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .batch-section {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .batch-section h4 {
+            margin-bottom: 15px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        
+        .batch-pane {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .batch-list {
+            flex: 1;
+            overflow-y: auto;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .batch-list-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .batch-list-item:hover {
+            background: #334155;
+        }
+        
+        .batch-list-item.selected {
+            background: #1e40af;
+            color: #fff;
+        }
+        
+        .batch-info {
+            padding: 12px 15px;
+            background: #0f172a;
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
         }
     </style>
 </head>
@@ -545,18 +611,38 @@
                 <!-- BATCH WORDS PANEL -->
                 <div id="batch-words" class="panel">
                     <h3 style="margin-bottom: 20px;">📋 Agregar Palabras por Lote</h3>
-                    <div class="form-group">
-                        <label>Selecciona Consigna:</label>
-                        <select id="batchPromptSelect" style="width: 100%; padding: 10px;">
-                            <option value="">-- Cargando --</option>
-                        </select>
+                    <div class="alert alert-info">
+                        ℹ️ Selecciona una categoría y consigna para precargar palabras actuales
                     </div>
-                    <div class="form-group">
-                        <label>Palabras (una por línea, puedes usar | para sinónimos):</label>
-                        <textarea id="batchWordsInput" placeholder="Flores|Ramo|Rosas\nBombones|Chocolates|Bombón\nPerfume|Fragancia"></textarea>
+                    
+                    <div class="batch-grid">
+                        <!-- Left: Category & Prompt Selection -->
+                        <div class="batch-section">
+                            <h4>📁 Categoría</h4>
+                            <div class="batch-pane">
+                                <div class="batch-list" id="batchCategoriesList"></div>
+                                <div class="batch-info" id="batchCatInfo">-- Selecciona --</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Middle: Prompts in selected category -->
+                        <div class="batch-section">
+                            <h4>💬 Consigna</h4>
+                            <div class="batch-pane">
+                                <div class="batch-list" id="batchPromptsList"></div>
+                                <div class="batch-info" id="batchPromptInfo">-- Selecciona --</div>
+                            </div>
+                        </div>
                     </div>
+                    
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label>Palabras (una por línea, usa | para sinónimos):</label>
+                        <textarea id="batchWordsInput" placeholder="Flores|Ramo|Rosas\nBombones|Chocolates|Bombón\nPerfume|Fragancia" readonly style="opacity: 0.9;"></textarea>
+                    </div>
+                    
                     <div class="button-group">
-                        <button class="btn-primary" onclick="addBatchWords()" style="flex: 1;">✓ Agregar Lote</button>
+                        <button class="btn-primary" onclick="loadBatchWords()" style="flex: 1;">📥 Cargar Palabras</button>
+                        <button class="btn-success" onclick="replaceBatchWords()" style="flex: 1;" id="updateBtnBatch">✓ Actualizar Consigna</button>
                     </div>
                 </div>
                 
@@ -681,6 +767,8 @@
         const API = 'api.php';
         let selectedCategory = null;
         let selectedPrompt = null;
+        let selectedBatchCategory = null;
+        let selectedBatchPrompt = null;
         let allPrompts = [];
         let allWords = [];
         
@@ -712,7 +800,7 @@
                     
                     document.getElementById('pageTitle').textContent = titles[panelId] || panelId;
                     
-                    if (panelId === 'batch-words') loadBatchWordsSelect();
+                    if (panelId === 'batch-words') loadBatchPanel();
                 });
             });
         }
@@ -777,6 +865,156 @@
                 }
             } catch (error) {
                 showMessage('Error cargando: ' + error.message, 'error');
+            }
+        }
+        
+        async function loadBatchPanel() {
+            try {
+                const [categoriesRes, promptsRes, wordsRes] = await Promise.all([
+                    fetch(`${API}?action=get-categories`),
+                    fetch(`${API}?action=get-prompts`),
+                    fetch(`${API}?action=get-words`)
+                ]);
+                
+                const categories = await categoriesRes.json().then(r => r.data || []);
+                const prompts = await promptsRes.json().then(r => r.data || []);
+                const words = await wordsRes.json().then(r => r.data || []);
+                
+                allPrompts = prompts;
+                allWords = words;
+                
+                renderBatchCategories(categories);
+            } catch (error) {
+                showMessage('Error cargando: ' + error.message, 'error');
+            }
+        }
+        
+        function renderBatchCategories(categories) {
+            const list = document.getElementById('batchCategoriesList');
+            if (!categories || categories.length === 0) {
+                list.innerHTML = '<div class="cascade-empty">Sin categorías</div>';
+                return;
+            }
+            
+            list.innerHTML = categories
+                .sort((a, b) => a.orden - b.orden)
+                .map(cat => `
+                    <div class="batch-list-item ${selectedBatchCategory === cat.id ? 'selected' : ''}" onclick="selectBatchCategory(${cat.id})">
+                        <span>${cat.name}</span>
+                    </div>
+                `).join('');
+        }
+        
+        function selectBatchCategory(catId) {
+            selectedBatchCategory = catId;
+            selectedBatchPrompt = null;
+            document.getElementById('batchWordsInput').value = '';
+            document.getElementById('batchCatInfo').textContent = `${catId}. Seleccionada`;
+            
+            const prompts = allPrompts.filter(p => p.category_ids.includes(catId));
+            renderBatchPrompts(prompts);
+        }
+        
+        function renderBatchPrompts(prompts) {
+            const list = document.getElementById('batchPromptsList');
+            if (!prompts || prompts.length === 0) {
+                list.innerHTML = '<div class="cascade-empty">Selecciona categoría</div>';
+                return;
+            }
+            
+            list.innerHTML = prompts
+                .sort((a, b) => a.text.localeCompare(b.text))
+                .map(p => `
+                    <div class="batch-list-item ${selectedBatchPrompt === p.id ? 'selected' : ''}" onclick="selectBatchPrompt(${p.id})">
+                        <span>${p.text}</span>
+                    </div>
+                `).join('');
+        }
+        
+        function selectBatchPrompt(promptId) {
+            selectedBatchPrompt = promptId;
+            const prompt = allPrompts.find(p => p.id === promptId);
+            document.getElementById('batchPromptInfo').textContent = prompt ? prompt.text : '-- Selecciona --';
+        }
+        
+        async function loadBatchWords() {
+            if (!selectedBatchPrompt) {
+                showMessage('Selecciona una consigna primero', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API}?action=get-words&prompt_id=${selectedBatchPrompt}`);
+                const json = await response.json();
+                const words = json.data || [];
+                
+                const wordGroups = words
+                    .filter(w => w && w.word_group)
+                    .map(w => w.word_group)
+                    .sort();
+                
+                document.getElementById('batchWordsInput').value = wordGroups.join('\n');
+                showMessage(`✓ ${wordGroups.length} palabras cargadas`, 'success');
+            } catch (error) {
+                showMessage('Error cargando palabras: ' + error.message, 'error');
+            }
+        }
+        
+        async function replaceBatchWords() {
+            if (!selectedBatchPrompt) {
+                showMessage('Selecciona una consigna primero', 'error');
+                return;
+            }
+            
+            const words = document.getElementById('batchWordsInput').value
+                .split('\n')
+                .map(w => w.trim())
+                .filter(w => w.length > 0);
+            
+            if (words.length === 0) {
+                showMessage('Ingresa palabras', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API}?action=get-words&prompt_id=${selectedBatchPrompt}`);
+                const json = await response.json();
+                const currentWords = json.data || [];
+                
+                let deleted = 0;
+                for (const word of currentWords) {
+                    try {
+                        await fetch(`${API}?action=delete-word`, {
+                            method: 'POST',
+                            body: JSON.stringify({ id: word.id }),
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        deleted++;
+                    } catch (e) {
+                        console.error('Delete error:', e);
+                    }
+                }
+                
+                let added = 0;
+                for (const word of words) {
+                    try {
+                        const response = await fetch(`${API}?action=add-word`, {
+                            method: 'POST',
+                            body: JSON.stringify({ prompt_id: selectedBatchPrompt, word }),
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const res = await response.json();
+                        if (res.success) added++;
+                    } catch (e) {
+                        console.error('Add error:', e);
+                    }
+                }
+                
+                showMessage(`✓ Actualizado: ${deleted} eliminadas, ${added} agregadas`, 'success');
+                loadDictionary();
+                updateStats();
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
             }
         }
         
@@ -958,55 +1196,6 @@
             } catch (error) {
                 showMessage('Error: ' + error.message, 'error');
             }
-        }
-        
-        async function loadBatchWordsSelect() {
-            const select = document.getElementById('batchPromptSelect');
-            const response = await fetch(`${API}?action=get-prompts`);
-            const json = await response.json();
-            const prompts = json.data || [];
-            
-            select.innerHTML = '<option value="">-- Selecciona Consigna --</option>' +
-                prompts.map(p => `<option value="${p.id}">${p.text}</option>`).join('');
-        }
-        
-        async function addBatchWords() {
-            const promptId = document.getElementById('batchPromptSelect').value;
-            const words = document.getElementById('batchWordsInput').value
-                .split('\n')
-                .map(w => w.trim())
-                .filter(w => w.length > 0);
-            
-            if (!promptId) {
-                showMessage('Selecciona consigna', 'error');
-                return;
-            }
-            
-            if (words.length === 0) {
-                showMessage('Ingresa palabras', 'error');
-                return;
-            }
-            
-            let added = 0;
-            for (const word of words) {
-                try {
-                    const response = await fetch(`${API}?action=add-word`, {
-                        method: 'POST',
-                        body: JSON.stringify({ prompt_id: parseInt(promptId), word }),
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    const res = await response.json();
-                    
-                    if (res.success) added++;
-                } catch (e) {
-                    console.error('Word error:', e);
-                }
-            }
-            
-            showMessage(`✓ ${added} de ${words.length} palabras agregadas`, 'success');
-            document.getElementById('batchWordsInput').value = '';
-            loadDictionary();
-            updateStats();
         }
         
         async function optimizeDatabase() {
