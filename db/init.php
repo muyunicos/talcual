@@ -20,8 +20,7 @@ try {
             name TEXT UNIQUE NOT NULL,
             orden INTEGER DEFAULT 0,
             is_active BOOLEAN DEFAULT 1,
-            date INTEGER,
-            UNIQUE(name)
+            date INTEGER
         )
     ');
 
@@ -31,8 +30,7 @@ try {
             text TEXT UNIQUE NOT NULL,
             difficulty INTEGER DEFAULT 1,
             is_active BOOLEAN DEFAULT 1,
-            date INTEGER,
-            UNIQUE(text)
+            date INTEGER
         )
     ');
 
@@ -107,7 +105,7 @@ try {
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prompts_active ON prompts(is_active)');
 
-    echo json_encode(['success' => true, 'message' => 'Database initialized']);
+    echo json_encode(['success' => true, 'message' => 'Database initialized successfully', 'path' => $dbPath]);
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
