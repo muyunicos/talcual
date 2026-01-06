@@ -401,7 +401,7 @@ class DatabaseManager {
             
             if (!empty($indexes)) {
                 foreach ($indexes as $idx) {
-                    $indexColumns = $this->pdo->query("PRAGMA index_info({$idx['name']})")->fetchAll(PDO::FETCH_COLUMN, 2);
+                    $indexColumns = $this->pdo->query("PRAGMA index_info({$idx['name']})") ->fetchAll(PDO::FETCH_COLUMN, 2);
                     $tableInfo['indexes'][] = [
                         'name' => $idx['name'],
                         'columns' => $indexColumns,
@@ -700,34 +700,34 @@ function importCompactFormat($db, $json, &$stats) {
                 $wordGroups = [];
                 $difficulty = 1;
                 
-                if (is_string($promptItem[0] ?? null) && !empty(trim($promptItem[0]))) {
-                    $promptText = trim($promptItem[0]);
-                    
-                    if (isset($promptItem[1]) && is_array($promptItem[1])) {
-                        $wordGroups = $promptItem[1];
-                    }
-                    
-                    if (isset($promptItem[2]) && is_numeric($promptItem[2])) {
-                        $difficulty = (int)$promptItem[2];
-                    }
-                } elseif (is_array($promptItem) && count($promptItem) > 0) {
-                    $keys = array_keys($promptItem);
-                    $firstKey = $keys[0];
-                    
-                    if (is_string($firstKey) && !empty(trim($firstKey))) {
-                        $promptText = trim($firstKey);
-                        $value = $promptItem[$firstKey];
+                foreach ($promptItem as $itemKey => $itemValue) {
+                    if (is_string($itemKey) && !empty(trim($itemKey))) {
+                        $promptText = trim($itemKey);
                         
-                        if (is_array($value)) {
-                            foreach ($value as $item) {
-                                if (is_string($item) && strpos($item, '|') !== false) {
-                                    $wordGroups[] = $item;
-                                } elseif (is_numeric($item)) {
-                                    $difficulty = (int)$item;
+                        if (is_array($itemValue)) {
+                            foreach ($itemValue as $word) {
+                                if (is_string($word) && !empty(trim($word))) {
+                                    $wordGroups[] = trim($word);
+                                } elseif (is_numeric($word)) {
+                                    $difficulty = (int)$word;
                                 }
                             }
-                        } elseif (is_numeric($value)) {
-                            $difficulty = (int)$value;
+                        } elseif (is_numeric($itemValue)) {
+                            $difficulty = (int)$itemValue;
+                        }
+                    } elseif (is_numeric($itemKey) && is_string($itemValue) && !empty(trim($itemValue))) {
+                        if ($promptText === null) {
+                            $promptText = trim($itemValue);
+                        } else {
+                            $wordGroups[] = trim($itemValue);
+                        }
+                    } elseif (is_numeric($itemKey) && is_array($itemValue)) {
+                        foreach ($itemValue as $word) {
+                            if (is_string($word) && !empty(trim($word))) {
+                                $wordGroups[] = trim($word);
+                            } elseif (is_numeric($word)) {
+                                $difficulty = (int)$word;
+                            }
                         }
                     }
                 }
