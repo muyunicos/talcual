@@ -415,6 +415,60 @@
             border: 1px solid #b45309;
             color: #fde047;
         }
+        
+        .schema-table {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .schema-table-name {
+            padding: 15px;
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+            font-weight: 600;
+            font-size: 14px;
+            color: #3b82f6;
+        }
+        
+        .schema-table-content {
+            padding: 15px;
+        }
+        
+        .schema-section {
+            margin-bottom: 15px;
+        }
+        
+        .schema-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        
+        .schema-item {
+            padding: 8px 12px;
+            background: #334155;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .schema-stat {
+            display: inline-block;
+            background: #1e40af;
+            color: #e0f2fe;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -544,7 +598,8 @@
                 <!-- INSPECT PANEL -->
                 <div id="inspect" class="panel">
                     <h3 style="margin-bottom: 20px;">🔍 Inspector de Base de Datos</h3>
-                    <button class="btn-primary" onclick="inspectDatabase()" style="margin-bottom: 20px; padding: 10px 16px;">🔍 Inspeccionar</button>
+                    <button class="btn-primary" onclick="inspectDatabase()" style="margin-bottom: 20px; padding: 10px 16px;">📊 Inspección Rápida</button>
+                    <button class="btn-secondary" onclick="deepInspectDatabase()" style="margin-bottom: 20px; padding: 10px 16px; margin-left: 10px;">🔬 Inspección Profunda</button>
                     <div id="inspectResults"></div>
                 </div>
             </div>
@@ -1025,8 +1080,82 @@
             try {
                 const res = await fetch(`${API}?action=inspect`).then(r => r.json());
                 if (res.success) {
-                    const html = `<pre style="background: #1e293b; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 11px; line-height: 1.5;">${JSON.stringify(res.data, null, 2)}</pre>`;
+                    const data = res.data;
+                    let html = `<div class="table-container">
+                        <table>
+                            <tr><td colspan="2" style="background: #0f172a; font-weight: 600; padding: 15px;">📊 ESTADÍSTICAS GENERALES</td></tr>
+                            <tr><td>Categorías</td><td><strong>${data.stats.categories}</strong></td></tr>
+                            <tr><td>Consignas</td><td><strong>${data.stats.prompts}</strong></td></tr>
+                            <tr><td>Palabras Válidas</td><td><strong>${data.stats.words}</strong></td></tr>
+                            <tr><td>Partidas</td><td><strong>${data.stats.games}</strong></td></tr>
+                            <tr><td>Jugadores</td><td><strong>${data.stats.players}</strong></td></tr>
+                            <tr><td>Tamaño BD</td><td><strong>${(data.dictionary_size / 1024).toFixed(2)} KB</strong></td></tr>
+                        </table>
+                    </div>`;
                     document.getElementById('inspectResults').innerHTML = html;
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function deepInspectDatabase() {
+            try {
+                const res = await fetch(`${API}?action=deep-inspect`).then(r => r.json());
+                if (res.success) {
+                    const data = res.data;
+                    let html = `
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #3b82f6; margin-bottom: 10px;">📁 Archivo: ${data.database_file}</h4>
+                            <span class="schema-stat">📊 ${data.file_size_mb} MB</span>
+                            <span class="schema-stat">⏰ ${data.timestamp}</span>
+                            <span class="schema-stat">📋 ${data.total_tables} tablas</span>
+                        </div>
+                    `;
+                    
+                    for (const [tableName, tableInfo] of Object.entries(data.tables)) {
+                        html += `<div class="schema-table">
+                            <div class="schema-table-name">📊 ${tableName} (${tableInfo.row_count} filas)</div>
+                            <div class="schema-table-content">`;
+                        
+                        if (tableInfo.columns) {
+                            html += `<div class="schema-section">
+                                <div class="schema-section-title">Columnas</div>`;
+                            for (const col of tableInfo.columns) {
+                                let colInfo = `${col.name}: <strong>${col.type}</strong>`;
+                                if (col.pk) colInfo += ` <span style="color: #ec4899;">[PK]</span>`;
+                                if (col.notnull) colInfo += ` <span style="color: #f59e0b;">[NOT NULL]</span>`;
+                                if (col.default) colInfo += ` <span style="color: #8b5cf6;">[DEFAULT: ${col.default}]</span>`;
+                                html += `<div class="schema-item">${colInfo}</div>`;
+                            }
+                            html += `</div>`;
+                        }
+                        
+                        if (tableInfo.indexes && tableInfo.indexes.length > 0) {
+                            html += `<div class="schema-section">
+                                <div class="schema-section-title">Índices</div>`;
+                            for (const idx of tableInfo.indexes) {
+                                html += `<div class="schema-item">📇 ${idx.name}${idx.unique ? ' [UNIQUE]' : ''}: (${idx.columns.join(', ')})</div>`;
+                            }
+                            html += `</div>`;
+                        }
+                        
+                        if (tableInfo.foreign_keys && tableInfo.foreign_keys.length > 0) {
+                            html += `<div class="schema-section">
+                                <div class="schema-section-title">Foreign Keys</div>`;
+                            for (const fk of tableInfo.foreign_keys) {
+                                html += `<div class="schema-item">🔗 ${fk.column} → ${fk.references_table}(${fk.references_column})</div>`;
+                            }
+                            html += `</div>`;
+                        }
+                        
+                        html += `</div></div>`;
+                    }
+                    
+                    document.getElementById('inspectResults').innerHTML = html;
+                    showMessage('✓ Inspección profunda completada', 'success');
                 } else {
                     showMessage('Error: ' + res.message, 'error');
                 }
