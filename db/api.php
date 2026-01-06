@@ -216,39 +216,41 @@ class DatabaseManager {
         $promptId = self::sanitizeParam($promptId);
         
         if ($promptId) {
-            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word, normalized_word, gender FROM valid_words WHERE prompt_id = ? ORDER BY word');
+            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group, normalized_word, gender FROM valid_words WHERE prompt_id = ? ORDER BY word_group');
             $stmt->execute([(int)$promptId]);
         } else {
-            $stmt = $this->pdo->query('SELECT id, prompt_id, word, normalized_word, gender FROM valid_words ORDER BY prompt_id, word');
+            $stmt = $this->pdo->query('SELECT id, prompt_id, word_group, normalized_word, gender FROM valid_words ORDER BY prompt_id, word_group');
         }
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    public function addWord($promptId, $word, $gender = null) {
-        if (empty(trim($word))) throw new Exception('Word cannot be empty');
+    public function addWord($promptId, $wordGroup, $gender = null) {
+        if (empty(trim($wordGroup))) throw new Exception('Word group cannot be empty');
         
-        $normalized = mb_strtoupper(trim($word), 'UTF-8');
+        $firstWord = trim(explode('|', $wordGroup)[0]);
+        $normalized = mb_strtoupper($firstWord, 'UTF-8');
         
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word, normalized_word, gender) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$promptId, trim($word), $normalized, $gender]);
+            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_group, normalized_word, gender) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$promptId, trim($wordGroup), $normalized, $gender]);
             return $this->pdo->lastInsertId();
         } catch (PDOException $e) {
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
-                throw new Exception('Word already exists for this prompt');
+                throw new Exception('Word group already exists for this prompt');
             }
             throw $e;
         }
     }
 
-    public function updateWord($id, $word = null, $gender = null) {
+    public function updateWord($id, $wordGroup = null, $gender = null) {
         $updates = [];
         $params = [];
         
-        if ($word !== null) {
-            $normalized = mb_strtoupper(trim($word), 'UTF-8');
-            $updates[] = 'word = ?';
-            $params[] = trim($word);
+        if ($wordGroup !== null) {
+            $firstWord = trim(explode('|', $wordGroup)[0]);
+            $normalized = mb_strtoupper($firstWord, 'UTF-8');
+            $updates[] = 'word_group = ?';
+            $params[] = trim($wordGroup);
             $updates[] = 'normalized_word = ?';
             $params[] = $normalized;
         }
@@ -639,18 +641,14 @@ function importCompactFormat($db, $json, &$stats) {
                 if (!is_array($promptItem) || empty($promptItem)) continue;
                 
                 $promptText = null;
-                $words = [];
+                $wordGroups = [];
                 $difficulty = 1;
                 
                 if (is_string($promptItem[0] ?? null) && !empty(trim($promptItem[0]))) {
                     $promptText = trim($promptItem[0]);
                     
                     if (isset($promptItem[1]) && is_array($promptItem[1])) {
-                        foreach ($promptItem[1] as $wordEntry) {
-                            if (is_string($wordEntry)) {
-                                $words = array_merge($words, explodeWords($wordEntry));
-                            }
-                        }
+                        $wordGroups = $promptItem[1];
                     }
                     
                     if (isset($promptItem[2]) && is_numeric($promptItem[2])) {
@@ -665,11 +663,11 @@ function importCompactFormat($db, $json, &$stats) {
                         $value = $promptItem[$firstKey];
                         
                         if (is_array($value)) {
-                            foreach ($value as $wordEntry) {
-                                if (is_string($wordEntry)) {
-                                    $words = array_merge($words, explodeWords($wordEntry));
-                                } elseif (is_numeric($wordEntry)) {
-                                    $difficulty = (int)$wordEntry;
+                            foreach ($value as $item) {
+                                if (is_string($item) && strpos($item, '|') !== false) {
+                                    $wordGroups[] = $item;
+                                } elseif (is_numeric($item)) {
+                                    $difficulty = (int)$item;
                                 }
                             }
                         } elseif (is_numeric($value)) {
@@ -678,18 +676,18 @@ function importCompactFormat($db, $json, &$stats) {
                     }
                 }
                 
-                if (!empty($promptText) && !empty($words)) {
+                if (!empty($promptText) && !empty($wordGroups)) {
                     try {
                         $promptId = $db->addPrompt($categoryId, $promptText, $difficulty);
                         $stats['prompts_added']++;
                         
-                        foreach (array_unique($words) as $word) {
-                            if (!empty(trim($word))) {
+                        foreach (array_unique($wordGroups) as $wordGroup) {
+                            if (!empty(trim($wordGroup))) {
                                 try {
-                                    $db->addWord($promptId, $word, null);
+                                    $db->addWord($promptId, $wordGroup, null);
                                     $stats['words_added']++;
                                 } catch (Exception $e) {
-                                    logMessage('Word import error: ' . $e->getMessage(), 'WARN');
+                                    logMessage('Word group import error: ' . $e->getMessage(), 'WARN');
                                 }
                             }
                         }
@@ -704,12 +702,6 @@ function importCompactFormat($db, $json, &$stats) {
             $stats['errors'][] = "Category '{$categoryName}': " . $e->getMessage();
         }
     }
-}
-
-function explodeWords($input) {
-    if (is_array($input)) return $input;
-    $parts = array_map('trim', explode('|', $input));
-    return array_filter($parts);
 }
 
 function ensureDataDirectory() {
