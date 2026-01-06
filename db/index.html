@@ -40,6 +40,7 @@
             border-bottom: 2px solid #e0e0e0;
             padding: 0 20px;
             gap: 10px;
+            overflow-x: auto;
         }
 
         .tab-btn {
@@ -52,6 +53,7 @@
             color: #666;
             border-bottom: 3px solid transparent;
             transition: all 0.3s;
+            white-space: nowrap;
         }
 
         .tab-btn.active {
@@ -89,6 +91,12 @@
             border-left: 4px solid #667eea;
         }
 
+        .form-section h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #333;
+        }
+
         .form-group {
             margin-bottom: 15px;
         }
@@ -117,6 +125,8 @@
         .form-group textarea {
             resize: vertical;
             min-height: 80px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
         }
 
         .form-group input:focus,
@@ -179,6 +189,15 @@
             background: #059669;
         }
 
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
         .list-table {
             width: 100%;
             border-collapse: collapse;
@@ -211,6 +230,7 @@
         .list-table .actions {
             display: flex;
             gap: 5px;
+            flex-wrap: wrap;
         }
 
         .list-table .actions button {
@@ -250,6 +270,11 @@
             color: #7f1d1d;
         }
 
+        .badge.duplicate {
+            background: #fef08a;
+            color: #78350f;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -261,6 +286,7 @@
             z-index: 1000;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
 
         .modal.active {
@@ -271,9 +297,11 @@
             background: white;
             padding: 30px;
             border-radius: 8px;
-            max-width: 400px;
-            width: 90%;
+            max-width: 600px;
+            width: 100%;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .modal-content h3 {
@@ -284,12 +312,14 @@
         .modal-content p {
             color: #666;
             margin-bottom: 20px;
+            font-size: 14px;
         }
 
         .modal-actions {
             display: flex;
             gap: 10px;
             justify-content: flex-end;
+            margin-top: 20px;
         }
 
         .alert {
@@ -319,43 +349,37 @@
 
         .grid-2 {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
         }
 
-        .card {
+        .stat-card {
             background: white;
-            padding: 15px;
+            padding: 20px;
             border-radius: 6px;
             border: 1px solid #e0e0e0;
+            text-align: center;
         }
 
-        .card h4 {
-            margin-bottom: 10px;
-            color: #333;
-            font-size: 14px;
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
         }
 
-        .card p {
-            color: #666;
+        .stat-card .label {
             font-size: 13px;
-            margin-bottom: 10px;
-        }
-
-        .json-editor {
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: #f5f5f5;
-            min-height: 300px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .cascade-select {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
+            margin-bottom: 20px;
         }
 
         .cascade-list {
@@ -363,6 +387,7 @@
             border-radius: 4px;
             max-height: 300px;
             overflow-y: auto;
+            background: white;
         }
 
         .cascade-list-item {
@@ -370,6 +395,7 @@
             border-bottom: 1px solid #eee;
             cursor: pointer;
             transition: background 0.2s;
+            font-size: 13px;
         }
 
         .cascade-list-item:hover {
@@ -392,18 +418,66 @@
             font-size: 14px;
             margin: 0;
         }
+
+        .json-editor {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f5f5f5;
+            min-height: 300px;
+            width: 100%;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f0f0f0;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .drag-drop-zone {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .drag-drop-zone:hover {
+            background: #f0f0f0;
+            border-color: #5568d3;
+        }
+
+        .drag-drop-zone.dragover {
+            background: #e0e7ff;
+            border-color: #667eea;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>⚙️ TalCual Admin DB</h1>
-        <p>Gestiona categorías, consignas, palabras, partidas y jugadores</p>
+        <p>Gestiona diccionario, partidas, jugadores y optimizaciones</p>
     </div>
 
     <div class="tabs">
         <button class="tab-btn active" data-tab="dictionary">📚 Diccionario</button>
+        <button class="tab-btn" data-tab="merge">🔀 Merge</button>
+        <button class="tab-btn" data-tab="optimize">✨ Optimizar</button>
         <button class="tab-btn" data-tab="games">🎮 Partidas</button>
         <button class="tab-btn" data-tab="players">👥 Jugadores</button>
+        <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
         <button class="tab-btn" data-tab="raw">📋 Raw Data</button>
     </div>
 
@@ -412,12 +486,10 @@
         <div id="tab-dictionary" class="tab-content active">
             <div class="alert info" id="dictMsg"></div>
 
-            <!-- CATEGORIES SECTION -->
             <div class="form-section">
                 <h3>📁 Categorías</h3>
-                <div class="form-group">
-                    <label>Buscar</label>
-                    <input type="text" id="categorySearch" placeholder="Filtra categorías...">
+                <div class="search-box">
+                    <input type="text" id="categorySearch" placeholder="Busca categorías...">
                 </div>
                 <table class="list-table" id="categoriesTable">
                     <thead>
@@ -432,7 +504,6 @@
                 </table>
             </div>
 
-            <!-- ADD CATEGORY -->
             <div class="form-section">
                 <h3>➕ Agregar Categoría</h3>
                 <div class="form-group">
@@ -440,19 +511,19 @@
                     <input type="text" id="catName" placeholder="Ej: Cosas de Cocina">
                 </div>
                 <div class="form-group">
-                    <label>Orden (para visualización)</label>
+                    <label>Orden (visualización)</label>
                     <input type="number" id="catOrden" placeholder="0" value="0">
                 </div>
                 <div class="btn-group">
                     <button class="btn-primary" onclick="app.addCategory()">Agregar</button>
                     <button class="btn-secondary" onclick="app.showBatchCategoryModal()">Batch (CSV)</button>
+                    <button class="btn-warning" onclick="app.showReorderModal()">↕️ Reordenar</button>
                 </div>
             </div>
 
-            <!-- PROMPTS SECTION -->
             <div class="form-section">
                 <h3>❓ Consignas</h3>
-                <div class="cascade-select">
+                <div class="cascade-select" id="cascadeContainer">
                     <div>
                         <h4>Categorías</h4>
                         <div class="cascade-list" id="categoryList"></div>
@@ -468,7 +539,6 @@
                 </div>
             </div>
 
-            <!-- ADD PROMPT -->
             <div class="form-section">
                 <h3>➕ Agregar Consigna</h3>
                 <div class="form-group">
@@ -480,8 +550,8 @@
                     <input type="number" id="promptDifficulty" min="1" max="5" value="1">
                 </div>
                 <div class="form-group">
-                    <label>Categorías (selecciona en la lista de arriba)</label>
-                    <div id="selectedCategories" style="background: #f0f0f0; padding: 10px; border-radius: 4px; min-height: 40px; color: #999; font-size: 13px;">Ninguna seleccionada</div>
+                    <label>Categorías</label>
+                    <div id="selectedCategories" style="background: #f0f0f0; padding: 10px; border-radius: 4px; min-height: 40px; color: #999; font-size: 13px;">Selecciona en cascada ↑</div>
                 </div>
                 <div class="btn-group">
                     <button class="btn-primary" onclick="app.addPrompt()">Agregar Consigna</button>
@@ -489,16 +559,84 @@
                 </div>
             </div>
 
-            <!-- ADD WORDS -->
             <div class="form-section">
                 <h3>➕ Agregar Palabras</h3>
-                <p>Selecciona una consigna en la cascada arriba</p>
+                <p style="color: #666; font-size: 13px;">Selecciona una consigna en la cascada</p>
                 <div class="form-group">
                     <label>Palabras (separadas por comas)</label>
-                    <textarea id="wordsText" placeholder="CUCHARA, TENEDOR, CUCHILLO\nPuedes usar | para sinónimos: PERRO|PERRITA"></textarea>
+                    <textarea id="wordsText" placeholder="CUCHARA, TENEDOR\nO con sinónimos: PERRO|PERRITA, GATO|GATA"></textarea>
                 </div>
                 <div class="btn-group">
                     <button class="btn-primary" id="addWordsBtn" onclick="app.addWords()" disabled>Agregar Palabras</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: MERGE -->
+        <div id="tab-merge" class="tab-content">
+            <div class="alert info" id="mergeMsg"></div>
+
+            <div class="form-section">
+                <h3>🔀 Combinar Categorías</h3>
+                <p style="color: #666; font-size: 13px;">Selecciona dos categorías para combinarlas en una</p>
+                <div class="form-group">
+                    <label>Categoría a Eliminar (fusionada en la siguiente)</label>
+                    <select id="mergeSourceCat">
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Categoría Destino (mantiene los datos)</label>
+                    <select id="mergeTargetCat">
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button class="btn-danger" onclick="app.mergeCategories()">Combinar</button>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>🔀 Combinar Consignas</h3>
+                <p style="color: #666; font-size: 13px;">Selecciona dos consignas para combinarlas en una</p>
+                <div class="form-group">
+                    <label>Consigna a Eliminar</label>
+                    <select id="mergeSourcePrompt">
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Consigna Destino</label>
+                    <select id="mergeTargetPrompt">
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button class="btn-danger" onclick="app.mergePrompts()">Combinar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: OPTIMIZE -->
+        <div id="tab-optimize" class="tab-content">
+            <div class="alert info" id="optimizeMsg"></div>
+
+            <div class="form-section">
+                <h3>🔍 Encontrar Duplicados</h3>
+                <div class="btn-group">
+                    <button class="btn-secondary" onclick="app.findDuplicates('categories')">Duplicadas en Categorías</button>
+                    <button class="btn-secondary" onclick="app.findDuplicates('prompts')">Duplicadas en Consignas</button>
+                    <button class="btn-secondary" onclick="app.findDuplicates('words')">Duplicadas en Palabras</button>
+                </div>
+                <div id="duplicatesResult" style="margin-top: 15px;"></div>
+            </div>
+
+            <div class="form-section">
+                <h3>🧹 Limpieza</h3>
+                <div class="btn-group">
+                    <button class="btn-warning" onclick="app.removeDuplicateWords()">Remover Palabras Duplicadas</button>
+                    <button class="btn-warning" onclick="app.cleanupUnused()">Limpiar Consignas Sin Categoría</button>
+                    <button class="btn-warning" onclick="app.vacuum()">Optimizar DB (VACUUM)</button>
                 </div>
             </div>
         </div>
@@ -535,7 +673,7 @@
         <div id="tab-players" class="tab-content">
             <div class="alert info" id="playersMsg"></div>
             <div class="form-group">
-                <label>Selecciona una partida</label>
+                <label>Selecciona partida</label>
                 <select id="playerGameSelect" onchange="app.loadPlayers()">
                     <option value="">Cargando...</option>
                 </select>
@@ -544,7 +682,7 @@
                 <thead>
                     <tr>
                         <th>Nombre</th>
-                        <th>Color</th>
+                        <th>Aura</th>
                         <th>Estado</th>
                         <th>Score</th>
                         <th>Última Actividad</th>
@@ -555,64 +693,93 @@
             </table>
         </div>
 
+        <!-- TAB: ANALYTICS -->
+        <div id="tab-analytics" class="tab-content">
+            <div class="alert info" id="analyticsMsg"></div>
+            <div class="btn-group" style="margin-bottom: 20px;">
+                <button class="btn-secondary" onclick="app.loadStats()">Recargar Estadísticas</button>
+            </div>
+            <div class="grid-2" id="statsGrid"></div>
+        </div>
+
         <!-- TAB: RAW DATA -->
         <div id="tab-raw" class="tab-content">
-            <div class="btn-group">
-                <button class="btn-primary" onclick="app.exportDictionary()">📥 Exportar Diccionario</button>
-                <button class="btn-secondary" onclick="app.showImportModal()">📤 Importar Diccionario</button>
+            <div class="btn-group" style="margin-bottom: 20px;">
+                <button class="btn-success" onclick="app.exportDictionary()">📥 Descargar Diccionario</button>
+                <button class="btn-primary" onclick="app.showImportModal()">📤 Importar Diccionario</button>
             </div>
             <div style="margin-top: 20px;">
-                <h3>Diccionario JSON</h3>
+                <h3>Raw Dictionary JSON</h3>
                 <textarea class="json-editor" id="rawDictionary" readonly></textarea>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: BATCH CATEGORIES -->
+    <!-- MODALS -->
     <div id="batchCategoryModal" class="modal">
         <div class="modal-content">
             <h3>Agregar Categorías (Batch)</h3>
-            <p>Ingresa una categoría por línea</p>
-            <textarea id="batchCategoryText" style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;" placeholder="Cosas de Cocina\nMarcas de Autos\nFrutas"></textarea>
-            <div class="modal-actions" style="margin-top: 15px;">
+            <p>Una categoría por línea</p>
+            <textarea id="batchCategoryText" class="form-group" style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Cosas de Cocina\nMarcas de Autos\nFrutas"></textarea>
+            <div class="modal-actions">
                 <button class="btn-secondary" onclick="app.closeBatchCategoryModal()">Cancelar</button>
                 <button class="btn-primary" onclick="app.submitBatchCategories()">Agregar</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: BATCH PROMPTS -->
     <div id="batchPromptModal" class="modal">
         <div class="modal-content">
             <h3>Agregar Consignas (Batch)</h3>
-            <p>Ingresa una consigna por línea</p>
-            <textarea id="batchPromptText" style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;" placeholder="Utensilios de madera\nMarcas japonesas\nAnimales domésticos"></textarea>
-            <div class="modal-actions" style="margin-top: 15px;">
+            <p>Una consigna por línea</p>
+            <textarea id="batchPromptText" class="form-group" style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Utensilios de madera\nMarcas japonesas\nAnimales domésticos"></textarea>
+            <div class="modal-actions">
                 <button class="btn-secondary" onclick="app.closeBatchPromptModal()">Cancelar</button>
                 <button class="btn-primary" onclick="app.submitBatchPrompts()">Agregar</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: CONFIRMATION -->
+    <div id="reorderModal" class="modal">
+        <div class="modal-content">
+            <h3>Reordenar Categorías</h3>
+            <p>Arrastra para reordenar (ó escribe números directamente)</p>
+            <div id="reorderList" style="margin: 15px 0;"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="app.closeReorderModal()">Cancelar</button>
+                <button class="btn-primary" onclick="app.submitReorder()">Guardar Orden</button>
+            </div>
+        </div>
+    </div>
+
     <div id="confirmModal" class="modal">
         <div class="modal-content">
             <h3 id="confirmTitle">Confirmar</h3>
             <p id="confirmMsg"></p>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="app.closeConfirm()">Cancelar</button>
-                <button class="btn-danger" onclick="app.confirmDelete()">Eliminar</button>
+                <button class="btn-danger" onclick="app.confirmDelete()">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: IMPORT -->
     <div id="importModal" class="modal">
         <div class="modal-content">
             <h3>Importar Diccionario</h3>
-            <p>Pega el JSON o arrastra un archivo</p>
-            <textarea id="importJSON" style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Monaco', monospace;"></textarea>
-            <div class="modal-actions" style="margin-top: 15px;">
+            <div class="drag-drop-zone" id="dragDropZone" ondrop="app.handleFileDrop(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)">
+                <p>📤 Arrastra archivo JSON aquí o haz click para seleccionar</p>
+                <input type="file" id="fileInput" accept=".json" onchange="app.handleFileSelect(event)" style="display: none;">
+            </div>
+            <div style="margin: 15px 0;">
+                <label>O pega JSON aquí:</label>
+                <textarea id="importJSON" class="json-editor" style="margin-top: 10px;"></textarea>
+            </div>
+            <div class="form-group" style="margin-top: 15px;">
+                <label>
+                    <input type="checkbox" id="mergeMode"> Combinar (merge) en lugar de reemplazar
+                </label>
+            </div>
+            <div class="modal-actions">
                 <button class="btn-secondary" onclick="app.closeImportModal()">Cancelar</button>
                 <button class="btn-primary" onclick="app.submitImport()">Importar</button>
             </div>
@@ -626,15 +793,19 @@
             selectedPromptId: null,
             selectedCategories: [],
             deleteTarget: null,
+            categories: [],
+            prompts: [],
 
             init() {
                 document.querySelectorAll('.tab-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
                 });
                 document.getElementById('categorySearch').addEventListener('input', () => this.filterCategories());
+                document.getElementById('dragDropZone').addEventListener('click', () => document.getElementById('fileInput').click());
                 this.loadCategories();
                 this.loadGames();
                 this.loadPlayers();
+                this.loadStats();
                 this.loadRawDictionary();
             },
 
@@ -643,16 +814,26 @@
                 document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
                 document.getElementById(`tab-${tab}`).classList.add('active');
                 event.target.classList.add('active');
+                if (tab === 'merge') this.loadMergeSelects();
             },
 
             async loadCategories() {
                 try {
                     const res = await fetch(`${this.api}categories.php?action=list`);
-                    const categories = await res.json();
-                    this.renderCategoriesTable(categories);
-                    this.renderCategoriesList(categories);
+                    this.categories = await res.json();
+                    this.renderCategoriesTable(this.categories);
+                    this.renderCategoriesList(this.categories);
                 } catch (e) {
-                    this.showMessage('dictMsg', 'Error cargando categorías: ' + e.message, 'error');
+                    this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
+                }
+            },
+
+            async loadPrompts() {
+                try {
+                    const res = await fetch(`${this.api}prompts.php?action=list`);
+                    this.prompts = await res.json();
+                } catch (e) {
+                    console.error(e);
                 }
             },
 
@@ -665,7 +846,7 @@
                         <td><span class="badge ${cat.is_active ? 'active' : 'inactive'}">${cat.is_active ? 'Activa' : 'Inactiva'}</span></td>
                         <td class="actions">
                             <button class="btn-secondary" onclick="app.editCategory(${cat.id})">Editar</button>
-                            <button class="btn-danger" onclick="app.deleteCategory(${cat.id}, '${cat.name}')">Eliminar</button>
+                            <button class="btn-danger" onclick="app.deleteCategory(${cat.id}, '${cat.name}')">X</button>
                         </td>
                     </tr>
                 `).join('');
@@ -717,9 +898,9 @@
                     const words = await res.json();
                     const list = document.getElementById('wordsList');
                     list.innerHTML = words.map(w => `
-                        <div class="cascade-list-item">
+                        <div class="cascade-list-item" style="display: flex; justify-content: space-between; align-items: center;">
                             ${w.word}
-                            <button class="btn-danger" style="float: right; padding: 3px 6px; margin-top: -2px;" onclick="app.deleteWord(${w.id})">X</button>
+                            <button class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="app.deleteWord(${w.id})">X</button>
                         </div>
                     `).join('');
                 } catch (e) {
@@ -773,7 +954,7 @@
                     document.getElementById('promptText').value = '';
                     document.getElementById('promptDifficulty').value = '1';
                     this.selectedCategories = [];
-                    document.getElementById('selectedCategories').innerHTML = 'Ninguna seleccionada';
+                    document.getElementById('selectedCategories').innerHTML = 'Selecciona en cascada ↑';
                     this.loadCategories();
                 } catch (e) {
                     this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
@@ -919,6 +1100,210 @@
                 }
             },
 
+            showReorderModal() {
+                const list = document.getElementById('reorderList');
+                list.innerHTML = this.categories.map(cat => `
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="number" value="${cat.orden}" data-id="${cat.id}" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <span style="flex: 1; padding: 8px;">${cat.name}</span>
+                    </div>
+                `).join('');
+                document.getElementById('reorderModal').classList.add('active');
+            },
+
+            closeReorderModal() {
+                document.getElementById('reorderModal').classList.remove('active');
+            },
+
+            async submitReorder() {
+                const items = Array.from(document.querySelectorAll('#reorderList input')).map(inp => ({
+                    id: parseInt(inp.dataset.id),
+                    orden: parseInt(inp.value) || 0
+                }));
+
+                try {
+                    for (const item of items) {
+                        await fetch(`${this.api}categories.php?action=update`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: item.id, name: this.categories.find(c => c.id === item.id).name, orden: item.orden })
+                        });
+                    }
+                    this.showMessage('dictMsg', '✓ Orden actualizado', 'success');
+                    this.closeReorderModal();
+                    this.loadCategories();
+                } catch (e) {
+                    alert('Error: ' + e.message);
+                }
+            },
+
+            async loadMergeSelects() {
+                if (!this.prompts.length) await this.loadPrompts();
+
+                const catSelect1 = document.getElementById('mergeSourceCat');
+                const catSelect2 = document.getElementById('mergeTargetCat');
+                catSelect1.innerHTML = this.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                catSelect2.innerHTML = this.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+                const promptSelect1 = document.getElementById('mergeSourcePrompt');
+                const promptSelect2 = document.getElementById('mergeTargetPrompt');
+                promptSelect1.innerHTML = this.prompts.map(p => `<option value="${p.id}">${p.text}</option>`).join('');
+                promptSelect2.innerHTML = this.prompts.map(p => `<option value="${p.id}">${p.text}</option>`).join('');
+            },
+
+            async mergeCategories() {
+                const source = document.getElementById('mergeSourceCat').value;
+                const target = document.getElementById('mergeTargetCat').value;
+                if (!source || !target || source === target) {
+                    alert('Selecciona dos categorías diferentes');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${this.api}merge.php?action=categories`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ source_id: source, target_id: target })
+                    });
+                    await res.json();
+                    this.showMessage('mergeMsg', '✓ Categorías combinadas', 'success');
+                    this.loadCategories();
+                    this.loadMergeSelects();
+                } catch (e) {
+                    this.showMessage('mergeMsg', 'Error: ' + e.message, 'error');
+                }
+            },
+
+            async mergePrompts() {
+                const source = document.getElementById('mergeSourcePrompt').value;
+                const target = document.getElementById('mergeTargetPrompt').value;
+                if (!source || !target || source === target) {
+                    alert('Selecciona dos consignas diferentes');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${this.api}merge.php?action=prompts`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ source_id: source, target_id: target })
+                    });
+                    await res.json();
+                    this.showMessage('mergeMsg', '✓ Consignas combinadas', 'success');
+                    this.loadCategories();
+                    this.loadMergeSelects();
+                } catch (e) {
+                    this.showMessage('mergeMsg', 'Error: ' + e.message, 'error');
+                }
+            },
+
+            async findDuplicates(type) {
+                try {
+                    const res = await fetch(`${this.api}optimize.php?action=find_duplicates&type=${type}`);
+                    const data = await res.json();
+                    const resultDiv = document.getElementById('duplicatesResult');
+                    if (data.duplicates.length === 0) {
+                        resultDiv.innerHTML = '<p style="color: #10b981;">✓ No se encontraron duplicados</p>';
+                    } else {
+                        resultDiv.innerHTML = `
+                            <table class="list-table" style="margin-top: 15px;">
+                                <thead><tr><th>Nombre/Texto</th><th>Repeticiones</th></tr></thead>
+                                <tbody>
+                                    ${data.duplicates.map(dup => `
+                                        <tr>
+                                            <td>${dup.name || dup.text || dup.word}</td>
+                                            <td><span class="badge duplicate">${dup.count}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+                } catch (e) {
+                    alert('Error: ' + e.message);
+                }
+            },
+
+            async removeDuplicateWords() {
+                if (!confirm('¿Remover palabras duplicadas? Esta acción no se puede deshacer.')) return;
+
+                try {
+                    const res = await fetch(`${this.api}optimize.php?action=remove_duplicate_words`);
+                    const data = await res.json();
+                    this.showMessage('optimizeMsg', `✓ ${data.removed} palabras duplicadas removidas`, 'success');
+                } catch (e) {
+                    this.showMessage('optimizeMsg', 'Error: ' + e.message, 'error');
+                }
+            },
+
+            async cleanupUnused() {
+                if (!confirm('¿Limpiar consignas sin categoría? Esta acción no se puede deshacer.')) return;
+
+                try {
+                    const res = await fetch(`${this.api}optimize.php?action=cleanup_unused_prompts`);
+                    const data = await res.json();
+                    this.showMessage('optimizeMsg', `✓ ${data.removed} consignas sin usar removidas`, 'success');
+                    this.loadCategories();
+                } catch (e) {
+                    this.showMessage('optimizeMsg', 'Error: ' + e.message, 'error');
+                }
+            },
+
+            async vacuum() {
+                if (!confirm('¿Optimizar base de datos? Esto puede tomar unos segundos.')) return;
+
+                try {
+                    const res = await fetch(`${this.api}optimize.php?action=vacuum`);
+                    const data = await res.json();
+                    const sizeMB = (data.size / 1024 / 1024).toFixed(2);
+                    this.showMessage('optimizeMsg', `✓ Database optimizada. Tamaño: ${sizeMB}MB`, 'success');
+                } catch (e) {
+                    this.showMessage('optimizeMsg', 'Error: ' + e.message, 'error');
+                }
+            },
+
+            async loadStats() {
+                try {
+                    const res = await fetch(`${this.api}optimize.php?action=stats`);
+                    const data = await res.json();
+                    const stats = data.stats;
+                    const sizeMB = (stats.db_size / 1024 / 1024).toFixed(2);
+                    const grid = document.getElementById('statsGrid');
+                    grid.innerHTML = `
+                        <div class="stat-card">
+                            <div class="label">Categorías Activas</div>
+                            <div class="number">${stats.active_categories}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Consignas Activas</div>
+                            <div class="number">${stats.active_prompts}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Palabras Totales</div>
+                            <div class="number">${stats.total_words}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Partidas Jugadas</div>
+                            <div class="number">${stats.total_games}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Partidas Finalizadas</div>
+                            <div class="number">${stats.finished_games}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Jugadores Únicos</div>
+                            <div class="number">${stats.total_unique_players}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Tamaño DB</div>
+                            <div class="number">${sizeMB}MB</div>
+                        </div>
+                    `;
+                } catch (e) {
+                    console.error(e);
+                }
+            },
+
             async loadGames() {
                 try {
                     const status = document.getElementById('gameStatus').value;
@@ -1000,12 +1385,9 @@
 
             async loadRawDictionary() {
                 try {
-                    const catRes = await fetch(`${this.api}categories.php?action=list`);
-                    const categories = await catRes.json();
-                    const promptRes = await fetch(`${this.api}prompts.php?action=list`);
-                    const prompts = await promptRes.json();
-                    const dict = { categories, prompts };
-                    document.getElementById('rawDictionary').value = JSON.stringify(dict, null, 2);
+                    const res = await fetch(`${this.api}import.php?action=export`);
+                    const data = await res.json();
+                    document.getElementById('rawDictionary').value = JSON.stringify(data, null, 2);
                 } catch (e) {
                     console.error(e);
                 }
@@ -1028,22 +1410,62 @@
             closeImportModal() {
                 document.getElementById('importModal').classList.remove('active');
                 document.getElementById('importJSON').value = '';
+                document.getElementById('mergeMode').checked = false;
+            },
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('dragDropZone').classList.add('dragover');
+            },
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('dragDropZone').classList.remove('dragover');
+            },
+
+            handleFileDrop(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('dragDropZone').classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.handleFileSelect({ target: { files } });
+                }
+            },
+
+            handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById('importJSON').value = ev.target.result;
+                };
+                reader.readAsText(file);
             },
 
             async submitImport() {
                 const json = document.getElementById('importJSON').value.trim();
                 if (!json) {
-                    alert('Pega el JSON');
+                    alert('Pega o arrastra JSON');
                     return;
                 }
 
                 try {
                     const data = JSON.parse(json);
-                    alert('Funcionalidad de import en desarrollo. Datos parseados correctamente.\nVer consola.');
-                    console.log(data);
+                    const merge = document.getElementById('mergeMode').checked;
+                    const res = await fetch(`${this.api}import.php?action=import&merge=${merge}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await res.json();
+                    this.showMessage('dictMsg', `✓ Importados: ${result.imported.categories} categorías, ${result.imported.prompts} consignas, ${result.imported.words} palabras`, 'success');
                     this.closeImportModal();
+                    this.loadCategories();
                 } catch (e) {
-                    alert('JSON inválido: ' + e.message);
+                    alert('Error: ' + e.message);
                 }
             },
 
@@ -1060,16 +1482,17 @@
                 el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
                 setTimeout(() => {
                     el.innerHTML = '';
-                }, 3000);
+                }, 4000);
             },
 
             editCategory(id) {
                 const name = prompt('Nuevo nombre');
                 if (!name) return;
+                const cat = this.categories.find(c => c.id === id);
                 fetch(`${this.api}categories.php?action=update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, name })
+                    body: JSON.stringify({ id, name, orden: cat.orden })
                 }).then(() => this.loadCategories());
             }
         };
