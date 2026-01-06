@@ -552,8 +552,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Palabras (una por línea):</label>
-                        <textarea id="batchWordsInput" placeholder="PALABRA1\nPALABRA2\nPALABRA3"></textarea>
+                        <label>Palabras (una por línea, puedes usar | para sinónimos):</label>
+                        <textarea id="batchWordsInput" placeholder="Flores|Ramo|Rosas\nBombones|Chocolates|Bombón\nPerfume|Fragancia"></textarea>
                     </div>
                     <div class="button-group">
                         <button class="btn-primary" onclick="addBatchWords()" style="flex: 1;">✓ Agregar Lote</button>
@@ -658,8 +658,8 @@
                 ⚠️ Selecciona una consigna primero en el panel central
             </div>
             <div class="form-group">
-                <label>Palabra:</label>
-                <input type="text" id="wordInput" placeholder="Ej: CUCHARA">
+                <label>Palabra (puedes usar | para sinónimos):</label>
+                <input type="text" id="wordInput" placeholder="Ej: Flores|Ramo|Rosas">
             </div>
             <div class="form-group">
                 <label>Género (opcional):</label>
@@ -822,10 +822,11 @@
             }
             
             list.innerHTML = words
-                .sort((a, b) => a.word.localeCompare(b.word))
+                .filter(w => w && w.word_group)
+                .sort((a, b) => (a.word_group || '').localeCompare(b.word_group || ''))
                 .map(w => `
                     <div class="cascade-item">
-                        <span>${w.word}</span>
+                        <span>${w.word_group}</span>
                         <span class="cascade-item-badge">${w.gender || '?'}</span>
                     </div>
                 `).join('');
@@ -1081,7 +1082,7 @@
                         text: p.text,
                         difficulty: p.difficulty,
                         category_ids: p.category_ids,
-                        words: allWordsData.filter(w => w.prompt_id === p.id).map(w => w.word)
+                        words: allWordsData.filter(w => w.prompt_id === p.id).map(w => w.word_group)
                     })),
                     timestamp: new Date().toISOString()
                 };
