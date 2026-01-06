@@ -322,6 +322,13 @@
             display: block;
         }
         
+        .message.info {
+            background: #1e3a8a;
+            color: #bfdbfe;
+            border: 1px solid #3b82f6;
+            display: block;
+        }
+        
         .table-container {
             background: #1e293b;
             border: 1px solid #334155;
@@ -535,6 +542,25 @@
             color: #64748b;
             text-align: center;
         }
+        
+        .import-preview {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .preview-item {
+            padding: 6px;
+            background: #0f172a;
+            border-radius: 3px;
+            margin-bottom: 5px;
+            color: #e0f2fe;
+        }
     </style>
 </head>
 <body>
@@ -663,13 +689,23 @@
                 <div id="import-export" class="panel">
                     <h3 style="margin-bottom: 20px;">📤 Importar / Exportar</h3>
                     
+                    <div class="alert alert-info">
+                        💡 <strong>Formato Compacto:</strong> {"Categoría": [{"Pregunta": ["Palabra1|Sin1", "Palabra2|Sin2"]}]}
+                    </div>
+                    
                     <div class="form-group">
-                        <label>Importar JSON (soporta formato estándar y compacto):</label>
-                        <textarea id="importData" placeholder='Formato compacto:{"AMOR Y CITAS ❤️":[{"Un lugar para una primera cita",["Cine|Cinema|Peli","Bar|Pub|Boliche"],1}]}\n\nFormato estándar:{"categories":[{"id":1,"name":"Cat1"}],"prompts":[{"text":"Prompt","category_ids":[1],"difficulty":1,"words":["Word1"]}]}'></textarea>
+                        <label>Importar JSON:</label>
+                        <textarea id="importData" placeholder='Pega el JSON aquí...'></textarea>
+                    </div>
+                    
+                    <div id="importPreview" class="import-preview" style="display: none;">
+                        <div style="color: #64748b; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Vista previa:</div>
+                        <div id="previewContent"></div>
                     </div>
                     
                     <div class="button-group">
-                        <button class="btn-primary" onclick="importData()" style="flex: 1;">📥 Importar</button>
+                        <button class="btn-primary" onclick="previewImport()" style="flex: 1;">👁️ Vista Previa</button>
+                        <button class="btn-success" onclick="importData()" style="flex: 1;">📥 Importar</button>
                         <button class="btn-secondary" onclick="exportData()" style="flex: 1;">📤 Exportar</button>
                     </div>
                     
@@ -771,6 +807,7 @@
         let selectedBatchPrompt = null;
         let allPrompts = [];
         let allWords = [];
+        let lastImportPreview = null;
         
         document.addEventListener('DOMContentLoaded', () => {
             setupNavigation();
@@ -1203,6 +1240,54 @@
             }
         }
         
+        function previewImport() {
+            const data = document.getElementById('importData').value.trim();
+            if (!data) {
+                showMessage('Pega JSON primero', 'error');
+                return;
+            }
+            
+            try {
+                const json = JSON.parse(data);
+                lastImportPreview = json;
+                
+                let html = '';
+                let catCount = 0, promptCount = 0, wordCount = 0;
+                
+                if (json.categories && json.prompts) {
+                    catCount = json.categories.length;
+                    promptCount = json.prompts.length;
+                    wordCount = json.prompts.reduce((sum, p) => sum + (p.words?.length || 0), 0);
+                } else {
+                    for (const [catName, catData] of Object.entries(json)) {
+                        catCount++;
+                        if (Array.isArray(catData)) {
+                            catData.forEach(item => {
+                                Object.keys(item).forEach(promptText => {
+                                    promptCount++;
+                                    const words = item[promptText];
+                                    if (Array.isArray(words)) {
+                                        wordCount += words.filter(w => typeof w === 'string').length;
+                                    }
+                                });
+                            });
+                        }
+                    }
+                }
+                
+                html += `<div class="preview-item">📁 Categorías: <strong>${catCount}</strong></div>`;
+                html += `<div class="preview-item">💬 Consignas: <strong>${promptCount}</strong></div>`;
+                html += `<div class="preview-item">📝 Palabras: <strong>${wordCount}</strong></div>`;
+                
+                document.getElementById('previewContent').innerHTML = html;
+                document.getElementById('importPreview').style.display = 'block';
+                showMessage('✓ Vista previa generada', 'info');
+            } catch (error) {
+                showMessage('JSON inválido: ' + error.message, 'error');
+                document.getElementById('importPreview').style.display = 'none';
+            }
+        }
+        
         async function importData() {
             const data = document.getElementById('importData').value.trim();
             if (!data) {
@@ -1223,6 +1308,7 @@
                     const stats = res.data;
                     showMessage(`✓ Importado [${stats.format}]: ${stats.categories_added} categorías, ${stats.prompts_added} consignas, ${stats.words_added} palabras`, 'success');
                     document.getElementById('importData').value = '';
+                    document.getElementById('importPreview').style.display = 'none';
                     loadDictionary();
                     updateStats();
                 } else {
