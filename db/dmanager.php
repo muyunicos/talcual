@@ -8,15 +8,12 @@ set_error_handler(function($severity, $message, $file, $line) {
 });
 
 try {
-    // 1. ENSURE DATA DIRECTORY EXISTS
     ensureDataDirectory();
-    
-    // 2. CHECK IF DB FILE EXISTS, IF NOT CREATE IT
     ensureDatabaseFile();
     
     require_once __DIR__ . '/../app/Database.php';
     require_once __DIR__ . '/../app/Traits/WordNormalizer.php';
-    require_once __DIR__ . '/../app/AdminDictionary.php';
+    require_once __DIR__ . '/AdminDictionary.php';
     require_once __DIR__ . '/../app/AppUtils.php';
 
     $action = $_GET['action'] ?? null;
@@ -32,12 +29,19 @@ try {
         elseif ($action === 'delete-category') handleDeleteCategory();
         elseif ($action === 'add-prompt') handleAddPrompt();
         elseif ($action === 'delete-prompt') handleDeletePrompt();
+        elseif ($action === 'delete-game') handleDeleteGame();
+        elseif ($action === 'delete-player') handleDeletePlayer();
+        elseif ($action === 'update-player-status') handleUpdatePlayerStatus();
         else respondError('Unknown POST action: ' . $action);
     } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($action === 'get-db') getDatabase();
         elseif ($action === 'inspect') inspectDatabase();
         elseif ($action === 'get-categories') getCategories();
         elseif ($action === 'get-prompts') getPrompts();
+        elseif ($action === 'get-games') getGames();
+        elseif ($action === 'get-game') getGame();
+        elseif ($action === 'get-game-players') getGamePlayers();
+        elseif ($action === 'get-player-stats') getPlayerStats();
         elseif ($action === 'export') exportDatabase();
         else respondError('Unknown GET action: ' . $action);
     } else {
@@ -49,10 +53,6 @@ try {
     http_response_code(500);
     respondError('Server Error: ' . $e->getMessage());
 }
-
-// ============================================================================
-// INITIALIZATION FUNCTIONS
-// ============================================================================
 
 function ensureDataDirectory() {
     $dataDir = __DIR__ . '/../data';
@@ -69,7 +69,6 @@ function ensureDataDirectory() {
 function ensureDatabaseFile() {
     $dbFile = __DIR__ . '/../data/talcual.db';
     
-    // If file exists and is valid SQLite, return
     if (file_exists($dbFile)) {
         if (isValidSQLiteDatabase($dbFile)) {
             return;
@@ -79,7 +78,6 @@ function ensureDatabaseFile() {
         }
     }
     
-    // File doesn't exist, create new clean database
     logMessage('Creating new database file: ' . $dbFile, 'INFO');
     createNewDatabase($dbFile);
 }
@@ -95,7 +93,6 @@ function isValidSQLiteDatabase($filePath) {
     $header = fread($handle, 16);
     fclose($handle);
     
-    // SQLite database files start with 'SQLite format 3\x00'
     return strpos($header, 'SQLite format 3') === 0;
 }
 
@@ -104,12 +101,10 @@ function createNewDatabase($dbFile) {
         $pdo = new PDO('sqlite:' . $dbFile);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-        // Set pragmas
         $pdo->exec('PRAGMA journal_mode = WAL');
         $pdo->exec('PRAGMA foreign_keys = ON');
         $pdo->exec('PRAGMA synchronous = NORMAL');
         
-        // Create all tables
         createTables($pdo);
         
         logMessage('New database created successfully at ' . $dbFile, 'INFO');
@@ -150,6 +145,7 @@ function createTables($pdo) {
             color TEXT,
             avatar TEXT,
             status TEXT DEFAULT "connected",
+            disconnected BOOLEAN DEFAULT 0,
             score INTEGER DEFAULT 0,
             current_answers TEXT,
             round_history TEXT DEFAULT "{}",
@@ -183,17 +179,15 @@ function createTables($pdo) {
         'CREATE INDEX IF NOT EXISTS idx_players_game_id ON players(game_id)',
         'CREATE INDEX IF NOT EXISTS idx_prompt_categories_prompt ON prompt_categories(prompt_id)',
         'CREATE INDEX IF NOT EXISTS idx_prompt_categories_category ON prompt_categories(category_id)',
-        'CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)'
+        'CREATE INDEX IF NOT EXISTS idx_valid_words_prompt_id ON valid_words(prompt_id)',
+        'CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)',
+        'CREATE INDEX IF NOT EXISTS idx_games_updated_at ON games(updated_at)'
     ];
     
     foreach (array_merge($tables, $indexes) as $sql) {
         $pdo->exec($sql);
     }
 }
-
-// ============================================================================
-// HANDLER FUNCTIONS
-// ============================================================================
 
 function handleAddCategory() {
     try {
@@ -280,10 +274,64 @@ function handleDeletePrompt() {
     }
 }
 
+function handleDeleteGame() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        if (!$data || !isset($data['game_id'])) {
+            respondError('Missing game_id');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $admin->deleteGame($data['game_id']);
+        respondSuccess('Partida eliminada');
+    } catch (Exception $e) {
+        logMessage('deleteGame error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function handleDeletePlayer() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        if (!$data || !isset($data['game_id']) || !isset($data['player_id'])) {
+            respondError('Missing game_id or player_id');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $admin->deletePlayer($data['game_id'], $data['player_id']);
+        respondSuccess('Jugador eliminado');
+    } catch (Exception $e) {
+        logMessage('deletePlayer error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function handleUpdatePlayerStatus() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        if (!$data || !isset($data['game_id']) || !isset($data['player_id']) || !isset($data['status'])) {
+            respondError('Missing required fields');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $admin->updatePlayerStatus($data['game_id'], $data['player_id'], $data['status']);
+        respondSuccess('Estado del jugador actualizado');
+    } catch (Exception $e) {
+        logMessage('updatePlayerStatus error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
 function getCategories() {
     try {
         $admin = new AdminDictionary();
-        $cats = $admin->getCategories();
+        $cats = $admin->getCategoriesFull();
         respondSuccess('Categorías cargadas', $cats);
     } catch (Exception $e) {
         logMessage('getCategories error: ' . $e->getMessage(), 'ERROR');
@@ -298,6 +346,80 @@ function getPrompts() {
         respondSuccess('Consignas cargadas', $prompts);
     } catch (Exception $e) {
         logMessage('getPrompts error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getGames() {
+    try {
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 100;
+        $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+        
+        $admin = new AdminDictionary();
+        $games = $admin->getGames($limit, $offset);
+        respondSuccess('Partidas cargadas', $games);
+    } catch (Exception $e) {
+        logMessage('getGames error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getGame() {
+    try {
+        if (!isset($_GET['code'])) {
+            respondError('Missing game code');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $game = $admin->getGameByCode($_GET['code']);
+        
+        if (!$game) {
+            respondError('Game not found');
+            return;
+        }
+        
+        respondSuccess('Partida cargada', $game);
+    } catch (Exception $e) {
+        logMessage('getGame error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getGamePlayers() {
+    try {
+        if (!isset($_GET['game_id'])) {
+            respondError('Missing game_id');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $players = $admin->getGamePlayers($_GET['game_id']);
+        respondSuccess('Jugadores cargados', $players);
+    } catch (Exception $e) {
+        logMessage('getGamePlayers error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getPlayerStats() {
+    try {
+        if (!isset($_GET['game_id']) || !isset($_GET['player_id'])) {
+            respondError('Missing game_id or player_id');
+            return;
+        }
+        
+        $admin = new AdminDictionary();
+        $stats = $admin->getPlayerStats($_GET['game_id'], $_GET['player_id']);
+        
+        if (!$stats) {
+            respondError('Player not found');
+            return;
+        }
+        
+        respondSuccess('Estadísticas del jugador', $stats);
+    } catch (Exception $e) {
+        logMessage('getPlayerStats error: ' . $e->getMessage(), 'ERROR');
         respondError('Error: ' . $e->getMessage());
     }
 }
@@ -332,7 +454,7 @@ function exportDatabase() {
     try {
         $admin = new AdminDictionary();
         $data = [
-            'categorias' => $admin->getCategories(),
+            'categorias' => $admin->getCategoriesFull(),
             'prompts' => $admin->getPrompts()
         ];
         respondSuccess('Exportación completada', $data);
@@ -406,7 +528,6 @@ function handleRepair() {
     try {
         $dbFile = __DIR__ . '/../data/talcual.db';
         
-        // Check integrity
         if (file_exists($dbFile) && isValidSQLiteDatabase($dbFile)) {
             $pdo = new PDO('sqlite:' . $dbFile);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -418,7 +539,6 @@ function handleRepair() {
             }
         }
         
-        // Recreate database
         if (file_exists($dbFile)) {
             @unlink($dbFile);
             @unlink($dbFile . '-wal');
@@ -437,12 +557,10 @@ function handleNuke() {
     try {
         $dbFile = __DIR__ . '/../data/talcual.db';
         
-        // Delete all database files
         @unlink($dbFile);
         @unlink($dbFile . '-wal');
         @unlink($dbFile . '-shm');
         
-        // Create fresh database
         createNewDatabase($dbFile);
         respondSuccess('BD reinicializada completamente');
     } catch (Exception $e) {
@@ -469,18 +587,15 @@ function handleDiagnose() {
             $pdo = new PDO('sqlite:' . $dbFile);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             
-            // Check tables
             $tables = $pdo->query('SELECT name FROM sqlite_master WHERE type="table"')->fetchAll(PDO::FETCH_COLUMN);
             $diag['tables_ok'] = count($tables) === 6;
             $diag['table_count'] = count($tables);
             
-            // Check integrity
             $result = $pdo->query('PRAGMA integrity_check')->fetch(PDO::FETCH_ASSOC);
             $diag['integrity_ok'] = $result['integrity_check'] === 'ok';
             
-            // Check indexes
             $indexes = $pdo->query('SELECT name FROM sqlite_master WHERE type="index"')->fetchAll(PDO::FETCH_COLUMN);
-            $diag['indexes_ok'] = count($indexes) >= 4;
+            $diag['indexes_ok'] = count($indexes) >= 6;
             $diag['index_count'] = count($indexes);
         }
         
@@ -520,10 +635,6 @@ function inspectDatabase() {
         respondError('Database inspection error: ' . $e->getMessage());
     }
 }
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
 
 function validateStructure($data) {
     if (!isset($data['categorias'])) $data['categorias'] = [];
