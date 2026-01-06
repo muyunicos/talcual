@@ -67,6 +67,12 @@ class DatabaseManager {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function getCategoryByName($name) {
+        $stmt = $this->pdo->prepare('SELECT id, name, orden, is_active, date FROM categories WHERE name = ?');
+        $stmt->execute([$name]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function addCategory($name, $orden = null) {
         if (empty(trim($name))) throw new Exception('Category name cannot be empty');
         
@@ -149,6 +155,12 @@ class DatabaseManager {
         return $results;
     }
 
+    public function getPromptByText($text) {
+        $stmt = $this->pdo->prepare('SELECT id, text, difficulty, is_active, date FROM prompts WHERE text = ?');
+        $stmt->execute([$text]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function addPrompt($categoryIds, $text, $difficulty = 1) {
         if (empty(trim($text))) throw new Exception('Prompt text cannot be empty');
         if (!is_array($categoryIds)) $categoryIds = [$categoryIds];
@@ -222,6 +234,12 @@ class DatabaseManager {
             $stmt = $this->pdo->query('SELECT id, prompt_id, word_group, normalized_word, gender FROM valid_words ORDER BY prompt_id, word_group');
         }
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function getWordByPromptAndGroup($promptId, $wordGroup) {
+        $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group, normalized_word, gender FROM valid_words WHERE prompt_id = ? AND word_group = ?');
+        $stmt->execute([$promptId, $wordGroup]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function addWord($promptId, $wordGroup, $gender = null) {
@@ -666,9 +684,14 @@ function importCompactFormat($db, $json, &$stats) {
         if (!is_array($categoryData)) continue;
         
         try {
-            $cat = $db->addCategory($categoryName);
-            $stats['categories_added']++;
-            $categoryId = $cat['id'];
+            $existingCat = $db->getCategoryByName($categoryName);
+            if ($existingCat) {
+                $categoryId = $existingCat['id'];
+            } else {
+                $cat = $db->addCategory($categoryName);
+                $categoryId = $cat['id'];
+                $stats['categories_added']++;
+            }
             
             foreach ($categoryData as $promptItem) {
                 if (!is_array($promptItem) || empty($promptItem)) continue;
@@ -711,14 +734,24 @@ function importCompactFormat($db, $json, &$stats) {
                 
                 if (!empty($promptText) && !empty($wordGroups)) {
                     try {
-                        $promptId = $db->addPrompt($categoryId, $promptText, $difficulty);
-                        $stats['prompts_added']++;
+                        $existingPrompt = $db->getPromptByText($promptText);
+                        
+                        if ($existingPrompt) {
+                            $promptId = $existingPrompt['id'];
+                        } else {
+                            $promptId = $db->addPrompt($categoryId, $promptText, $difficulty);
+                            $stats['prompts_added']++;
+                        }
                         
                         foreach (array_unique($wordGroups) as $wordGroup) {
                             if (!empty(trim($wordGroup))) {
                                 try {
-                                    $db->addWord($promptId, $wordGroup, null);
-                                    $stats['words_added']++;
+                                    $existingWord = $db->getWordByPromptAndGroup($promptId, $wordGroup);
+                                    
+                                    if (!$existingWord) {
+                                        $db->addWord($promptId, $wordGroup, null);
+                                        $stats['words_added']++;
+                                    }
                                 } catch (Exception $e) {
                                     logMessage('Word group import error: ' . $e->getMessage(), 'WARN');
                                 }
