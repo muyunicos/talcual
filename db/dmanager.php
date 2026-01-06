@@ -74,19 +74,105 @@ try {
 // ============================================================================
 
 class DatabaseManager {
-    use WordNormalizer;
     public $pdo = null;
     private $dbFile = null;
 
     public function __construct() {
         $this->dbFile = __DIR__ . '/../data/talcual.db';
         $this->pdo = Database::getInstance()->getConnection();
+        $this->migrateSchema();
+    }
+
+    private function migrateSchema() {
+        try {
+            $this->pdo->exec('PRAGMA foreign_keys = ON');
+            
+            $tableInfo = $this->pdo->query("PRAGMA table_info(categories)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            
+            if (!in_array('orden', $tableInfo)) {
+                $this->pdo->exec('ALTER TABLE categories ADD COLUMN orden INTEGER NOT NULL DEFAULT 0');
+                $this->pdo->exec('ALTER TABLE categories ADD COLUMN is_active BOOLEAN DEFAULT 1');
+                $this->pdo->exec('ALTER TABLE categories ADD COLUMN created_at INTEGER NOT NULL DEFAULT CAST(strftime(\'%s\') AS INTEGER)');
+                logMessage('Migrated categories table', 'INFO');
+            }
+            
+            $tableInfo = $this->pdo->query("PRAGMA table_info(prompts)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            if (!in_array('difficulty', $tableInfo)) {
+                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN difficulty INTEGER DEFAULT 1');
+                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN is_active BOOLEAN DEFAULT 1');
+                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN created_at INTEGER NOT NULL DEFAULT CAST(strftime(\'%s\') AS INTEGER)');
+                logMessage('Migrated prompts table', 'INFO');
+            }
+            
+            $tableInfo = $this->pdo->query("PRAGMA table_info(valid_words)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            if (!in_array('normalized_word', $tableInfo)) {
+                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN normalized_word TEXT');
+                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN gender TEXT');
+                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN created_at INTEGER DEFAULT CAST(strftime(\'%s\') AS INTEGER)');
+                
+                $words = $this->pdo->query('SELECT id, word_entry FROM valid_words')->fetchAll(PDO::FETCH_ASSOC);
+                $stmt = $this->pdo->prepare('UPDATE valid_words SET normalized_word = ? WHERE id = ?');
+                foreach ($words as $word) {
+                    $normalized = mb_strtoupper(trim($word['word_entry']), 'UTF-8');
+                    $stmt->execute([$normalized, $word['id']]);
+                }
+                
+                $this->pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_valid_words_unique ON valid_words(prompt_id, normalized_word)');
+                logMessage('Migrated valid_words table', 'INFO');
+            }
+            
+            $tableInfo = $this->pdo->query("PRAGMA table_info(games)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            if (!in_array('current_prompt_id', $tableInfo)) {
+                $this->pdo->exec('ALTER TABLE games ADD COLUMN current_prompt_id INTEGER');
+                $this->pdo->exec('ALTER TABLE games ADD COLUMN current_category_id INTEGER');
+                $this->pdo->exec('ALTER TABLE games ADD COLUMN selected_category_id INTEGER');
+                logMessage('Migrated games table', 'INFO');
+            }
+            
+            $tableInfo = $this->pdo->query("PRAGMA table_info(players)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            if (!in_array('last_submission_at', $tableInfo)) {
+                $this->pdo->exec('ALTER TABLE players ADD COLUMN last_heartbeat INTEGER');
+                $this->pdo->exec('ALTER TABLE players ADD COLUMN last_submission_at INTEGER');
+                $this->pdo->exec('ALTER TABLE players ADD COLUMN disconnected BOOLEAN DEFAULT 0');
+                logMessage('Migrated players table', 'INFO');
+            }
+            
+            $this->createIndexesIfNeeded();
+            
+        } catch (PDOException $e) {
+            logMessage('Schema migration error: ' . $e->getMessage(), 'WARN');
+        }
+    }
+    
+    private function createIndexesIfNeeded() {
+        $indexes = [
+            'idx_categories_active' => 'CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active)',
+            'idx_categories_orden' => 'CREATE INDEX IF NOT EXISTS idx_categories_orden ON categories(orden)',
+            'idx_prompts_active' => 'CREATE INDEX IF NOT EXISTS idx_prompts_active ON prompts(is_active)',
+            'idx_prompts_difficulty' => 'CREATE INDEX IF NOT EXISTS idx_prompts_difficulty ON prompts(difficulty)',
+            'idx_valid_words_prompt' => 'CREATE INDEX IF NOT EXISTS idx_valid_words_prompt ON valid_words(prompt_id)',
+            'idx_games_status' => 'CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)',
+            'idx_games_created_at' => 'CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at)',
+            'idx_games_updated_at' => 'CREATE INDEX IF NOT EXISTS idx_games_updated_at ON games(updated_at)',
+            'idx_games_category' => 'CREATE INDEX IF NOT EXISTS idx_games_category ON games(current_category_id)',
+            'idx_players_game' => 'CREATE INDEX IF NOT EXISTS idx_players_game ON players(game_id)',
+            'idx_players_status_game' => 'CREATE INDEX IF NOT EXISTS idx_players_status_game ON players(status, game_id)',
+            'idx_players_heartbeat' => 'CREATE INDEX IF NOT EXISTS idx_players_heartbeat ON players(last_heartbeat)'
+        ];
+        
+        try {
+            foreach ($indexes as $sql) {
+                $this->pdo->exec($sql);
+            }
+        } catch (PDOException $e) {
+            logMessage('Index creation warning: ' . $e->getMessage(), 'WARN');
+        }
     }
 
     // CATEGORIES
     public function getAllCategories() {
         $stmt = $this->pdo->query('SELECT id, name, orden, is_active, created_at FROM categories ORDER BY orden, name');
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getCategoryById($id) {
@@ -149,7 +235,7 @@ class DatabaseManager {
     // PROMPTS
     public function getPrompts($categoryId = null) {
         if ($categoryId) {
-            $sql = 'SELECT p.id, p.text, p.difficulty, p.is_active, p.created_at,
+            $sql = 'SELECT DISTINCT p.id, p.text, p.difficulty, p.is_active, p.created_at,
                     GROUP_CONCAT(pc.category_id, ",") as category_ids
                     FROM prompts p
                     JOIN prompt_categories pc ON p.id = pc.prompt_id
@@ -168,7 +254,7 @@ class DatabaseManager {
             $stmt = $this->pdo->query($sql);
         }
         
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach ($results as &$row) {
             $row['category_ids'] = array_map('intval', array_filter(explode(',', $row['category_ids'] ?? '')));
             $row['difficulty'] = (int)$row['difficulty'];
@@ -261,7 +347,7 @@ class DatabaseManager {
         } else {
             $stmt = $this->pdo->query('SELECT id, prompt_id, word_entry, normalized_word, gender, created_at FROM valid_words ORDER BY prompt_id, word_entry');
         }
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getWordById($id) {
@@ -328,7 +414,7 @@ class DatabaseManager {
                 LIMIT ? OFFSET ?';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$limit, $offset]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getGameById($id) {
@@ -341,7 +427,7 @@ class DatabaseManager {
         $stmt = $this->pdo->prepare('SELECT id, game_id, name, color, avatar, status, score, current_answers, round_history, disconnected
                 FROM players WHERE game_id = ? ORDER BY id');
         $stmt->execute([$gameId]);
-        $players = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $players = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         
         foreach ($players as &$player) {
             $player['score'] = (int)$player['score'];
@@ -397,37 +483,30 @@ class DatabaseManager {
 
     // STATS
     public function getDictionaryStats() {
-        $stats = [
-            'categories' => (int)$this->pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn(),
-            'prompts' => (int)$this->pdo->query('SELECT COUNT(*) FROM prompts')->fetchColumn(),
-            'words' => (int)$this->pdo->query('SELECT COUNT(*) FROM valid_words')->fetchColumn(),
-            'games' => (int)$this->pdo->query('SELECT COUNT(*) FROM games')->fetchColumn(),
-            'players' => (int)$this->pdo->query('SELECT COUNT(*) FROM players')->fetchColumn(),
-            'categories_by_count' => []
+        $categories = (int)$this->pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn() ?: 0;
+        $prompts = (int)$this->pdo->query('SELECT COUNT(*) FROM prompts')->fetchColumn() ?: 0;
+        $words = (int)$this->pdo->query('SELECT COUNT(*) FROM valid_words')->fetchColumn() ?: 0;
+        $games = (int)$this->pdo->query('SELECT COUNT(*) FROM games')->fetchColumn() ?: 0;
+        $players = (int)$this->pdo->query('SELECT COUNT(*) FROM players')->fetchColumn() ?: 0;
+        
+        return [
+            'categories' => $categories,
+            'prompts' => $prompts,
+            'words' => $words,
+            'games' => $games,
+            'players' => $players
         ];
-        
-        $stmt = $this->pdo->query('SELECT c.name, COUNT(DISTINCT vw.id) as count FROM categories c
-                LEFT JOIN prompt_categories pc ON c.id = pc.category_id
-                LEFT JOIN prompts p ON pc.prompt_id = p.id
-                LEFT JOIN valid_words vw ON p.id = vw.prompt_id
-                GROUP BY c.id ORDER BY count DESC');
-        
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $stats['categories_by_count'][$row['name']] = (int)$row['count'];
-        }
-        
-        return $stats;
     }
 
     public function getActiveGames() {
-        $stmt = $this->pdo->query('SELECT id, status, round, player_count FROM games WHERE status IN (\'waiting\', \'playing\') ORDER BY updated_at DESC');
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->query('SELECT id, status, round, (SELECT COUNT(*) FROM players WHERE game_id = games.id) as player_count FROM games WHERE status IN (\'waiting\', \'playing\') ORDER BY updated_at DESC');
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getFinishedGames($limit = 50, $offset = 0) {
         $stmt = $this->pdo->prepare('SELECT id, status, round, total_rounds, updated_at FROM games WHERE status = \'finished\' ORDER BY updated_at DESC LIMIT ? OFFSET ?');
         $stmt->execute([$limit, $offset]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getGameAnalytics($gameId) {
@@ -450,7 +529,7 @@ class DatabaseManager {
                 WHERE p.id = ?
                 ORDER BY g.created_at DESC');
         $stmt->execute([$playerId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getStorageStats() {
@@ -466,9 +545,9 @@ class DatabaseManager {
     public function getDatabaseInspection() {
         return [
             'categories' => $this->getAllCategories(),
-            'prompts_summary' => $this->pdo->query('SELECT COUNT(*) as count FROM prompts')->fetch(PDO::FETCH_ASSOC),
-            'words_summary' => $this->pdo->query('SELECT COUNT(*) as count FROM valid_words')->fetch(PDO::FETCH_ASSOC),
-            'games_summary' => $this->pdo->query('SELECT COUNT(*) as count FROM games')->fetch(PDO::FETCH_ASSOC),
+            'prompts_count' => (int)$this->pdo->query('SELECT COUNT(*) FROM prompts')->fetchColumn() ?: 0,
+            'words_count' => (int)$this->pdo->query('SELECT COUNT(*) FROM valid_words')->fetchColumn() ?: 0,
+            'games_count' => (int)$this->pdo->query('SELECT COUNT(*) FROM games')->fetchColumn() ?: 0,
             'stats' => $this->getDictionaryStats()
         ];
     }
@@ -525,7 +604,11 @@ function handleAddPrompt($db) {
     if (isset($data['words']) && is_array($data['words'])) {
         foreach ($data['words'] as $word) {
             if (!empty(trim($word))) {
-                $db->addWord($promptId, $word, null);
+                try {
+                    $db->addWord($promptId, $word, null);
+                } catch (Exception $e) {
+                    logMessage('Word error: ' . $e->getMessage(), 'WARN');
+                }
             }
         }
     }
@@ -635,8 +718,7 @@ function handleRepair($db) {
     @unlink($dbFile . '-wal');
     @unlink($dbFile . '-shm');
     
-    createNewDatabase($dbFile);
-    respondSuccess('Database repaired and reinitialized');
+    respondSuccess('Database repaired');
 }
 
 function handleImport($db) {
@@ -654,26 +736,34 @@ function handleImport($db) {
     
     $categoryMap = [];
     foreach ($json['categories'] ?? [] as $catData) {
-        $cat = $db->addCategory($catData['name'], $catData['orden'] ?? null);
-        $categoryMap[$catData['id']] = $cat['id'];
+        $cat = $db->addCategory($catData['name'] ?? 'Unknown', $catData['orden'] ?? null);
+        $categoryMap[$catData['id'] ?? null] = $cat['id'];
         $stats['categories_added']++;
     }
     
     foreach ($json['prompts'] ?? [] as $promptData) {
-        $catIds = array_map(fn($id) => $categoryMap[$id] ?? $id, $promptData['category_ids'] ?? []);
-        if (!empty($catIds)) {
-            $promptId = $db->addPrompt($catIds, $promptData['text'], $promptData['difficulty'] ?? 1);
-            $stats['prompts_added']++;
-            
-            foreach ($promptData['words'] ?? [] as $word) {
-                if (!empty(trim($word))) {
-                    try {
-                        $db->addWord($promptId, $word, null);
-                        $stats['words_added']++;
-                    } catch (Exception $e) {
-                        logMessage('Import word error: ' . $e->getMessage(), 'WARN');
+        $catIds = [];
+        foreach ($promptData['category_ids'] ?? [] as $id) {
+            if (isset($categoryMap[$id])) $catIds[] = $categoryMap[$id];
+        }
+        
+        if (!empty($catIds) && !empty($promptData['text'])) {
+            try {
+                $promptId = $db->addPrompt($catIds, $promptData['text'], $promptData['difficulty'] ?? 1);
+                $stats['prompts_added']++;
+                
+                foreach ($promptData['words'] ?? [] as $word) {
+                    if (!empty(trim($word))) {
+                        try {
+                            $db->addWord($promptId, $word, null);
+                            $stats['words_added']++;
+                        } catch (Exception $e) {
+                            logMessage('Word import error: ' . $e->getMessage(), 'WARN');
+                        }
                     }
                 }
+            } catch (Exception $e) {
+                logMessage('Prompt import error: ' . $e->getMessage(), 'WARN');
             }
         }
     }
@@ -685,7 +775,6 @@ function handleExport($db) {
     $data = [
         'categories' => $db->getAllCategories(),
         'prompts' => $db->getPrompts(),
-        'words' => $db->getWords(),
         'timestamp' => time()
     ];
     respondSuccess('Export completed', $data);
@@ -697,11 +786,13 @@ function getCategories($db) {
 
 function getPrompts($db) {
     $categoryId = $_GET['category_id'] ?? null;
+    if ($categoryId) $categoryId = (int)$categoryId;
     respondSuccess('Prompts loaded', $db->getPrompts($categoryId));
 }
 
 function getWords($db) {
     $promptId = $_GET['prompt_id'] ?? null;
+    if ($promptId) $promptId = (int)$promptId;
     respondSuccess('Words loaded', $db->getWords($promptId));
 }
 
@@ -769,46 +860,13 @@ function ensureDataDirectory() {
     if (!is_dir($dataDir) && !mkdir($dataDir, 0755, true)) {
         throw new Exception('Cannot create /data directory');
     }
-    if (!is_writable($dataDir)) {
-        throw new Exception('/data directory is not writable');
-    }
 }
 
 function ensureDatabaseFile() {
     $dbFile = __DIR__ . '/../data/talcual.db';
-    
-    if (file_exists($dbFile)) {
-        if (!isValidSQLiteDatabase($dbFile)) {
-            logMessage('Corrupted DB detected, attempting repair', 'WARN');
-        }
-        return;
+    if (!file_exists($dbFile)) {
+        touch($dbFile);
     }
-    
-    logMessage('Creating new database file: ' . $dbFile, 'INFO');
-    createNewDatabase($dbFile);
-}
-
-function isValidSQLiteDatabase($filePath) {
-    if (!file_exists($filePath) || !is_readable($filePath)) return false;
-    $handle = @fopen($filePath, 'r');
-    if (!$handle) return false;
-    $header = fread($handle, 16);
-    fclose($handle);
-    return strpos($header, 'SQLite format 3') === 0;
-}
-
-function createNewDatabase($dbFile) {
-    $pdo = new PDO('sqlite:' . $dbFile);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $pdo->exec('PRAGMA journal_mode = WAL');
-    $pdo->exec('PRAGMA foreign_keys = ON');
-    $pdo->exec('PRAGMA synchronous = NORMAL');
-    
-    $schema = file_get_contents(__DIR__ . '/schema.sql');
-    $pdo->exec($schema);
-    
-    logMessage('Database created: ' . $dbFile, 'INFO');
 }
 
 function logMessage($msg, $level = 'INFO') {
@@ -822,11 +880,11 @@ function logMessage($msg, $level = 'INFO') {
 }
 
 function respondSuccess($msg, $data = null) {
-    echo json_encode(['success' => true, 'message' => $msg, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => true, 'message' => $msg, 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 function respondError($msg) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => $msg], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => false, 'message' => $msg], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 ?>
