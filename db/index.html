@@ -637,7 +637,7 @@
                     
                     <div class="form-group" style="margin-top: 20px;">
                         <label>Palabras (una por línea, usa | para sinónimos):</label>
-                        <textarea id="batchWordsInput" placeholder="Flores|Ramo|Rosas\nBombones|Chocolates|Bombón\nPerfume|Fragancia" readonly style="opacity: 0.9;"></textarea>
+                        <textarea id="batchWordsInput" placeholder="Flores|Ramo|Rosas\nBombones|Chocolates|Bombón\nPerfume|Fragancia"></textarea>
                     </div>
                     
                     <div class="button-group">
@@ -950,8 +950,7 @@
                 
                 const wordGroups = words
                     .filter(w => w && w.word_group)
-                    .map(w => w.word_group)
-                    .sort();
+                    .map(w => w.word_group);
                 
                 document.getElementById('batchWordsInput').value = wordGroups.join('\n');
                 showMessage(`✓ ${wordGroups.length} palabras cargadas`, 'success');
@@ -966,13 +965,16 @@
                 return;
             }
             
-            const words = document.getElementById('batchWordsInput').value
-                .split('\n')
-                .map(w => w.trim())
-                .filter(w => w.length > 0);
-            
-            if (words.length === 0) {
+            const inputText = document.getElementById('batchWordsInput').value.trim();
+            if (inputText.length === 0) {
                 showMessage('Ingresa palabras', 'error');
+                return;
+            }
+            
+            const newWords = inputText.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+            
+            if (newWords.length === 0) {
+                showMessage('Ingresa palabras válidas', 'error');
                 return;
             }
             
@@ -981,7 +983,7 @@
                 const json = await response.json();
                 const currentWords = json.data || [];
                 
-                let deleted = 0;
+                let deletedCount = 0;
                 for (const word of currentWords) {
                     try {
                         await fetch(`${API}?action=delete-word`, {
@@ -989,28 +991,29 @@
                             body: JSON.stringify({ id: word.id }),
                             headers: { 'Content-Type': 'application/json' }
                         });
-                        deleted++;
+                        deletedCount++;
                     } catch (e) {
-                        console.error('Delete error:', e);
+                        console.error('Error eliminando palabra:', e);
                     }
                 }
                 
-                let added = 0;
-                for (const word of words) {
+                let addedCount = 0;
+                for (const wordText of newWords) {
                     try {
-                        const response = await fetch(`${API}?action=add-word`, {
+                        const res = await fetch(`${API}?action=add-word`, {
                             method: 'POST',
-                            body: JSON.stringify({ prompt_id: selectedBatchPrompt, word }),
+                            body: JSON.stringify({ prompt_id: selectedBatchPrompt, word: wordText }),
                             headers: { 'Content-Type': 'application/json' }
                         });
-                        const res = await response.json();
-                        if (res.success) added++;
+                        const data = await res.json();
+                        if (data.success) addedCount++;
                     } catch (e) {
-                        console.error('Add error:', e);
+                        console.error('Error agregando palabra:', e);
                     }
                 }
                 
-                showMessage(`✓ Actualizado: ${deleted} eliminadas, ${added} agregadas`, 'success');
+                showMessage(`✓ ${deletedCount} eliminadas, ${addedCount} agregadas`, 'success');
+                loadBatchPanel();
                 loadDictionary();
                 updateStats();
             } catch (error) {
