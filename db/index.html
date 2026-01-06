@@ -777,7 +777,7 @@
                         <td>${g.status}</td>
                         <td>${g.round}</td>
                         <td>${g.player_count}</td>
-                        <td>${new Date(g.updated_at * 1000).toLocaleString()}</td>
+                        <td>${g.updated_at ? new Date(g.updated_at * 1000).toLocaleString() : '-'}</td>
                         <td>
                             <button class="btn-secondary" onclick="viewGame('${g.id}')">Ver</button>
                             <button class="btn-danger" onclick="deleteGame('${g.id}')">Eliminar</button>
@@ -797,7 +797,7 @@
                     <tr>
                         <td>${g.id}</td>
                         <td>${g.round} / ${g.total_rounds}</td>
-                        <td>${new Date(g.updated_at * 1000).toLocaleString()}</td>
+                        <td>${g.updated_at ? new Date(g.updated_at * 1000).toLocaleString() : '-'}</td>
                         <td>
                             <button class="btn-danger" onclick="deleteGame('${g.id}')">Eliminar</button>
                         </td>
@@ -811,7 +811,6 @@
         
         async function loadPlayersTable() {
             try {
-                // Placeholder: would need to aggregate players from all games
                 showMessage('Cargando jugadores...', 'success', 'playersMessage');
             } catch (error) {
                 showMessage('Error cargando jugadores: ' + error.message, 'error', 'playersMessage');
@@ -821,10 +820,13 @@
         // ==================== ACTIONS ====================
         async function updateStats() {
             try {
-                const stats = await fetch(`${API}?action=inspect`).then(r => r.json()).then(r => r.data.stats);
-                document.getElementById('catCount').textContent = stats.categories;
-                document.getElementById('promptCount').textContent = stats.prompts;
-                document.getElementById('wordCount').textContent = stats.words;
+                const res = await fetch(`${API}?action=inspect`).then(r => r.json());
+                if (res.success && res.data && res.data.stats) {
+                    const stats = res.data.stats;
+                    document.getElementById('catCount').textContent = stats.categories;
+                    document.getElementById('promptCount').textContent = stats.prompts;
+                    document.getElementById('wordCount').textContent = stats.words;
+                }
             } catch (error) {
                 console.error('Error actualizando estadísticas:', error);
             }
@@ -833,7 +835,7 @@
         async function deleteGame(gameId) {
             if (!confirm('¿Eliminar esta partida?')) return;
             try {
-                const res = await fetch(API, {
+                const res = await fetch(`${API}?action=delete-game`, {
                     method: 'POST',
                     body: JSON.stringify({ id: gameId }),
                     headers: { 'Content-Type': 'application/json' }
@@ -842,6 +844,7 @@
                 if (res.success) {
                     showMessage('Partida eliminada', 'success', 'gamesMessage');
                     loadGamesTable();
+                    loadFinishedGamesTable();
                 } else {
                     showMessage('Error: ' + res.message, 'error', 'gamesMessage');
                 }
@@ -853,7 +856,7 @@
         async function deleteWord(wordId) {
             if (!confirm('¿Eliminar esta palabra?')) return;
             try {
-                const res = await fetch(API, {
+                const res = await fetch(`${API}?action=delete-word`, {
                     method: 'POST',
                     body: JSON.stringify({ id: wordId }),
                     headers: { 'Content-Type': 'application/json' }
@@ -989,7 +992,7 @@
         
         async function addCategory(name) {
             try {
-                const res = await fetch(API, {
+                const res = await fetch(`${API}?action=add-category`, {
                     method: 'POST',
                     body: JSON.stringify({ name }),
                     headers: { 'Content-Type': 'application/json' }
@@ -998,6 +1001,7 @@
                 if (res.success) {
                     showMessage('✓ Categoría agregada', 'success');
                     loadDictionary();
+                    updateStats();
                 } else {
                     showMessage('Error: ' + res.message, 'error');
                 }
@@ -1008,7 +1012,7 @@
         
         async function addPrompt(text) {
             try {
-                const res = await fetch(API, {
+                const res = await fetch(`${API}?action=add-prompt`, {
                     method: 'POST',
                     body: JSON.stringify({
                         text,
@@ -1020,6 +1024,7 @@
                 if (res.success) {
                     showMessage('✓ Consigna agregada', 'success');
                     loadDictionary();
+                    updateStats();
                 } else {
                     showMessage('Error: ' + res.message, 'error');
                 }
@@ -1030,7 +1035,7 @@
         
         async function addWord(word) {
             try {
-                const res = await fetch(API, {
+                const res = await fetch(`${API}?action=add-word`, {
                     method: 'POST',
                     body: JSON.stringify({
                         prompt_id: selectedPrompt,
@@ -1042,6 +1047,7 @@
                 if (res.success) {
                     showMessage('✓ Palabra agregada', 'success');
                     loadDictionary();
+                    updateStats();
                 } else {
                     showMessage('Error: ' + res.message, 'error');
                 }
