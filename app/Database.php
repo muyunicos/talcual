@@ -62,34 +62,56 @@ class Database {
         try {
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS games (
                 id TEXT PRIMARY KEY,
-                status TEXT NOT NULL DEFAULT "waiting",
+                
+                -- Estado del Flujo del Juego
+                status TEXT NOT NULL DEFAULT "waiting",  -- waiting, playing, finished
                 round INTEGER NOT NULL DEFAULT 0,
-                current_prompt TEXT,
-                current_category TEXT,
-                round_started_at INTEGER,
-                round_ends_at INTEGER,
-                created_at INTEGER,
-                updated_at INTEGER,
+                current_prompt TEXT,                     -- Snapshot de la pregunta actual
+                current_category TEXT,                   -- Categoría de la ronda actual
+                selected_category TEXT,                  -- Categoría forzada para todo el juego (si aplica)
+                
+                -- Tiempos: Sincronización y Recuperación
+                round_started_at INTEGER,                -- Timestamp (ms) inicio real de la ronda (pre-countdown)
+                round_starts_at INTEGER,                 -- Timestamp (ms) inicio de acción (post-countdown, para SSE sync)
+                round_ends_at INTEGER,                   -- Timestamp (ms) fin de ronda (ajustable por Hurry Up)
+                countdown_duration INTEGER,              -- Duración del countdown en ms (snapshot de configuración)
+                created_at INTEGER,                      -- Timestamp creación de partida
+                updated_at INTEGER,                      -- Timestamp última modificación (heartbeat)
+                
+                -- SNAPSHOT DE CONFIGURACIÓN (Inmutable para esta partida)
                 total_rounds INTEGER NOT NULL,
-                round_duration INTEGER NOT NULL,
+                round_duration INTEGER NOT NULL,         -- Duración base de ronda en ms
                 min_players INTEGER NOT NULL,
                 max_players INTEGER NOT NULL,
-                start_countdown INTEGER,
-                hurry_up_threshold INTEGER,
-                max_words_per_player INTEGER,
-                max_word_length INTEGER,
-                data TEXT
+                start_countdown INTEGER,                 -- DEPRECATED: usar countdown_duration
+                hurry_up_threshold INTEGER,              -- Segundos para activar "Hurry Up"
+                max_words_per_player INTEGER,            -- Límite de palabras por jugador
+                max_word_length INTEGER,                 -- Límite de caracteres por palabra
+                
+                -- Datos Flexibles / No Estructurados
+                data TEXT                                -- JSON para metadatos extra (prompts usados, etc.)
             )');
 
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS players (
                 id TEXT NOT NULL,
                 game_id TEXT NOT NULL,
+                
+                -- Identidad y Personalización
                 name TEXT NOT NULL,
                 color TEXT,
                 avatar TEXT,
-                status TEXT DEFAULT "connected",
-                current_answers TEXT,
+                
+                -- Estado de Conexión
+                status TEXT DEFAULT "connected",        -- connected, ready, playing, disconnected
+                
+                -- Estado de Juego Actual
+                score INTEGER DEFAULT 0,                 -- Puntaje acumulado (cache para no recalcular siempre)
+                current_answers TEXT,                    -- JSON Array: Respuestas de la ronda actual (borrador)
+                
+                -- Historial Completo (State Recovery)
+                -- JSON Object: { "1": { "words": [...], "points": 10 }, "2": ... }
                 round_history TEXT DEFAULT "{}",
+                
                 PRIMARY KEY (id, game_id),
                 FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
             )');
