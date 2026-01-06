@@ -12,12 +12,15 @@ try {
     ensureDatabaseFile();
     
     require_once __DIR__ . '/../app/Database.php';
-    require_once __DIR__ . '/../app/Traits/WordNormalizer.php';
-    require_once __DIR__ . '/../app/AppUtils.php';
 
     $db = new DatabaseManager();
     $action = $_GET['action'] ?? null;
     $method = $_SERVER['REQUEST_METHOD'];
+
+    if (!$action) {
+        respondError('Missing action parameter');
+        exit;
+    }
 
     if ($method === 'POST') {
         switch ($action) {
@@ -65,7 +68,7 @@ try {
 
 } catch (Exception $e) {
     logMessage('Fatal error: ' . $e->getMessage(), 'FATAL');
-    http_response_code(500);
+    http_response_code(400);
     respondError('Server Error: ' . $e->getMessage());
 }
 
@@ -92,7 +95,7 @@ class DatabaseManager {
             if (!in_array('orden', $tableInfo)) {
                 $this->pdo->exec('ALTER TABLE categories ADD COLUMN orden INTEGER NOT NULL DEFAULT 0');
                 $this->pdo->exec('ALTER TABLE categories ADD COLUMN is_active BOOLEAN DEFAULT 1');
-                $this->pdo->exec('ALTER TABLE categories ADD COLUMN created_at INTEGER NOT NULL DEFAULT CAST(strftime(\'%s\') AS INTEGER)');
+                $this->pdo->exec('ALTER TABLE categories ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0');
                 logMessage('Migrated categories table', 'INFO');
             }
             
@@ -100,7 +103,7 @@ class DatabaseManager {
             if (!in_array('difficulty', $tableInfo)) {
                 $this->pdo->exec('ALTER TABLE prompts ADD COLUMN difficulty INTEGER DEFAULT 1');
                 $this->pdo->exec('ALTER TABLE prompts ADD COLUMN is_active BOOLEAN DEFAULT 1');
-                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN created_at INTEGER NOT NULL DEFAULT CAST(strftime(\'%s\') AS INTEGER)');
+                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN created_at INTEGER DEFAULT 0');
                 logMessage('Migrated prompts table', 'INFO');
             }
             
@@ -108,7 +111,7 @@ class DatabaseManager {
             if (!in_array('normalized_word', $tableInfo)) {
                 $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN normalized_word TEXT');
                 $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN gender TEXT');
-                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN created_at INTEGER DEFAULT CAST(strftime(\'%s\') AS INTEGER)');
+                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN created_at INTEGER DEFAULT 0');
                 
                 $words = $this->pdo->query('SELECT id, word_entry FROM valid_words')->fetchAll(PDO::FETCH_ASSOC);
                 $stmt = $this->pdo->prepare('UPDATE valid_words SET normalized_word = ? WHERE id = ?');
@@ -146,18 +149,18 @@ class DatabaseManager {
     
     private function createIndexesIfNeeded() {
         $indexes = [
-            'idx_categories_active' => 'CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active)',
-            'idx_categories_orden' => 'CREATE INDEX IF NOT EXISTS idx_categories_orden ON categories(orden)',
-            'idx_prompts_active' => 'CREATE INDEX IF NOT EXISTS idx_prompts_active ON prompts(is_active)',
-            'idx_prompts_difficulty' => 'CREATE INDEX IF NOT EXISTS idx_prompts_difficulty ON prompts(difficulty)',
-            'idx_valid_words_prompt' => 'CREATE INDEX IF NOT EXISTS idx_valid_words_prompt ON valid_words(prompt_id)',
-            'idx_games_status' => 'CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)',
-            'idx_games_created_at' => 'CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at)',
-            'idx_games_updated_at' => 'CREATE INDEX IF NOT EXISTS idx_games_updated_at ON games(updated_at)',
-            'idx_games_category' => 'CREATE INDEX IF NOT EXISTS idx_games_category ON games(current_category_id)',
-            'idx_players_game' => 'CREATE INDEX IF NOT EXISTS idx_players_game ON players(game_id)',
-            'idx_players_status_game' => 'CREATE INDEX IF NOT EXISTS idx_players_status_game ON players(status, game_id)',
-            'idx_players_heartbeat' => 'CREATE INDEX IF NOT EXISTS idx_players_heartbeat ON players(last_heartbeat)'
+            'CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active)',
+            'CREATE INDEX IF NOT EXISTS idx_categories_orden ON categories(orden)',
+            'CREATE INDEX IF NOT EXISTS idx_prompts_active ON prompts(is_active)',
+            'CREATE INDEX IF NOT EXISTS idx_prompts_difficulty ON prompts(difficulty)',
+            'CREATE INDEX IF NOT EXISTS idx_valid_words_prompt ON valid_words(prompt_id)',
+            'CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)',
+            'CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at)',
+            'CREATE INDEX IF NOT EXISTS idx_games_updated_at ON games(updated_at)',
+            'CREATE INDEX IF NOT EXISTS idx_games_category ON games(current_category_id)',
+            'CREATE INDEX IF NOT EXISTS idx_players_game ON players(game_id)',
+            'CREATE INDEX IF NOT EXISTS idx_players_status_game ON players(status, game_id)',
+            'CREATE INDEX IF NOT EXISTS idx_players_heartbeat ON players(last_heartbeat)'
         ];
         
         try {
@@ -196,7 +199,7 @@ class DatabaseManager {
             $orden = ($result['max_orden'] ?? 0) + 1;
         }
         
-        $stmt = $this->pdo->prepare('INSERT INTO categories (name, orden, is_active, created_at) VALUES (?, ?, 1, CAST(strftime(\'%s\') AS INTEGER))');
+        $stmt = $this->pdo->prepare('INSERT INTO categories (name, orden, is_active, created_at) VALUES (?, ?, 1, 0)');
         $stmt->execute([$name, $orden]);
         return $this->getCategoryByName($name);
     }
@@ -285,7 +288,7 @@ class DatabaseManager {
         if (!is_array($categoryIds)) $categoryIds = [$categoryIds];
         if (empty($categoryIds)) throw new Exception('At least one category is required');
         
-        $stmt = $this->pdo->prepare('INSERT INTO prompts (text, difficulty, is_active, created_at) VALUES (?, ?, 1, CAST(strftime(\'%s\') AS INTEGER))');
+        $stmt = $this->pdo->prepare('INSERT INTO prompts (text, difficulty, is_active, created_at) VALUES (?, ?, 1, 0)');
         $stmt->execute([$text, max(1, min(5, $difficulty))]);
         $promptId = $this->pdo->lastInsertId();
         
@@ -362,7 +365,7 @@ class DatabaseManager {
         $normalized = mb_strtoupper(trim($word), 'UTF-8');
         
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_entry, normalized_word, gender, created_at) VALUES (?, ?, ?, ?, CAST(strftime(\'%s\') AS INTEGER))');
+            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_entry, normalized_word, gender, created_at) VALUES (?, ?, ?, ?, 0)');
             $stmt->execute([$promptId, $word, $normalized, $gender]);
             return $this->pdo->lastInsertId();
         } catch (PDOException $e) {
@@ -463,7 +466,7 @@ class DatabaseManager {
     }
 
     public function updateGameStatus($gameId, $status) {
-        $stmt = $this->pdo->prepare('UPDATE games SET status = ?, updated_at = CAST(strftime(\'%s\') AS INTEGER) WHERE id = ?');
+        $stmt = $this->pdo->prepare('UPDATE games SET status = ?, updated_at = 0 WHERE id = ?');
         return $stmt->execute([$status, $gameId]) && $stmt->rowCount() > 0;
     }
 
