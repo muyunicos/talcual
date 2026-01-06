@@ -389,7 +389,7 @@
                     📚 Gestor de Diccionario
                 </div>
                 <div class="nav-item" data-panel="words">
-                    🔤 Palabras
+                    🔄 Palabras
                 </div>
             </div>
             
@@ -615,11 +615,10 @@
     </div>
     
     <script>
-        const API = 'dmanager.php';
+        const API = 'api.php';
         let selectedCategory = null;
         let selectedPrompt = null;
         
-        // ==================== INITIALIZATION ====================
         document.addEventListener('DOMContentLoaded', () => {
             setupNavigation();
             loadDictionary();
@@ -639,7 +638,7 @@
                     
                     const titles = {
                         'dictionary': '📚 Gestor de Diccionario',
-                        'words': '🔤 Palabras',
+                        'words': '🔄 Palabras',
                         'games': '🎮 Partidas Activas',
                         'games-finished': '✓ Partidas Finalizadas',
                         'players': '👥 Jugadores',
@@ -659,7 +658,6 @@
             });
         }
         
-        // ==================== DICTIONARY PANEL ====================
         async function loadDictionary() {
             try {
                 const [categories, prompts, words] = await Promise.all([
@@ -746,7 +744,6 @@
             renderWords(words);
         }
         
-        // ==================== WORDS TABLE ====================
         async function loadWordsTable() {
             try {
                 const words = await fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data || []);
@@ -767,7 +764,6 @@
             }
         }
         
-        // ==================== GAMES TABLE ====================
         async function loadGamesTable() {
             try {
                 const games = await fetch(`${API}?action=get-active-games`).then(r => r.json()).then(r => r.data || []);
@@ -817,7 +813,6 @@
             }
         }
         
-        // ==================== ACTIONS ====================
         async function updateStats() {
             try {
                 const res = await fetch(`${API}?action=inspect`).then(r => r.json());
