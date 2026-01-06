@@ -783,15 +783,6 @@
                 <label>Palabra (puedes usar | para sinónimos):</label>
                 <input type="text" id="wordInput" placeholder="Ej: Flores|Ramo|Rosas">
             </div>
-            <div class="form-group">
-                <label>Género (opcional):</label>
-                <select id="genderSelect">
-                    <option value="">Sin especificar</option>
-                    <option value="m">Masculino (m)</option>
-                    <option value="f">Femenino (f)</option>
-                    <option value="n">Neutro (n)</option>
-                </select>
-            </div>
             <div class="button-group">
                 <button class="btn-primary" onclick="submitAddWord()" style="flex: 1;">Crear</button>
                 <button class="btn-secondary" onclick="closeModal('addWordModal')" style="flex: 1;">Cancelar</button>
@@ -1083,7 +1074,6 @@
                 .map(w => `
                     <div class="cascade-item">
                         <span>${w.word_group}</span>
-                        <span class="cascade-item-badge">${w.gender || '?'}</span>
                     </div>
                 `).join('');
         }
@@ -1187,7 +1177,6 @@
             }
             
             const word = document.getElementById('wordInput').value.trim();
-            const gender = document.getElementById('genderSelect').value || null;
             
             if (!word) {
                 showMessage('Palabra requerida', 'error');
@@ -1197,7 +1186,7 @@
             try {
                 const response = await fetch(`${API}?action=add-word`, {
                     method: 'POST',
-                    body: JSON.stringify({ prompt_id: selectedPrompt, word, gender }),
+                    body: JSON.stringify({ prompt_id: selectedPrompt, word }),
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const res = await response.json();
