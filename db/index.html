@@ -979,43 +979,21 @@
             }
             
             try {
-                const response = await fetch(`${API}?action=get-words&prompt_id=${selectedBatchPrompt}`);
-                const json = await response.json();
-                const currentWords = json.data || [];
+                const response = await fetch(`${API}?action=replace-prompt-words`, {
+                    method: 'POST',
+                    body: JSON.stringify({ prompt_id: selectedBatchPrompt, words: newWords }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
                 
-                let deletedCount = 0;
-                for (const word of currentWords) {
-                    try {
-                        await fetch(`${API}?action=delete-word`, {
-                            method: 'POST',
-                            body: JSON.stringify({ id: word.id }),
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        deletedCount++;
-                    } catch (e) {
-                        console.error('Error eliminando palabra:', e);
-                    }
+                if (result.success) {
+                    showMessage(`✓ ${result.data.added} palabras actualizadas`, 'success');
+                    loadBatchPanel();
+                    loadDictionary();
+                    updateStats();
+                } else {
+                    showMessage('Error: ' + result.message, 'error');
                 }
-                
-                let addedCount = 0;
-                for (const wordText of newWords) {
-                    try {
-                        const res = await fetch(`${API}?action=add-word`, {
-                            method: 'POST',
-                            body: JSON.stringify({ prompt_id: selectedBatchPrompt, word: wordText }),
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        const data = await res.json();
-                        if (data.success) addedCount++;
-                    } catch (e) {
-                        console.error('Error agregando palabra:', e);
-                    }
-                }
-                
-                showMessage(`✓ ${deletedCount} eliminadas, ${addedCount} agregadas`, 'success');
-                loadBatchPanel();
-                loadDictionary();
-                updateStats();
             } catch (error) {
                 showMessage('Error: ' + error.message, 'error');
             }
