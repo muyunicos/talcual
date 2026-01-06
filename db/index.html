@@ -663,9 +663,9 @@
         async function loadDictionary() {
             try {
                 const [categories, prompts, words] = await Promise.all([
-                    fetch(`${API}?action=get-categories`).then(r => r.json()).then(r => r.data),
-                    fetch(`${API}?action=get-prompts`).then(r => r.json()).then(r => r.data),
-                    fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data)
+                    fetch(`${API}?action=get-categories`).then(r => r.json()).then(r => r.data || []),
+                    fetch(`${API}?action=get-prompts`).then(r => r.json()).then(r => r.data || []),
+                    fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data || [])
                 ]);
                 
                 renderCategories(categories);
@@ -685,7 +685,7 @@
         
         function renderCategories(categories) {
             const list = document.getElementById('categoriesList');
-            if (categories.length === 0) {
+            if (!categories || categories.length === 0) {
                 list.innerHTML = '<div class="cascade-empty">No hay categorías</div>';
                 return;
             }
@@ -702,7 +702,7 @@
         
         function renderPrompts(prompts) {
             const list = document.getElementById('promptsList');
-            if (prompts.length === 0) {
+            if (!prompts || prompts.length === 0) {
                 list.innerHTML = '<div class="cascade-empty">Selecciona una categoría</div>';
                 return;
             }
@@ -719,7 +719,7 @@
         
         function renderWords(words) {
             const list = document.getElementById('wordsList');
-            if (words.length === 0) {
+            if (!words || words.length === 0) {
                 list.innerHTML = '<div class="cascade-empty">Selecciona una consigna</div>';
                 return;
             }
@@ -742,14 +742,14 @@
         
         async function selectPrompt(promptId) {
             selectedPrompt = promptId;
-            const words = await fetch(`${API}?action=get-words&prompt_id=${promptId}`).then(r => r.json()).then(r => r.data);
+            const words = await fetch(`${API}?action=get-words&prompt_id=${promptId}`).then(r => r.json()).then(r => r.data || []);
             renderWords(words);
         }
         
         // ==================== WORDS TABLE ====================
         async function loadWordsTable() {
             try {
-                const words = await fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data);
+                const words = await fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data || []);
                 const html = words.map(w => `
                     <tr>
                         <td>${w.word_entry}</td>
@@ -770,7 +770,7 @@
         // ==================== GAMES TABLE ====================
         async function loadGamesTable() {
             try {
-                const games = await fetch(`${API}?action=get-active-games`).then(r => r.json()).then(r => r.data);
+                const games = await fetch(`${API}?action=get-active-games`).then(r => r.json()).then(r => r.data || []);
                 const html = games.map(g => `
                     <tr>
                         <td>${g.id}</td>
@@ -792,7 +792,7 @@
         
         async function loadFinishedGamesTable() {
             try {
-                const games = await fetch(`${API}?action=get-finished-games`).then(r => r.json()).then(r => r.data);
+                const games = await fetch(`${API}?action=get-finished-games`).then(r => r.json()).then(r => r.data || []);
                 const html = games.map(g => `
                     <tr>
                         <td>${g.id}</td>
@@ -897,6 +897,31 @@
                 showMessage(res.success ? `✓ ${res.data.archived} partidas archivadas` : 'Error', res.success ? 'success' : 'error');
             } catch (error) {
                 showMessage('Error archivando: ' + error.message, 'error');
+            }
+        }
+        
+        async function runDiagnostic() {
+            try {
+                const res = await fetch(`${API}?action=inspect`).then(r => r.json());
+                if (res.success) {
+                    const stats = res.data.stats;
+                    const html = `
+                        <div style="background: #0f172a; padding: 15px; border-radius: 4px; font-size: 12px;">
+                            <p>✓ Categorías: ${stats.categories}</p>
+                            <p>✓ Consignas: ${stats.prompts}</p>
+                            <p>✓ Palabras: ${stats.words}</p>
+                            <p>✓ Partidas: ${stats.games}</p>
+                            <p>✓ Jugadores: ${stats.players}</p>
+                            <p style="margin-top: 10px; color: #86efac;">✓ Base de datos OK</p>
+                        </div>
+                    `;
+                    document.getElementById('diagnosticResults').innerHTML = html;
+                    showMessage('✓ Diagnóstico completado', 'success');
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error en diagnóstico: ' + error.message, 'error');
             }
         }
         
