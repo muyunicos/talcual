@@ -571,8 +571,20 @@ function handleImport($db) {
     $json = json_decode($input, true);
     if (!$json) throw new Exception('Invalid JSON: ' . json_last_error_msg());
     
-    $stats = ['categories_added' => 0, 'prompts_added' => 0, 'words_added' => 0];
+    $stats = ['categories_added' => 0, 'prompts_added' => 0, 'words_added' => 0, 'format' => 'unknown'];
     
+    if (isset($json['categories']) && isset($json['prompts'])) {
+        $stats['format'] = 'standard';
+        importStandardFormat($db, $json, $stats);
+    } else {
+        $stats['format'] = 'compact';
+        importCompactFormat($db, $json, $stats);
+    }
+    
+    respondSuccess('Database imported', $stats);
+}
+
+function importStandardFormat($db, $json, &$stats) {
     $categoryMap = [];
     foreach ($json['categories'] ?? [] as $catData) {
         try {
@@ -610,8 +622,73 @@ function handleImport($db) {
             }
         }
     }
-    
-    respondSuccess('Database imported', $stats);
+}
+
+function importCompactFormat($db, $json, &$stats) {
+    foreach ($json as $categoryName => $categoryData) {
+        if (!is_array($categoryData)) continue;
+        
+        try {
+            $cat = $db->addCategory($categoryName);
+            $stats['categories_added']++;
+            $categoryId = $cat['id'];
+            
+            foreach ($categoryData as $promptItem) {
+                if (!is_array($promptItem) || empty($promptItem)) continue;
+                
+                $promptText = null;
+                $words = [];
+                $difficulty = 1;
+                
+                if (is_string($promptItem[0] ?? null)) {
+                    $promptText = $promptItem[0];
+                }
+                
+                if (isset($promptItem[1])) {
+                    if (is_array($promptItem[1])) {
+                        $words = $promptItem[1];
+                    } elseif (is_string($promptItem[1])) {
+                        $words = explodeWords($promptItem[1]);
+                    }
+                }
+                
+                if (isset($promptItem[2])) {
+                    $difficulty = (int)$promptItem[2];
+                }
+                
+                if (!empty($promptText)) {
+                    try {
+                        $promptId = $db->addPrompt($categoryId, $promptText, $difficulty);
+                        $stats['prompts_added']++;
+                        
+                        foreach ($words as $wordEntry) {
+                            $wordList = explodeWords($wordEntry);
+                            foreach ($wordList as $word) {
+                                if (!empty(trim($word))) {
+                                    try {
+                                        $db->addWord($promptId, $word, null);
+                                        $stats['words_added']++;
+                                    } catch (Exception $e) {
+                                        logMessage('Word import error: ' . $e->getMessage(), 'WARN');
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception $e) {
+                        logMessage('Prompt import error: ' . $e->getMessage(), 'WARN');
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            logMessage('Category import error: ' . $e->getMessage(), 'WARN');
+        }
+    }
+}
+
+function explodeWords($input) {
+    if (is_array($input)) return $input;
+    $parts = array_map('trim', explode('|', $input));
+    return array_filter($parts);
 }
 
 function ensureDataDirectory() {
