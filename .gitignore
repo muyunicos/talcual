@@ -1,8 +1,7 @@
 # Environment variables
 .env
 
-# Game states (temporary data)
-game_states/
+# temporary data
 *.lock
 
 # Images (production assets, not tracked)
@@ -13,12 +12,7 @@ favicon.ico
 data/
 
 # Logs
-debug.log
 error.log
-*.log
-
-# Analytics data
-analytics.json
 
 # OS files
 .DS_Store
