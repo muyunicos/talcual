@@ -3,7 +3,7 @@
 class AdminDictionary {
     use WordNormalizer;
     
-    private $pdo = null;
+    public $pdo = null;
 
     public function __construct() {
         require_once __DIR__ . '/../app/Database.php';
@@ -332,29 +332,32 @@ class AdminDictionary {
         }
     }
 
-    public function getGames() {
+    public function getGames($limit = 100, $offset = 0) {
         try {
             $sql = 'SELECT 
                 g.id,
-                g.id as code,
                 g.status,
                 g.round as current_round,
+                g.current_category,
+                g.selected_category,
                 g.updated_at,
+                g.created_at,
+                g.total_rounds,
+                g.round_duration,
                 COUNT(DISTINCT p.id) as player_count
             FROM games g
             LEFT JOIN players p ON g.id = p.game_id
             GROUP BY g.id
             ORDER BY g.updated_at DESC
-            LIMIT 100';
+            LIMIT ? OFFSET ?';
             
-            $stmt = $this->pdo->query($sql);
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$limit, $offset]);
             $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($games as &$game) {
-                $game['host_name'] = 'TalCual';
                 $game['player_count'] = (int)$game['player_count'];
                 $game['current_round'] = (int)$game['current_round'];
-                $game['created_at'] = date('Y-m-d H:i:s', $game['updated_at']);
             }
             
             return $games;
@@ -366,21 +369,60 @@ class AdminDictionary {
     public function getGameByCode($code) {
         try {
             $stmt = $this->pdo->prepare('SELECT 
-                id, status, round as current_round, updated_at, 
+                id, status, round as current_round, updated_at, created_at,
+                current_category, selected_category, total_rounds, round_duration,
                 (SELECT COUNT(*) FROM players WHERE game_id = games.id) as player_count
             FROM games WHERE id = ? LIMIT 1');
             $stmt->execute([$code]);
-            $game = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($game) {
-                $game['code'] = $game['id'];
-                $game['host_name'] = 'TalCual';
-                $game['created_at'] = date('Y-m-d H:i:s', $game['updated_at']);
-            }
-            
-            return $game;
+            return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             throw new Exception('Error fetching game: ' . $e->getMessage());
+        }
+    }
+
+    public function getGamePlayers($gameId) {
+        try {
+            $stmt = $this->pdo->prepare('SELECT 
+                id, game_id, name, color, avatar, status, score, 
+                current_answers, round_history, disconnected
+            FROM players 
+            WHERE game_id = ? 
+            ORDER BY id');
+            $stmt->execute([$gameId]);
+            $players = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($players as &$player) {
+                $player['score'] = (int)$player['score'];
+                $player['disconnected'] = (bool)$player['disconnected'];
+                $player['current_answers'] = $player['current_answers'] ? json_decode($player['current_answers'], true) : [];
+                $player['round_history'] = $player['round_history'] ? json_decode($player['round_history'], true) : [];
+            }
+            
+            return $players;
+        } catch (PDOException $e) {
+            throw new Exception('Error fetching game players: ' . $e->getMessage());
+        }
+    }
+
+    public function getPlayerStats($gameId, $playerId) {
+        try {
+            $stmt = $this->pdo->prepare('SELECT 
+                id, name, score, status, round_history, current_answers
+            FROM players 
+            WHERE game_id = ? AND id = ? 
+            LIMIT 1');
+            $stmt->execute([$gameId, $playerId]);
+            $player = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($player) {
+                $player['score'] = (int)$player['score'];
+                $player['round_history'] = $player['round_history'] ? json_decode($player['round_history'], true) : [];
+                $player['current_answers'] = $player['current_answers'] ? json_decode($player['current_answers'], true) : [];
+            }
+            
+            return $player;
+        } catch (PDOException $e) {
+            throw new Exception('Error fetching player stats: ' . $e->getMessage());
         }
     }
 
@@ -391,6 +433,26 @@ class AdminDictionary {
             return true;
         } catch (PDOException $e) {
             throw new Exception('Error deleting game: ' . $e->getMessage());
+        }
+    }
+
+    public function deletePlayer($gameId, $playerId) {
+        try {
+            $stmt = $this->pdo->prepare('DELETE FROM players WHERE game_id = ? AND id = ?');
+            $stmt->execute([$gameId, $playerId]);
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            throw new Exception('Error deleting player: ' . $e->getMessage());
+        }
+    }
+
+    public function updatePlayerStatus($gameId, $playerId, $status) {
+        try {
+            $stmt = $this->pdo->prepare('UPDATE players SET status = ? WHERE game_id = ? AND id = ?');
+            $stmt->execute([$status, $gameId, $playerId]);
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            throw new Exception('Error updating player status: ' . $e->getMessage());
         }
     }
 
