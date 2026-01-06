@@ -54,148 +54,15 @@ class DatabaseManager {
 
     private function ensureSchema() {
         $this->pdo->exec('PRAGMA foreign_keys = ON');
-        
-        try {
-            $stmt = $this->pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='categories'");
-            $exists = $stmt->fetch() !== null;
-            
-            if (!$exists) {
-                $this->createSchema();
-            } else {
-                $this->migrateSchema();
-            }
-        } catch (PDOException $e) {
-            logMessage('Schema check error: ' . $e->getMessage(), 'WARN');
-        }
-    }
-
-    private function createSchema() {
-        try {
-            $this->pdo->exec('
-                CREATE TABLE categories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT UNIQUE NOT NULL,
-                    orden INTEGER NOT NULL DEFAULT 0,
-                    is_active BOOLEAN DEFAULT 1,
-                    created_at INTEGER NOT NULL DEFAULT 0
-                )
-            ');
-
-            $this->pdo->exec('
-                CREATE TABLE prompts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    text TEXT UNIQUE NOT NULL,
-                    difficulty INTEGER DEFAULT 1,
-                    is_active BOOLEAN DEFAULT 1,
-                    created_at INTEGER NOT NULL DEFAULT 0
-                )
-            ');
-
-            $this->pdo->exec('
-                CREATE TABLE prompt_categories (
-                    prompt_id INTEGER NOT NULL,
-                    category_id INTEGER NOT NULL,
-                    PRIMARY KEY (prompt_id, category_id),
-                    FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
-                    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-                )
-            ');
-
-            $this->pdo->exec('
-                CREATE TABLE valid_words (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    prompt_id INTEGER NOT NULL,
-                    word TEXT NOT NULL,
-                    normalized_word TEXT NOT NULL,
-                    gender TEXT,
-                    created_at INTEGER DEFAULT 0,
-                    FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
-                    UNIQUE(prompt_id, normalized_word)
-                )
-            ');
-
-            $this->createIndexes();
-            logMessage('Schema created successfully', 'INFO');
-        } catch (PDOException $e) {
-            logMessage('Schema creation error: ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Could not create schema: ' . $e->getMessage());
-        }
-    }
-
-    private function migrateSchema() {
-        try {
-            $tableInfo = $this->pdo->query("PRAGMA table_info(categories)")->fetchAll(PDO::FETCH_COLUMN, 1);
-            
-            if (!in_array('orden', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE categories ADD COLUMN orden INTEGER NOT NULL DEFAULT 0');
-            }
-            if (!in_array('is_active', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE categories ADD COLUMN is_active BOOLEAN DEFAULT 1');
-            }
-            if (!in_array('created_at', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE categories ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0');
-            }
-            
-            $tableInfo = $this->pdo->query("PRAGMA table_info(prompts)")->fetchAll(PDO::FETCH_COLUMN, 1);
-            if (!in_array('difficulty', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN difficulty INTEGER DEFAULT 1');
-            }
-            if (!in_array('is_active', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN is_active BOOLEAN DEFAULT 1');
-            }
-            if (!in_array('created_at', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE prompts ADD COLUMN created_at INTEGER DEFAULT 0');
-            }
-            
-            $tableInfo = $this->pdo->query("PRAGMA table_info(valid_words)")->fetchAll(PDO::FETCH_COLUMN, 1);
-            if (!in_array('normalized_word', $tableInfo)) {
-                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN normalized_word TEXT');
-                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN gender TEXT');
-                $this->pdo->exec('ALTER TABLE valid_words ADD COLUMN created_at INTEGER DEFAULT 0');
-                
-                $words = $this->pdo->query('SELECT id, word FROM valid_words')->fetchAll(PDO::FETCH_ASSOC);
-                $stmt = $this->pdo->prepare('UPDATE valid_words SET normalized_word = ? WHERE id = ?');
-                foreach ($words as $w) {
-                    $normalized = mb_strtoupper(trim($w['word']), 'UTF-8');
-                    $stmt->execute([$normalized, $w['id']]);
-                }
-            }
-            
-            $this->createIndexes();
-            logMessage('Schema migrated successfully', 'INFO');
-        } catch (PDOException $e) {
-            logMessage('Schema migration error: ' . $e->getMessage(), 'WARN');
-        }
-    }
-
-    private function createIndexes() {
-        $indexes = [
-            'CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active)',
-            'CREATE INDEX IF NOT EXISTS idx_categories_orden ON categories(orden)',
-            'CREATE INDEX IF NOT EXISTS idx_prompts_active ON prompts(is_active)',
-            'CREATE INDEX IF NOT EXISTS idx_prompts_difficulty ON prompts(difficulty)',
-            'CREATE INDEX IF NOT EXISTS idx_prompt_categories_prompt ON prompt_categories(prompt_id)',
-            'CREATE INDEX IF NOT EXISTS idx_prompt_categories_category ON prompt_categories(category_id)',
-            'CREATE INDEX IF NOT EXISTS idx_valid_words_prompt ON valid_words(prompt_id)',
-            'CREATE INDEX IF NOT EXISTS idx_valid_words_normalized ON valid_words(normalized_word)'
-        ];
-        
-        try {
-            foreach ($indexes as $sql) {
-                $this->pdo->exec($sql);
-            }
-        } catch (PDOException $e) {
-            logMessage('Index creation warning: ' . $e->getMessage(), 'WARN');
-        }
     }
 
     public function getAllCategories() {
-        $stmt = $this->pdo->query('SELECT id, name, orden, is_active, created_at FROM categories ORDER BY orden, name');
+        $stmt = $this->pdo->query('SELECT id, name, orden, is_active, date FROM categories ORDER BY orden, name');
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getCategoryById($id) {
-        $stmt = $this->pdo->prepare('SELECT id, name, orden, is_active, created_at FROM categories WHERE id = ?');
+        $stmt = $this->pdo->prepare('SELECT id, name, orden, is_active, date FROM categories WHERE id = ?');
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -209,7 +76,7 @@ class DatabaseManager {
         }
         
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO categories (name, orden, is_active, created_at) VALUES (?, ?, 1, 0)');
+            $stmt = $this->pdo->prepare('INSERT INTO categories (name, orden, is_active, date) VALUES (?, ?, 1, 0)');
             $stmt->execute([$name, $orden]);
             return $this->getCategoryById($this->pdo->lastInsertId());
         } catch (PDOException $e) {
@@ -253,7 +120,7 @@ class DatabaseManager {
 
     public function getPrompts($categoryId = null) {
         if ($categoryId) {
-            $sql = 'SELECT DISTINCT p.id, p.text, p.difficulty, p.is_active, p.created_at,
+            $sql = 'SELECT DISTINCT p.id, p.text, p.difficulty, p.is_active, p.date,
                     GROUP_CONCAT(pc.category_id, ",") as category_ids
                     FROM prompts p
                     LEFT JOIN prompt_categories pc ON p.id = pc.prompt_id
@@ -263,7 +130,7 @@ class DatabaseManager {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$categoryId]);
         } else {
-            $sql = 'SELECT p.id, p.text, p.difficulty, p.is_active, p.created_at,
+            $sql = 'SELECT p.id, p.text, p.difficulty, p.is_active, p.date,
                     GROUP_CONCAT(pc.category_id, ",") as category_ids
                     FROM prompts p
                     LEFT JOIN prompt_categories pc ON p.id = pc.prompt_id
@@ -286,7 +153,7 @@ class DatabaseManager {
         if (empty($categoryIds)) throw new Exception('At least one category is required');
         
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO prompts (text, difficulty, is_active, created_at) VALUES (?, ?, 1, 0)');
+            $stmt = $this->pdo->prepare('INSERT INTO prompts (text, difficulty, is_active, date) VALUES (?, ?, 1, 0)');
             $stmt->execute([$text, max(1, min(5, (int)$difficulty))]);
             $promptId = $this->pdo->lastInsertId();
             
@@ -345,10 +212,10 @@ class DatabaseManager {
 
     public function getWords($promptId = null) {
         if ($promptId) {
-            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word, normalized_word, gender, created_at FROM valid_words WHERE prompt_id = ? ORDER BY word');
+            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word, normalized_word, gender FROM valid_words WHERE prompt_id = ? ORDER BY word');
             $stmt->execute([$promptId]);
         } else {
-            $stmt = $this->pdo->query('SELECT id, prompt_id, word, normalized_word, gender, created_at FROM valid_words ORDER BY prompt_id, word');
+            $stmt = $this->pdo->query('SELECT id, prompt_id, word, normalized_word, gender FROM valid_words ORDER BY prompt_id, word');
         }
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
@@ -359,7 +226,7 @@ class DatabaseManager {
         $normalized = mb_strtoupper(trim($word), 'UTF-8');
         
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word, normalized_word, gender, created_at) VALUES (?, ?, ?, ?, 0)');
+            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word, normalized_word, gender) VALUES (?, ?, ?, ?)');
             $stmt->execute([$promptId, trim($word), $normalized, $gender]);
             return $this->pdo->lastInsertId();
         } catch (PDOException $e) {
@@ -409,6 +276,39 @@ class DatabaseManager {
         ];
     }
 
+    public function getGames($limit = 100, $offset = 0) {
+        $sql = 'SELECT g.id, g.status, g.round, g.current_category_id, g.selected_category_id,
+                g.updated_at, g.created_at, g.total_rounds, g.round_duration,
+                COUNT(DISTINCT p.id) as player_count
+                FROM games g
+                LEFT JOIN players p ON g.id = p.game_id
+                GROUP BY g.id
+                ORDER BY g.updated_at DESC
+                LIMIT ? OFFSET ?';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$limit, $offset]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function getGameById($id) {
+        $stmt = $this->pdo->prepare('SELECT * FROM games WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getGamePlayers($gameId) {
+        $stmt = $this->pdo->prepare('SELECT id, game_id, name, aura, status, score, round_history
+                FROM players WHERE game_id = ? ORDER BY id');
+        $stmt->execute([$gameId]);
+        $players = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        
+        foreach ($players as &$player) {
+            $player['score'] = (int)$player['score'];
+            $player['round_history'] = $player['round_history'] ? json_decode($player['round_history'], true) : [];
+        }
+        return $players;
+    }
+
     public function optimizeDatabase() {
         $this->pdo->exec('PRAGMA optimize');
         $this->pdo->exec('VACUUM');
@@ -453,6 +353,7 @@ function handleGet($db, $action) {
             'get-prompts' => respondSuccess('Prompts loaded', $db->getPrompts($_GET['category_id'] ?? null)),
             'get-words' => respondSuccess('Words loaded', $db->getWords($_GET['prompt_id'] ?? null)),
             'get-stats' => respondSuccess('Stats loaded', $db->getDictionaryStats()),
+            'get-games' => respondSuccess('Games loaded', $db->getGames()),
             'inspect' => respondSuccess('Inspection completed', ['stats' => $db->getDictionaryStats()]),
             default => respondError('Unknown GET action: ' . $action)
         };
