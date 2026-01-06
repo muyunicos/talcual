@@ -571,7 +571,7 @@ function handleImport($db) {
     $json = json_decode($input, true);
     if (!$json) throw new Exception('Invalid JSON: ' . json_last_error_msg());
     
-    $stats = ['categories_added' => 0, 'prompts_added' => 0, 'words_added' => 0, 'format' => 'unknown'];
+    $stats = ['categories_added' => 0, 'prompts_added' => 0, 'words_added' => 0, 'format' => 'unknown', 'errors' => []];
     
     if (isset($json['categories']) && isset($json['prompts'])) {
         $stats['format'] = 'standard';
@@ -593,6 +593,7 @@ function importStandardFormat($db, $json, &$stats) {
             $stats['categories_added']++;
         } catch (Exception $e) {
             logMessage('Category import error: ' . $e->getMessage(), 'WARN');
+            $stats['errors'][] = 'Category error: ' . $e->getMessage();
         }
     }
     
@@ -619,6 +620,7 @@ function importStandardFormat($db, $json, &$stats) {
                 }
             } catch (Exception $e) {
                 logMessage('Prompt import error: ' . $e->getMessage(), 'WARN');
+                $stats['errors'][] = 'Prompt error: ' . $e->getMessage();
             }
         }
     }
@@ -642,22 +644,38 @@ function importCompactFormat($db, $json, &$stats) {
                 
                 if (is_string($promptItem[0] ?? null) && !empty(trim($promptItem[0]))) {
                     $promptText = trim($promptItem[0]);
-                }
-                
-                if (isset($promptItem[1])) {
-                    if (is_array($promptItem[1])) {
+                    
+                    if (isset($promptItem[1]) && is_array($promptItem[1])) {
                         foreach ($promptItem[1] as $wordEntry) {
                             if (is_string($wordEntry)) {
                                 $words = array_merge($words, explodeWords($wordEntry));
                             }
                         }
-                    } elseif (is_string($promptItem[1])) {
-                        $words = explodeWords($promptItem[1]);
                     }
-                }
-                
-                if (isset($promptItem[2]) && is_numeric($promptItem[2])) {
-                    $difficulty = (int)$promptItem[2];
+                    
+                    if (isset($promptItem[2]) && is_numeric($promptItem[2])) {
+                        $difficulty = (int)$promptItem[2];
+                    }
+                } elseif (is_array($promptItem) && count($promptItem) > 0) {
+                    $keys = array_keys($promptItem);
+                    $firstKey = $keys[0];
+                    
+                    if (is_string($firstKey) && !empty(trim($firstKey))) {
+                        $promptText = trim($firstKey);
+                        $value = $promptItem[$firstKey];
+                        
+                        if (is_array($value)) {
+                            foreach ($value as $wordEntry) {
+                                if (is_string($wordEntry)) {
+                                    $words = array_merge($words, explodeWords($wordEntry));
+                                } elseif (is_numeric($wordEntry)) {
+                                    $difficulty = (int)$wordEntry;
+                                }
+                            }
+                        } elseif (is_numeric($value)) {
+                            $difficulty = (int)$value;
+                        }
+                    }
                 }
                 
                 if (!empty($promptText) && !empty($words)) {
@@ -665,7 +683,7 @@ function importCompactFormat($db, $json, &$stats) {
                         $promptId = $db->addPrompt($categoryId, $promptText, $difficulty);
                         $stats['prompts_added']++;
                         
-                        foreach ($words as $word) {
+                        foreach (array_unique($words) as $word) {
                             if (!empty(trim($word))) {
                                 try {
                                     $db->addWord($promptId, $word, null);
@@ -677,11 +695,13 @@ function importCompactFormat($db, $json, &$stats) {
                         }
                     } catch (Exception $e) {
                         logMessage('Prompt import error: ' . $e->getMessage(), 'WARN');
+                        $stats['errors'][] = "Prompt '{$promptText}': " . $e->getMessage();
                     }
                 }
             }
         } catch (Exception $e) {
             logMessage('Category import error: ' . $e->getMessage(), 'WARN');
+            $stats['errors'][] = "Category '{$categoryName}': " . $e->getMessage();
         }
     }
 }
