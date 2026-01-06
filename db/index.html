@@ -3,1501 +3,1059 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TalCual - Admin DB</title>
+    <title>TalCual - Database Admin</title>
     <style>
-        * {
-            margin: 0;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            height: 100%;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #334155;
+            background: #0f172a;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .nav-section {
             padding: 0;
-            box-sizing: border-box;
+            margin: 0;
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f5f5;
-            color: #333;
+        
+        .nav-section-title {
+            padding: 12px 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #475569;
+            letter-spacing: 0.8px;
+            margin-top: 15px;
         }
-
+        
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        
+        .nav-item:hover {
+            background: #334155;
+        }
+        
+        .nav-item.active {
+            background: #1e40af;
+            border-left-color: #3b82f6;
+            color: #fff;
+        }
+        
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+        
+        .stat {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #3b82f6;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            margin-top: 2px;
+        }
+        
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .panel {
+            display: none;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        .cascading-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            height: 100%;
+        }
+        
+        .cascade-pane {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .cascade-header {
+            padding: 15px;
+            border-bottom: 1px solid #334155;
+            background: #0f172a;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+        
+        .cascade-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .cascade-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .cascade-item:hover {
+            background: #334155;
+        }
+        
+        .cascade-item.selected {
+            background: #1e40af;
+            color: #fff;
+            border-left: 3px solid #3b82f6;
+            padding-left: 12px;
+        }
+        
+        .cascade-item-badge {
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .cascade-item.selected .cascade-item-badge {
+            background: #3b82f6;
+        }
+        
+        .cascade-empty {
             padding: 20px;
             text-align: center;
+            color: #64748b;
+            font-size: 12px;
         }
-
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
-        .tabs {
-            display: flex;
-            background: white;
-            border-bottom: 2px solid #e0e0e0;
-            padding: 0 20px;
-            gap: 10px;
-            overflow-x: auto;
-        }
-
-        .tab-btn {
-            padding: 15px 20px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: #666;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-
-        .tab-btn.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-btn:hover {
-            color: #667eea;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .tab-content {
-            display: none;
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .form-section {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border-left: 4px solid #667eea;
-        }
-
-        .form-section h3 {
-            margin-bottom: 15px;
-            font-size: 16px;
-            color: #333;
-        }
-
+        
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
-
+        
         .form-group label {
             display: block;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
-            margin-bottom: 5px;
-            color: #555;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 8px;
         }
-
+        
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
+            padding: 10px 12px;
+            background: #1e293b;
+            border: 1px solid #334155;
             border-radius: 4px;
-            font-size: 14px;
+            color: #e2e8f0;
             font-family: inherit;
+            font-size: 13px;
         }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-        }
-
+        
         .form-group input:focus,
         .form-group textarea:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #3b82f6;
+            background: #0f172a;
         }
-
-        .btn-group {
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .button-group {
             display: flex;
             gap: 10px;
-            flex-wrap: wrap;
+            margin-top: 20px;
         }
-
+        
         button {
             padding: 10px 16px;
             border: none;
             border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-
+        
         .btn-primary {
-            background: #667eea;
-            color: white;
+            background: #3b82f6;
+            color: #fff;
         }
-
+        
         .btn-primary:hover {
-            background: #5568d3;
+            background: #2563eb;
         }
-
+        
         .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
+            background: #475569;
+            color: #fff;
         }
-
+        
         .btn-secondary:hover {
-            background: #e0e0e0;
+            background: #64748b;
         }
-
+        
         .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-danger:hover {
             background: #dc2626;
+            color: #fff;
         }
-
+        
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+        
         .btn-success {
-            background: #10b981;
-            color: white;
-        }
-
-        .btn-success:hover {
             background: #059669;
+            color: #fff;
         }
-
-        .btn-warning {
-            background: #f59e0b;
-            color: white;
+        
+        .btn-success:hover {
+            background: #047857;
         }
-
-        .btn-warning:hover {
-            background: #d97706;
+        
+        .message {
+            padding: 12px 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            display: none;
         }
-
-        .list-table {
+        
+        .message.success {
+            background: #064e3b;
+            color: #86efac;
+            border: 1px solid #059669;
+            display: block;
+        }
+        
+        .message.error {
+            background: #7f1d1d;
+            color: #fca5a5;
+            border: 1px solid #dc2626;
+            display: block;
+        }
+        
+        .table-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            overflow: auto;
+        }
+        
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            font-size: 13px;
         }
-
-        .list-table thead {
-            background: #f0f0f0;
+        
+        thead {
+            background: #0f172a;
+            border-bottom: 2px solid #334155;
         }
-
-        .list-table th,
-        .list-table td {
-            padding: 12px;
+        
+        th {
+            padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 13px;
-        }
-
-        .list-table th {
             font-weight: 600;
-            color: #555;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #64748b;
+            font-size: 11px;
         }
-
-        .list-table tr:hover {
-            background: #f9f9f9;
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #334155;
         }
-
-        .list-table .actions {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
+        
+        tbody tr:hover {
+            background: #334155;
         }
-
-        .list-table .actions button {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .search-box input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .badge.active {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .badge.inactive {
-            background: #fee2e2;
-            color: #7f1d1d;
-        }
-
-        .badge.duplicate {
-            background: #fef08a;
-            color: #78350f;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            max-width: 600px;
-            width: 100%;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-content h3 {
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .modal-content p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-
-        .alert.success {
-            background: #d1fae5;
-            color: #065f46;
-            border-left: 4px solid #10b981;
-        }
-
-        .alert.error {
-            background: #fee2e2;
-            color: #7f1d1d;
-            border-left: 4px solid #ef4444;
-        }
-
-        .alert.info {
-            background: #dbeafe;
-            color: #0c2340;
-            border-left: 4px solid #3b82f6;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 6px;
-            border: 1px solid #e0e0e0;
+        
+        .loading {
             text-align: center;
+            padding: 40px;
+            color: #64748b;
         }
-
-        .stat-card .number {
-            font-size: 32px;
-            font-weight: bold;
-            color: #667eea;
-            margin: 10px 0;
-        }
-
-        .stat-card .label {
-            font-size: 13px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .cascade-select {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .cascade-list {
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            max-height: 300px;
-            overflow-y: auto;
-            background: white;
-        }
-
-        .cascade-list-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-size: 13px;
-        }
-
-        .cascade-list-item:hover {
-            background: #f0f0f0;
-        }
-
-        .cascade-list-item.selected {
-            background: #e0e7ff;
-            color: #667eea;
-            font-weight: 500;
-        }
-
-        .placeholder-empty {
-            text-align: center;
-            padding: 40px 20px;
-            color: #999;
-        }
-
-        .placeholder-empty p {
-            font-size: 14px;
-            margin: 0;
-        }
-
-        .json-editor {
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: #f5f5f5;
-            min-height: 300px;
-            width: 100%;
-        }
-
+        
         .spinner {
             display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #f0f0f0;
-            border-top: 2px solid #667eea;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #334155;
+            border-top-color: #3b82f6;
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
         }
-
+        
         @keyframes spin {
             to { transform: rotate(360deg); }
-        }
-
-        .drag-drop-zone {
-            border: 2px dashed #667eea;
-            border-radius: 8px;
-            padding: 30px;
-            text-align: center;
-            background: #f9f9f9;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .drag-drop-zone:hover {
-            background: #f0f0f0;
-            border-color: #5568d3;
-        }
-
-        .drag-drop-zone.dragover {
-            background: #e0e7ff;
-            border-color: #667eea;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>⚙️ TalCual Admin DB</h1>
-        <p>Gestiona diccionario, partidas, jugadores y optimizaciones</p>
-    </div>
-
-    <div class="tabs">
-        <button class="tab-btn active" data-tab="dictionary">📚 Diccionario</button>
-        <button class="tab-btn" data-tab="merge">🔀 Merge</button>
-        <button class="tab-btn" data-tab="optimize">✨ Optimizar</button>
-        <button class="tab-btn" data-tab="games">🎮 Partidas</button>
-        <button class="tab-btn" data-tab="players">👥 Jugadores</button>
-        <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
-        <button class="tab-btn" data-tab="raw">📋 Raw Data</button>
-    </div>
-
     <div class="container">
-        <!-- TAB: DICTIONARY -->
-        <div id="tab-dictionary" class="tab-content active">
-            <div class="alert info" id="dictMsg"></div>
-
-            <div class="form-section">
-                <h3>📁 Categorías</h3>
-                <div class="search-box">
-                    <input type="text" id="categorySearch" placeholder="Busca categorías...">
-                </div>
-                <table class="list-table" id="categoriesTable">
-                    <thead>
-                        <tr>
-                            <th>Orden</th>
-                            <th>Nombre</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>TalCual</h1>
             </div>
-
-            <div class="form-section">
-                <h3>➕ Agregar Categoría</h3>
-                <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="catName" placeholder="Ej: Cosas de Cocina">
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Diccionario</div>
+                <div class="nav-item active" data-panel="dictionary">
+                    📚 Gestor de Diccionario
                 </div>
-                <div class="form-group">
-                    <label>Orden (visualización)</label>
-                    <input type="number" id="catOrden" placeholder="0" value="0">
-                </div>
-                <div class="btn-group">
-                    <button class="btn-primary" onclick="app.addCategory()">Agregar</button>
-                    <button class="btn-secondary" onclick="app.showBatchCategoryModal()">Batch (CSV)</button>
-                    <button class="btn-warning" onclick="app.showReorderModal()">↕️ Reordenar</button>
+                <div class="nav-item" data-panel="words">
+                    🔤 Palabras
                 </div>
             </div>
-
-            <div class="form-section">
-                <h3>❓ Consignas</h3>
-                <div class="cascade-select" id="cascadeContainer">
-                    <div>
-                        <h4>Categorías</h4>
-                        <div class="cascade-list" id="categoryList"></div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Partidas</div>
+                <div class="nav-item" data-panel="games">
+                    🎮 Partidas Activas
+                </div>
+                <div class="nav-item" data-panel="games-finished">
+                    ✓ Partidas Finalizadas
+                </div>
+                <div class="nav-item" data-panel="players">
+                    👥 Jugadores
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Herramientas</div>
+                <div class="nav-item" data-panel="tools">
+                    ⚙️ Optimización
+                </div>
+                <div class="nav-item" data-panel="import-export">
+                    📤 Importar/Exportar
+                </div>
+                <div class="nav-item" data-panel="repair">
+                    🔧 Reparación
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Inspector</div>
+                <div class="nav-item" data-panel="inspect">
+                    🔍 Inspector de BD
+                </div>
+            </div>
+        </div>
+        
+        <div class="main">
+            <div class="header">
+                <h2 id="pageTitle">Gestor de Diccionario</h2>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value" id="catCount">0</div>
+                        <div class="stat-label">Categorías</div>
                     </div>
-                    <div>
-                        <h4>Consignas</h4>
-                        <div class="cascade-list" id="promptList"></div>
+                    <div class="stat">
+                        <div class="stat-value" id="promptCount">0</div>
+                        <div class="stat-label">Consignas</div>
                     </div>
-                    <div>
-                        <h4>Palabras Posibles</h4>
-                        <div class="cascade-list" id="wordsList"></div>
+                    <div class="stat">
+                        <div class="stat-value" id="wordCount">0</div>
+                        <div class="stat-label">Palabras</div>
                     </div>
                 </div>
             </div>
-
-            <div class="form-section">
-                <h3>➕ Agregar Consigna</h3>
-                <div class="form-group">
-                    <label>Consigna</label>
-                    <input type="text" id="promptText" placeholder="Ej: Utensilios de madera">
+            
+            <div class="content">
+                <div id="message" class="message"></div>
+                
+                <!-- DICTIONARY PANEL -->
+                <div id="dictionary" class="panel active">
+                    <div class="cascading-view">
+                        <!-- Categories Pane -->
+                        <div class="cascade-pane">
+                            <div class="cascade-header">Categorías</div>
+                            <div class="cascade-list" id="categoriesList"></div>
+                            <div style="padding: 15px; border-top: 1px solid #334155;">
+                                <button class="btn-primary" style="width: 100%; text-align: center;" onclick="openAddCategoryModal()">+ Agregar Categoría</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Prompts Pane -->
+                        <div class="cascade-pane">
+                            <div class="cascade-header">Consignas</div>
+                            <div class="cascade-list" id="promptsList"></div>
+                            <div style="padding: 15px; border-top: 1px solid #334155;">
+                                <button class="btn-primary" style="width: 100%; text-align: center;" onclick="openAddPromptModal()">+ Agregar Consigna</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Words Pane -->
+                        <div class="cascade-pane">
+                            <div class="cascade-header">Palabras</div>
+                            <div class="cascade-list" id="wordsList"></div>
+                            <div style="padding: 15px; border-top: 1px solid #334155;">
+                                <button class="btn-primary" style="width: 100%; text-align: center;" onclick="openAddWordModal()">+ Agregar Palabra</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Dificultad (1-5)</label>
-                    <input type="number" id="promptDifficulty" min="1" max="5" value="1">
+                
+                <!-- WORDS PANEL (Full table view) -->
+                <div id="words" class="panel">
+                    <div class="message" id="wordsMessage"></div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Palabra</th>
+                                    <th>Consigna</th>
+                                    <th>Género</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wordsTable"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Categorías</label>
-                    <div id="selectedCategories" style="background: #f0f0f0; padding: 10px; border-radius: 4px; min-height: 40px; color: #999; font-size: 13px;">Selecciona en cascada ↑</div>
+                
+                <!-- GAMES PANEL -->
+                <div id="games" class="panel">
+                    <div class="message" id="gamesMessage"></div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID Partida</th>
+                                    <th>Estado</th>
+                                    <th>Ronda</th>
+                                    <th>Jugadores</th>
+                                    <th>Última Actualización</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gamesTable"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="btn-group">
-                    <button class="btn-primary" onclick="app.addPrompt()">Agregar Consigna</button>
-                    <button class="btn-secondary" onclick="app.showBatchPromptModal()">Batch (CSV)</button>
+                
+                <!-- GAMES FINISHED PANEL -->
+                <div id="games-finished" class="panel">
+                    <div class="message" id="gamesFinishedMessage"></div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID Partida</th>
+                                    <th>Rondas</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gamesFinishedTable"></tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-
-            <div class="form-section">
-                <h3>➕ Agregar Palabras</h3>
-                <p style="color: #666; font-size: 13px;">Selecciona una consigna en la cascada</p>
-                <div class="form-group">
-                    <label>Palabras (separadas por comas)</label>
-                    <textarea id="wordsText" placeholder="CUCHARA, TENEDOR\nO con sinónimos: PERRO|PERRITA, GATO|GATA"></textarea>
+                
+                <!-- PLAYERS PANEL -->
+                <div id="players" class="panel">
+                    <div class="form-group">
+                        <label>Filtrar por Partida:</label>
+                        <input type="text" id="playerGameFilter" placeholder="ID de partida...">
+                    </div>
+                    <div class="message" id="playersMessage"></div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Jugador</th>
+                                    <th>Partida</th>
+                                    <th>Estado</th>
+                                    <th>Puntuación</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="playersTable"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="btn-group">
-                    <button class="btn-primary" id="addWordsBtn" onclick="app.addWords()" disabled>Agregar Palabras</button>
+                
+                <!-- TOOLS PANEL -->
+                <div id="tools" class="panel">
+                    <h3 style="margin-bottom: 20px;">Herramientas de Optimización</h3>
+                    
+                    <div class="form-group">
+                        <button class="btn-success" onclick="optimizeDatabase()" style="width: 100%;">🔧 Optimizar Base de Datos</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button class="btn-secondary" onclick="cleanDisconnected()" style="width: 100%;">🧹 Limpiar Jugadores Desconectados</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button class="btn-secondary" onclick="archiveFinished()" style="width: 100%;">📦 Archivar Partidas Finalizadas</button>
+                    </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- TAB: MERGE -->
-        <div id="tab-merge" class="tab-content">
-            <div class="alert info" id="mergeMsg"></div>
-
-            <div class="form-section">
-                <h3>🔀 Combinar Categorías</h3>
-                <p style="color: #666; font-size: 13px;">Selecciona dos categorías para combinarlas en una</p>
-                <div class="form-group">
-                    <label>Categoría a Eliminar (fusionada en la siguiente)</label>
-                    <select id="mergeSourceCat">
-                        <option value="">Cargando...</option>
-                    </select>
+                
+                <!-- IMPORT/EXPORT PANEL -->
+                <div id="import-export" class="panel">
+                    <h3 style="margin-bottom: 20px;">Importar/Exportar</h3>
+                    
+                    <div class="form-group">
+                        <label>Importar desde JSON:</label>
+                        <textarea id="importData" placeholder="Pega el JSON aquí..."></textarea>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="importData()" style="flex: 1;">📥 Importar</button>
+                        <button class="btn-secondary" onclick="exportData()" style="flex: 1;">📤 Exportar</button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Categoría Destino (mantiene los datos)</label>
-                    <select id="mergeTargetCat">
-                        <option value="">Cargando...</option>
-                    </select>
+                
+                <!-- REPAIR PANEL -->
+                <div id="repair" class="panel">
+                    <h3 style="margin-bottom: 20px;">Reparación y Diagnóstico</h3>
+                    
+                    <div class="form-group" id="diagnosticResults"></div>
+                    
+                    <div class="button-group">
+                        <button class="btn-secondary" onclick="runDiagnostic()" style="flex: 1;">🔍 Ejecutar Diagnóstico</button>
+                        <button class="btn-danger" onclick="repairDatabase()" style="flex: 1;">⚠️ Reparar Base de Datos</button>
+                    </div>
                 </div>
-                <div class="btn-group">
-                    <button class="btn-danger" onclick="app.mergeCategories()">Combinar</button>
+                
+                <!-- INSPECT PANEL -->
+                <div id="inspect" class="panel">
+                    <h3 style="margin-bottom: 20px;">Inspector de Base de Datos</h3>
+                    <button class="btn-primary" onclick="inspectDatabase()" style="margin-bottom: 20px;">🔍 Inspeccionar Base de Datos</button>
+                    <div id="inspectResults"></div>
                 </div>
-            </div>
-
-            <div class="form-section">
-                <h3>🔀 Combinar Consignas</h3>
-                <p style="color: #666; font-size: 13px;">Selecciona dos consignas para combinarlas en una</p>
-                <div class="form-group">
-                    <label>Consigna a Eliminar</label>
-                    <select id="mergeSourcePrompt">
-                        <option value="">Cargando...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Consigna Destino</label>
-                    <select id="mergeTargetPrompt">
-                        <option value="">Cargando...</option>
-                    </select>
-                </div>
-                <div class="btn-group">
-                    <button class="btn-danger" onclick="app.mergePrompts()">Combinar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: OPTIMIZE -->
-        <div id="tab-optimize" class="tab-content">
-            <div class="alert info" id="optimizeMsg"></div>
-
-            <div class="form-section">
-                <h3>🔍 Encontrar Duplicados</h3>
-                <div class="btn-group">
-                    <button class="btn-secondary" onclick="app.findDuplicates('categories')">Duplicadas en Categorías</button>
-                    <button class="btn-secondary" onclick="app.findDuplicates('prompts')">Duplicadas en Consignas</button>
-                    <button class="btn-secondary" onclick="app.findDuplicates('words')">Duplicadas en Palabras</button>
-                </div>
-                <div id="duplicatesResult" style="margin-top: 15px;"></div>
-            </div>
-
-            <div class="form-section">
-                <h3>🧹 Limpieza</h3>
-                <div class="btn-group">
-                    <button class="btn-warning" onclick="app.removeDuplicateWords()">Remover Palabras Duplicadas</button>
-                    <button class="btn-warning" onclick="app.cleanupUnused()">Limpiar Consignas Sin Categoría</button>
-                    <button class="btn-warning" onclick="app.vacuum()">Optimizar DB (VACUUM)</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: GAMES -->
-        <div id="tab-games" class="tab-content">
-            <div class="alert info" id="gamesMsg"></div>
-            <div class="form-group">
-                <label>Filtrar por estado</label>
-                <select id="gameStatus" onchange="app.loadGames()">
-                    <option value="">Todas</option>
-                    <option value="waiting">Esperando</option>
-                    <option value="playing">En Juego</option>
-                    <option value="finished">Finalizada</option>
-                </select>
-            </div>
-            <table class="list-table" id="gamesTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Original ID</th>
-                        <th>Estado</th>
-                        <th>Ronda</th>
-                        <th>Jugadores</th>
-                        <th>Creada</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <!-- TAB: PLAYERS -->
-        <div id="tab-players" class="tab-content">
-            <div class="alert info" id="playersMsg"></div>
-            <div class="form-group">
-                <label>Selecciona partida</label>
-                <select id="playerGameSelect" onchange="app.loadPlayers()">
-                    <option value="">Cargando...</option>
-                </select>
-            </div>
-            <table class="list-table" id="playersTable">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Aura</th>
-                        <th>Estado</th>
-                        <th>Score</th>
-                        <th>Última Actividad</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <!-- TAB: ANALYTICS -->
-        <div id="tab-analytics" class="tab-content">
-            <div class="alert info" id="analyticsMsg"></div>
-            <div class="btn-group" style="margin-bottom: 20px;">
-                <button class="btn-secondary" onclick="app.loadStats()">Recargar Estadísticas</button>
-            </div>
-            <div class="grid-2" id="statsGrid"></div>
-        </div>
-
-        <!-- TAB: RAW DATA -->
-        <div id="tab-raw" class="tab-content">
-            <div class="btn-group" style="margin-bottom: 20px;">
-                <button class="btn-success" onclick="app.exportDictionary()">📥 Descargar Diccionario</button>
-                <button class="btn-primary" onclick="app.showImportModal()">📤 Importar Diccionario</button>
-            </div>
-            <div style="margin-top: 20px;">
-                <h3>Raw Dictionary JSON</h3>
-                <textarea class="json-editor" id="rawDictionary" readonly></textarea>
             </div>
         </div>
     </div>
-
-    <!-- MODALS -->
-    <div id="batchCategoryModal" class="modal">
-        <div class="modal-content">
-            <h3>Agregar Categorías (Batch)</h3>
-            <p>Una categoría por línea</p>
-            <textarea id="batchCategoryText" class="form-group" style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Cosas de Cocina\nMarcas de Autos\nFrutas"></textarea>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="app.closeBatchCategoryModal()">Cancelar</button>
-                <button class="btn-primary" onclick="app.submitBatchCategories()">Agregar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="batchPromptModal" class="modal">
-        <div class="modal-content">
-            <h3>Agregar Consignas (Batch)</h3>
-            <p>Una consigna por línea</p>
-            <textarea id="batchPromptText" class="form-group" style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Utensilios de madera\nMarcas japonesas\nAnimales domésticos"></textarea>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="app.closeBatchPromptModal()">Cancelar</button>
-                <button class="btn-primary" onclick="app.submitBatchPrompts()">Agregar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="reorderModal" class="modal">
-        <div class="modal-content">
-            <h3>Reordenar Categorías</h3>
-            <p>Arrastra para reordenar (ó escribe números directamente)</p>
-            <div id="reorderList" style="margin: 15px 0;"></div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="app.closeReorderModal()">Cancelar</button>
-                <button class="btn-primary" onclick="app.submitReorder()">Guardar Orden</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirmModal" class="modal">
-        <div class="modal-content">
-            <h3 id="confirmTitle">Confirmar</h3>
-            <p id="confirmMsg"></p>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="app.closeConfirm()">Cancelar</button>
-                <button class="btn-danger" onclick="app.confirmDelete()">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="importModal" class="modal">
-        <div class="modal-content">
-            <h3>Importar Diccionario</h3>
-            <div class="drag-drop-zone" id="dragDropZone" ondrop="app.handleFileDrop(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)">
-                <p>📤 Arrastra archivo JSON aquí o haz click para seleccionar</p>
-                <input type="file" id="fileInput" accept=".json" onchange="app.handleFileSelect(event)" style="display: none;">
-            </div>
-            <div style="margin: 15px 0;">
-                <label>O pega JSON aquí:</label>
-                <textarea id="importJSON" class="json-editor" style="margin-top: 10px;"></textarea>
-            </div>
-            <div class="form-group" style="margin-top: 15px;">
-                <label>
-                    <input type="checkbox" id="mergeMode"> Combinar (merge) en lugar de reemplazar
-                </label>
-            </div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="app.closeImportModal()">Cancelar</button>
-                <button class="btn-primary" onclick="app.submitImport()">Importar</button>
-            </div>
-        </div>
-    </div>
-
+    
     <script>
-        const app = {
-            api: '/db/api/',
-            selectedCategoryId: null,
-            selectedPromptId: null,
-            selectedCategories: [],
-            deleteTarget: null,
-            categories: [],
-            prompts: [],
-
-            init() {
-                document.querySelectorAll('.tab-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+        const API = 'dmanager.php';
+        let selectedCategory = null;
+        let selectedPrompt = null;
+        
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            setupNavigation();
+            loadDictionary();
+            updateStats();
+            setInterval(updateStats, 5000);
+        });
+        
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                    
+                    item.classList.add('active');
+                    const panelId = item.getAttribute('data-panel');
+                    document.getElementById(panelId).classList.add('active');
+                    
+                    const titles = {
+                        'dictionary': '📚 Gestor de Diccionario',
+                        'words': '🔤 Palabras',
+                        'games': '🎮 Partidas Activas',
+                        'games-finished': '✓ Partidas Finalizadas',
+                        'players': '👥 Jugadores',
+                        'tools': '⚙️ Herramientas',
+                        'import-export': '📤 Importar/Exportar',
+                        'repair': '🔧 Reparación',
+                        'inspect': '🔍 Inspector'
+                    };
+                    
+                    document.getElementById('pageTitle').textContent = titles[panelId] || panelId;
+                    
+                    if (panelId === 'words') loadWordsTable();
+                    if (panelId === 'games') loadGamesTable();
+                    if (panelId === 'games-finished') loadFinishedGamesTable();
+                    if (panelId === 'players') loadPlayersTable();
                 });
-                document.getElementById('categorySearch').addEventListener('input', () => this.filterCategories());
-                document.getElementById('dragDropZone').addEventListener('click', () => document.getElementById('fileInput').click());
-                this.loadCategories();
-                this.loadGames();
-                this.loadPlayers();
-                this.loadStats();
-                this.loadRawDictionary();
-            },
-
-            switchTab(tab) {
-                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-                document.getElementById(`tab-${tab}`).classList.add('active');
-                event.target.classList.add('active');
-                if (tab === 'merge') this.loadMergeSelects();
-            },
-
-            async loadCategories() {
-                try {
-                    const res = await fetch(`${this.api}categories.php?action=list`);
-                    this.categories = await res.json();
-                    this.renderCategoriesTable(this.categories);
-                    this.renderCategoriesList(this.categories);
-                } catch (e) {
-                    this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
+            });
+        }
+        
+        // ==================== DICTIONARY PANEL ====================
+        async function loadDictionary() {
+            try {
+                const [categories, prompts, words] = await Promise.all([
+                    fetch(`${API}?action=get-categories`).then(r => r.json()).then(r => r.data),
+                    fetch(`${API}?action=get-prompts`).then(r => r.json()).then(r => r.data),
+                    fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data)
+                ]);
+                
+                renderCategories(categories);
+                if (selectedCategory) {
+                    renderPrompts(prompts.filter(p => p.category_ids.includes(selectedCategory)));
+                } else if (prompts.length > 0) {
+                    renderPrompts(prompts);
                 }
-            },
-
-            async loadPrompts() {
-                try {
-                    const res = await fetch(`${this.api}prompts.php?action=list`);
-                    this.prompts = await res.json();
-                } catch (e) {
-                    console.error(e);
+                
+                if (selectedPrompt) {
+                    renderWords(words.filter(w => w.prompt_id === selectedPrompt));
                 }
-            },
-
-            renderCategoriesTable(categories) {
-                const tbody = document.querySelector('#categoriesTable tbody');
-                tbody.innerHTML = categories.map(cat => `
+            } catch (error) {
+                showMessage('Error cargando diccionario: ' + error.message, 'error');
+            }
+        }
+        
+        function renderCategories(categories) {
+            const list = document.getElementById('categoriesList');
+            if (categories.length === 0) {
+                list.innerHTML = '<div class="cascade-empty">No hay categorías</div>';
+                return;
+            }
+            
+            list.innerHTML = categories
+                .sort((a, b) => a.orden - b.orden)
+                .map(cat => `
+                    <div class="cascade-item ${selectedCategory === cat.id ? 'selected' : ''}" onclick="selectCategory(${cat.id})">
+                        <span>${cat.name}</span>
+                        <span class="cascade-item-badge">${cat.id}</span>
+                    </div>
+                `).join('');
+        }
+        
+        function renderPrompts(prompts) {
+            const list = document.getElementById('promptsList');
+            if (prompts.length === 0) {
+                list.innerHTML = '<div class="cascade-empty">Selecciona una categoría</div>';
+                return;
+            }
+            
+            list.innerHTML = prompts
+                .sort((a, b) => a.text.localeCompare(b.text))
+                .map(p => `
+                    <div class="cascade-item ${selectedPrompt === p.id ? 'selected' : ''}" onclick="selectPrompt(${p.id})">
+                        <span>${p.text}</span>
+                        <span class="cascade-item-badge">${p.difficulty}</span>
+                    </div>
+                `).join('');
+        }
+        
+        function renderWords(words) {
+            const list = document.getElementById('wordsList');
+            if (words.length === 0) {
+                list.innerHTML = '<div class="cascade-empty">Selecciona una consigna</div>';
+                return;
+            }
+            
+            list.innerHTML = words
+                .sort((a, b) => a.word_entry.localeCompare(b.word_entry))
+                .map(w => `
+                    <div class="cascade-item">
+                        <span>${w.word_entry}</span>
+                        <span class="cascade-item-badge">${w.gender || 'n'}</span>
+                    </div>
+                `).join('');
+        }
+        
+        function selectCategory(catId) {
+            selectedCategory = catId;
+            selectedPrompt = null;
+            loadDictionary();
+        }
+        
+        async function selectPrompt(promptId) {
+            selectedPrompt = promptId;
+            const words = await fetch(`${API}?action=get-words&prompt_id=${promptId}`).then(r => r.json()).then(r => r.data);
+            renderWords(words);
+        }
+        
+        // ==================== WORDS TABLE ====================
+        async function loadWordsTable() {
+            try {
+                const words = await fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data);
+                const html = words.map(w => `
                     <tr>
-                        <td>${cat.orden}</td>
-                        <td>${cat.name}</td>
-                        <td><span class="badge ${cat.is_active ? 'active' : 'inactive'}">${cat.is_active ? 'Activa' : 'Inactiva'}</span></td>
-                        <td class="actions">
-                            <button class="btn-secondary" onclick="app.editCategory(${cat.id})">Editar</button>
-                            <button class="btn-danger" onclick="app.deleteCategory(${cat.id}, '${cat.name}')">X</button>
+                        <td>${w.word_entry}</td>
+                        <td>${w.prompt_id}</td>
+                        <td>${w.gender || '-'}</td>
+                        <td>
+                            <button class="btn-secondary" onclick="editWord(${w.id})">Editar</button>
+                            <button class="btn-danger" onclick="deleteWord(${w.id})">Eliminar</button>
                         </td>
                     </tr>
                 `).join('');
-            },
-
-            renderCategoriesList(categories) {
-                const list = document.getElementById('categoryList');
-                list.innerHTML = categories.map(cat => `
-                    <div class="cascade-list-item" onclick="app.selectCategory(${cat.id}, '${cat.name}')" data-id="${cat.id}">
-                        ${cat.name}
-                    </div>
-                `).join('');
-            },
-
-            selectCategory(id, name) {
-                this.selectedCategoryId = id;
-                document.querySelectorAll('#categoryList .cascade-list-item').forEach(el => el.classList.remove('selected'));
-                event.target.classList.add('selected');
-                this.loadPromptsByCategory(id);
-            },
-
-            async loadPromptsByCategory(categoryId) {
-                try {
-                    const res = await fetch(`${this.api}prompts.php?action=list&category_id=${categoryId}`);
-                    const prompts = await res.json();
-                    const list = document.getElementById('promptList');
-                    list.innerHTML = prompts.map(p => `
-                        <div class="cascade-list-item" onclick="app.selectPrompt(${p.id}, '${p.text}')" data-id="${p.id}">
-                            ${p.text}
-                        </div>
-                    `).join('');
-                    document.getElementById('wordsList').innerHTML = '';
-                } catch (e) {
-                    console.error(e);
-                }
-            },
-
-            selectPrompt(id, text) {
-                this.selectedPromptId = id;
-                document.querySelectorAll('#promptList .cascade-list-item').forEach(el => el.classList.remove('selected'));
-                event.target.classList.add('selected');
-                this.loadWordsByPrompt(id);
-                document.getElementById('addWordsBtn').disabled = false;
-            },
-
-            async loadWordsByPrompt(promptId) {
-                try {
-                    const res = await fetch(`${this.api}words.php?action=list&prompt_id=${promptId}`);
-                    const words = await res.json();
-                    const list = document.getElementById('wordsList');
-                    list.innerHTML = words.map(w => `
-                        <div class="cascade-list-item" style="display: flex; justify-content: space-between; align-items: center;">
-                            ${w.word}
-                            <button class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="app.deleteWord(${w.id})">X</button>
-                        </div>
-                    `).join('');
-                } catch (e) {
-                    console.error(e);
-                }
-            },
-
-            async addCategory() {
-                const name = document.getElementById('catName').value.trim();
-                const orden = parseInt(document.getElementById('catOrden').value) || 0;
-
-                if (!name) {
-                    alert('Ingresa un nombre');
-                    return;
-                }
-
-                try {
-                    const res = await fetch(`${this.api}categories.php?action=create`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, orden })
-                    });
-                    await res.json();
-                    this.showMessage('dictMsg', '✓ Categoría agregada', 'success');
-                    document.getElementById('catName').value = '';
-                    document.getElementById('catOrden').value = '0';
-                    this.loadCategories();
-                } catch (e) {
-                    this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async addPrompt() {
-                const text = document.getElementById('promptText').value.trim();
-                const difficulty = parseInt(document.getElementById('promptDifficulty').value) || 1;
-                const categories = this.selectedCategories;
-
-                if (!text) {
-                    alert('Ingresa una consigna');
-                    return;
-                }
-
-                try {
-                    const res = await fetch(`${this.api}prompts.php?action=create`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text, difficulty, categories })
-                    });
-                    await res.json();
-                    this.showMessage('dictMsg', '✓ Consigna agregada', 'success');
-                    document.getElementById('promptText').value = '';
-                    document.getElementById('promptDifficulty').value = '1';
-                    this.selectedCategories = [];
-                    document.getElementById('selectedCategories').innerHTML = 'Selecciona en cascada ↑';
-                    this.loadCategories();
-                } catch (e) {
-                    this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async addWords() {
-                if (!this.selectedPromptId) {
-                    alert('Selecciona una consigna');
-                    return;
-                }
-
-                const wordsText = document.getElementById('wordsText').value.trim();
-                if (!wordsText) {
-                    alert('Ingresa palabras');
-                    return;
-                }
-
-                try {
-                    const res = await fetch(`${this.api}words.php?action=batch_create`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt_id: this.selectedPromptId, words: wordsText })
-                    });
-                    const data = await res.json();
-                    this.showMessage('dictMsg', `✓ ${data.inserted} palabras agregadas`, 'success');
-                    document.getElementById('wordsText').value = '';
-                    this.loadWordsByPrompt(this.selectedPromptId);
-                } catch (e) {
-                    this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            deleteCategory(id, name) {
-                this.deleteTarget = { type: 'category', id };
-                document.getElementById('confirmTitle').innerText = 'Eliminar Categoría';
-                document.getElementById('confirmMsg').innerText = `¿Eliminar "${name}"? Se eliminarán todas las consignas y palabras asociadas.`;
-                document.getElementById('confirmModal').classList.add('active');
-            },
-
-            deleteWord(id) {
-                this.deleteTarget = { type: 'word', id };
-                document.getElementById('confirmTitle').innerText = 'Eliminar Palabra';
-                document.getElementById('confirmMsg').innerText = `¿Eliminar esta palabra?`;
-                document.getElementById('confirmModal').classList.add('active');
-            },
-
-            async confirmDelete() {
-                if (!this.deleteTarget) return;
-
-                try {
-                    const target = this.deleteTarget;
-                    let url = '';
-                    if (target.type === 'category') {
-                        url = `${this.api}categories.php?action=delete`;
-                    } else if (target.type === 'word') {
-                        url = `${this.api}words.php?action=delete`;
-                    } else if (target.type === 'prompt') {
-                        url = `${this.api}prompts.php?action=delete`;
-                    }
-
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: target.id })
-                    });
-                    await res.json();
-                    this.closeConfirm();
-                    this.loadCategories();
-                } catch (e) {
-                    alert('Error: ' + e.message);
-                }
-            },
-
-            closeConfirm() {
-                document.getElementById('confirmModal').classList.remove('active');
-                this.deleteTarget = null;
-            },
-
-            showBatchCategoryModal() {
-                document.getElementById('batchCategoryModal').classList.add('active');
-            },
-
-            closeBatchCategoryModal() {
-                document.getElementById('batchCategoryModal').classList.remove('active');
-                document.getElementById('batchCategoryText').value = '';
-            },
-
-            async submitBatchCategories() {
-                const text = document.getElementById('batchCategoryText').value.trim();
-                const categories = text.split('\n').filter(l => l.trim()).map((l, i) => ({
-                    name: l.trim(),
-                    orden: i
-                }));
-
-                if (categories.length === 0) return;
-
-                try {
-                    const res = await fetch(`${this.api}categories.php?action=batch_create`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ categories })
-                    });
-                    const data = await res.json();
-                    this.showMessage('dictMsg', `✓ ${data.inserted} categorías agregadas`, 'success');
-                    this.closeBatchCategoryModal();
-                    this.loadCategories();
-                } catch (e) {
-                    this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            showBatchPromptModal() {
-                document.getElementById('batchPromptModal').classList.add('active');
-            },
-
-            closeBatchPromptModal() {
-                document.getElementById('batchPromptModal').classList.remove('active');
-                document.getElementById('batchPromptText').value = '';
-            },
-
-            async submitBatchPrompts() {
-                const text = document.getElementById('batchPromptText').value.trim();
-                const prompts = text.split('\n').filter(l => l.trim()).map(l => ({
-                    text: l.trim(),
-                    difficulty: 1
-                }));
-
-                if (prompts.length === 0) return;
-
-                try {
-                    const res = await fetch(`${this.api}prompts.php?action=batch_create`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompts })
-                    });
-                    const data = await res.json();
-                    this.showMessage('dictMsg', `✓ ${data.inserted} consignas agregadas`, 'success');
-                    this.closeBatchPromptModal();
-                    this.loadCategories();
-                } catch (e) {
-                    this.showMessage('dictMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            showReorderModal() {
-                const list = document.getElementById('reorderList');
-                list.innerHTML = this.categories.map(cat => `
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <input type="number" value="${cat.orden}" data-id="${cat.id}" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <span style="flex: 1; padding: 8px;">${cat.name}</span>
-                    </div>
-                `).join('');
-                document.getElementById('reorderModal').classList.add('active');
-            },
-
-            closeReorderModal() {
-                document.getElementById('reorderModal').classList.remove('active');
-            },
-
-            async submitReorder() {
-                const items = Array.from(document.querySelectorAll('#reorderList input')).map(inp => ({
-                    id: parseInt(inp.dataset.id),
-                    orden: parseInt(inp.value) || 0
-                }));
-
-                try {
-                    for (const item of items) {
-                        await fetch(`${this.api}categories.php?action=update`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: item.id, name: this.categories.find(c => c.id === item.id).name, orden: item.orden })
-                        });
-                    }
-                    this.showMessage('dictMsg', '✓ Orden actualizado', 'success');
-                    this.closeReorderModal();
-                    this.loadCategories();
-                } catch (e) {
-                    alert('Error: ' + e.message);
-                }
-            },
-
-            async loadMergeSelects() {
-                if (!this.prompts.length) await this.loadPrompts();
-
-                const catSelect1 = document.getElementById('mergeSourceCat');
-                const catSelect2 = document.getElementById('mergeTargetCat');
-                catSelect1.innerHTML = this.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-                catSelect2.innerHTML = this.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-                const promptSelect1 = document.getElementById('mergeSourcePrompt');
-                const promptSelect2 = document.getElementById('mergeTargetPrompt');
-                promptSelect1.innerHTML = this.prompts.map(p => `<option value="${p.id}">${p.text}</option>`).join('');
-                promptSelect2.innerHTML = this.prompts.map(p => `<option value="${p.id}">${p.text}</option>`).join('');
-            },
-
-            async mergeCategories() {
-                const source = document.getElementById('mergeSourceCat').value;
-                const target = document.getElementById('mergeTargetCat').value;
-                if (!source || !target || source === target) {
-                    alert('Selecciona dos categorías diferentes');
-                    return;
-                }
-
-                try {
-                    const res = await fetch(`${this.api}merge.php?action=categories`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ source_id: source, target_id: target })
-                    });
-                    await res.json();
-                    this.showMessage('mergeMsg', '✓ Categorías combinadas', 'success');
-                    this.loadCategories();
-                    this.loadMergeSelects();
-                } catch (e) {
-                    this.showMessage('mergeMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async mergePrompts() {
-                const source = document.getElementById('mergeSourcePrompt').value;
-                const target = document.getElementById('mergeTargetPrompt').value;
-                if (!source || !target || source === target) {
-                    alert('Selecciona dos consignas diferentes');
-                    return;
-                }
-
-                try {
-                    const res = await fetch(`${this.api}merge.php?action=prompts`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ source_id: source, target_id: target })
-                    });
-                    await res.json();
-                    this.showMessage('mergeMsg', '✓ Consignas combinadas', 'success');
-                    this.loadCategories();
-                    this.loadMergeSelects();
-                } catch (e) {
-                    this.showMessage('mergeMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async findDuplicates(type) {
-                try {
-                    const res = await fetch(`${this.api}optimize.php?action=find_duplicates&type=${type}`);
-                    const data = await res.json();
-                    const resultDiv = document.getElementById('duplicatesResult');
-                    if (data.duplicates.length === 0) {
-                        resultDiv.innerHTML = '<p style="color: #10b981;">✓ No se encontraron duplicados</p>';
-                    } else {
-                        resultDiv.innerHTML = `
-                            <table class="list-table" style="margin-top: 15px;">
-                                <thead><tr><th>Nombre/Texto</th><th>Repeticiones</th></tr></thead>
-                                <tbody>
-                                    ${data.duplicates.map(dup => `
-                                        <tr>
-                                            <td>${dup.name || dup.text || dup.word}</td>
-                                            <td><span class="badge duplicate">${dup.count}</span></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        `;
-                    }
-                } catch (e) {
-                    alert('Error: ' + e.message);
-                }
-            },
-
-            async removeDuplicateWords() {
-                if (!confirm('¿Remover palabras duplicadas? Esta acción no se puede deshacer.')) return;
-
-                try {
-                    const res = await fetch(`${this.api}optimize.php?action=remove_duplicate_words`);
-                    const data = await res.json();
-                    this.showMessage('optimizeMsg', `✓ ${data.removed} palabras duplicadas removidas`, 'success');
-                } catch (e) {
-                    this.showMessage('optimizeMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async cleanupUnused() {
-                if (!confirm('¿Limpiar consignas sin categoría? Esta acción no se puede deshacer.')) return;
-
-                try {
-                    const res = await fetch(`${this.api}optimize.php?action=cleanup_unused_prompts`);
-                    const data = await res.json();
-                    this.showMessage('optimizeMsg', `✓ ${data.removed} consignas sin usar removidas`, 'success');
-                    this.loadCategories();
-                } catch (e) {
-                    this.showMessage('optimizeMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async vacuum() {
-                if (!confirm('¿Optimizar base de datos? Esto puede tomar unos segundos.')) return;
-
-                try {
-                    const res = await fetch(`${this.api}optimize.php?action=vacuum`);
-                    const data = await res.json();
-                    const sizeMB = (data.size / 1024 / 1024).toFixed(2);
-                    this.showMessage('optimizeMsg', `✓ Database optimizada. Tamaño: ${sizeMB}MB`, 'success');
-                } catch (e) {
-                    this.showMessage('optimizeMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async loadStats() {
-                try {
-                    const res = await fetch(`${this.api}optimize.php?action=stats`);
-                    const data = await res.json();
-                    const stats = data.stats;
-                    const sizeMB = (stats.db_size / 1024 / 1024).toFixed(2);
-                    const grid = document.getElementById('statsGrid');
-                    grid.innerHTML = `
-                        <div class="stat-card">
-                            <div class="label">Categorías Activas</div>
-                            <div class="number">${stats.active_categories}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Consignas Activas</div>
-                            <div class="number">${stats.active_prompts}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Palabras Totales</div>
-                            <div class="number">${stats.total_words}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Partidas Jugadas</div>
-                            <div class="number">${stats.total_games}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Partidas Finalizadas</div>
-                            <div class="number">${stats.finished_games}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Jugadores Únicos</div>
-                            <div class="number">${stats.total_unique_players}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Tamaño DB</div>
-                            <div class="number">${sizeMB}MB</div>
-                        </div>
-                    `;
-                } catch (e) {
-                    console.error(e);
-                }
-            },
-
-            async loadGames() {
-                try {
-                    const status = document.getElementById('gameStatus').value;
-                    const url = status ? `${this.api}games.php?action=list&status=${status}` : `${this.api}games.php?action=list`;
-                    const res = await fetch(url);
-                    const games = await res.json();
-                    const tbody = document.querySelector('#gamesTable tbody');
-                    tbody.innerHTML = games.map(g => `
-                        <tr>
-                            <td><code>${g.id}</code></td>
-                            <td>${g.original_id || '-'}</td>
-                            <td><span class="badge active">${g.status}</span></td>
-                            <td>${g.round} / ${g.total_rounds}</td>
-                            <td>${g.players?.length || 0}</td>
-                            <td>${new Date(g.created_at).toLocaleString()}</td>
-                            <td class="actions">
-                                <button class="btn-secondary" onclick="app.viewGame('${g.id}')">Ver</button>
-                            </td>
-                        </tr>
-                    `).join('');
-                } catch (e) {
-                    this.showMessage('gamesMsg', 'Error: ' + e.message, 'error');
-                }
-            },
-
-            async viewGame(id) {
-                try {
-                    const res = await fetch(`${this.api}games.php?action=get&id=${id}`);
-                    const game = await res.json();
-                    alert(`Partida ${id}\n\nEstado: ${game.status}\nRonda: ${game.round}\nJugadores: ${game.players?.length || 0}\n\nMás detalles en consola`);
-                    console.log(game);
-                } catch (e) {
-                    alert('Error: ' + e.message);
-                }
-            },
-
-            async loadPlayers() {
-                try {
-                    const res = await fetch(`${this.api}games.php?action=list`);
-                    const games = await res.json();
-                    const select = document.getElementById('playerGameSelect');
-                    select.innerHTML = games.map(g => `<option value="${g.id}">${g.id} (${g.status})</option>`).join('');
-                    if (games.length > 0) {
-                        this.loadPlayersByGame(games[0].id);
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
-            },
-
-            async loadPlayersByGame(gameId) {
-                try {
-                    const res = await fetch(`${this.api}players.php?action=list&game_id=${gameId}`);
-                    const players = await res.json();
-                    const tbody = document.querySelector('#playersTable tbody');
-                    tbody.innerHTML = players.map(p => `
-                        <tr>
-                            <td>${p.name}</td>
-                            <td>${p.aura || '-'}</td>
-                            <td><span class="badge active">${p.status}</span></td>
-                            <td>${p.score}</td>
-                            <td>${p.last_heartbeat ? new Date(p.last_heartbeat).toLocaleString() : '-'}</td>
-                            <td class="actions">
-                                <button class="btn-secondary" onclick="app.viewPlayer('${p.id}', '${gameId}')">Ver</button>
-                            </td>
-                        </tr>
-                    `).join('');
-                } catch (e) {
-                    console.error(e);
-                }
-            },
-
-            viewPlayer(id, gameId) {
-                alert(`Jugador: ${id}\nPartida: ${gameId}\n\nVer en consola`);
-                fetch(`${this.api}players.php?action=get&id=${id}&game_id=${gameId}`)
-                    .then(r => r.json())
-                    .then(p => console.log(p));
-            },
-
-            async loadRawDictionary() {
-                try {
-                    const res = await fetch(`${this.api}import.php?action=export`);
-                    const data = await res.json();
-                    document.getElementById('rawDictionary').value = JSON.stringify(data, null, 2);
-                } catch (e) {
-                    console.error(e);
-                }
-            },
-
-            exportDictionary() {
-                const data = document.getElementById('rawDictionary').value;
-                const blob = new Blob([data], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `talcual-dict-${Date.now()}.json`;
-                a.click();
-            },
-
-            showImportModal() {
-                document.getElementById('importModal').classList.add('active');
-            },
-
-            closeImportModal() {
-                document.getElementById('importModal').classList.remove('active');
-                document.getElementById('importJSON').value = '';
-                document.getElementById('mergeMode').checked = false;
-            },
-
-            handleDragOver(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                document.getElementById('dragDropZone').classList.add('dragover');
-            },
-
-            handleDragLeave(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                document.getElementById('dragDropZone').classList.remove('dragover');
-            },
-
-            handleFileDrop(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                document.getElementById('dragDropZone').classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    this.handleFileSelect({ target: { files } });
-                }
-            },
-
-            handleFileSelect(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    document.getElementById('importJSON').value = ev.target.result;
-                };
-                reader.readAsText(file);
-            },
-
-            async submitImport() {
-                const json = document.getElementById('importJSON').value.trim();
-                if (!json) {
-                    alert('Pega o arrastra JSON');
-                    return;
-                }
-
-                try {
-                    const data = JSON.parse(json);
-                    const merge = document.getElementById('mergeMode').checked;
-                    const res = await fetch(`${this.api}import.php?action=import&merge=${merge}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-                    const result = await res.json();
-                    this.showMessage('dictMsg', `✓ Importados: ${result.imported.categories} categorías, ${result.imported.prompts} consignas, ${result.imported.words} palabras`, 'success');
-                    this.closeImportModal();
-                    this.loadCategories();
-                } catch (e) {
-                    alert('Error: ' + e.message);
-                }
-            },
-
-            filterCategories() {
-                const search = document.getElementById('categorySearch').value.toLowerCase();
-                document.querySelectorAll('#categoriesTable tbody tr').forEach(row => {
-                    const name = row.cells[1].innerText.toLowerCase();
-                    row.style.display = name.includes(search) ? '' : 'none';
-                });
-            },
-
-            showMessage(elementId, msg, type) {
-                const el = document.getElementById(elementId);
-                el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
-                setTimeout(() => {
-                    el.innerHTML = '';
-                }, 4000);
-            },
-
-            editCategory(id) {
-                const name = prompt('Nuevo nombre');
-                if (!name) return;
-                const cat = this.categories.find(c => c.id === id);
-                fetch(`${this.api}categories.php?action=update`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, name, orden: cat.orden })
-                }).then(() => this.loadCategories());
+                document.getElementById('wordsTable').innerHTML = html || '<tr><td colspan="4" style="text-align: center; padding: 20px;">No hay palabras</td></tr>';
+            } catch (error) {
+                showMessage('Error cargando palabras: ' + error.message, 'error', 'wordsMessage');
             }
-        };
-
-        window.addEventListener('load', () => app.init());
+        }
+        
+        // ==================== GAMES TABLE ====================
+        async function loadGamesTable() {
+            try {
+                const games = await fetch(`${API}?action=get-active-games`).then(r => r.json()).then(r => r.data);
+                const html = games.map(g => `
+                    <tr>
+                        <td>${g.id}</td>
+                        <td>${g.status}</td>
+                        <td>${g.round}</td>
+                        <td>${g.player_count}</td>
+                        <td>${new Date(g.updated_at * 1000).toLocaleString()}</td>
+                        <td>
+                            <button class="btn-secondary" onclick="viewGame('${g.id}')">Ver</button>
+                            <button class="btn-danger" onclick="deleteGame('${g.id}')">Eliminar</button>
+                        </td>
+                    </tr>
+                `).join('');
+                document.getElementById('gamesTable').innerHTML = html || '<tr><td colspan="6" style="text-align: center; padding: 20px;">No hay partidas activas</td></tr>';
+            } catch (error) {
+                showMessage('Error cargando partidas: ' + error.message, 'error', 'gamesMessage');
+            }
+        }
+        
+        async function loadFinishedGamesTable() {
+            try {
+                const games = await fetch(`${API}?action=get-finished-games`).then(r => r.json()).then(r => r.data);
+                const html = games.map(g => `
+                    <tr>
+                        <td>${g.id}</td>
+                        <td>${g.round} / ${g.total_rounds}</td>
+                        <td>${new Date(g.updated_at * 1000).toLocaleString()}</td>
+                        <td>
+                            <button class="btn-danger" onclick="deleteGame('${g.id}')">Eliminar</button>
+                        </td>
+                    </tr>
+                `).join('');
+                document.getElementById('gamesFinishedTable').innerHTML = html || '<tr><td colspan="4" style="text-align: center; padding: 20px;">No hay partidas finalizadas</td></tr>';
+            } catch (error) {
+                showMessage('Error cargando partidas finalizadas: ' + error.message, 'error', 'gamesFinishedMessage');
+            }
+        }
+        
+        async function loadPlayersTable() {
+            try {
+                // Placeholder: would need to aggregate players from all games
+                showMessage('Cargando jugadores...', 'success', 'playersMessage');
+            } catch (error) {
+                showMessage('Error cargando jugadores: ' + error.message, 'error', 'playersMessage');
+            }
+        }
+        
+        // ==================== ACTIONS ====================
+        async function updateStats() {
+            try {
+                const stats = await fetch(`${API}?action=inspect`).then(r => r.json()).then(r => r.data.stats);
+                document.getElementById('catCount').textContent = stats.categories;
+                document.getElementById('promptCount').textContent = stats.prompts;
+                document.getElementById('wordCount').textContent = stats.words;
+            } catch (error) {
+                console.error('Error actualizando estadísticas:', error);
+            }
+        }
+        
+        async function deleteGame(gameId) {
+            if (!confirm('¿Eliminar esta partida?')) return;
+            try {
+                const res = await fetch(API, {
+                    method: 'POST',
+                    body: JSON.stringify({ id: gameId }),
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(r => r.json());
+                
+                if (res.success) {
+                    showMessage('Partida eliminada', 'success', 'gamesMessage');
+                    loadGamesTable();
+                } else {
+                    showMessage('Error: ' + res.message, 'error', 'gamesMessage');
+                }
+            } catch (error) {
+                showMessage('Error eliminando partida: ' + error.message, 'error', 'gamesMessage');
+            }
+        }
+        
+        async function deleteWord(wordId) {
+            if (!confirm('¿Eliminar esta palabra?')) return;
+            try {
+                const res = await fetch(API, {
+                    method: 'POST',
+                    body: JSON.stringify({ id: wordId }),
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(r => r.json());
+                
+                if (res.success) {
+                    showMessage('Palabra eliminada', 'success', 'wordsMessage');
+                    loadWordsTable();
+                } else {
+                    showMessage('Error: ' + res.message, 'error', 'wordsMessage');
+                }
+            } catch (error) {
+                showMessage('Error eliminando palabra: ' + error.message, 'error', 'wordsMessage');
+            }
+        }
+        
+        async function optimizeDatabase() {
+            try {
+                const res = await fetch(`${API}?action=optimize`, { method: 'POST' }).then(r => r.json());
+                showMessage(res.success ? '✓ Base de datos optimizada' : 'Error: ' + res.message, res.success ? 'success' : 'error');
+            } catch (error) {
+                showMessage('Error optimizando: ' + error.message, 'error');
+            }
+        }
+        
+        async function cleanDisconnected() {
+            try {
+                const res = await fetch(`${API}?action=clean-disconnected`, { method: 'POST' }).then(r => r.json());
+                showMessage(res.success ? `✓ ${res.data.removed} jugadores removidos` : 'Error', res.success ? 'success' : 'error');
+            } catch (error) {
+                showMessage('Error limpiando: ' + error.message, 'error');
+            }
+        }
+        
+        async function archiveFinished() {
+            try {
+                const res = await fetch(`${API}?action=archive-finished`, { method: 'POST' }).then(r => r.json());
+                showMessage(res.success ? `✓ ${res.data.archived} partidas archivadas` : 'Error', res.success ? 'success' : 'error');
+            } catch (error) {
+                showMessage('Error archivando: ' + error.message, 'error');
+            }
+        }
+        
+        async function repairDatabase() {
+            if (!confirm('¿Reparar y reinicializar base de datos? Esto eliminará todos los datos.')) return;
+            try {
+                const res = await fetch(`${API}?action=repair`, { method: 'POST' }).then(r => r.json());
+                showMessage(res.success ? '✓ Base de datos reparada' : 'Error', res.success ? 'success' : 'error');
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showMessage('Error reparando: ' + error.message, 'error');
+            }
+        }
+        
+        async function importData() {
+            const data = document.getElementById('importData').value;
+            if (!data) {
+                showMessage('Pega datos JSON primero', 'error');
+                return;
+            }
+            try {
+                const json = JSON.parse(data);
+                const res = await fetch(`${API}?action=import`, {
+                    method: 'POST',
+                    body: JSON.stringify(json),
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(r => r.json());
+                
+                if (res.success) {
+                    showMessage(`✓ Importado: ${res.data.categories_added} categorías, ${res.data.prompts_added} consignas, ${res.data.words_added} palabras`, 'success');
+                    document.getElementById('importData').value = '';
+                    loadDictionary();
+                    updateStats();
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error importando: ' + error.message, 'error');
+            }
+        }
+        
+        async function exportData() {
+            try {
+                const res = await fetch(`${API}?action=export`).then(r => r.json());
+                if (res.success) {
+                    const json = JSON.stringify(res.data, null, 2);
+                    document.getElementById('importData').value = json;
+                    showMessage('✓ Datos exportados', 'success');
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error exportando: ' + error.message, 'error');
+            }
+        }
+        
+        async function inspectDatabase() {
+            try {
+                const res = await fetch(`${API}?action=inspect`).then(r => r.json());
+                if (res.success) {
+                    const html = `<pre style="background: #1e293b; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 11px;">${JSON.stringify(res.data, null, 2)}</pre>`;
+                    document.getElementById('inspectResults').innerHTML = html;
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error inspeccionando: ' + error.message, 'error');
+            }
+        }
+        
+        function openAddCategoryModal() {
+            const name = prompt('Nombre de la categoría:');
+            if (name) addCategory(name);
+        }
+        
+        function openAddPromptModal() {
+            if (!selectedCategory) {
+                showMessage('Selecciona una categoría primero', 'error');
+                return;
+            }
+            const text = prompt('Texto de la consigna:');
+            if (text) addPrompt(text);
+        }
+        
+        function openAddWordModal() {
+            if (!selectedPrompt) {
+                showMessage('Selecciona una consigna primero', 'error');
+                return;
+            }
+            const word = prompt('Palabra:');
+            if (word) addWord(word);
+        }
+        
+        async function addCategory(name) {
+            try {
+                const res = await fetch(API, {
+                    method: 'POST',
+                    body: JSON.stringify({ name }),
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(r => r.json());
+                
+                if (res.success) {
+                    showMessage('✓ Categoría agregada', 'success');
+                    loadDictionary();
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function addPrompt(text) {
+            try {
+                const res = await fetch(API, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        text,
+                        category_ids: [selectedCategory]
+                    }),
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(r => r.json());
+                
+                if (res.success) {
+                    showMessage('✓ Consigna agregada', 'success');
+                    loadDictionary();
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function addWord(word) {
+            try {
+                const res = await fetch(API, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        prompt_id: selectedPrompt,
+                        word
+                    }),
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(r => r.json());
+                
+                if (res.success) {
+                    showMessage('✓ Palabra agregada', 'success');
+                    loadDictionary();
+                } else {
+                    showMessage('Error: ' + res.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+        
+        function showMessage(msg, type = 'success', elementId = 'message') {
+            const el = document.getElementById(elementId);
+            el.textContent = msg;
+            el.className = 'message ' + type;
+            setTimeout(() => el.className = 'message', 5000);
+        }
     </script>
 </body>
 </html>
