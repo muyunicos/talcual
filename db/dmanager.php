@@ -1,28 +1,50 @@
 <?php
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../app/Database.php';
-require_once __DIR__ . '/../app/Traits/WordNormalizer.php';
-require_once __DIR__ . '/../app/AdminDictionary.php';
-require_once __DIR__ . '/../app/AppUtils.php';
+set_error_handler(function($severity, $message, $file, $line) {
+    logMessage("PHP Error [$severity]: $message in $file:$line", 'ERROR');
+    respondError("Server error: $message");
+    exit;
+});
 
-$action = $_GET['action'] ?? null;
+try {
+    require_once __DIR__ . '/../app/Database.php';
+    require_once __DIR__ . '/../app/Traits/WordNormalizer.php';
+    require_once __DIR__ . '/../app/AdminDictionary.php';
+    require_once __DIR__ . '/../app/AppUtils.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($action === 'import') handleImport();
-    elseif ($action === 'save') handleSave();
-    elseif ($action === 'optimize') handleOptimize();
-} elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if ($action === 'get-db') getDatabase();
-    elseif ($action === 'inspect') inspectDatabase();
+    $action = $_GET['action'] ?? null;
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($action === 'import') handleImport();
+        elseif ($action === 'save') handleSave();
+        elseif ($action === 'optimize') handleOptimize();
+        else respondError('Unknown POST action: ' . $action);
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        if ($action === 'get-db') getDatabase();
+        elseif ($action === 'inspect') inspectDatabase();
+        else respondError('Unknown GET action: ' . $action);
+    } else {
+        respondError('Invalid request method');
+    }
+
+} catch (Exception $e) {
+    logMessage('dmanager.php fatal error: ' . $e->getMessage(), 'FATAL');
+    http_response_code(500);
+    respondError('Server Error: ' . $e->getMessage());
 }
 
 function handleImport() {
     try {
-        $json = json_decode(file_get_contents('php://input'), true);
-        
+        $input = file_get_contents('php://input');
+        if (empty($input)) {
+            respondError('Empty input');
+            return;
+        }
+
+        $json = json_decode($input, true);
         if (!$json) {
-            respondError('JSON inválido');
+            respondError('JSON inválido: ' . json_last_error_msg());
             return;
         }
         
@@ -33,16 +55,22 @@ function handleImport() {
         
         respondSuccess('Base de datos importada inteligentemente', $stats);
     } catch (Exception $e) {
-        respondError($e->getMessage());
+        logMessage('handleImport error: ' . $e->getMessage(), 'ERROR');
+        respondError('Import error: ' . $e->getMessage());
     }
 }
 
 function handleSave() {
     try {
-        $json = json_decode(file_get_contents('php://input'), true);
-        
+        $input = file_get_contents('php://input');
+        if (empty($input)) {
+            respondError('Empty input');
+            return;
+        }
+
+        $json = json_decode($input, true);
         if (!$json) {
-            respondError('JSON inválido');
+            respondError('JSON inválido: ' . json_last_error_msg());
             return;
         }
         
@@ -55,7 +83,8 @@ function handleSave() {
         $stats = $admin->getDictionaryStats();
         respondSuccess('Base de datos guardada', $stats);
     } catch (Exception $e) {
-        respondError($e->getMessage());
+        logMessage('handleSave error: ' . $e->getMessage(), 'ERROR');
+        respondError('Save error: ' . $e->getMessage());
     }
 }
 
@@ -86,7 +115,8 @@ function handleOptimize() {
         
         respondSuccess('Base de datos optimizada', $report);
     } catch (Exception $e) {
-        respondError($e->getMessage());
+        logMessage('handleOptimize error: ' . $e->getMessage(), 'ERROR');
+        respondError('Optimize error: ' . $e->getMessage());
     }
 }
 
@@ -96,7 +126,8 @@ function getDatabase() {
         $inspection = $admin->getDatabaseInspection();
         respondSuccess('Base de datos cargada', $inspection);
     } catch (Exception $e) {
-        respondError($e->getMessage());
+        logMessage('getDatabase error: ' . $e->getMessage(), 'ERROR');
+        respondError('Failed to load database: ' . $e->getMessage());
     }
 }
 
@@ -115,7 +146,8 @@ function inspectDatabase() {
         
         respondSuccess('Inspección de base de datos', $inspection);
     } catch (Exception $e) {
-        respondError($e->getMessage());
+        logMessage('inspectDatabase error: ' . $e->getMessage(), 'ERROR');
+        respondError('Database inspection error: ' . $e->getMessage());
     }
 }
 
@@ -160,13 +192,18 @@ function importData($admin, $data) {
                 $categoryMap[$catName] = $cat['id'];
             }
         } catch (Exception $e) {
-            logMessage('Import category error: ' . $e->getMessage(), 'ERROR');
+            logMessage('Import category error for "' . $catName . '": ' . $e->getMessage(), 'WARN');
         }
     }
     
     foreach ($data['consignas'] ?? [] as $promptId => $consigna) {
         try {
             $promptText = $consigna['pregunta'] ?? '';
+            if (empty($promptText)) {
+                logMessage('Skipping prompt with empty text (ID: ' . $promptId . ')', 'WARN');
+                continue;
+            }
+
             $categoriesForPrompt = [];
             
             foreach ($data['categorias'] ?? [] as $catName => $catData) {
@@ -178,6 +215,7 @@ function importData($admin, $data) {
             }
             
             if (empty($categoriesForPrompt)) {
+                logMessage('Prompt "' . $promptText . '" has no valid categories, skipping', 'WARN');
                 continue;
             }
             
@@ -192,11 +230,11 @@ function importData($admin, $data) {
                         $imported['words_added']++;
                     }
                 } catch (Exception $e) {
-                    logMessage('Import word error: ' . $e->getMessage(), 'ERROR');
+                    logMessage('Import word error for "' . $word . '": ' . $e->getMessage(), 'WARN');
                 }
             }
         } catch (Exception $e) {
-            logMessage('Import prompt error: ' . $e->getMessage(), 'ERROR');
+            logMessage('Import prompt error for ID "' . $promptId . '": ' . $e->getMessage(), 'WARN');
         }
     }
     
@@ -204,10 +242,8 @@ function importData($admin, $data) {
 }
 
 function saveToDatabase($admin, $data) {
-    $admin->pdo->beginTransaction();
-    
     try {
-        $pdo = Database::getInstance()->getConnection();
+        $admin->pdo->beginTransaction();
         
         foreach ($data['categorias'] ?? [] as $catName => $catData) {
             try {
@@ -216,7 +252,7 @@ function saveToDatabase($admin, $data) {
                     $admin->addCategory($catName);
                 }
             } catch (Exception $e) {
-                logMessage('Save category error: ' . $e->getMessage(), 'ERROR');
+                logMessage('Save category error for "' . $catName . '": ' . $e->getMessage(), 'WARN');
             }
         }
         
@@ -257,6 +293,11 @@ function removeOrphanedPrompts($admin) {
             . 'WHERE NOT EXISTS (SELECT 1 FROM prompt_categories WHERE prompt_id = p.id)'
         );
         
+        if (!$stmt) {
+            logMessage('Failed to query orphaned prompts', 'WARN');
+            return 0;
+        }
+
         $orphans = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $count = 0;
         
@@ -265,13 +306,13 @@ function removeOrphanedPrompts($admin) {
                 $admin->deletePrompt($promptId);
                 $count++;
             } catch (Exception $e) {
-                logMessage('Delete orphaned prompt error: ' . $e->getMessage(), 'ERROR');
+                logMessage('Delete orphaned prompt error for ID ' . $promptId . ': ' . $e->getMessage(), 'WARN');
             }
         }
         
         return $count;
     } catch (Exception $e) {
-        logMessage('Cleanup orphaned prompts error: ' . $e->getMessage(), 'ERROR');
+        logMessage('Cleanup orphaned prompts error: ' . $e->getMessage(), 'WARN');
         return 0;
     }
 }
@@ -284,6 +325,11 @@ function removeDeadReferences($admin) {
             . 'WHERE NOT EXISTS (SELECT 1 FROM prompts WHERE id = vw.prompt_id)'
         );
         
+        if (!$stmt) {
+            logMessage('Failed to query dead references', 'WARN');
+            return 0;
+        }
+
         $deadWords = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $count = 0;
         
@@ -292,13 +338,13 @@ function removeDeadReferences($admin) {
                 $admin->deleteValidWord($wordId);
                 $count++;
             } catch (Exception $e) {
-                logMessage('Delete dead reference error: ' . $e->getMessage(), 'ERROR');
+                logMessage('Delete dead reference error for ID ' . $wordId . ': ' . $e->getMessage(), 'WARN');
             }
         }
         
         return $count;
     } catch (Exception $e) {
-        logMessage('Cleanup dead references error: ' . $e->getMessage(), 'ERROR');
+        logMessage('Cleanup dead references error: ' . $e->getMessage(), 'WARN');
         return 0;
     }
 }
