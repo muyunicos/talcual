@@ -130,6 +130,7 @@ class GameService {
 
         $serverNow = intval(microtime(true) * 1000);
         $now = time();
+        $countdownDuration = START_COUNTDOWN * 1000;
 
         $initialState = [
             'game_id' => $gameId,
@@ -143,7 +144,9 @@ class GameService {
             'used_prompts' => [],
             'round_duration' => $roundDuration,
             'round_started_at' => null,
+            'round_starts_at' => null,
             'round_ends_at' => null,
+            'countdown_duration' => $countdownDuration,
             'created_at' => $now,
             'updated_at' => $now,
             'start_countdown' => START_COUNTDOWN,
@@ -268,7 +271,9 @@ class GameService {
         $state['round_duration'] = $duration;
         $state['total_rounds'] = $totalRounds;
         $state['start_countdown'] = START_COUNTDOWN;
+        $state['countdown_duration'] = $countdownDuration;
         $state['round_started_at'] = $roundStartedAt;
+        $state['round_starts_at'] = $roundStartsAt;
         $state['round_ends_at'] = $roundEndsAt;
 
         $state['roundData'] = [
@@ -292,6 +297,35 @@ class GameService {
         return [
             'message' => 'Ronda iniciada',
             'server_now' => $serverNow,
+            'state' => $state
+        ];
+    }
+
+    public function setSelectedCategory($gameId, $newCategory) {
+        $state = $this->repository->load($gameId);
+
+        if (!$state) {
+            throw new Exception('Juego no encontrado');
+        }
+
+        if ($state['status'] !== 'waiting') {
+            throw new Exception('No puedes cambiar categoría durante una ronda');
+        }
+
+        $availableCategories = $this->gameDictionary->getCategories();
+        if (!in_array($newCategory, $availableCategories)) {
+            throw new Exception('Categoría no válida');
+        }
+
+        $state['selected_category'] = $newCategory;
+        $state['last_update'] = time();
+
+        $this->repository->save($gameId, $state);
+
+        return [
+            'message' => 'Categoría actualizada',
+            'selected_category' => $newCategory,
+            'server_now' => intval(microtime(true) * 1000),
             'state' => $state
         ];
     }
@@ -401,7 +435,9 @@ class GameService {
         }
 
         $state['round_started_at'] = null;
+        $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
+        $state['countdown_duration'] = null;
 
         $this->repository->save($gameId, $state);
 
@@ -433,7 +469,9 @@ class GameService {
         $state['current_prompt'] = null;
         $state['current_category'] = null;
         $state['round_started_at'] = null;
+        $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
+        $state['countdown_duration'] = null;
         $state['round_top_words'] = [];
         $state['roundData'] = null;
         $state['last_update'] = time();
