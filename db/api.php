@@ -696,43 +696,25 @@ function importCompactFormat($db, $json, &$stats) {
             foreach ($categoryData as $promptItem) {
                 if (!is_array($promptItem) || empty($promptItem)) continue;
                 
-                $promptText = null;
-                $wordGroups = [];
-                $difficulty = 1;
-                
-                foreach ($promptItem as $itemKey => $itemValue) {
-                    if (is_string($itemKey) && !empty(trim($itemKey))) {
-                        $promptText = trim($itemKey);
-                        
-                        if (is_array($itemValue)) {
-                            foreach ($itemValue as $word) {
-                                if (is_string($word) && !empty(trim($word))) {
-                                    $wordGroups[] = trim($word);
-                                } elseif (is_numeric($word)) {
-                                    $difficulty = (int)$word;
-                                }
-                            }
-                        } elseif (is_numeric($itemValue)) {
-                            $difficulty = (int)$itemValue;
-                        }
-                    } elseif (is_numeric($itemKey) && is_string($itemValue) && !empty(trim($itemValue))) {
-                        if ($promptText === null) {
-                            $promptText = trim($itemValue);
-                        } else {
-                            $wordGroups[] = trim($itemValue);
-                        }
-                    } elseif (is_numeric($itemKey) && is_array($itemValue)) {
-                        foreach ($itemValue as $word) {
-                            if (is_string($word) && !empty(trim($word))) {
-                                $wordGroups[] = trim($word);
-                            } elseif (is_numeric($word)) {
-                                $difficulty = (int)$word;
+                foreach ($promptItem as $promptText => $wordsData) {
+                    if (!is_string($promptText) || empty(trim($promptText))) continue;
+                    
+                    $promptText = trim($promptText);
+                    $difficulty = 1;
+                    $wordGroups = [];
+                    
+                    if (is_array($wordsData)) {
+                        foreach ($wordsData as $item) {
+                            if (is_numeric($item)) {
+                                $difficulty = max(1, min(5, (int)$item));
+                            } elseif (is_string($item) && !empty(trim($item))) {
+                                $wordGroups[] = trim($item);
                             }
                         }
                     }
-                }
-                
-                if (!empty($promptText) && !empty($wordGroups)) {
+                    
+                    if (empty($wordGroups)) continue;
+                    
                     try {
                         $existingPrompt = $db->getPromptByText($promptText);
                         
