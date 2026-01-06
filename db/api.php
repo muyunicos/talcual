@@ -119,6 +119,8 @@ class DatabaseManager {
     }
 
     public function getPrompts($categoryId = null) {
+        $categoryId = self::sanitizeParam($categoryId);
+        
         if ($categoryId) {
             $sql = 'SELECT DISTINCT p.id, p.text, p.difficulty, p.is_active, p.date,
                     GROUP_CONCAT(pc.category_id, ",") as category_ids
@@ -211,7 +213,9 @@ class DatabaseManager {
     }
 
     public function getWords($promptId = null) {
-        if ($promptId !== null && $promptId !== '') {
+        $promptId = self::sanitizeParam($promptId);
+        
+        if ($promptId) {
             $stmt = $this->pdo->prepare('SELECT id, prompt_id, word, normalized_word, gender FROM valid_words WHERE prompt_id = ? ORDER BY word');
             $stmt->execute([(int)$promptId]);
         } else {
@@ -389,6 +393,14 @@ class DatabaseManager {
             'tables' => $schema,
             'stats' => $this->getDictionaryStats()
         ];
+    }
+
+    private static function sanitizeParam($value) {
+        if ($value === null || $value === '' || $value === '0') {
+            return null;
+        }
+        $int = (int)$value;
+        return $int > 0 ? $int : null;
     }
 }
 
