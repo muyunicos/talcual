@@ -751,11 +751,15 @@
         
         async function loadDictionary() {
             try {
-                const [categories, prompts, words] = await Promise.all([
-                    fetch(`${API}?action=get-categories`).then(r => r.json()).then(r => r.data || []),
-                    fetch(`${API}?action=get-prompts`).then(r => r.json()).then(r => r.data || []),
-                    fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data || [])
+                const [categoriesRes, promptsRes, wordsRes] = await Promise.all([
+                    fetch(`${API}?action=get-categories`),
+                    fetch(`${API}?action=get-prompts`),
+                    fetch(`${API}?action=get-words`)
                 ]);
+                
+                const categories = await categoriesRes.json().then(r => r.data || []);
+                const prompts = await promptsRes.json().then(r => r.data || []);
+                const words = await wordsRes.json().then(r => r.data || []);
                 
                 allPrompts = prompts;
                 allWords = words;
@@ -835,13 +839,15 @@
         
         async function selectPrompt(promptId) {
             selectedPrompt = promptId;
-            const words = await fetch(`${API}?action=get-words&prompt_id=${promptId}`).then(r => r.json()).then(r => r.data || []);
-            renderWords(words);
+            const response = await fetch(`${API}?action=get-words&prompt_id=${promptId}`);
+            const json = await response.json();
+            renderWords(json.data || []);
         }
         
         async function updateStats() {
             try {
-                const res = await fetch(`${API}?action=get-stats`).then(r => r.json());
+                const response = await fetch(`${API}?action=get-stats`);
+                const res = await response.json();
                 if (res.success && res.data) {
                     document.getElementById('catCount').textContent = res.data.categories;
                     document.getElementById('promptCount').textContent = res.data.prompts;
@@ -860,11 +866,12 @@
             }
             
             try {
-                const res = await fetch(`${API}?action=add-category`, {
+                const response = await fetch(`${API}?action=add-category`, {
                     method: 'POST',
                     body: JSON.stringify({ name }),
                     headers: { 'Content-Type': 'application/json' }
-                }).then(r => r.json());
+                });
+                const res = await response.json();
                 
                 if (res.success) {
                     showMessage('✓ Categoría creada', 'success');
@@ -895,11 +902,12 @@
             }
             
             try {
-                const res = await fetch(`${API}?action=add-prompt`, {
+                const response = await fetch(`${API}?action=add-prompt`, {
                     method: 'POST',
                     body: JSON.stringify({ text, category_ids: [selectedCategory], difficulty }),
                     headers: { 'Content-Type': 'application/json' }
-                }).then(r => r.json());
+                });
+                const res = await response.json();
                 
                 if (res.success) {
                     showMessage('✓ Consigna creada', 'success');
@@ -930,11 +938,12 @@
             }
             
             try {
-                const res = await fetch(`${API}?action=add-word`, {
+                const response = await fetch(`${API}?action=add-word`, {
                     method: 'POST',
                     body: JSON.stringify({ prompt_id: selectedPrompt, word, gender }),
                     headers: { 'Content-Type': 'application/json' }
-                }).then(r => r.json());
+                });
+                const res = await response.json();
                 
                 if (res.success) {
                     showMessage('✓ Palabra agregada', 'success');
@@ -952,7 +961,9 @@
         
         async function loadBatchWordsSelect() {
             const select = document.getElementById('batchPromptSelect');
-            const prompts = await fetch(`${API}?action=get-prompts`).then(r => r.json()).then(r => r.data || []);
+            const response = await fetch(`${API}?action=get-prompts`);
+            const json = await response.json();
+            const prompts = json.data || [];
             
             select.innerHTML = '<option value="">-- Selecciona Consigna --</option>' +
                 prompts.map(p => `<option value="${p.id}">${p.text}</option>`).join('');
@@ -978,11 +989,12 @@
             let added = 0;
             for (const word of words) {
                 try {
-                    const res = await fetch(`${API}?action=add-word`, {
+                    const response = await fetch(`${API}?action=add-word`, {
                         method: 'POST',
                         body: JSON.stringify({ prompt_id: parseInt(promptId), word }),
                         headers: { 'Content-Type': 'application/json' }
-                    }).then(r => r.json());
+                    });
+                    const res = await response.json();
                     
                     if (res.success) added++;
                 } catch (e) {
@@ -998,7 +1010,8 @@
         
         async function optimizeDatabase() {
             try {
-                const res = await fetch(`${API}?action=optimize`, { method: 'POST' }).then(r => r.json());
+                const response = await fetch(`${API}?action=optimize`, { method: 'POST' });
+                const res = await response.json();
                 showMessage(res.success ? '✓ BD optimizada' : 'Error: ' + res.message, res.success ? 'success' : 'error');
             } catch (error) {
                 showMessage('Error: ' + error.message, 'error');
@@ -1007,9 +1020,9 @@
         
         async function runDiagnostic() {
             try {
-                const res = await fetch(`${API}?action=inspect`).then(r => r.json());
+                const response = await fetch(`${API}?action=inspect`);
+                const res = await response.json();
                 if (res.success) {
-                    const stats = res.data.stats;
                     showMessage('✓ Diagnóstico completado', 'success');
                 } else {
                     showMessage('Error: ' + res.message, 'error');
@@ -1028,11 +1041,12 @@
             
             try {
                 const json = JSON.parse(data);
-                const res = await fetch(`${API}?action=import`, {
+                const response = await fetch(`${API}?action=import`, {
                     method: 'POST',
                     body: JSON.stringify(json),
                     headers: { 'Content-Type': 'application/json' }
-                }).then(r => r.json());
+                });
+                const res = await response.json();
                 
                 if (res.success) {
                     const stats = res.data;
@@ -1050,12 +1064,15 @@
         
         async function exportData() {
             try {
-                const [categories, prompts] = await Promise.all([
-                    fetch(`${API}?action=get-categories`).then(r => r.json()).then(r => r.data || []),
-                    fetch(`${API}?action=get-prompts`).then(r => r.json()).then(r => r.data || [])
+                const [categoriesRes, promptsRes, allWordsRes] = await Promise.all([
+                    fetch(`${API}?action=get-categories`),
+                    fetch(`${API}?action=get-prompts`),
+                    fetch(`${API}?action=get-words`)
                 ]);
                 
-                const allWords = await fetch(`${API}?action=get-words`).then(r => r.json()).then(r => r.data || []);
+                const categories = await categoriesRes.json().then(r => r.data || []);
+                const prompts = await promptsRes.json().then(r => r.data || []);
+                const allWordsData = await allWordsRes.json().then(r => r.data || []);
                 
                 const data = {
                     categories: categories,
@@ -1064,7 +1081,7 @@
                         text: p.text,
                         difficulty: p.difficulty,
                         category_ids: p.category_ids,
-                        words: allWords.filter(w => w.prompt_id === p.id).map(w => w.word)
+                        words: allWordsData.filter(w => w.prompt_id === p.id).map(w => w.word)
                     })),
                     timestamp: new Date().toISOString()
                 };
@@ -1078,7 +1095,8 @@
         
         async function inspectDatabase() {
             try {
-                const res = await fetch(`${API}?action=inspect`).then(r => r.json());
+                const response = await fetch(`${API}?action=inspect`);
+                const res = await response.json();
                 if (res.success) {
                     const data = res.data;
                     let html = `<div class="table-container">
@@ -1103,7 +1121,8 @@
         
         async function deepInspectDatabase() {
             try {
-                const res = await fetch(`${API}?action=deep-inspect`).then(r => r.json());
+                const response = await fetch(`${API}?action=deep-inspect`);
+                const res = await response.json();
                 if (res.success) {
                     const data = res.data;
                     let html = `
