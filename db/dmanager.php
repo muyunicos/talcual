@@ -14,6 +14,7 @@ try {
     require_once __DIR__ . '/../app/Database.php';
     require_once __DIR__ . '/../app/Traits/WordNormalizer.php';
     require_once __DIR__ . '/AdminDictionary.php';
+    require_once __DIR__ . '/ADMIN_OPERATIONS.php';
     require_once __DIR__ . '/../app/AppUtils.php';
 
     $action = $_GET['action'] ?? null;
@@ -32,6 +33,11 @@ try {
         elseif ($action === 'delete-game') handleDeleteGame();
         elseif ($action === 'delete-player') handleDeletePlayer();
         elseif ($action === 'update-player-status') handleUpdatePlayerStatus();
+        elseif ($action === 'update-game-status') handleUpdateGameStatus();
+        elseif ($action === 'reset-game-round') handleResetGameRound();
+        elseif ($action === 'clean-disconnected-players') handleCleanDisconnectedPlayers();
+        elseif ($action === 'archive-finished-games') handleArchiveFinishedGames();
+        elseif ($action === 'bulk-delete-games') handleBulkDeleteGames();
         else respondError('Unknown POST action: ' . $action);
     } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($action === 'get-db') getDatabase();
@@ -42,7 +48,14 @@ try {
         elseif ($action === 'get-game') getGame();
         elseif ($action === 'get-game-players') getGamePlayers();
         elseif ($action === 'get-player-stats') getPlayerStats();
+        elseif ($action === 'get-active-games') getActiveGames();
+        elseif ($action === 'get-finished-games') getFinishedGames();
+        elseif ($action === 'get-game-analytics') getGameAnalytics();
+        elseif ($action === 'get-player-history') getPlayerHistory();
+        elseif ($action === 'get-player-cross-stats') getPlayerCrossStats();
+        elseif ($action === 'get-storage-stats') getStorageStats();
         elseif ($action === 'export') exportDatabase();
+        elseif ($action === 'export-game') exportGame();
         else respondError('Unknown GET action: ' . $action);
     } else {
         respondError('Invalid request method');
@@ -328,6 +341,90 @@ function handleUpdatePlayerStatus() {
     }
 }
 
+function handleUpdateGameStatus() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        if (!$data || !isset($data['game_id']) || !isset($data['status'])) {
+            respondError('Missing required fields');
+            return;
+        }
+        
+        $ops = new AdminOperations();
+        $ops->updateGameStatus($data['game_id'], $data['status']);
+        respondSuccess('Estado de la partida actualizado');
+    } catch (Exception $e) {
+        logMessage('updateGameStatus error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function handleResetGameRound() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        if (!$data || !isset($data['game_id'])) {
+            respondError('Missing game_id');
+            return;
+        }
+        
+        $ops = new AdminOperations();
+        $ops->resetGameRound($data['game_id']);
+        respondSuccess('Ronda de la partida reiniciada');
+    } catch (Exception $e) {
+        logMessage('resetGameRound error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function handleCleanDisconnectedPlayers() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true) ?? [];
+        $maxIdleMs = $data['max_idle_ms'] ?? 300000;
+        
+        $ops = new AdminOperations();
+        $count = $ops->cleanDisconnectedPlayers($maxIdleMs);
+        respondSuccess('Jugadores desconectados limpiados', ['removed' => $count]);
+    } catch (Exception $e) {
+        logMessage('cleanDisconnectedPlayers error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function handleArchiveFinishedGames() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true) ?? [];
+        $maxAgeMs = $data['max_age_ms'] ?? 86400000;
+        
+        $ops = new AdminOperations();
+        $count = $ops->archiveFinishedGames($maxAgeMs);
+        respondSuccess('Partidas finalizadas archivadas', ['archived' => $count]);
+    } catch (Exception $e) {
+        logMessage('archiveFinishedGames error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function handleBulkDeleteGames() {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        if (!$data || !isset($data['game_ids']) || !is_array($data['game_ids'])) {
+            respondError('Missing or invalid game_ids array');
+            return;
+        }
+        
+        $ops = new AdminOperations();
+        $count = $ops->bulkDeleteGames($data['game_ids']);
+        respondSuccess('Partidas eliminadas', ['deleted' => $count]);
+    } catch (Exception $e) {
+        logMessage('bulkDeleteGames error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
 function getCategories() {
     try {
         $admin = new AdminDictionary();
@@ -424,6 +521,138 @@ function getPlayerStats() {
     }
 }
 
+function getActiveGames() {
+    try {
+        $ops = new AdminOperations();
+        $games = $ops->getActiveGames();
+        respondSuccess('Partidas activas cargadas', $games);
+    } catch (Exception $e) {
+        logMessage('getActiveGames error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getFinishedGames() {
+    try {
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+        $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+        
+        $ops = new AdminOperations();
+        $games = $ops->getFinishedGames($limit, $offset);
+        respondSuccess('Partidas finalizadas cargadas', $games);
+    } catch (Exception $e) {
+        logMessage('getFinishedGames error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getGameAnalytics() {
+    try {
+        if (!isset($_GET['game_id'])) {
+            respondError('Missing game_id');
+            return;
+        }
+        
+        $ops = new AdminOperations();
+        $analytics = $ops->getGameAnalytics($_GET['game_id']);
+        
+        if (!$analytics) {
+            respondError('Game not found');
+            return;
+        }
+        
+        respondSuccess('Analíticas de la partida', $analytics);
+    } catch (Exception $e) {
+        logMessage('getGameAnalytics error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getPlayerHistory() {
+    try {
+        if (!isset($_GET['player_id'])) {
+            respondError('Missing player_id');
+            return;
+        }
+        
+        $ops = new AdminOperations();
+        $history = $ops->getPlayerGameHistory($_GET['player_id']);
+        respondSuccess('Historial del jugador', $history);
+    } catch (Exception $e) {
+        logMessage('getPlayerHistory error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getPlayerCrossStats() {
+    try {
+        if (!isset($_GET['player_id'])) {
+            respondError('Missing player_id');
+            return;
+        }
+        
+        $ops = new AdminOperations();
+        $stats = $ops->getPlayerCrossGameStats($_GET['player_id']);
+        
+        if (!$stats) {
+            respondError('Player not found');
+            return;
+        }
+        
+        respondSuccess('Estadísticas transversales del jugador', $stats);
+    } catch (Exception $e) {
+        logMessage('getPlayerCrossStats error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function getStorageStats() {
+    try {
+        $ops = new AdminOperations();
+        $stats = $ops->getDatabaseStorageStats();
+        respondSuccess('Estadísticas de almacenamiento', $stats);
+    } catch (Exception $e) {
+        logMessage('getStorageStats error: ' . $e->getMessage(), 'ERROR');
+        respondError('Error: ' . $e->getMessage());
+    }
+}
+
+function exportDatabase() {
+    try {
+        $admin = new AdminDictionary();
+        $data = [
+            'categorias' => $admin->getCategoriesFull(),
+            'prompts' => $admin->getPrompts()
+        ];
+        respondSuccess('Exportación completada', $data);
+    } catch (Exception $e) {
+        logMessage('exportDatabase error: ' . $e->getMessage(), 'ERROR');
+        respondError('Export error: ' . $e->getMessage());
+    }
+}
+
+function exportGame() {
+    try {
+        if (!isset($_GET['game_id'])) {
+            respondError('Missing game_id');
+            return;
+        }
+        
+        $ops = new AdminOperations();
+        $data = $ops->exportGameData($_GET['game_id']);
+        
+        if (!$data) {
+            respondError('Game not found');
+            return;
+        }
+        
+        respondSuccess('Exportación de partida completada', $data);
+    } catch (Exception $e) {
+        logMessage('exportGame error: ' . $e->getMessage(), 'ERROR');
+        respondError('Export error: ' . $e->getMessage());
+    }
+}
+
 function handleImport() {
     try {
         $input = file_get_contents('php://input');
@@ -447,20 +676,6 @@ function handleImport() {
     } catch (Exception $e) {
         logMessage('handleImport error: ' . $e->getMessage(), 'ERROR');
         respondError('Import error: ' . $e->getMessage());
-    }
-}
-
-function exportDatabase() {
-    try {
-        $admin = new AdminDictionary();
-        $data = [
-            'categorias' => $admin->getCategoriesFull(),
-            'prompts' => $admin->getPrompts()
-        ];
-        respondSuccess('Exportación completada', $data);
-    } catch (Exception $e) {
-        logMessage('exportDatabase error: ' . $e->getMessage(), 'ERROR');
-        respondError('Export error: ' . $e->getMessage());
     }
 }
 
