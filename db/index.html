@@ -470,7 +470,7 @@
                         
                         <!-- Prompts Pane -->
                         <div class="cascade-pane">
-                            <div class="cascade-header">💭 Consignas</div>
+                            <div class="cascade-header">💬 Consignas</div>
                             <div class="cascade-list" id="promptsList"></div>
                             <div style="padding: 15px; border-top: 1px solid #334155;">
                                 <button class="btn-primary" style="width: 100%;" onclick="openModal('addPromptModal')">+ Nueva</button>
@@ -610,9 +610,9 @@
                 <label>Género (opcional):</label>
                 <select id="genderSelect">
                     <option value="">Sin especificar</option>
-                    <option value="m">Masculino</option>
-                    <option value="f">Femenino</option>
-                    <option value="n">Neutro</option>
+                    <option value="m">Masculino (m)</option>
+                    <option value="f">Femenino (f)</option>
+                    <option value="n">Neutro (n)</option>
                 </select>
             </div>
             <div class="button-group">
@@ -733,7 +733,7 @@
                 .map(cat => `
                     <div class="cascade-item ${selectedCategory === cat.id ? 'selected' : ''}" onclick="selectCategory(${cat.id})">
                         <span>${cat.name}</span>
-                        <span class="cascade-item-badge">${cat.id}</span>
+                        <span class="cascade-item-badge">#${cat.id}</span>
                     </div>
                 `).join('');
         }
@@ -750,7 +750,7 @@
                 .map(p => `
                     <div class="cascade-item ${selectedPrompt === p.id ? 'selected' : ''}" onclick="selectPrompt(${p.id})">
                         <span style="flex: 1;">${p.text}</span>
-                        <span class="cascade-item-badge">★${p.difficulty}</span>
+                        <span class="cascade-item-badge">⭐${p.difficulty}</span>
                     </div>
                 `).join('');
         }
@@ -955,16 +955,6 @@
                 const res = await fetch(`${API}?action=inspect`).then(r => r.json());
                 if (res.success) {
                     const stats = res.data.stats;
-                    const html = `
-                        <div style="background: #0f172a; padding: 15px; border-radius: 4px; font-size: 12px; line-height: 1.8;">
-                            <p>✓ Categorías: <strong>${stats.categories}</strong></p>
-                            <p>✓ Consignas: <strong>${stats.prompts}</strong></p>
-                            <p>✓ Palabras: <strong>${stats.words}</strong></p>
-                            <p>✓ Partidas: <strong>${stats.games}</strong></p>
-                            <p>✓ Jugadores: <strong>${stats.players}</strong></p>
-                            <p style="margin-top: 10px; color: #86efac; border-top: 1px solid #334155; padding-top: 10px;">✓ Base de datos OK</p>
-                        </div>
-                    `;
                     showMessage('✓ Diagnóstico completado', 'success');
                 } else {
                     showMessage('Error: ' + res.message, 'error');
