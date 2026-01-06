@@ -331,6 +331,65 @@ class DatabaseManager {
             'schema_version' => 2
         ];
     }
+
+    public function getDeepInspection() {
+        $schema = [];
+        
+        $tables = $this->pdo->query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($tables as $table) {
+            $columns = $this->pdo->query("PRAGMA table_info($table)")->fetchAll(PDO::FETCH_ASSOC);
+            $indexes = $this->pdo->query("PRAGMA index_list($table)")->fetchAll(PDO::FETCH_ASSOC);
+            $foreignKeys = $this->pdo->query("PRAGMA foreign_key_list($table)")->fetchAll(PDO::FETCH_ASSOC);
+            
+            $tableInfo = [];
+            foreach ($columns as $col) {
+                $tableInfo['columns'][] = [
+                    'name' => $col['name'],
+                    'type' => $col['type'],
+                    'notnull' => (bool)$col['notnull'],
+                    'default' => $col['dflt_value'],
+                    'pk' => (bool)$col['pk']
+                ];
+            }
+            
+            if (!empty($indexes)) {
+                foreach ($indexes as $idx) {
+                    $indexColumns = $this->pdo->query("PRAGMA index_info({$idx['name']})")->fetchAll(PDO::FETCH_COLUMN, 2);
+                    $tableInfo['indexes'][] = [
+                        'name' => $idx['name'],
+                        'columns' => $indexColumns,
+                        'unique' => (bool)$idx['unique']
+                    ];
+                }
+            }
+            
+            if (!empty($foreignKeys)) {
+                foreach ($foreignKeys as $fk) {
+                    $tableInfo['foreign_keys'][] = [
+                        'column' => $fk['from'],
+                        'references_table' => $fk['table'],
+                        'references_column' => $fk['to']
+                    ];
+                }
+            }
+            
+            $rowCount = (int)$this->pdo->query("SELECT COUNT(*) FROM $table")->fetchColumn();
+            $tableInfo['row_count'] = $rowCount;
+            
+            $schema[$table] = $tableInfo;
+        }
+        
+        return [
+            'database_file' => $this->dbFile,
+            'file_size_bytes' => filesize($this->dbFile) ?? 0,
+            'file_size_mb' => round((filesize($this->dbFile) ?? 0) / (1024 * 1024), 2),
+            'timestamp' => date('Y-m-d H:i:s'),
+            'total_tables' => count($tables),
+            'tables' => $schema,
+            'stats' => $this->getDictionaryStats()
+        ];
+    }
 }
 
 function handlePost($db, $action) {
@@ -367,6 +426,7 @@ function handleGet($db, $action) {
             'get-game' => respondSuccess('Game loaded', $db->getGameById($_GET['id'] ?? '')),
             'get-game-players' => respondSuccess('Players loaded', $db->getGamePlayers($_GET['game_id'] ?? '')),
             'inspect' => respondSuccess('Inspection completed', $db->getInspectionData()),
+            'deep-inspect' => respondSuccess('Deep inspection completed', $db->getDeepInspection()),
             default => respondError('Unknown GET action: ' . $action)
         };
     } catch (Exception $e) {
