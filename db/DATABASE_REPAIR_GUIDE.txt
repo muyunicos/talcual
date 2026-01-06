@@ -1,0 +1,231 @@
+╔═════════════════════════════════════════════════════════════════════╗
+║         TalCual Database Repair & Recovery Guide                    ║
+║         Admin Tools for SQLite Database Management                  ║
+╚═════════════════════════════════════════════════════════════════════╝
+
+PROBLEMA DETECTADO:
+─────────────────
+El archivo /data/talcual.db está corrupto o no existe.
+Mensaje de error: "file is not a database"
+
+CAUSAS POSIBLES:
+────────────────
+1. El archivo nunca fue creado (primera ejecución)
+2. El archivo fue truncado o sobrescrito
+3. El contenido no es un archivo SQLite válido
+4. Conflicto con JSON vs SQLite (cambio de tecnología)
+
+
+SOLUCIÓN RÁPIDA (Paso a Paso):
+═════════════════════════════════════════════════════════════════════
+
+1. Accede al Admin Panel de Reparación:
+   URL: http://juegos.loc.ar/talcual/db/repair.html
+
+2. Ejecuta en orden (cada botón tiene un propósito):
+
+   A) "Check Status" 🔍
+      → Diagnostica el estado actual de la BD
+      → Verifica integridad y validez del archivo
+      → Si dice "file is not a database" → continúa con B
+
+   B) "Backup" 💾 (OPCIONAL pero recomendado)
+      → Respalda el archivo corrupto
+      → Se guarda en /data/backups/talcual_TIMESTAMP.db.bak
+      → Útil para análisis forense posterior
+
+   C) "Nuke & Reinitialize" 🔥 (ACCIÓN CRÍTICA)
+      → Elimina el archivo corrupto
+      → Crea una nueva BD SQLite limpia y funcional
+      → Recrea todas las tablas requeridas:
+         - games (partidas)
+         - players (jugadores)
+         - categories (categorías del diccionario)
+         - prompts (preguntas/consignas)
+         - prompt_categories (relación M2M)
+         - valid_words (palabras válidas)
+      → Requiere confirmación (⚠️ irreversible)
+      → ✓ RECOMENDADO si el archivo está corrupto
+
+
+OPCIONES ALTERNATIVAS:
+═════════════════════
+
+• "Repair (Auto-Fix)" 🔧
+  → Intenta reparar automáticamente
+  → Ejecuta PRAGMA integrity_check
+  → Ejecuta VACUUM para optimizar
+  → Si falla → cae en cascada a "Nuke & Reinitialize"
+  → Menos invasivo que Nuke (conserva datos si es posible)
+
+• "Initialize Fresh DB" ⚙️
+  → Solo crea tablas e índices
+  → NO borra el archivo existente
+  → Útil si la BD existe pero está vacía
+
+
+QUÉ SUCEDE DESPUÉS DEL REPAIR:
+════════════════════════════════════════════════════════════════════
+
+Una vez que ejecutes "Nuke & Reinitialize" exitosamente:
+
+1. ✓ Se crea /data/talcual.db (nuevo archivo SQLite limpio)
+2. ✓ Se crea copia de seguridad en /data/backups/
+3. ✓ Se crean 6 tablas con esquema correcto
+4. ✓ Se crean 4 índices para optimización
+5. ✓ El juego puede ser usado nuevamente
+6. ✓ Se puede importar diccionario viejo si es necesario
+
+
+RECUPERACIÓN DE DATOS (si tenías un diccionario viejo):
+═════════════════════════════════════════════════════════════════════
+
+Si tienes un archivo JSON con diccionario anterior:
+
+1. Ve a: http://juegos.loc.ar/talcual/db/
+2. Usa la sección "Import Dictionary" en AdminDictionary
+3. Carga el JSON del diccionario anterior
+4. Los datos se importarán inteligentemente a las nuevas tablas
+
+NOTA: El archivo /app/dictionary.json es crítico y se usa
+mientras no haya datos en la BD SQLite.
+
+
+ESTRUCTURA DE TABLAS CREADAS:
+═════════════════════════════════════════════════════════════════════
+
+GAMES
+─────
+Almacena estado de cada partida en vivo.
+Campos clave:
+  - id: Código de sala (ej: "ABCD")
+  - status: waiting | playing | finished
+  - round: Número de ronda actual
+  - current_prompt: Texto de pregunta actual (snapshot)
+  - current_category: Categoría activa
+  - Tiempos: round_started_at, round_starts_at, round_ends_at
+  - Configuración inmutable: total_rounds, round_duration, etc.
+
+PLAYERS
+───────
+Almacena identidad y estado de cada jugador.
+Campos clave:
+  - id: ID único del jugador
+  - game_id: Referencia a la partida
+  - name: Nombre mostrado
+  - score: Puntaje acumulado (cache)
+  - current_answers: JSON array de respuestas actuales
+  - round_history: JSON object con historial por ronda
+
+CATEGORIES
+──────────
+Categorías del diccionario (ej: "Cosas de Cocina")
+Tabla simple: id, name (UNIQUE)
+
+PROMPTS
+───────
+Preguntas/Consignas del juego (ej: "Utensilios de madera")
+Tabla simple: id, text (UNIQUE)
+
+PROMPT_CATEGORIES
+──────────────────
+Relación Many-to-Many entre prompts y categorías.
+Permite que una pregunta pertenezca a múltiples categorías.
+Tabla de asociación: (prompt_id, category_id)
+
+VALID_WORDS
+────────────
+Palabras válidas para cada pregunta.
+Campos: id, prompt_id, word_entry (forma canónica)
+Indexado por prompt_id para búsquedas rápidas.
+
+
+ÍNDICES CREADOS (Optimización):
+────────────────────────────────
+
+• idx_players_game_id
+  → Acelera búsquedas de jugadores por partida
+
+• idx_prompt_categories_prompt
+  → Acelera búsquedas de categorías para una pregunta
+
+• idx_prompt_categories_category
+  → Acelera búsquedas de preguntas para una categoría
+
+• idx_valid_words_prompt_id
+  → Acelera búsquedas de palabras válidas
+
+
+PRAGMAS SQLite CONFIGURADAS:
+═════════════════════════════════════════════════════════════════════
+
+Al crear la BD, se aplican automáticamente:
+
+• PRAGMA journal_mode = WAL
+  → Write-Ahead Logging: mejor rendimiento, menos bloqueos
+
+• PRAGMA foreign_keys = ON
+  → Enforza integridad referencial (fk constraints)
+
+• PRAGMA synchronous = NORMAL
+  → Balance entre velocidad y seguridad
+
+• PRAGMA wal_autocheckpoint = 1000
+  → Checkpoint automático cada 1000 cambios
+
+
+ARCHIVOS DE RESPALDO:
+═════════════════════════════════════════════════════════════════════
+
+Todos los backups se guardan en: /data/backups/
+Nombre: talcual_YYYY-MM-DD_HH-ii-ss.db.bak
+
+Puedes conservarlos indefinidamente o eliminar después de verificar
+que la nueva BD funciona correctamente.
+
+
+SOLUCIÓN DE PROBLEMAS:
+═════════════════════════════════════════════════════════════════════
+
+Si "Check Status" aún muestra errores después de Nuke & Reinitialize:
+
+1. Verifica permisos del directorio /data/
+   Debe ser 755 y ownership correcto (www-data en Apache)
+
+2. Verifica que /data/ exista y sea escribible
+   $ sudo chmod 755 /var/www/html/talcual/data
+
+3. Si el error persiste, contacta al desarrollador con:
+   - Output completo de "Check Status"
+   - Contenido de PHP error logs
+   - Permisos de archivos (ls -la /data/)
+
+
+COMANDOS DE LÍNEA DE COMANDOS (Alternativa):
+═════════════════════════════════════════════════════════════════════
+
+Si prefieres CLI en lugar del UI:
+
+# Revisar estado
+curl "http://juegos.loc.ar/talcual/db/repair-database.php?action=status"
+
+# Crear backup
+curl "http://juegos.loc.ar/talcual/db/repair-database.php?action=backup"
+
+# Nuke & Reinitialize
+curl -X POST "http://juegos.loc.ar/talcual/db/repair-database.php?action=nuke"
+
+
+REFERENCI AS ÚTILES:
+════════════════════════════════════════════════════════════════════
+
+• AdminDictionary.php → Gestión avanzada del diccionario
+• dmanager.php → Gestor de operaciones de BD
+• Database.php → Clase singleton de conexión
+• repair-database.php → Script de reparación (ESTE ARCHIVO)
+
+
+═════════════════════════════════════════════════════════════════════
+Última actualización: 2026-01-06
+Autor: TalCual Development Team
+═════════════════════════════════════════════════════════════════════
