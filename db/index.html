@@ -167,6 +167,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            user-select: none;
+            touch-action: none;
         }
         
         .cascade-item:hover {
@@ -178,6 +180,16 @@
             color: #fff;
             border-left: 3px solid #3b82f6;
             padding-left: 12px;
+        }
+        
+        .cascade-item.dragging {
+            opacity: 0.5;
+            background: #334155;
+        }
+        
+        .cascade-item.drag-over {
+            background: #2563eb;
+            border-top: 2px solid #3b82f6;
         }
         
         .cascade-item-badge {
@@ -607,7 +619,7 @@
                     <div class="cascading-view">
                         <!-- Categories Pane -->
                         <div class="cascade-pane">
-                            <div class="cascade-header">📁 Categorías</div>
+                            <div class="cascade-header">📁 Categorías (Arrastra para reordenar)</div>
                             <div class="cascade-list" id="categoriesList"></div>
                             <div style="padding: 15px; border-top: 1px solid #334155;">
                                 <button class="btn-primary" style="width: 100%;" onclick="openModal('addCategoryModal')">+ Nueva</button>
@@ -799,6 +811,8 @@
         let allPrompts = [];
         let allWords = [];
         let lastImportPreview = null;
+        let draggedElement = null;
+        let draggedData = null;
         
         document.addEventListener('DOMContentLoaded', () => {
             setupNavigation();
@@ -862,6 +876,110 @@
                     };
                     reader.readAsText(file);
                 }
+            });
+        }
+        
+        function enableCategoryDragAndDrop() {
+            const items = document.querySelectorAll('#categoriesList .cascade-item');
+            items.forEach(item => {
+                item.draggable = true;
+                item.addEventListener('dragstart', handleCategoryDragStart);
+                item.addEventListener('dragend', handleCategoryDragEnd);
+                item.addEventListener('dragover', handleCategoryDragOver);
+                item.addEventListener('drop', handleCategoryDrop);
+                item.addEventListener('dragenter', handleCategoryDragEnter);
+                item.addEventListener('dragleave', handleCategoryDragLeave);
+            });
+        }
+        
+        function handleCategoryDragStart(e) {
+            draggedElement = this;
+            draggedData = {
+                id: this.getAttribute('data-category-id'),
+                text: this.textContent.trim()
+            };
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleCategoryDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('#categoriesList .cascade-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+            draggedElement = null;
+            draggedData = null;
+        }
+        
+        function handleCategoryDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        
+        function handleCategoryDragEnter(e) {
+            if (this !== draggedElement && this.classList.contains('cascade-item')) {
+                this.classList.add('drag-over');
+            }
+        }
+        
+        function handleCategoryDragLeave(e) {
+            if (e.target === this) {
+                this.classList.remove('drag-over');
+            }
+        }
+        
+        function handleCategoryDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            e.preventDefault();
+            
+            if (this !== draggedElement && draggedData) {
+                const list = document.getElementById('categoriesList');
+                const allItems = Array.from(list.querySelectorAll('.cascade-item'));
+                const draggedIndex = allItems.indexOf(draggedElement);
+                const targetIndex = allItems.indexOf(this);
+                
+                if (draggedIndex !== targetIndex) {
+                    if (draggedIndex < targetIndex) {
+                        this.parentNode.insertBefore(draggedElement, this.nextSibling);
+                    } else {
+                        this.parentNode.insertBefore(draggedElement, this);
+                    }
+                    
+                    reorderCategoriesInDatabase();
+                }
+            }
+            
+            this.classList.remove('drag-over');
+            return false;
+        }
+        
+        function reorderCategoriesInDatabase() {
+            const items = document.querySelectorAll('#categoriesList .cascade-item');
+            const order = Array.from(items).map(item => parseInt(item.getAttribute('data-category-id')));
+            
+            fetch(`${API}?action=reorder-categories`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order: order })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('✓ Categorías reordenadas', 'success');
+                    loadDictionary();
+                } else {
+                    showMessage('Error: ' + data.message, 'error');
+                    loadDictionary();
+                }
+            })
+            .catch(err => {
+                showMessage('Error reordenando: ' + err.message, 'error');
+                loadDictionary();
             });
         }
         
@@ -1037,11 +1155,15 @@
             list.innerHTML = categories
                 .sort((a, b) => a.orden - b.orden)
                 .map(cat => `
-                    <div class="cascade-item ${selectedCategory === cat.id ? 'selected' : ''}" onclick="selectCategory(${cat.id})">
+                    <div class="cascade-item ${selectedCategory === cat.id ? 'selected' : ''}" 
+                         data-category-id="${cat.id}" 
+                         onclick="selectCategory(${cat.id})">
                         <span>${cat.name}</span>
                         <span class="cascade-item-badge">#${cat.id}</span>
                     </div>
                 `).join('');
+            
+            enableCategoryDragAndDrop();
         }
         
         function renderPrompts(prompts) {
