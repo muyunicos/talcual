@@ -26,12 +26,19 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            transition: width 0.3s ease, margin-left 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            width: 60px;
+            margin-left: -220px;
         }
         
         .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid #334155;
             background: #0f172a;
+            position: relative;
         }
         
         .sidebar-header h1 {
@@ -40,6 +47,36 @@
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 1px;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar.collapsed .sidebar-header h1 {
+            opacity: 0;
+            display: none;
+        }
+        
+        .sidebar-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #334155;
+            border: none;
+            color: #e2e8f0;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .sidebar-toggle:hover {
+            background: #475569;
+            color: #fff;
         }
         
         .nav-section-title {
@@ -50,6 +87,13 @@
             color: #475569;
             letter-spacing: 0.8px;
             margin-top: 15px;
+            transition: opacity 0.3s ease, padding 0.3s ease;
+        }
+        
+        .sidebar.collapsed .nav-section-title {
+            opacity: 0;
+            padding: 0;
+            margin: 0;
         }
         
         .nav-item {
@@ -58,6 +102,8 @@
             border-left: 3px solid transparent;
             transition: all 0.2s;
             font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
         }
         
         .nav-item:hover {
@@ -68,6 +114,20 @@
             background: #1e40af;
             border-left-color: #3b82f6;
             color: #fff;
+        }
+        
+        .sidebar.collapsed .nav-item {
+            padding: 12px;
+            font-size: 16px;
+            text-align: center;
+            border-left: none;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .sidebar.collapsed .nav-item.active {
+            background: #1e40af;
+            border-left: none;
+            border-bottom: 1px solid #3b82f6;
         }
         
         .main {
@@ -577,19 +637,20 @@
 </head>
 <body>
     <div class="container">
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h1>TalCual Admin</h1>
+                <button class="sidebar-toggle" onclick="toggleSidebar()">◀</button>
             </div>
             
             <div class="nav-section-title">Diccionario</div>
-            <div class="nav-item active" data-panel="dictionary">📚 Gestor Cascada</div>
-            <div class="nav-item" data-panel="batch-words">📋 Lote de Palabras</div>
+            <div class="nav-item active" data-panel="dictionary" title="Gestor Cascada">📚 Gestor Cascada</div>
+            <div class="nav-item" data-panel="batch-words" title="Lote de Palabras">📋 Lote de Palabras</div>
             
             <div class="nav-section-title">Herramientas</div>
-            <div class="nav-item" data-panel="tools">⚙️ Optimización</div>
-            <div class="nav-item" data-panel="import-export">📤 Import/Export</div>
-            <div class="nav-item" data-panel="inspect">🔍 Inspector</div>
+            <div class="nav-item" data-panel="tools" title="Optimización">⚙️ Optimización</div>
+            <div class="nav-item" data-panel="import-export" title="Import/Export">📤 Import/Export</div>
+            <div class="nav-item" data-panel="inspect" title="Inspector">🔍 Inspector</div>
         </div>
         
         <div class="main">
@@ -821,6 +882,13 @@
             updateStats();
             setInterval(updateStats, 5000);
         });
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const btn = document.querySelector('.sidebar-toggle');
+            sidebar.classList.toggle('collapsed');
+            btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+        }
         
         function setupNavigation() {
             document.querySelectorAll('.nav-item').forEach(item => {
