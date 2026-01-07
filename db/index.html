@@ -271,10 +271,12 @@
             opacity: 0;
             transition: opacity 0.2s;
             flex-shrink: 0;
+            pointer-events: none;
         }
         
         .cascade-item:hover .cascade-item-actions {
             opacity: 1;
+            pointer-events: auto;
         }
         
         .cascade-item-btn-edit {
@@ -1385,7 +1387,8 @@
                                 <span class="cascade-item-badge">${promptCount}</span>
                             </div>
                             <div class="cascade-item-actions">
-                                <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('category', ${cat.id}, '${cat.name}')" title="Eliminar">🗑️</button>
+                                <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditCategory(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')" title="Editar">✏️</button>
+                                <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('category', ${cat.id}, '${cat.name.replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>
                             </div>
                         </div>
                     `;
@@ -1469,6 +1472,44 @@
             selectedWord = wordId;
         }
         
+        function startEditCategory(categoryId, currentText) {
+            cancelEditMode();
+            const item = document.querySelector(`[data-category-id="${categoryId}"]`);
+            if (!item) return;
+            
+            editingItem = { type: 'category', id: categoryId, element: item, originalText: currentText };
+            item.classList.add('editing');
+            
+            const contentDiv = item.querySelector('.cascade-item-content');
+            const actionsDiv = item.querySelector('.cascade-item-actions');
+            
+            contentDiv.innerHTML = '';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'cascade-item-edit-input';
+            input.value = currentText;
+            contentDiv.appendChild(input);
+            
+            actionsDiv.innerHTML = '';
+            
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'cascade-item-btn-save';
+            saveBtn.textContent = '✓';
+            saveBtn.onclick = (e) => { e.stopPropagation(); saveEditCategory(categoryId, input.value); };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cascade-item-btn-cancel';
+            cancelBtn.textContent = '✕';
+            cancelBtn.onclick = (e) => { e.stopPropagation(); cancelEditMode(); };
+            
+            actionsDiv.appendChild(saveBtn);
+            actionsDiv.appendChild(cancelBtn);
+            
+            input.addEventListener('click', (e) => e.stopPropagation());
+            input.focus();
+            input.select();
+        }
+        
         function startEditPrompt(promptId, currentText) {
             cancelEditMode();
             const item = document.querySelector(`[data-prompt-id="${promptId}"]`);
@@ -1492,16 +1533,17 @@
             const saveBtn = document.createElement('button');
             saveBtn.className = 'cascade-item-btn-save';
             saveBtn.textContent = '✓';
-            saveBtn.onclick = () => saveEditPrompt(promptId, input.value);
+            saveBtn.onclick = (e) => { e.stopPropagation(); saveEditPrompt(promptId, input.value); };
             
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'cascade-item-btn-cancel';
             cancelBtn.textContent = '✕';
-            cancelBtn.onclick = cancelEditMode;
+            cancelBtn.onclick = (e) => { e.stopPropagation(); cancelEditMode(); };
             
             actionsDiv.appendChild(saveBtn);
             actionsDiv.appendChild(cancelBtn);
             
+            input.addEventListener('click', (e) => e.stopPropagation());
             input.focus();
             input.select();
         }
@@ -1529,18 +1571,46 @@
             const saveBtn = document.createElement('button');
             saveBtn.className = 'cascade-item-btn-save';
             saveBtn.textContent = '✓';
-            saveBtn.onclick = () => saveEditWord(wordId, input.value);
+            saveBtn.onclick = (e) => { e.stopPropagation(); saveEditWord(wordId, input.value); };
             
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'cascade-item-btn-cancel';
             cancelBtn.textContent = '✕';
-            cancelBtn.onclick = cancelEditMode;
+            cancelBtn.onclick = (e) => { e.stopPropagation(); cancelEditMode(); };
             
             actionsDiv.appendChild(saveBtn);
             actionsDiv.appendChild(cancelBtn);
             
+            input.addEventListener('click', (e) => e.stopPropagation());
             input.focus();
             input.select();
+        }
+        
+        async function saveEditCategory(categoryId, newText) {
+            const trimmedText = newText.trim();
+            if (!trimmedText) {
+                showMessage('El texto no puede estar vacío', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API}?action=update-category`, {
+                    method: 'POST',
+                    body: JSON.stringify({ id: categoryId, name: trimmedText }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('✓ Categoría actualizada', 'success');
+                    editingItem = null;
+                    loadDictionary();
+                } else {
+                    showMessage('Error: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
         }
         
         async function saveEditPrompt(promptId, newText) {
