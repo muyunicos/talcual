@@ -266,11 +266,13 @@ class AuraModule {
     renderPlayerNode(player) {
         const node = document.createElement('div');
         node.className = 'player-aura-node';
+        const aura = player.aura || '#FF0055,#00F0FF';
+        const [color1, color2] = aura.split(',');
         node.style.cssText = `
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 8px;
-            background: linear-gradient(135deg, ${player.color || '#FF0055'} 0%, #00F0FF 100%);
+            background: linear-gradient(135deg, ${color1 || '#FF0055'} 0%, ${color2 || '#00F0FF'} 100%);
             color: white;
             font-weight: 500;
         `;
