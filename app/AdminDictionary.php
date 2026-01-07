@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/WordNormalizer.php';
+
 class AdminDictionary {
     use WordNormalizer;
     
@@ -12,7 +15,7 @@ class AdminDictionary {
 
     public function getCategories() {
         try {
-            $stmt = $this->pdo->query('SELECT id, name FROM categories ORDER BY name ASC');
+            $stmt = $this->pdo->query('SELECT id, name, orden, is_active FROM categories ORDER BY orden, name ASC');
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             logMessage('Error getCategories: ' . $e->getMessage(), 'ERROR');
@@ -22,7 +25,7 @@ class AdminDictionary {
 
     public function getCategoryByName($name) {
         try {
-            $stmt = $this->pdo->prepare('SELECT id, name FROM categories WHERE name = ?');
+            $stmt = $this->pdo->prepare('SELECT id, name, orden, is_active FROM categories WHERE name = ?');
             $stmt->execute([trim($name)]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -38,8 +41,8 @@ class AdminDictionary {
                 throw new Exception('Category name cannot be empty');
             }
             
-            $stmt = $this->pdo->prepare('INSERT INTO categories (name) VALUES (?)');
-            $stmt->execute([$name]);
+            $stmt = $this->pdo->prepare('INSERT INTO categories (name, orden, is_active, date) VALUES (?, (SELECT COALESCE(MAX(orden), 0) + 1 FROM categories), 1, ?)');
+            $stmt->execute([$name, time()]);
             
             return [
                 'id' => $this->pdo->lastInsertId(),
@@ -70,7 +73,7 @@ class AdminDictionary {
     public function getPrompts() {
         try {
             $stmt = $this->pdo->query(
-                'SELECT p.id, p.text, COUNT(vw.id) as word_count '
+                'SELECT p.id, p.text, p.difficulty, p.is_active, COUNT(vw.id) as word_count '
                 . 'FROM prompts p '
                 . 'LEFT JOIN valid_words vw ON p.id = vw.prompt_id '
                 . 'GROUP BY p.id '
@@ -86,7 +89,7 @@ class AdminDictionary {
     public function getPromptById($promptId) {
         try {
             $stmt = $this->pdo->prepare(
-                'SELECT p.id, p.text FROM prompts p WHERE p.id = ?'
+                'SELECT p.id, p.text, p.difficulty, p.is_active FROM prompts p WHERE p.id = ?'
             );
             $stmt->execute([$promptId]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -107,8 +110,8 @@ class AdminDictionary {
                 throw new Exception('At least one category required');
             }
             
-            $stmt = $this->pdo->prepare('INSERT INTO prompts (text) VALUES (?)');
-            $stmt->execute([$promptText]);
+            $stmt = $this->pdo->prepare('INSERT INTO prompts (text, is_active, date) VALUES (?, 1, ?)');
+            $stmt->execute([$promptText, time()]);
             
             $promptId = $this->pdo->lastInsertId();
             
@@ -140,7 +143,7 @@ class AdminDictionary {
     public function getValidWords($promptId) {
         try {
             $stmt = $this->pdo->prepare(
-                'SELECT id, word_entry FROM valid_words WHERE prompt_id = ? ORDER BY word_entry ASC'
+                'SELECT id, word_group FROM valid_words WHERE prompt_id = ? ORDER BY word_group ASC'
             );
             $stmt->execute([$promptId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -158,14 +161,14 @@ class AdminDictionary {
             }
             
             $stmt = $this->pdo->prepare(
-                'INSERT INTO valid_words (prompt_id, word_entry) VALUES (?, ?)'
+                'INSERT INTO valid_words (prompt_id, word_group) VALUES (?, ?)'
             );
             $stmt->execute([$promptId, $word]);
             
             return [
                 'id' => $this->pdo->lastInsertId(),
                 'prompt_id' => $promptId,
-                'word_entry' => $word
+                'word_group' => $word
             ];
         } catch (Exception $e) {
             logMessage('Error addValidWord: ' . $e->getMessage(), 'ERROR');
@@ -186,8 +189,8 @@ class AdminDictionary {
 
     public function getDictionaryStats() {
         try {
-            $catCount = $this->pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn();
-            $promptCount = $this->pdo->query('SELECT COUNT(*) FROM prompts')->fetchColumn();
+            $catCount = $this->pdo->query('SELECT COUNT(*) FROM categories WHERE is_active = 1')->fetchColumn();
+            $promptCount = $this->pdo->query('SELECT COUNT(*) FROM prompts WHERE is_active = 1')->fetchColumn();
             $wordCount = $this->pdo->query('SELECT COUNT(*) FROM valid_words')->fetchColumn();
             
             return [
