@@ -242,7 +242,7 @@ try {
                 throw new Exception('game_id requerido');
             }
 
-            $result = $service->endRound($gameId);
+            $result = $service->endGame($gameId);
             $repository->delete($gameId);
             $response = [
                 'success' => true,
