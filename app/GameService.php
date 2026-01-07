@@ -1,16 +1,19 @@
 <?php
 
+require_once __DIR__ . '/GameRepository.php';
+require_once __DIR__ . '/DictionaryRepository.php';
+
 class GameService {
     private $repository;
-    private $gameDictionary;
+    private $dictionary;
 
-    public function __construct(GameRepository $repository, GameDictionary $gameDictionary = null) {
+    public function __construct(GameRepository $repository, DictionaryRepository $dictionary = null) {
         $this->repository = $repository;
-        $this->gameDictionary = $gameDictionary ?? new GameDictionary();
+        $this->dictionary = $dictionary ?? new DictionaryRepository();
     }
 
     private function generateGameCode() {
-        $categories = $this->gameDictionary->getCategories();
+        $categories = $this->dictionary->getCategories();
         
         if (empty($categories)) {
             $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -27,7 +30,7 @@ class GameService {
         $roomCodeCandidates = [];
         
         foreach ($categories as $category) {
-            $word = $this->gameDictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+            $word = $this->dictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
             
             if ($word && !$this->repository->exists($word)) {
                 $roomCodeCandidates[] = $word;
@@ -47,7 +50,7 @@ class GameService {
         } while ($this->repository->exists($code));
         
         if (mb_strlen($code) > MAX_CODE_LENGTH) {
-            logMessage('[WARNING] Código generado excede MAX_CODE_LENGTH: ' . $code, 'WARNING');
+            logMessage('[WARNING] Generated code exceeds MAX_CODE_LENGTH: ' . $code, 'WARNING');
             $code = substr($code, 0, MAX_CODE_LENGTH);
         }
         
@@ -55,10 +58,10 @@ class GameService {
     }
 
     public function getGameCandidates() {
-        $categories = $this->gameDictionary->getCategories();
+        $categories = $this->dictionary->getCategories();
 
         if (empty($categories)) {
-            throw new Exception('No hay categorías disponibles');
+            throw new Exception('No categories available');
         }
 
         $candidates = [];
@@ -69,7 +72,7 @@ class GameService {
             $code = null;
 
             while ($categoryAttempts < $maxCategoryAttempts) {
-                $word = $this->gameDictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+                $word = $this->dictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
 
                 if (!$word || $this->repository->exists($word)) {
                     $categoryAttempts++;
@@ -111,13 +114,13 @@ class GameService {
     public function createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers) {
         if ($gameId) {
             if ($this->repository->exists($gameId)) {
-                throw new Exception('El código de sala ya está en uso');
+                throw new Exception('Game code already in use');
             }
 
             if ($requestedCategory) {
-                $availableCategories = $this->gameDictionary->getCategories();
+                $availableCategories = $this->dictionary->getCategories();
                 if (!in_array($requestedCategory, $availableCategories)) {
-                    throw new Exception('Categoría no válida');
+                    throw new Exception('Invalid category');
                 }
             }
         } else {
@@ -132,15 +135,23 @@ class GameService {
         $now = time();
         $countdownDuration = START_COUNTDOWN * 1000;
 
+        $selectedCategoryId = null;
+        if ($requestedCategory) {
+            $categoryData = $this->dictionary->getCategoryByName($requestedCategory);
+            if ($categoryData) {
+                $selectedCategoryId = (int)$categoryData['id'];
+            }
+        }
+
         $initialState = [
             'game_id' => $gameId,
             'players' => [],
             'round' => 0,
             'total_rounds' => $totalRounds,
             'status' => 'waiting',
-            'current_prompt' => null,
-            'current_category' => null,
-            'selected_category' => $requestedCategory,
+            'current_prompt_id' => null,
+            'current_category_id' => null,
+            'selected_category_id' => $selectedCategoryId,
             'used_prompts' => [],
             'round_duration' => $roundDuration,
             'round_started_at' => null,
@@ -175,18 +186,18 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state) {
-            throw new Exception('Juego no encontrado');
+            throw new Exception('Game not found');
         }
 
         $playerName = trim($playerName);
         if (strlen($playerName) < 2 || strlen($playerName) > 20) {
-            throw new Exception('Nombre inválido');
+            throw new Exception('Invalid name');
         }
 
         if (isset($state['players'][$playerId])) {
             logMessage('Player reconnection: ' . $playerId . ' in game ' . $gameId, 'DEBUG');
             return [
-                'message' => 'Reconectado al juego',
+                'message' => 'Reconnected to game',
                 'server_now' => intval(microtime(true) * 1000),
                 'state' => $state,
                 'reconnected' => true
@@ -194,13 +205,13 @@ class GameService {
         }
 
         if (count($state['players']) >= $state['max_players']) {
-            throw new Exception('Sala llena');
+            throw new Exception('Room full');
         }
 
         $state['players'][$playerId] = [
             'id' => $playerId,
             'name' => $playerName,
-            'color' => $playerColor,
+            'aura' => $playerColor,
             'score' => 0,
             'status' => 'connected',
             'disconnected' => false,
@@ -210,11 +221,12 @@ class GameService {
         ];
 
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Te uniste al juego',
+            'message' => 'Joined game',
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state,
             'reconnected' => false
@@ -225,7 +237,7 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state) {
-            throw new Exception('Juego no encontrado');
+            throw new Exception('Game not found');
         }
 
         $activePlayers = array_filter($state['players'], function ($player) {
@@ -235,18 +247,42 @@ class GameService {
         $minPlayers = $state['min_players'] ?? MIN_PLAYERS;
 
         if (count($activePlayers) < $minPlayers) {
-            throw new Exception('Mínimo ' . $minPlayers . ' jugadores');
+            throw new Exception('Minimum ' . $minPlayers . ' players required');
         }
 
-        $preferredCategory = $categoryFromRequest ?: ($state['selected_category'] ?? null);
-        if (!$preferredCategory) {
-            $categories = $this->gameDictionary->getCategories();
-            if (!empty($categories)) {
-                $preferredCategory = $categories[array_rand($categories)];
+        $categoryToUse = null;
+        $categoryIdToUse = null;
+
+        if ($categoryFromRequest) {
+            $categoryToUse = $categoryFromRequest;
+            $categoryData = $this->dictionary->getCategoryByName($categoryFromRequest);
+            if ($categoryData) {
+                $categoryIdToUse = (int)$categoryData['id'];
+            }
+        } elseif ($state['selected_category_id']) {
+            $categoryData = $this->dictionary->getCategoryById($state['selected_category_id']);
+            if ($categoryData) {
+                $categoryToUse = $categoryData['name'];
+                $categoryIdToUse = (int)$categoryData['id'];
             }
         }
 
-        $card = $this->gameDictionary->getTopicCard($preferredCategory);
+        if (!$categoryToUse) {
+            $categories = $this->dictionary->getCategories();
+            if (!empty($categories)) {
+                $categoryToUse = $categories[array_rand($categories)];
+                $categoryData = $this->dictionary->getCategoryByName($categoryToUse);
+                if ($categoryData) {
+                    $categoryIdToUse = (int)$categoryData['id'];
+                }
+            }
+        }
+
+        if (!$categoryToUse || !$categoryIdToUse) {
+            throw new Exception('Cannot determine category for round');
+        }
+
+        $card = $this->dictionary->getTopicCard($categoryToUse);
         $roundQuestion = $card['question'];
         $commonAnswers = $card['answers'];
 
@@ -266,8 +302,7 @@ class GameService {
 
         $state['round']++;
         $state['status'] = 'playing';
-        $state['current_prompt'] = $roundQuestion;
-        $state['current_category'] = $preferredCategory ?: 'Sin categoría';
+        $state['current_category_id'] = $categoryIdToUse;
         $state['round_duration'] = $duration;
         $state['total_rounds'] = $totalRounds;
         $state['start_countdown'] = START_COUNTDOWN;
@@ -282,6 +317,7 @@ class GameService {
         ];
 
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         foreach ($state['players'] as $pId => $player) {
             if (!empty($player['disconnected'])) {
@@ -295,7 +331,7 @@ class GameService {
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Ronda iniciada',
+            'message' => 'Round started',
             'server_now' => $serverNow,
             'state' => $state
         ];
@@ -305,26 +341,31 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state) {
-            throw new Exception('Juego no encontrado');
+            throw new Exception('Game not found');
         }
 
         if ($state['status'] !== 'waiting') {
-            throw new Exception('No puedes cambiar categoría durante una ronda');
+            throw new Exception('Cannot change category during a round');
         }
 
-        $availableCategories = $this->gameDictionary->getCategories();
+        $availableCategories = $this->dictionary->getCategories();
         if (!in_array($newCategory, $availableCategories)) {
-            throw new Exception('Categoría no válida');
+            throw new Exception('Invalid category');
         }
 
-        $state['selected_category'] = $newCategory;
+        $categoryData = $this->dictionary->getCategoryByName($newCategory);
+        if ($categoryData) {
+            $state['selected_category_id'] = (int)$categoryData['id'];
+        }
+
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Categoría actualizada',
-            'selected_category' => $newCategory,
+            'message' => 'Category updated',
+            'selected_category_id' => $state['selected_category_id'],
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state
         ];
@@ -334,11 +375,11 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state || !isset($state['players'][$playerId])) {
-            throw new Exception('Jugador no encontrado');
+            throw new Exception('Player not found');
         }
 
         if ($state['status'] !== 'playing') {
-            throw new Exception('No hay ronda activa');
+            throw new Exception('No active round');
         }
 
         $validAnswers = [];
@@ -362,11 +403,12 @@ class GameService {
         }
 
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Respuestas guardadas',
+            'message' => 'Answers saved',
             'valid_answers' => count($validAnswers),
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state
@@ -377,11 +419,11 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state) {
-            throw new Exception('Juego no encontrado');
+            throw new Exception('Game not found');
         }
 
         if ($state['status'] !== 'playing') {
-            throw new Exception('No hay ronda en curso');
+            throw new Exception('No active round');
         }
 
         foreach ($state['players'] as $pId => $player) {
@@ -409,8 +451,7 @@ class GameService {
         if ($isGameFinished) {
             $roundSnapshot = [
                 'round' => $state['round'] ?? 0,
-                'current_prompt' => $state['current_prompt'] ?? null,
-                'current_category' => $state['current_category'] ?? null,
+                'current_category_id' => $state['current_category_id'] ?? null,
                 'round_top_words' => $state['round_top_words'] ?? []
             ];
             
@@ -426,6 +467,7 @@ class GameService {
         }
 
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         if ($isGameFinished) {
             $state['status'] = 'finished';
@@ -442,7 +484,7 @@ class GameService {
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Ronda finalizada',
+            'message' => 'Round ended',
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state
         ];
@@ -452,7 +494,7 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state) {
-            throw new Exception('Juego no encontrado');
+            throw new Exception('Game not found');
         }
 
         foreach ($state['players'] as $pId => $player) {
@@ -466,8 +508,8 @@ class GameService {
 
         $state['round'] = 0;
         $state['status'] = 'waiting';
-        $state['current_prompt'] = null;
-        $state['current_category'] = null;
+        $state['current_prompt_id'] = null;
+        $state['current_category_id'] = null;
         $state['round_started_at'] = null;
         $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
@@ -475,11 +517,12 @@ class GameService {
         $state['round_top_words'] = [];
         $state['roundData'] = null;
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Juego reiniciado',
+            'message' => 'Game reset',
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state
         ];
@@ -489,15 +532,15 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state) {
-            throw new Exception('Juego no encontrado');
+            throw new Exception('Game not found');
         }
 
         if ($state['status'] !== 'playing') {
-            throw new Exception('No hay ronda en curso');
+            throw new Exception('No active round');
         }
 
         if ($newEndTime <= 0) {
-            throw new Exception('Tiempo inválido');
+            throw new Exception('Invalid time');
         }
 
         $state['round_ends_at'] = $newEndTime;
@@ -507,11 +550,12 @@ class GameService {
         }
 
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Temporizador actualizado',
+            'message' => 'Timer updated',
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state
         ];
@@ -522,17 +566,19 @@ class GameService {
 
         if ($state && isset($state['players'][$playerId])) {
             $state['players'][$playerId]['disconnected'] = true;
+            $state['players'][$playerId]['status'] = 'disconnected';
             $state['last_update'] = time();
+            $state['updated_at'] = time();
 
             $this->repository->save($gameId, $state);
 
             return [
-                'message' => 'Saliste del juego'
+                'message' => 'Left game'
             ];
         }
 
         return [
-            'message' => 'Ya no estás en el juego'
+            'message' => 'Already left the game'
         ];
     }
 
@@ -540,21 +586,22 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state || !isset($state['players'][$playerId])) {
-            throw new Exception('Jugador no encontrado');
+            throw new Exception('Player not found');
         }
 
         $newName = trim($newName);
         if (strlen($newName) < 2 || strlen($newName) > 20) {
-            throw new Exception('Nombre inválido');
+            throw new Exception('Invalid name');
         }
 
         $state['players'][$playerId]['name'] = $newName;
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Nombre actualizado',
+            'message' => 'Name updated',
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state
         ];
@@ -564,20 +611,21 @@ class GameService {
         $state = $this->repository->load($gameId);
 
         if (!$state || !isset($state['players'][$playerId])) {
-            throw new Exception('Jugador no encontrado');
+            throw new Exception('Player not found');
         }
 
         if (!$newColor) {
-            throw new Exception('Color inválido');
+            throw new Exception('Invalid color');
         }
 
-        $state['players'][$playerId]['color'] = $newColor;
+        $state['players'][$playerId]['aura'] = $newColor;
         $state['last_update'] = time();
+        $state['updated_at'] = time();
 
         $this->repository->save($gameId, $state);
 
         return [
-            'message' => 'Color actualizado',
+            'message' => 'Color updated',
             'server_now' => intval(microtime(true) * 1000),
             'state' => $state
         ];
@@ -593,7 +641,7 @@ class GameService {
             ];
         }
 
-        throw new Exception('Juego no encontrado');
+        throw new Exception('Game not found');
     }
 }
 ?>
