@@ -68,7 +68,7 @@ class GameRepository {
         foreach ($playerRows as $playerRow) {
             $playerId = $playerRow['id'];
             $roundHistory = json_decode($playerRow['round_history'] ?? '[]', true) ?? [];
-            $answers = !empty($playerRow['answers']) ? explode(',', $playerRow['answers']) : [];
+            $answers = json_decode($playerRow['answers'] ?? '[]', true) ?: [];
 
             $score = (int)($playerRow['score'] ?? 0);
             if ($score === 0 && is_array($roundHistory) && !empty($roundHistory)) {
@@ -88,7 +88,6 @@ class GameRepository {
                 'status' => $playerRow['status'],
                 'round_history' => $roundHistory,
                 'answers' => $answers,
-                'current_answers' => [],
                 'disconnected' => $playerRow['status'] === 'disconnected'
             ];
         }
@@ -167,7 +166,7 @@ class GameRepository {
                 $roundHistoryJson = json_encode($roundHistory, JSON_UNESCAPED_UNICODE);
                 
                 $answersList = $player['answers'] ?? [];
-                $answersCSV = is_array($answersList) ? implode(',', $answersList) : '';
+                $answersJson = json_encode($answersList, JSON_UNESCAPED_UNICODE);
 
                 $aura = $player['aura'] ?? $player['color'] ?? null;
 
@@ -179,7 +178,7 @@ class GameRepository {
                     $player['status'] ?? 'connected',
                     (int)($player['score'] ?? 0),
                     $roundHistoryJson,
-                    $answersCSV
+                    $answersJson
                 ]);
             }
         }
