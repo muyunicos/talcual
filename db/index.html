@@ -1400,22 +1400,38 @@
             list.innerHTML = prompts
                 .sort((a, b) => a.text.localeCompare(b.text))
                 .map(p => {
-                    const promptId = p.id;
-                    const promptText = p.text;
-                    const difficulty = p.difficulty;
+                    const isSelected = selectedPrompt === p.id;
                     return `
-                        <div class="cascade-item ${selectedPrompt === promptId ? 'selected' : ''}" 
-                             data-prompt-id="${promptId}" 
-                             onclick="selectPrompt(${promptId})">
+                        <div class="cascade-item ${isSelected ? 'selected' : ''}" 
+                             data-prompt-id="${p.id}" 
+                             onclick="selectPrompt(${p.id})">
                             <div class="cascade-item-content">
-                                <span style="flex: 1;">${promptText}</span>
-                                <span class="cascade-item-badge">⭐${difficulty}</span>
+                                <span style="flex: 1;">${p.text}</span>
+                                <span class="cascade-item-badge">⭐${p.difficulty}</span>
                             </div>
-                            <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditPrompt(${promptId}, ${JSON.stringify(promptText)})" title="Editar">✏️</button>
-                            <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('prompt', ${promptId}, ${JSON.stringify(promptText)})" title="Eliminar">🗑️</button>
+                            <button class="cascade-item-btn-edit" data-id="${p.id}" title="Editar">✏️</button>
+                            <button class="cascade-item-btn-delete" data-id="${p.id}" title="Eliminar">🗑️</button>
                         </div>
                     `;
                 }).join('');
+            
+            document.querySelectorAll('#promptsList .cascade-item-btn-edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const promptId = parseInt(btn.getAttribute('data-id'));
+                    const prompt = allPrompts.find(p => p.id === promptId);
+                    if (prompt) startEditPrompt(promptId, prompt.text);
+                });
+            });
+            
+            document.querySelectorAll('#promptsList .cascade-item-btn-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const promptId = parseInt(btn.getAttribute('data-id'));
+                    const prompt = allPrompts.find(p => p.id === promptId);
+                    if (prompt) confirmDelete('prompt', promptId, prompt.text);
+                });
+            });
         }
         
         function renderWords(words) {
@@ -1429,20 +1445,37 @@
                 .filter(w => w && w.word_group)
                 .sort((a, b) => (a.word_group || '').localeCompare(b.word_group || ''))
                 .map(w => {
-                    const wordId = w.id;
-                    const wordGroup = w.word_group;
+                    const isSelected = selectedWord === w.id;
                     return `
-                        <div class="cascade-item ${selectedWord === wordId ? 'selected' : ''}" 
-                             data-word-id="${wordId}" 
-                             onclick="selectWord(${wordId})">
+                        <div class="cascade-item ${isSelected ? 'selected' : ''}" 
+                             data-word-id="${w.id}" 
+                             onclick="selectWord(${w.id})">
                             <div class="cascade-item-content">
-                                <span style="flex: 1;">${wordGroup}</span>
+                                <span style="flex: 1;">${w.word_group}</span>
                             </div>
-                            <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditWord(${wordId}, ${JSON.stringify(wordGroup)})" title="Editar">✏️</button>
-                            <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('word', ${wordId}, ${JSON.stringify(wordGroup)})" title="Eliminar">🗑️</button>
+                            <button class="cascade-item-btn-edit" data-id="${w.id}" title="Editar">✏️</button>
+                            <button class="cascade-item-btn-delete" data-id="${w.id}" title="Eliminar">🗑️</button>
                         </div>
                     `;
                 }).join('');
+            
+            document.querySelectorAll('#wordsList .cascade-item-btn-edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const wordId = parseInt(btn.getAttribute('data-id'));
+                    const word = allWords.find(w => w.id === wordId);
+                    if (word) startEditWord(wordId, word.word_group);
+                });
+            });
+            
+            document.querySelectorAll('#wordsList .cascade-item-btn-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const wordId = parseInt(btn.getAttribute('data-id'));
+                    const word = allWords.find(w => w.id === wordId);
+                    if (word) confirmDelete('word', wordId, word.word_group);
+                });
+            });
         }
         
         function selectCategory(catId) {
