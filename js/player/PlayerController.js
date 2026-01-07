@@ -281,11 +281,11 @@ class PlayerManager extends BaseController {
       return;
     }
 
-    if (state.roundData && state.roundData.validMatches) {
+    if (state.roundData && state.roundData.commonAnswers) {
       initializeWordEngineFromRound(state.roundData);
       debug('📚 Mini-diccionario cargado desde roundData', 'info');
     } else {
-      debug('⚠️ No hay roundData.validMatches en estado', 'warning');
+      debug('⚠️ No hay roundData.commonAnswers en estado', 'warning');
     }
 
     if (state.round_starts_at) {
@@ -475,7 +475,7 @@ class PlayerManager extends BaseController {
   }
 
   ensureWordEngineInitialized(state) {
-    if (!state.roundData || !state.roundData.validMatches) {
+    if (!state.roundData || !state.roundData.commonAnswers) {
       debug('⚠️ No roundData disponible para inicializar WordEngine', 'warn');
       return false;
     }
@@ -626,6 +626,24 @@ class PlayerManager extends BaseController {
     }
 
     ModalSystem_Instance.close();
+  }
+
+  async exitGame() {
+    if (!this.client) {
+      this.clearSession();
+      this.showJoinModal();
+      return;
+    }
+
+    try {
+      await this.client.sendAction('leave_game', {});
+    } catch (error) {
+      debug('Error al retirarse:', error, 'error');
+    } finally {
+      this.destroy();
+      this.clearSession();
+      location.reload();
+    }
   }
 
   destroy() {
