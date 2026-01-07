@@ -290,7 +290,7 @@ class GameService {
 
         $state['roundData'] = [
             'roundQuestion' => $roundQuestion,
-            'validMatches' => $commonAnswers
+            'commonAnswers' => $commonAnswers
         ];
 
         $state['last_update'] = time();
