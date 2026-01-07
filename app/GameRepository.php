@@ -19,15 +19,15 @@ class GameRepository {
 
             $stmt = $pdo->prepare('SELECT * FROM games WHERE id = ?');
             $stmt->execute([$gameId]);
-            $gameRow = $stmt->fetch();
+            $gameRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$gameRow) {
                 return null;
             }
 
-            $stmt = $pdo->prepare('SELECT * FROM players WHERE game_id = ?');
+            $stmt = $pdo->prepare('SELECT id, game_id, name, aura, status, last_heartbeat, score, round_history FROM players WHERE game_id = ?');
             $stmt->execute([$gameId]);
-            $playerRows = $stmt->fetchAll();
+            $playerRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $state = $this->reconstructState($gameRow, $playerRows);
 
@@ -40,40 +40,42 @@ class GameRepository {
     }
 
     private function reconstructState($gameRow, $playerRows) {
-        $complexData = json_decode($gameRow['data'] ?? '{}', true) ?? [];
+        $metadata = json_decode($gameRow['metadata'] ?? '{}', true) ?? [];
 
         $state = [
             'game_id' => $gameRow['id'],
             'status' => $gameRow['status'],
             'round' => (int)$gameRow['round'],
             'total_rounds' => (int)$gameRow['total_rounds'],
-            'current_prompt' => $gameRow['current_prompt'],
-            'current_category' => $gameRow['current_category'],
-            'selected_category' => $gameRow['selected_category'] ?? null,
-            'round_started_at' => $gameRow['round_started_at'] !== null ? (int)$gameRow['round_started_at'] : null,
+            'current_prompt_id' => $gameRow['current_prompt_id'] !== null ? (int)$gameRow['current_prompt_id'] : null,
+            'current_category_id' => $gameRow['current_category_id'] !== null ? (int)$gameRow['current_category_id'] : null,
+            'selected_category_id' => $gameRow['selected_category_id'] !== null ? (int)$gameRow['selected_category_id'] : null,
+            'round_started_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_starts_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_ends_at' => $gameRow['round_ends_at'] !== null ? (int)$gameRow['round_ends_at'] : null,
             'countdown_duration' => $gameRow['countdown_duration'] !== null ? (int)$gameRow['countdown_duration'] : null,
             'created_at' => $gameRow['created_at'] !== null ? (int)$gameRow['created_at'] : null,
-            'min_players' => (int)$gameRow['min_players'],
-            'max_players' => (int)$gameRow['max_players'],
-            'round_duration' => (int)$gameRow['round_duration'],
-            'start_countdown' => (int)$gameRow['start_countdown'],
-            'hurry_up_threshold' => (int)$gameRow['hurry_up_threshold'],
-            'max_words_per_player' => (int)$gameRow['max_words_per_player'],
-            'max_word_length' => (int)$gameRow['max_word_length'],
-            'last_update' => (int)$gameRow['updated_at'],
-            '_updated_at' => (int)$gameRow['updated_at'],
+            'updated_at' => $gameRow['updated_at'] !== null ? (int)$gameRow['updated_at'] : null,
+            'min_players' => (int)($gameRow['min_players'] ?? 2),
+            'max_players' => (int)($gameRow['max_players'] ?? 8),
+            'round_duration' => (int)($gameRow['round_duration'] ?? 60),
+            'start_countdown' => (int)(START_COUNTDOWN),
+            'hurry_up_threshold' => (int)($gameRow['hurry_up_threshold'] ?? 10),
+            'max_words_per_player' => (int)($gameRow['max_words_per_player'] ?? 6),
+            'max_word_length' => (int)($gameRow['max_word_length'] ?? 30),
+            'version' => (int)($gameRow['version'] ?? 0),
+            'locked_until' => $gameRow['locked_until'] !== null ? (int)$gameRow['locked_until'] : null,
+            'last_update' => (int)($gameRow['updated_at'] ?? time()),
+            '_updated_at' => (int)($gameRow['updated_at'] ?? time()),
             '_version' => 1
         ];
 
-        $state = array_merge($state, $complexData);
+        $state = array_merge($state, $metadata);
 
         $state['players'] = [];
         foreach ($playerRows as $playerRow) {
             $playerId = $playerRow['id'];
-            $roundHistory = json_decode($playerRow['round_history'] ?? '{}', true) ?? [];
-            $currentAnswers = json_decode($playerRow['current_answers'] ?? '[]', true) ?? [];
+            $roundHistory = json_decode($playerRow['round_history'] ?? '[]', true) ?? [];
 
             $score = (int)($playerRow['score'] ?? 0);
             if ($score === 0 && is_array($roundHistory) && !empty($roundHistory)) {
@@ -87,14 +89,13 @@ class GameRepository {
             $state['players'][$playerId] = [
                 'id' => $playerId,
                 'name' => $playerRow['name'],
+                'aura' => $playerRow['aura'],
                 'score' => $score,
                 'status' => $playerRow['status'],
-                'color' => $playerRow['color'],
-                'avatar' => $playerRow['avatar'],
-                'answers' => $currentAnswers,
-                'current_answers' => $currentAnswers,
                 'round_history' => $roundHistory,
-                'disconnected' => false
+                'answers' => [],
+                'current_answers' => [],
+                'disconnected' => $playerRow['status'] === 'disconnected'
             ];
         }
 
@@ -115,7 +116,7 @@ class GameRepository {
             $state['_updated_at'] = $now;
             $state['_version'] = 1;
 
-            $complexData = [
+            $metadata = [
                 'used_prompts' => $state['used_prompts'] ?? [],
                 'round_details' => $state['round_details'] ?? [],
                 'round_top_words' => $state['round_top_words'] ?? [],
@@ -123,14 +124,15 @@ class GameRepository {
                 'roundData' => $state['roundData'] ?? null
             ];
 
-            $dataJson = json_encode($complexData, JSON_UNESCAPED_UNICODE);
+            $metadataJson = json_encode($metadata, JSON_UNESCAPED_UNICODE);
 
             $stmt = $pdo->prepare('INSERT OR REPLACE INTO games (
-                id, status, round, total_rounds, current_prompt, current_category,
-                selected_category, round_started_at, round_starts_at, round_ends_at,
+                id, status, round, total_rounds, current_prompt_id, current_category_id,
+                selected_category_id, round_starts_at, round_ends_at,
                 countdown_duration, created_at, updated_at,
-                min_players, max_players, round_duration, start_countdown,
-                hurry_up_threshold, max_words_per_player, max_word_length, data
+                min_players, max_players, round_duration,
+                hurry_up_threshold, max_words_per_player, max_word_length,
+                version, locked_until, metadata
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
             $createdAt = $state['created_at'] ?? $now;
@@ -140,10 +142,9 @@ class GameRepository {
                 $state['status'] ?? 'waiting',
                 (int)($state['round'] ?? 0),
                 (int)($state['total_rounds'] ?? 0),
-                $state['current_prompt'] ?? null,
-                $state['current_category'] ?? null,
-                $state['selected_category'] ?? null,
-                $state['round_started_at'] ?? null,
+                $state['current_prompt_id'] ?? null,
+                $state['current_category_id'] ?? null,
+                $state['selected_category_id'] ?? null,
                 $state['round_starts_at'] ?? null,
                 $state['round_ends_at'] ?? null,
                 $state['countdown_duration'] ?? null,
@@ -152,11 +153,12 @@ class GameRepository {
                 (int)($state['min_players'] ?? 2),
                 (int)($state['max_players'] ?? 8),
                 (int)($state['round_duration'] ?? 60),
-                (int)($state['start_countdown'] ?? 5),
                 (int)($state['hurry_up_threshold'] ?? 10),
-                (int)($state['max_words_per_player'] ?? 5),
-                (int)($state['max_word_length'] ?? 20),
-                $dataJson
+                (int)($state['max_words_per_player'] ?? 6),
+                (int)($state['max_word_length'] ?? 30),
+                (int)($state['version'] ?? 0),
+                $state['locked_until'] ?? null,
+                $metadataJson
             ]);
 
             $stmt = $pdo->prepare('DELETE FROM players WHERE game_id = ?');
@@ -164,26 +166,20 @@ class GameRepository {
 
             if (isset($state['players']) && is_array($state['players'])) {
                 $insertStmt = $pdo->prepare('INSERT INTO players (
-                    id, game_id, name, color, avatar, status, score,
-                    current_answers, round_history
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                    id, game_id, name, aura, status, score, round_history
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)');
 
                 foreach ($state['players'] as $playerId => $player) {
-                    $currentAnswers = $player['current_answers'] ?? $player['answers'] ?? [];
                     $roundHistory = $player['round_history'] ?? [];
-
-                    $currentAnswersJson = json_encode($currentAnswers, JSON_UNESCAPED_UNICODE);
                     $roundHistoryJson = json_encode($roundHistory, JSON_UNESCAPED_UNICODE);
 
                     $insertStmt->execute([
                         $playerId,
                         $gameId,
                         $player['name'] ?? 'Jugador',
-                        $player['color'] ?? null,
-                        $player['avatar'] ?? null,
+                        $player['aura'] ?? null,
                         $player['status'] ?? 'connected',
                         (int)($player['score'] ?? 0),
-                        $currentAnswersJson,
                         $roundHistoryJson
                     ]);
                 }
@@ -213,7 +209,7 @@ class GameRepository {
             $pdo = $this->db->getConnection();
             $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM games WHERE id = ?');
             $stmt->execute([$gameId]);
-            $result = $stmt->fetch();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
             return (int)($result['count'] ?? 0) > 0;
 
@@ -269,7 +265,7 @@ class GameRepository {
         try {
             $pdo = $this->db->getConnection();
             $stmt = $pdo->query('SELECT id FROM games ORDER BY updated_at DESC');
-            $results = $stmt->fetchAll();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             return array_column($results, 'id');
 
