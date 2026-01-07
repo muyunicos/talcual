@@ -4,9 +4,18 @@ require_once __DIR__ . '/Database.php';
 
 class GameRepository {
     private $db = null;
+    private $dictionaryRepo = null;
 
     public function __construct() {
         $this->db = Database::getInstance();
+    }
+
+    private function getDictionaryRepository() {
+        if ($this->dictionaryRepo === null) {
+            require_once __DIR__ . '/DictionaryRepository.php';
+            $this->dictionaryRepo = new DictionaryRepository();
+        }
+        return $this->dictionaryRepo;
     }
 
     public function load($gameId) {
@@ -41,6 +50,32 @@ class GameRepository {
 
     private function reconstructState($gameRow, $playerRows) {
         $metadata = json_decode($gameRow['metadata'] ?? '{}', true) ?? [];
+        $dict = $this->getDictionaryRepository();
+
+        $currentPromptText = null;
+        $currentCategoryText = null;
+        $selectedCategoryText = null;
+
+        if ($gameRow['current_prompt_id']) {
+            $promptData = $dict->getPromptById((int)$gameRow['current_prompt_id']);
+            if ($promptData) {
+                $currentPromptText = $promptData['text'];
+            }
+        }
+
+        if ($gameRow['current_category_id']) {
+            $categoryData = $dict->getCategoryById((int)$gameRow['current_category_id']);
+            if ($categoryData) {
+                $currentCategoryText = $categoryData['name'];
+            }
+        }
+
+        if ($gameRow['selected_category_id']) {
+            $categoryData = $dict->getCategoryById((int)$gameRow['selected_category_id']);
+            if ($categoryData) {
+                $selectedCategoryText = $categoryData['name'];
+            }
+        }
 
         $state = [
             'game_id' => $gameRow['id'],
@@ -50,6 +85,9 @@ class GameRepository {
             'current_prompt_id' => $gameRow['current_prompt_id'] !== null ? (int)$gameRow['current_prompt_id'] : null,
             'current_category_id' => $gameRow['current_category_id'] !== null ? (int)$gameRow['current_category_id'] : null,
             'selected_category_id' => $gameRow['selected_category_id'] !== null ? (int)$gameRow['selected_category_id'] : null,
+            'current_prompt' => $currentPromptText,
+            'current_category' => $currentCategoryText,
+            'selected_category' => $selectedCategoryText,
             'round_started_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_starts_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_ends_at' => $gameRow['round_ends_at'] !== null ? (int)$gameRow['round_ends_at'] : null,
@@ -90,6 +128,7 @@ class GameRepository {
                 'id' => $playerId,
                 'name' => $playerRow['name'],
                 'aura' => $playerRow['aura'],
+                'color' => $playerRow['aura'],
                 'score' => $score,
                 'status' => $playerRow['status'],
                 'round_history' => $roundHistory,
@@ -173,11 +212,13 @@ class GameRepository {
                     $roundHistory = $player['round_history'] ?? [];
                     $roundHistoryJson = json_encode($roundHistory, JSON_UNESCAPED_UNICODE);
 
+                    $aura = $player['aura'] ?? $player['color'] ?? null;
+
                     $insertStmt->execute([
                         $playerId,
                         $gameId,
                         $player['name'] ?? 'Jugador',
-                        $player['aura'] ?? null,
+                        $aura,
                         $player['status'] ?? 'connected',
                         (int)($player['score'] ?? 0),
                         $roundHistoryJson
