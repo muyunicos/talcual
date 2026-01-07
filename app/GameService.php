@@ -283,6 +283,7 @@ class GameService {
         }
 
         $card = $this->dictionary->getTopicCard($categoryToUse);
+        $promptId = $card['id'];
         $roundQuestion = $card['question'];
         $commonAnswers = $card['answers'];
 
@@ -302,6 +303,7 @@ class GameService {
 
         $state['round']++;
         $state['status'] = 'playing';
+        $state['current_prompt_id'] = $promptId;
         $state['current_category_id'] = $categoryIdToUse;
         $state['round_duration'] = $duration;
         $state['total_rounds'] = $totalRounds;
