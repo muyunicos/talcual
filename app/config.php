@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/settings.php';
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/WordNormalizer.php';
 
 function logMessage($message, $level = 'INFO') {
     if (!DEV_MODE && $level === 'DEBUG') return;
