@@ -496,6 +496,37 @@ class GameService {
         ];
     }
 
+    public function endGame($gameId) {
+        $state = $this->repository->load($gameId);
+
+        if (!$state) {
+            throw new Exception('Game not found');
+        }
+
+        $state['status'] = 'closed';
+        $state['round_started_at'] = null;
+        $state['round_starts_at'] = null;
+        $state['round_ends_at'] = null;
+        $state['countdown_duration'] = null;
+        $state['roundData'] = null;
+        $state['last_update'] = time();
+        $state['updated_at'] = time();
+
+        foreach ($state['players'] as $pId => $player) {
+            $state['players'][$pId]['answers'] = [];
+            $state['players'][$pId]['status'] = 'disconnected';
+            $state['players'][$pId]['disconnected'] = true;
+        }
+
+        $this->repository->save($gameId, $state);
+
+        return [
+            'message' => 'Game ended',
+            'server_now' => intval(microtime(true) * 1000),
+            'state' => $state
+        ];
+    }
+
     public function updateRoundTimer($gameId, $newEndTime) {
         $state = $this->repository->load($gameId);
 
