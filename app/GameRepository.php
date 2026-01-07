@@ -24,7 +24,7 @@ class GameRepository {
             return null;
         }
 
-        $stmt = $pdo->prepare('SELECT id, game_id, name, aura, status, last_heartbeat, score, round_history FROM players WHERE game_id = ?');
+        $stmt = $pdo->prepare('SELECT id, game_id, name, aura, status, last_heartbeat, score, round_history, answers FROM players WHERE game_id = ?');
         $stmt->execute([$gameId]);
         $playerRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -68,6 +68,7 @@ class GameRepository {
         foreach ($playerRows as $playerRow) {
             $playerId = $playerRow['id'];
             $roundHistory = json_decode($playerRow['round_history'] ?? '[]', true) ?? [];
+            $answers = !empty($playerRow['answers']) ? explode(',', $playerRow['answers']) : [];
 
             $score = (int)($playerRow['score'] ?? 0);
             if ($score === 0 && is_array($roundHistory) && !empty($roundHistory)) {
@@ -86,7 +87,7 @@ class GameRepository {
                 'score' => $score,
                 'status' => $playerRow['status'],
                 'round_history' => $roundHistory,
-                'answers' => [],
+                'answers' => $answers,
                 'current_answers' => [],
                 'disconnected' => $playerRow['status'] === 'disconnected'
             ];
@@ -158,12 +159,15 @@ class GameRepository {
 
         if (isset($state['players']) && is_array($state['players'])) {
             $insertStmt = $pdo->prepare('INSERT INTO players (
-                id, game_id, name, aura, status, score, round_history
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)');
+                id, game_id, name, aura, status, score, round_history, answers
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 
             foreach ($state['players'] as $playerId => $player) {
                 $roundHistory = $player['round_history'] ?? [];
                 $roundHistoryJson = json_encode($roundHistory, JSON_UNESCAPED_UNICODE);
+                
+                $answersList = $player['answers'] ?? [];
+                $answersCSV = is_array($answersList) ? implode(',', $answersList) : '';
 
                 $aura = $player['aura'] ?? $player['color'] ?? null;
 
@@ -174,7 +178,8 @@ class GameRepository {
                     $aura,
                     $player['status'] ?? 'connected',
                     (int)($player['score'] ?? 0),
-                    $roundHistoryJson
+                    $roundHistoryJson,
+                    $answersCSV
                 ]);
             }
         }
