@@ -93,8 +93,8 @@ class HostView {
           ? 'status-ready'
           : (player.answers && player.answers.length ? 'status-answered' : 'status-waiting'));
 
-      const aura = player.color && typeof isValidAura === 'function' && isValidAura(player.color)
-        ? player.color
+      const aura = player.aura && typeof isValidAura === 'function' && isValidAura(player.aura)
+        ? player.aura
         : null;
 
       const auraClass = aura ? this.getAuraGradientClass(aura) : 'aura-gradient';
