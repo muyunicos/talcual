@@ -13,24 +13,16 @@ class GameService {
     }
 
     private function generateGameCode() {
-        $categories = $this->dictionary->getCategories();
+        $categories = $this->dictionary->getCategoriesFull();
         
         if (empty($categories)) {
-            $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            do {
-                $code = '';
-                for ($i = 0; $i < 4; $i++) {
-                    $code .= $chars[rand(0, strlen($chars) - 1)];
-                }
-            } while ($this->repository->exists($code));
-            
-            return $code;
+            return $this->generateRandomCode();
         }
         
         $roomCodeCandidates = [];
         
-        foreach ($categories as $category) {
-            $word = $this->dictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+        foreach ($categories as $categoryData) {
+            $word = $this->dictionary->getRandomWordByCategoryFiltered($categoryData['name'], MAX_CODE_LENGTH);
             
             if ($word && !$this->repository->exists($word)) {
                 $roomCodeCandidates[] = $word;
@@ -41,24 +33,23 @@ class GameService {
             return $roomCodeCandidates[array_rand($roomCodeCandidates)];
         }
         
+        return $this->generateRandomCode();
+    }
+
+    private function generateRandomCode() {
         $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         do {
             $code = '';
-            for ($i = 0; $i < 4; $i++) {
+            for ($i = 0; $i < MAX_CODE_LENGTH; $i++) {
                 $code .= $chars[rand(0, strlen($chars) - 1)];
             }
         } while ($this->repository->exists($code));
-        
-        if (mb_strlen($code) > MAX_CODE_LENGTH) {
-            logMessage('[WARNING] Generated code exceeds MAX_CODE_LENGTH: ' . $code, 'WARNING');
-            $code = substr($code, 0, MAX_CODE_LENGTH);
-        }
         
         return $code;
     }
 
     public function getGameCandidates() {
-        $categories = $this->dictionary->getCategories();
+        $categories = $this->dictionary->getCategoriesFull();
 
         if (empty($categories)) {
             throw new Exception('No categories available');
@@ -67,12 +58,12 @@ class GameService {
         $candidates = [];
         $maxCategoryAttempts = 10;
 
-        foreach ($categories as $category) {
+        foreach ($categories as $categoryData) {
             $categoryAttempts = 0;
             $code = null;
 
             while ($categoryAttempts < $maxCategoryAttempts) {
-                $word = $this->dictionary->getRandomWordByCategoryFiltered($category, MAX_CODE_LENGTH);
+                $word = $this->dictionary->getRandomWordByCategoryFiltered($categoryData['name'], MAX_CODE_LENGTH);
 
                 if (!$word || $this->repository->exists($word)) {
                     $categoryAttempts++;
@@ -83,29 +74,15 @@ class GameService {
                 break;
             }
 
-            if ($code) {
-                $candidates[] = [
-                    'category' => $category,
-                    'code' => $code
-                ];
+            if (!$code) {
+                $code = $this->generateRandomCode();
             }
-        }
 
-        if (empty($candidates)) {
-            logMessage('No valid codes found for any category, falling back to alphabet codes', 'WARNING');
-            
-            foreach ($categories as $category) {
-                $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                $code = '';
-                for ($i = 0; $i < MAX_CODE_LENGTH; $i++) {
-                    $code .= $chars[rand(0, strlen($chars) - 1)];
-                }
-                
-                $candidates[] = [
-                    'category' => $category,
-                    'code' => $code
-                ];
-            }
+            $candidates[] = [
+                'category' => $categoryData['name'],
+                'category_id' => (int)$categoryData['id'],
+                'code' => $code
+            ];
         }
 
         return $candidates;
@@ -118,8 +95,8 @@ class GameService {
             }
 
             if ($requestedCategory) {
-                $availableCategories = $this->dictionary->getCategories();
-                if (!in_array($requestedCategory, $availableCategories)) {
+                $categoryData = $this->dictionary->getCategoryByName($requestedCategory);
+                if (!$categoryData) {
                     throw new Exception('Invalid category');
                 }
             }
@@ -250,39 +227,37 @@ class GameService {
             throw new Exception('Minimum ' . $minPlayers . ' players required');
         }
 
-        $categoryToUse = null;
         $categoryIdToUse = null;
+        $categoryNameToUse = null;
 
         if ($categoryFromRequest) {
-            $categoryToUse = $categoryFromRequest;
             $categoryData = $this->dictionary->getCategoryByName($categoryFromRequest);
             if ($categoryData) {
                 $categoryIdToUse = (int)$categoryData['id'];
+                $categoryNameToUse = $categoryData['name'];
             }
         } elseif ($state['selected_category_id']) {
             $categoryData = $this->dictionary->getCategoryById($state['selected_category_id']);
             if ($categoryData) {
-                $categoryToUse = $categoryData['name'];
                 $categoryIdToUse = (int)$categoryData['id'];
+                $categoryNameToUse = $categoryData['name'];
             }
         }
 
-        if (!$categoryToUse) {
-            $categories = $this->dictionary->getCategories();
+        if (!$categoryIdToUse) {
+            $categories = $this->dictionary->getCategoriesFull();
             if (!empty($categories)) {
-                $categoryToUse = $categories[array_rand($categories)];
-                $categoryData = $this->dictionary->getCategoryByName($categoryToUse);
-                if ($categoryData) {
-                    $categoryIdToUse = (int)$categoryData['id'];
-                }
+                $randomCategory = $categories[array_rand($categories)];
+                $categoryIdToUse = (int)$randomCategory['id'];
+                $categoryNameToUse = $randomCategory['name'];
             }
         }
 
-        if (!$categoryToUse || !$categoryIdToUse) {
+        if (!$categoryIdToUse || !$categoryNameToUse) {
             throw new Exception('Cannot determine category for round');
         }
 
-        $card = $this->dictionary->getTopicCard($categoryToUse);
+        $card = $this->dictionary->getTopicCard($categoryNameToUse);
         $promptId = $card['id'];
         $roundQuestion = $card['question'];
         $commonAnswers = $card['answers'];
@@ -350,16 +325,12 @@ class GameService {
             throw new Exception('Cannot change category during a round');
         }
 
-        $availableCategories = $this->dictionary->getCategories();
-        if (!in_array($newCategory, $availableCategories)) {
+        $categoryData = $this->dictionary->getCategoryByName($newCategory);
+        if (!$categoryData) {
             throw new Exception('Invalid category');
         }
 
-        $categoryData = $this->dictionary->getCategoryByName($newCategory);
-        if ($categoryData) {
-            $state['selected_category_id'] = (int)$categoryData['id'];
-        }
-
+        $state['selected_category_id'] = (int)$categoryData['id'];
         $state['last_update'] = time();
         $state['updated_at'] = time();
 
