@@ -140,6 +140,7 @@ class Database {
                 
                 score INTEGER DEFAULT 0,
                 round_history TEXT DEFAULT "{}",
+                answers TEXT DEFAULT "",
                 
                 PRIMARY KEY (id, game_id),
                 FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
@@ -240,6 +241,10 @@ class Database {
             }
             if (!in_array('last_heartbeat', $tableInfo)) {
                 $this->pdo->exec('ALTER TABLE players ADD COLUMN last_heartbeat INTEGER');
+            }
+            if (!in_array('answers', $tableInfo)) {
+                $this->pdo->exec('ALTER TABLE players ADD COLUMN answers TEXT DEFAULT ""');
+                logMessage('Migration: added answers column to players', 'INFO');
             }
             
             logMessage('Schema migration completed', 'INFO');
