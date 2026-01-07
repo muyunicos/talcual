@@ -245,16 +245,51 @@
             border-top: 2px solid #3b82f6;
         }
         
+        .cascade-item-content {
+            flex: 1;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
         .cascade-item-badge {
             background: #334155;
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 11px;
             font-weight: 600;
+            flex-shrink: 0;
         }
         
         .cascade-item.selected .cascade-item-badge {
             background: #3b82f6;
+        }
+        
+        .cascade-item-btn-delete {
+            background: #dc2626;
+            border: none;
+            color: #fff;
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            opacity: 0;
+            transition: all 0.2s;
+            padding: 0;
+            flex-shrink: 0;
+            min-width: 24px;
+        }
+        
+        .cascade-item:hover .cascade-item-btn-delete {
+            opacity: 1;
+        }
+        
+        .cascade-item-btn-delete:hover {
+            background: #b91c1c;
         }
         
         .cascade-empty {
@@ -858,6 +893,22 @@
         </div>
     </div>
     
+    <div id="deleteConfirmModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <span class="modal-close" onclick="closeModal('deleteConfirmModal')">&times;</span>
+                ⚠️ Confirmar eliminación
+            </div>
+            <div style="margin-bottom: 20px; color: #e2e8f0;">
+                <p id="deleteConfirmText" style="margin: 0;"></p>
+            </div>
+            <div class="button-group">
+                <button class="btn-danger" onclick="executeDelete()" style="flex: 1;">🗑️ Eliminar</button>
+                <button class="btn-secondary" onclick="closeModal('deleteConfirmModal')" style="flex: 1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         const API = 'api.php';
         let selectedCategory = null;
@@ -869,6 +920,7 @@
         let lastImportPreview = null;
         let draggedElement = null;
         let draggedData = null;
+        let pendingDelete = null;
         
         document.addEventListener('DOMContentLoaded', () => {
             setupNavigation();
@@ -1098,6 +1150,10 @@
             }
         }
         
+        function countPromptsForCategory(categoryId) {
+            return allPrompts.filter(p => p.category_ids.includes(categoryId)).length;
+        }
+        
         function renderBatchCategories(categories) {
             const list = document.getElementById('batchCategoriesList');
             if (!categories || categories.length === 0) {
@@ -1217,14 +1273,20 @@
             
             list.innerHTML = categories
                 .sort((a, b) => a.orden - b.orden)
-                .map(cat => `
-                    <div class="cascade-item ${selectedCategory === cat.id ? 'selected' : ''}" 
-                         data-category-id="${cat.id}" 
-                         onclick="selectCategory(${cat.id})">
-                        <span>${cat.name}</span>
-                        <span class="cascade-item-badge">#${cat.id}</span>
-                    </div>
-                `).join('');
+                .map(cat => {
+                    const promptCount = countPromptsForCategory(cat.id);
+                    return `
+                        <div class="cascade-item ${selectedCategory === cat.id ? 'selected' : ''}" 
+                             data-category-id="${cat.id}" 
+                             onclick="selectCategory(${cat.id})">
+                            <div class="cascade-item-content">
+                                <span>${cat.name}</span>
+                                <span class="cascade-item-badge">${promptCount}</span>
+                            </div>
+                            <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('category', ${cat.id}, '${cat.name}')" title="Eliminar">🗑️</button>
+                        </div>
+                    `;
+                }).join('');
             
             enableCategoryDragAndDrop();
         }
@@ -1240,8 +1302,11 @@
                 .sort((a, b) => a.text.localeCompare(b.text))
                 .map(p => `
                     <div class="cascade-item ${selectedPrompt === p.id ? 'selected' : ''}" onclick="selectPrompt(${p.id})">
-                        <span style="flex: 1;">${p.text}</span>
-                        <span class="cascade-item-badge">⭐${p.difficulty}</span>
+                        <div class="cascade-item-content">
+                            <span style="flex: 1;">${p.text}</span>
+                            <span class="cascade-item-badge">⭐${p.difficulty}</span>
+                        </div>
+                        <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('prompt', ${p.id}, '${p.text}')" title="Eliminar">🗑️</button>
                     </div>
                 `).join('');
         }
@@ -1258,7 +1323,10 @@
                 .sort((a, b) => (a.word_group || '').localeCompare(b.word_group || ''))
                 .map(w => `
                     <div class="cascade-item">
-                        <span>${w.word_group}</span>
+                        <div class="cascade-item-content">
+                            <span>${w.word_group}</span>
+                        </div>
+                        <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('word', ${w.id}, '${w.word_group}')" title="Eliminar">🗑️</button>
                     </div>
                 `).join('');
         }
@@ -1274,6 +1342,63 @@
             const response = await fetch(`${API}?action=get-words&prompt_id=${promptId}`);
             const json = await response.json();
             renderWords(json.data || []);
+        }
+        
+        function confirmDelete(type, id, name) {
+            let message = '';
+            
+            if (type === 'category') {
+                message = `¿Eliminar categoría "${name}"? Se eliminarán todas las consignas y palabras asociadas.`;
+            } else if (type === 'prompt') {
+                message = `¿Eliminar consigna "${name}"? Se eliminarán todas las palabras asociadas.`;
+            } else if (type === 'word') {
+                message = `¿Eliminar palabra "${name}"?`;
+            }
+            
+            pendingDelete = { type, id, name };
+            document.getElementById('deleteConfirmText').textContent = message;
+            openModal('deleteConfirmModal');
+        }
+        
+        async function executeDelete() {
+            if (!pendingDelete) return;
+            
+            const { type, id } = pendingDelete;
+            closeModal('deleteConfirmModal');
+            
+            let action = '';
+            if (type === 'category') action = 'delete-category';
+            else if (type === 'prompt') action = 'delete-prompt';
+            else if (type === 'word') action = 'delete-word';
+            
+            try {
+                const response = await fetch(`${API}?action=${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`✓ ${type === 'category' ? 'Categoría' : type === 'prompt' ? 'Consigna' : 'Palabra'} eliminada`, 'success');
+                    
+                    if (type === 'category') {
+                        selectedCategory = null;
+                        selectedPrompt = null;
+                    } else if (type === 'prompt') {
+                        selectedPrompt = null;
+                    }
+                    
+                    loadDictionary();
+                    updateStats();
+                } else {
+                    showMessage('Error: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+            
+            pendingDelete = null;
         }
         
         async function updateStats() {
