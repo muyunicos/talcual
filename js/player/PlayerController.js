@@ -481,7 +481,7 @@ class PlayerManager extends BaseController {
     }
 
     initializeWordEngineFromRound(state.roundData);
-    debug('📚 WordEngine inicializado en showResults/showFinalResults', 'info');
+    debug('📚 WordEngine inicializado en showResults', 'info');
     return true;
   }
 
@@ -498,22 +498,18 @@ class PlayerManager extends BaseController {
 
     const myResultData = globalResults[this.playerId];
 
-    if (state.status === 'round_ended' || state.status === 'finished') {
-      if (myResultData && myResultData.answers.length > 0) {
-        const formattedMatches = myResultData.answers.map(ans => ({
-            word: ans.word,
-            matched: ans.matches.length > 0,
-            matchedPlayers: ans.matches.map(m => m.name),
-            count: ans.matches.length,
-            matchType: ans.matches[0]?.type
-        }));
+    if (myResultData && myResultData.answers.length > 0) {
+      const formattedMatches = myResultData.answers.map(ans => ({
+        word: ans.word,
+        matched: ans.matches.length > 0,
+        matchedPlayers: ans.matches.map(m => m.name),
+        count: ans.matches.length,
+        matchType: ans.matches[0]?.type
+      }));
 
-        const currentScore = me.score || 0;
-        
-        this.view.showRoundResults(formattedMatches, state.players, currentScore);
-      } else {
-        this.view.showResults(null, [], this.isReady);
-      }
+      this.view.showRoundResults(formattedMatches);
+    } else {
+      this.view.showRoundResults(null);
     }
   }
 
@@ -532,17 +528,16 @@ class PlayerManager extends BaseController {
 
     if (myResultData && myResultData.answers.length > 0) {
       const formattedMatches = myResultData.answers.map(ans => ({
-          word: ans.word,
-          matched: ans.matches.length > 0,
-          matchedPlayers: ans.matches.map(m => m.name),
-          count: ans.matches.length,
-          matchType: ans.matches[0]?.type
+        word: ans.word,
+        matched: ans.matches.length > 0,
+        matchedPlayers: ans.matches.map(m => m.name),
+        count: ans.matches.length,
+        matchType: ans.matches[0]?.type
       }));
 
-      const currentScore = me.score || 0;
-      this.view.showRoundResults(formattedMatches, state.players, currentScore);
+      this.view.showRoundResults(formattedMatches);
     } else {
-      this.view.showResults(me?.round_results, [], this.isReady);
+      this.view.showRoundResults(null);
     }
 
     this.view.showFinalResults();
