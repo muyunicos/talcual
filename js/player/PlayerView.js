@@ -321,7 +321,7 @@ class PlayerView {
     }
   }
 
-  showRoundResults(matches, allPlayers, playerScore) {
+  showRoundResults(resultData) {
     safeHideElement(this.elements.wordsInputSection);
     safeHideElement(this.elements.currentWord);
     safeHideElement(this.elements.categoryLabel);
@@ -329,71 +329,50 @@ class PlayerView {
     safeHideElement(this.elements.countdownOverlay);
     this.clearTimer();
 
-    if (!matches || matches.length === 0) {
+    if (!resultData || (Array.isArray(resultData) && resultData.length === 0) || (typeof resultData === 'object' && Object.keys(resultData).length === 0)) {
       this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
       safeShowElement(this.elements.resultsSection);
       return;
     }
 
     let html = '<div class="results-title">📊 Tus Resultados</div>';
+    let roundScore = 0;
 
-    for (const match of matches) {
-      const icon = match.matched ? '✅' : '❌';
-      const word = sanitizeText(match.word);
-      let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match'}">`;
-      resultHtml += `<div class="result-word">${icon} ${word}</div>`;
+    if (Array.isArray(resultData)) {
+      for (const match of resultData) {
+        const icon = match.matched ? '✅' : '❌';
+        const word = sanitizeText(match.word);
+        let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match'}">`;
+        resultHtml += `<div class="result-word">${icon} ${word}</div>`;
 
-      if (match.matched && match.matchedPlayers && match.matchedPlayers.length > 0) {
-        const playerNames = match.matchedPlayers.map(name => sanitizeText(name)).join(', ');
-        resultHtml += `<div class="result-players">Coincidió con: ${playerNames}</div>`;
-      } else if (!match.matched) {
-        resultHtml += `<div class="result-players">Sin coincidencias</div>`;
-      }
+        if (match.matched && match.matchedPlayers && match.matchedPlayers.length > 0) {
+          const playerNames = match.matchedPlayers.map(name => sanitizeText(name)).join(', ');
+          resultHtml += `<div class="result-players">Coincidió con: ${playerNames}</div>`;
+        } else if (!match.matched) {
+          resultHtml += `<div class="result-players">Sin coincidencias</div>`;
+        }
 
-      resultHtml += '</div>';
-      html += resultHtml;
-    }
-
-    this.elements.resultsSection.innerHTML = html;
-    safeShowElement(this.elements.resultsSection);
-  }
-
-  showResults(myResults, myAnswers, isReady) {
-    safeHideElement(this.elements.wordsInputSection);
-    safeHideElement(this.elements.currentWord);
-    safeHideElement(this.elements.categoryLabel);
-    safeHideElement(this.elements.waitingMessage);
-    safeHideElement(this.elements.countdownOverlay);
-    this.clearTimer();
-
-    if (!myResults || Object.keys(myResults).length === 0) {
-      const sentAnswers = myAnswers && Array.isArray(myAnswers) && myAnswers.length > 0;
-      if (!sentAnswers) {
-        this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
-      } else {
-        this.elements.resultsSection.innerHTML = '<div class="waiting-message">⏳ Esperando resultados...</div>';
+        resultHtml += '</div>';
+        html += resultHtml;
       }
     } else {
-      let html = '<div class="results-title">📊 Tus Resultados</div>';
-      let roundScore = 0;
-
-      Object.entries(myResults).forEach(([word, result]) => {
+      Object.entries(resultData).forEach(([word, result]) => {
         const hasMatch = result.count > 1;
         const icon = hasMatch ? '✅' : '❌';
+        const points = result.points || 0;
         html += `
           <div class="result-item ${hasMatch ? 'match' : 'no-match'}">
             <div class="result-word">${icon} ${sanitizeText(word)}</div>
-            <div class="result-points">+${result.points} puntos</div>
+            <div class="result-points">+${points} puntos</div>
             ${hasMatch ? `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>` : ''}
           </div>
         `;
-        roundScore += result.points;
+        roundScore += points;
       });
-
       html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
-      this.elements.resultsSection.innerHTML = html;
     }
 
+    this.elements.resultsSection.innerHTML = html;
     safeShowElement(this.elements.resultsSection);
   }
 
