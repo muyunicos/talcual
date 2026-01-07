@@ -164,7 +164,6 @@ class AuraModule {
                 
                 if (onSelect) {
                     onSelect(aura);
-                    this.savePlayerColor(aura.hex);
                 }
             });
             container.appendChild(circle);
@@ -179,7 +178,12 @@ class AuraModule {
         randomizer.addEventListener('click', () => {
             const newAuras = this.generateRandomAuras();
             const randomAura = newAuras[Math.floor(Math.random() * newAuras.length)];
+            
             this.renderAuraSelectors(container, newAuras, randomAura.hex, onSelect);
+            
+            if (onSelect) {
+                onSelect(randomAura);
+            }
         });
         
         container.appendChild(randomizer);
@@ -203,6 +207,8 @@ class AuraModule {
         const additionalAuras = this.generateRandomAuras();
         auras.push(...additionalAuras);
         
+        let selectedAura = auras[0];
+        
         auras.forEach((aura, index) => {
             const circle = document.createElement('div');
             circle.className = 'aura-circle';
@@ -222,6 +228,8 @@ class AuraModule {
                 });
                 circle.classList.add('selected');
                 
+                selectedAura = aura;
+                
                 if (onSelect) {
                     onSelect(aura);
                 }
@@ -237,21 +245,19 @@ class AuraModule {
         
         randomizer.addEventListener('click', () => {
             const newAuras = this.generateRandomAuras();
-            const selectedElement = container.querySelector('.aura-circle.selected');
-            const selectedColor = selectedElement ? selectedElement.dataset.color : (currentAura || null);
+            const preservedAura = selectedAura;
             
             const allAuras = [];
-            if (selectedColor && this.isValidAura(selectedColor)) {
-                const [c1, c2] = selectedColor.split(',').map(c => c.trim());
-                allAuras.push({
-                    color1: c1,
-                    color2: c2,
-                    hex: selectedColor
-                });
+            if (preservedAura && this.isValidAura(preservedAura.hex)) {
+                allAuras.push(preservedAura);
             }
             allAuras.push(...newAuras);
             
-            this.renderAuraSelectorsEdit(container, selectedColor || currentAura, onSelect);
+            this.renderAuraSelectorsEdit(container, preservedAura?.hex || currentAura, onSelect);
+            
+            if (onSelect && preservedAura) {
+                onSelect(preservedAura);
+            }
         });
         
         container.appendChild(randomizer);
