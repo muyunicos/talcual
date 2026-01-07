@@ -93,6 +93,7 @@ class DictionaryRepository {
             
             if (!$categoryRow) {
                 return [
+                    'id' => null,
                     'question' => 'JUEGO',
                     'answers' => []
                 ];
@@ -111,6 +112,7 @@ class DictionaryRepository {
             
             if (!$promptRow) {
                 return [
+                    'id' => null,
                     'question' => 'JUEGO',
                     'answers' => []
                 ];
@@ -128,12 +130,14 @@ class DictionaryRepository {
             $answers = array_map(function($row) { return $row['word_group']; }, $wordRows);
             
             return [
+                'id' => (int)$promptId,
                 'question' => $question,
                 'answers' => $answers
             ];
         } catch (Exception $e) {
             logMessage('Error fetching topic card for ' . $category . ': ' . $e->getMessage(), 'ERROR');
             return [
+                'id' => null,
                 'question' => 'JUEGO',
                 'answers' => []
             ];
