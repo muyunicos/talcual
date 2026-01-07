@@ -1,6 +1,11 @@
 <?php
 
+require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/WordNormalizer.php';
+
 class DictionaryRepository {
+    use WordNormalizer;
+    
     private $db = null;
     private $pdo = null;
 
@@ -9,41 +14,9 @@ class DictionaryRepository {
         $this->pdo = $this->db->getConnection();
     }
 
-    private static function normalizeWord($rawWord) {
-        if (empty($rawWord)) {
-            return '';
-        }
-        
-        $word = trim($rawWord);
-        $word = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $word);
-        $word = strtoupper($word);
-        $word = preg_replace('/[^A-Z0-9]/', '', $word);
-        
-        return $word;
-    }
-
-    private static function cleanWordPrompt($rawWord) {
-        if (empty($rawWord)) {
-            return '';
-        }
-        
-        $word = trim($rawWord);
-        
-        if (strpos($word, '|') !== false) {
-            $parts = explode('|', $word);
-            $word = trim($parts[0]);
-        }
-        
-        if (substr($word, -1) === '.') {
-            $word = substr($word, 0, -1);
-        }
-        
-        return self::normalizeWord($word);
-    }
-
     public function getCategories() {
         try {
-            $stmt = $this->pdo->query('SELECT name FROM categories ORDER BY name ASC');
+            $stmt = $this->pdo->query('SELECT name FROM categories WHERE is_active = 1 ORDER BY orden, name ASC');
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             return array_map(function($row) { return $row['name']; }, $rows);
@@ -55,7 +28,7 @@ class DictionaryRepository {
 
     public function getCategoriesFull() {
         try {
-            $stmt = $this->pdo->query('SELECT id, name FROM categories ORDER BY name');
+            $stmt = $this->pdo->query('SELECT id, name, orden, is_active FROM categories WHERE is_active = 1 ORDER BY orden, name');
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             throw new Exception('Error fetching categories: ' . $e->getMessage());
@@ -64,7 +37,7 @@ class DictionaryRepository {
 
     public function getCategoryById($categoryId) {
         try {
-            $stmt = $this->pdo->prepare('SELECT id, name FROM categories WHERE id = ?');
+            $stmt = $this->pdo->prepare('SELECT id, name, orden, is_active FROM categories WHERE id = ? AND is_active = 1');
             $stmt->execute([$categoryId]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -74,7 +47,7 @@ class DictionaryRepository {
 
     public function getCategoryByName($categoryName) {
         try {
-            $stmt = $this->pdo->prepare('SELECT id, name FROM categories WHERE name = ?');
+            $stmt = $this->pdo->prepare('SELECT id, name, orden, is_active FROM categories WHERE name = ? AND is_active = 1');
             $stmt->execute([$categoryName]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -84,8 +57,8 @@ class DictionaryRepository {
 
     public function addCategory($categoryName) {
         try {
-            $stmt = $this->pdo->prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)');
-            $stmt->execute([$categoryName]);
+            $stmt = $this->pdo->prepare('INSERT OR IGNORE INTO categories (name, is_active, date) VALUES (?, 1, ?)');
+            $stmt->execute([$categoryName, time()]);
             return $this->getCategoryByName($categoryName);
         } catch (PDOException $e) {
             throw new Exception('Error adding category: ' . $e->getMessage());
@@ -114,7 +87,7 @@ class DictionaryRepository {
 
     public function getTopicCard($category) {
         try {
-            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ?');
+            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ? AND is_active = 1');
             $categoryStmt->execute([$category]);
             $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
             
@@ -130,7 +103,7 @@ class DictionaryRepository {
             $promptStmt = $this->pdo->prepare(
                 'SELECT p.id, p.text FROM prompts p '
                 . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
-                . 'WHERE pc.category_id = ? '
+                . 'WHERE pc.category_id = ? AND p.is_active = 1 '
                 . 'ORDER BY RANDOM() LIMIT 1'
             );
             $promptStmt->execute([$categoryId]);
@@ -147,12 +120,12 @@ class DictionaryRepository {
             $question = trim($promptRow['text']);
             
             $wordStmt = $this->pdo->prepare(
-                'SELECT word_entry FROM valid_words WHERE prompt_id = ? ORDER BY word_entry ASC'
+                'SELECT word_group FROM valid_words WHERE prompt_id = ? ORDER BY word_group ASC'
             );
             $wordStmt->execute([$promptId]);
             $wordRows = $wordStmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $answers = array_map(function($row) { return $row['word_entry']; }, $wordRows);
+            $answers = array_map(function($row) { return $row['word_group']; }, $wordRows);
             
             return [
                 'question' => $question,
@@ -169,19 +142,19 @@ class DictionaryRepository {
 
     public function getAllResponsesByCategory($category) {
         try {
-            $sql = 'SELECT DISTINCT vw.word_entry '
+            $sql = 'SELECT DISTINCT vw.word_group '
                  . 'FROM valid_words vw '
                  . 'JOIN prompts p ON vw.prompt_id = p.id '
                  . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
                  . 'JOIN categories c ON pc.category_id = c.id '
-                 . 'WHERE c.name = ? '
-                 . 'ORDER BY vw.word_entry ASC';
+                 . 'WHERE c.name = ? AND c.is_active = 1 AND p.is_active = 1 '
+                 . 'ORDER BY vw.word_group ASC';
             
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$category]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            return array_map(function($row) { return $row['word_entry']; }, $rows);
+            return array_map(function($row) { return $row['word_group']; }, $rows);
         } catch (Exception $e) {
             logMessage('Error fetching responses for category ' . $category . ': ' . $e->getMessage(), 'ERROR');
             return [];
@@ -194,7 +167,7 @@ class DictionaryRepository {
         }
         
         try {
-            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ?');
+            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ? AND is_active = 1');
             $categoryStmt->execute([$category]);
             $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
             
@@ -207,11 +180,11 @@ class DictionaryRepository {
             $maxAttempts = 30;
             
             while ($attempts < $maxAttempts) {
-                $sql = 'SELECT vw.word_entry '
+                $sql = 'SELECT vw.word_group '
                      . 'FROM valid_words vw '
                      . 'JOIN prompts p ON vw.prompt_id = p.id '
                      . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
-                     . 'WHERE pc.category_id = ? '
+                     . 'WHERE pc.category_id = ? AND p.is_active = 1 '
                      . 'ORDER BY RANDOM() '
                      . 'LIMIT 1';
                 
@@ -223,7 +196,7 @@ class DictionaryRepository {
                     return null;
                 }
                 
-                $rawWord = $row['word_entry'];
+                $rawWord = $row['word_group'];
                 $cleaned = self::cleanWordPrompt($rawWord);
                 
                 if (!empty($cleaned) && mb_strlen($cleaned) <= $maxLength) {
@@ -242,7 +215,7 @@ class DictionaryRepository {
 
     public function getDictionaryStats() {
         try {
-            $categoryCount = $this->pdo->query('SELECT COUNT(*) as count FROM categories')->fetch()['count'];
+            $categoryCount = $this->pdo->query('SELECT COUNT(*) as count FROM categories WHERE is_active = 1')->fetch()['count'];
             $categories = $this->getCategories();
             
             $stats = [
@@ -286,13 +259,13 @@ class DictionaryRepository {
     public function getPromptsWithStats($categoryId) {
         try {
             $sql = 'SELECT 
-                p.id, p.text,
+                p.id, p.text, p.difficulty,
                 (SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids,
                 COUNT(DISTINCT vw.id) as word_count
             FROM prompts p
             JOIN prompt_categories pc ON p.id = pc.prompt_id
             LEFT JOIN valid_words vw ON p.id = vw.prompt_id
-            WHERE pc.category_id = ?
+            WHERE pc.category_id = ? AND p.is_active = 1
             GROUP BY p.id, p.text
             ORDER BY p.text';
             
@@ -314,19 +287,20 @@ class DictionaryRepository {
     public function getPrompts($categoryId = null) {
         try {
             if ($categoryId) {
-                $sql = 'SELECT p.id, p.text, '
+                $sql = 'SELECT p.id, p.text, p.difficulty, '
                     . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
                     . 'FROM prompts p '
                     . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
-                    . 'WHERE pc.category_id = ? '
+                    . 'WHERE pc.category_id = ? AND p.is_active = 1 '
                     . 'GROUP BY p.id, p.text '
                     . 'ORDER BY p.text';
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute([$categoryId]);
             } else {
-                $sql = 'SELECT p.id, p.text, '
+                $sql = 'SELECT p.id, p.text, p.difficulty, '
                     . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
                     . 'FROM prompts p '
+                    . 'WHERE p.is_active = 1 '
                     . 'GROUP BY p.id, p.text '
                     . 'ORDER BY p.text';
                 $stmt = $this->pdo->query($sql);
@@ -345,10 +319,10 @@ class DictionaryRepository {
 
     public function getPromptById($promptId) {
         try {
-            $sql = 'SELECT p.id, p.text, '
+            $sql = 'SELECT p.id, p.text, p.difficulty, '
                 . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
                 . 'FROM prompts p '
-                . 'WHERE p.id = ?';
+                . 'WHERE p.id = ? AND p.is_active = 1';
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$promptId]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -377,8 +351,8 @@ class DictionaryRepository {
             
             $this->db->beginTransaction();
             
-            $stmt = $this->pdo->prepare('INSERT INTO prompts (text) VALUES (?)');
-            $stmt->execute([$promptText]);
+            $stmt = $this->pdo->prepare('INSERT INTO prompts (text, is_active, date) VALUES (?, 1, ?)');
+            $stmt->execute([$promptText, time()]);
             $promptId = $this->pdo->lastInsertId();
             
             $relStmt = $this->pdo->prepare('INSERT INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
@@ -452,10 +426,10 @@ class DictionaryRepository {
     public function getValidWords($promptId = null) {
         try {
             if ($promptId) {
-                $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_entry FROM valid_words WHERE prompt_id = ? ORDER BY word_entry');
+                $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group FROM valid_words WHERE prompt_id = ? ORDER BY word_group');
                 $stmt->execute([$promptId]);
             } else {
-                $stmt = $this->pdo->query('SELECT id, prompt_id, word_entry FROM valid_words ORDER BY prompt_id, word_entry');
+                $stmt = $this->pdo->query('SELECT id, prompt_id, word_group FROM valid_words ORDER BY prompt_id, word_group');
             }
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -465,7 +439,7 @@ class DictionaryRepository {
 
     public function getValidWordById($wordId) {
         try {
-            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_entry FROM valid_words WHERE id = ?');
+            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group FROM valid_words WHERE id = ?');
             $stmt->execute([$wordId]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -475,7 +449,7 @@ class DictionaryRepository {
 
     public function addValidWord($promptId, $wordEntry) {
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_entry) VALUES (?, ?)');
+            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_group) VALUES (?, ?)');
             $stmt->execute([$promptId, $wordEntry]);
             return $this->pdo->lastInsertId();
         } catch (PDOException $e) {
@@ -485,7 +459,7 @@ class DictionaryRepository {
 
     public function updateValidWord($wordId, $newWordEntry) {
         try {
-            $stmt = $this->pdo->prepare('UPDATE valid_words SET word_entry = ? WHERE id = ?');
+            $stmt = $this->pdo->prepare('UPDATE valid_words SET word_group = ? WHERE id = ?');
             $stmt->execute([$newWordEntry, $wordId]);
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
@@ -515,8 +489,8 @@ class DictionaryRepository {
 
     public function getStats() {
         try {
-            $categories = $this->pdo->query('SELECT COUNT(*) as count FROM categories')->fetch()['count'];
-            $prompts = $this->pdo->query('SELECT COUNT(*) as count FROM prompts')->fetch()['count'];
+            $categories = $this->pdo->query('SELECT COUNT(*) as count FROM categories WHERE is_active = 1')->fetch()['count'];
+            $prompts = $this->pdo->query('SELECT COUNT(*) as count FROM prompts WHERE is_active = 1')->fetch()['count'];
             $words = $this->pdo->query('SELECT COUNT(*) as count FROM valid_words')->fetch()['count'];
 
             return [
@@ -594,14 +568,14 @@ class DictionaryRepository {
     public function getDatabaseInspection() {
         try {
             $inspection = [
-                'categories' => $this->pdo->query('SELECT id, name FROM categories ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
-                'prompts' => $this->pdo->query('SELECT p.id, p.text, (SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids FROM prompts p GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
-                'words' => $this->pdo->query('SELECT id, prompt_id, word_entry FROM valid_words ORDER BY prompt_id, id')->fetchAll(PDO::FETCH_ASSOC),
+                'categories' => $this->pdo->query('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+                'prompts' => $this->pdo->query('SELECT p.id, p.text, (SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids FROM prompts p WHERE p.is_active = 1 GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
+                'words' => $this->pdo->query('SELECT id, prompt_id, word_group FROM valid_words ORDER BY prompt_id, id')->fetchAll(PDO::FETCH_ASSOC),
                 'games' => $this->pdo->query('SELECT id, status, round, updated_at FROM games ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
                 'players' => $this->pdo->query('SELECT id, game_id, name, score FROM players ORDER BY game_id, id')->fetchAll(PDO::FETCH_ASSOC),
                 'stats' => [
-                    'categories_count' => $this->pdo->query('SELECT COUNT(*) as count FROM categories')->fetch()['count'],
-                    'prompts_count' => $this->pdo->query('SELECT COUNT(*) as count FROM prompts')->fetch()['count'],
+                    'categories_count' => $this->pdo->query('SELECT COUNT(*) as count FROM categories WHERE is_active = 1')->fetch()['count'],
+                    'prompts_count' => $this->pdo->query('SELECT COUNT(*) as count FROM prompts WHERE is_active = 1')->fetch()['count'],
                     'words_count' => $this->pdo->query('SELECT COUNT(*) as count FROM valid_words')->fetch()['count'],
                     'games_count' => $this->pdo->query('SELECT COUNT(*) as count FROM games')->fetch()['count'],
                     'players_count' => $this->pdo->query('SELECT COUNT(*) as count FROM players')->fetch()['count']
