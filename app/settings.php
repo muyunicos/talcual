@@ -25,8 +25,6 @@ $getenv = function($key, $default) use ($config) {
     return $default;
 };
 
-define('DICTIONARY_FILE', __DIR__ . '/diccionario.json');
-
 define('DEV_MODE', $getenv('DEV_MODE', false) === true || $getenv('DEV_MODE', false) === 'true');
 define('MAX_GAME_AGE', $getenv('MAX_GAME_AGE', 86400));
 define('CLEANUP_PROBABILITY', $getenv('CLEANUP_PROBABILITY', 0.05));
