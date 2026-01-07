@@ -86,7 +86,10 @@ class PlayerView {
       ]
     );
 
-    this.attachJoinScreenListeners();
+    setTimeout(() => {
+      this.initializeAuraSelector();
+      this.attachJoinScreenListeners();
+    }, 50);
   }
 
   buildJoinContent() {
@@ -108,7 +111,13 @@ class PlayerView {
       </div>
     `;
 
-    const auraSelector = container.querySelector('#modal-aura-selector');
+    return container;
+  }
+
+  initializeAuraSelector() {
+    const auraSelector = document.querySelector('#modal-aura-selector');
+    if (!auraSelector) return;
+
     const availableAuras = auraModuleInstance.generateRandomAuras();
     const randomAura = availableAuras[Math.floor(Math.random() * availableAuras.length)];
 
@@ -122,8 +131,6 @@ class PlayerView {
         this._joinData.selectedColor = aura.hex;
       }
     );
-
-    return container;
   }
 
   attachJoinScreenListeners() {
@@ -438,6 +445,10 @@ class PlayerView {
         ]
       ]
     );
+
+    setTimeout(() => {
+      this.initializeEditAuraSelector(currentColor);
+    }, 50);
   }
 
   buildEditNameContent(currentName, currentColor) {
@@ -445,7 +456,7 @@ class PlayerView {
     container.innerHTML = `
       <div class="input-group">
         <label class="input-label" for="modal-edit-name">Nuevo Nombre</label>
-        <input type="text" id="modal-edit-name" class="input-field" maxlength="20" autocomplete="off">
+        <input type="text" id="modal-edit-name" class="input-field" maxlength="20" autocomplete="off" value="${sanitizeText(currentName)}">
       </div>
       <div class="input-group" style="margin-top: 15px;">
         <label class="input-label">✨ Tu Aura</label>
@@ -453,10 +464,12 @@ class PlayerView {
       </div>
     `;
 
-    const nameInput = container.querySelector('#modal-edit-name');
-    const auraSelector = container.querySelector('#modal-edit-aura');
+    return container;
+  }
 
-    nameInput.value = currentName;
+  initializeEditAuraSelector(currentColor) {
+    const auraSelector = document.querySelector('#modal-edit-aura');
+    if (!auraSelector) return;
 
     this._editData.selectedAura = currentColor;
 
@@ -467,8 +480,6 @@ class PlayerView {
         this._editData.selectedAura = aura.hex;
       }
     );
-
-    return container;
   }
 
   getSelectedEditAura() {
