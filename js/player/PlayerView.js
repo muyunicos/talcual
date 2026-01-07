@@ -3,6 +3,8 @@ class PlayerView {
     this.maxWords = maxWords;
     this.elements = this.cacheElements();
     this.initializeVisibility();
+    this._joinData = { selectedColor: null };
+    this._editData = { selectedAura: null };
   }
 
   cacheElements() {
@@ -110,17 +112,16 @@ class PlayerView {
     const availableAuras = auraModuleInstance.generateRandomAuras();
     const randomAura = availableAuras[Math.floor(Math.random() * availableAuras.length)];
 
-    let selectedColor = randomAura.hex;
+    this._joinData.selectedColor = randomAura.hex;
+
     auraModuleInstance.renderAuraSelectors(
       auraSelector,
       availableAuras,
       randomAura.hex,
       (aura) => {
-        selectedColor = aura.hex;
+        this._joinData.selectedColor = aura.hex;
       }
     );
-
-    this._joinData = { selectedColor };
 
     return container;
   }
@@ -457,16 +458,15 @@ class PlayerView {
 
     nameInput.value = currentName;
 
-    let selectedAura = currentColor;
+    this._editData.selectedAura = currentColor;
+
     auraModuleInstance.renderAuraSelectorsEdit(
       auraSelector,
       currentColor,
       (aura) => {
-        selectedAura = aura.hex;
+        this._editData.selectedAura = aura.hex;
       }
     );
-
-    this._editData = { selectedAura };
 
     return container;
   }
