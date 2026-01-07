@@ -198,6 +198,26 @@ try {
             notifyGameChanged($gameId, ['event' => 'timer_updated', 'new_end_time' => $newEndTime], true);
             break;
 
+        case 'set_category':
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+
+            if (!$gameId) {
+                throw new Exception('game_id requerido');
+            }
+
+            $newCategory = isset($input['category']) ? trim((string)$input['category']) : null;
+
+            $result = $service->setSelectedCategory($gameId, $newCategory);
+            $response = [
+                'success' => true,
+                'message' => $result['message'],
+                'selected_category_id' => $result['selected_category_id'],
+                'server_now' => $result['server_now'],
+                'state' => $result['state']
+            ];
+            notifyGameChanged($gameId, ['event' => 'sync'], true);
+            break;
+
         case 'reset_game':
             $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
 
@@ -213,6 +233,23 @@ try {
                 'state' => $result['state']
             ];
             notifyGameChanged($gameId, ['event' => 'sync']);
+            break;
+
+        case 'end_game':
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+
+            if (!$gameId) {
+                throw new Exception('game_id requerido');
+            }
+
+            $result = $service->endRound($gameId);
+            $repository->delete($gameId);
+            $response = [
+                'success' => true,
+                'message' => 'Juego finalizado',
+                'server_now' => intval(microtime(true) * 1000)
+            ];
+            notifyGameChanged($gameId, ['event' => 'game_ended']);
             break;
 
         case 'leave_game':
