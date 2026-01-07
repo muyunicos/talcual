@@ -341,11 +341,22 @@ class DatabaseManager {
     }
 
     public function reorderCategories($order) {
-        $stmt = $this->pdo->prepare('UPDATE categories SET orden = ? WHERE id = ?');
-        foreach ($order as $index => $catId) {
-            $stmt->execute([$index, (int)$catId]);
+        if (!is_array($order) || empty($order)) {
+            throw new Exception('Invalid order array');
         }
-        return true;
+
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare('UPDATE categories SET orden = ? WHERE id = ?');
+            foreach ($order as $index => $catId) {
+                $stmt->execute([$index + 1, (int)$catId]);
+            }
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     public function getInspectionData() {
@@ -380,7 +391,7 @@ class DatabaseManager {
             
             if (!empty($indexes)) {
                 foreach ($indexes as $idx) {
-                    $indexColumns = $this->pdo->query("PRAGMA index_info({$idx['name']})") ->fetchAll(PDO::FETCH_COLUMN, 2);
+                    $indexColumns = $this->pdo->query("PRAGMA index_info({$idx['name']})")->fetchAll(PDO::FETCH_COLUMN, 2);
                     $tableInfo['indexes'][] = [
                         'name' => $idx['name'],
                         'columns' => $indexColumns,
