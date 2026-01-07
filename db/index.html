@@ -25,13 +25,13 @@
             border-right: 1px solid #334155;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
-            transition: width 0.3s ease, margin-left 0.3s ease;
+            overflow: hidden;
+            transition: width 0.3s ease;
+            position: relative;
         }
         
         .sidebar.collapsed {
-            width: 60px;
-            margin-left: -220px;
+            width: 70px;
         }
         
         .sidebar-header {
@@ -39,6 +39,10 @@
             border-bottom: 1px solid #334155;
             background: #0f172a;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 70px;
         }
         
         .sidebar-header h1 {
@@ -47,36 +51,46 @@
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 1px;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.3s ease, width 0.3s ease;
+            flex: 1;
         }
         
         .sidebar.collapsed .sidebar-header h1 {
             opacity: 0;
+            width: 0;
             display: none;
         }
         
         .sidebar-toggle {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
             background: #334155;
             border: none;
             color: #e2e8f0;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
-            font-size: 14px;
+            font-size: 16px;
+            flex-shrink: 0;
         }
         
         .sidebar-toggle:hover {
             background: #475569;
             color: #fff;
+        }
+        
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar.collapsed .sidebar-content {
+            opacity: 0;
+            pointer-events: none;
         }
         
         .nav-section-title {
@@ -87,13 +101,6 @@
             color: #475569;
             letter-spacing: 0.8px;
             margin-top: 15px;
-            transition: opacity 0.3s ease, padding 0.3s ease;
-        }
-        
-        .sidebar.collapsed .nav-section-title {
-            opacity: 0;
-            padding: 0;
-            margin: 0;
         }
         
         .nav-item {
@@ -114,20 +121,6 @@
             background: #1e40af;
             border-left-color: #3b82f6;
             color: #fff;
-        }
-        
-        .sidebar.collapsed .nav-item {
-            padding: 12px;
-            font-size: 16px;
-            text-align: center;
-            border-left: none;
-            border-bottom: 1px solid #334155;
-        }
-        
-        .sidebar.collapsed .nav-item.active {
-            background: #1e40af;
-            border-left: none;
-            border-bottom: 1px solid #3b82f6;
         }
         
         .main {
@@ -640,17 +633,19 @@
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h1>TalCual Admin</h1>
-                <button class="sidebar-toggle" onclick="toggleSidebar()">◀</button>
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Ocultar/mostrar">◀</button>
             </div>
             
-            <div class="nav-section-title">Diccionario</div>
-            <div class="nav-item active" data-panel="dictionary" title="Gestor Cascada">📚 Gestor Cascada</div>
-            <div class="nav-item" data-panel="batch-words" title="Lote de Palabras">📋 Lote de Palabras</div>
-            
-            <div class="nav-section-title">Herramientas</div>
-            <div class="nav-item" data-panel="tools" title="Optimización">⚙️ Optimización</div>
-            <div class="nav-item" data-panel="import-export" title="Import/Export">📤 Import/Export</div>
-            <div class="nav-item" data-panel="inspect" title="Inspector">🔍 Inspector</div>
+            <div class="sidebar-content">
+                <div class="nav-section-title">Diccionario</div>
+                <div class="nav-item active" data-panel="dictionary" title="Gestor Cascada">📚 Gestor Cascada</div>
+                <div class="nav-item" data-panel="batch-words" title="Lote de Palabras">📋 Lote de Palabras</div>
+                
+                <div class="nav-section-title">Herramientas</div>
+                <div class="nav-item" data-panel="tools" title="Optimización">⚙️ Optimización</div>
+                <div class="nav-item" data-panel="import-export" title="Import/Export">📤 Import/Export</div>
+                <div class="nav-item" data-panel="inspect" title="Inspector">🔍 Inspector</div>
+            </div>
         </div>
         
         <div class="main">
@@ -736,7 +731,7 @@
                     
                     <div class="form-group" style="margin-top: 20px;">
                         <label>Palabras (una por línea, usa | para sinónimos):</label>
-                        <textarea id="batchWordsInput" placeholder="Flores|Ramo|Rosas\nBombones|Chocolates|Bombón\nPerfume|Fragancia"></textarea>
+                        <textarea id="batchWordsInput" placeholder="Flores|Ramo|Rosas&#10;Bombones|Chocolates|Bombón&#10;Perfume|Fragancia"></textarea>
                     </div>
                     
                     <div class="button-group">
@@ -768,7 +763,7 @@
                     
                     <div class="form-group">
                         <label>Importar JSON:</label>
-                        <textarea id="importData" placeholder='Pega el JSON aquí...'></textarea>
+                        <textarea id="importData" placeholder="Pega el JSON aquí..."></textarea>
                     </div>
                     
                     <div id="importPreview" class="import-preview" style="display: none;">
@@ -785,7 +780,7 @@
                     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #334155;">
                         <h4 style="margin-bottom: 15px; color: #64748b; font-size: 12px; text-transform: uppercase;">O Arrastra un Archivo JSON</h4>
                         <div id="dropZone" style="border: 2px dashed #334155; padding: 30px; text-align: center; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <div style="color: #64748b; font-size: 14px;">📁 Arrastra JSON aquí</div>
+                            <div style="color: #64748b; font-size: 14px;">📄 Arrastra JSON aquí</div>
                         </div>
                     </div>
                 </div>
@@ -1563,7 +1558,7 @@
                     const data = res.data;
                     let html = `
                         <div style="margin-bottom: 20px;">
-                            <h4 style="color: #3b82f6; margin-bottom: 10px;">📁 Archivo: ${data.database_file}</h4>
+                            <h4 style="color: #3b82f6; margin-bottom: 10px;">📄 Archivo: ${data.database_file}</h4>
                             <span class="schema-stat">📊 ${data.file_size_mb} MB</span>
                             <span class="schema-stat">⏰ ${data.timestamp}</span>
                             <span class="schema-stat">📋 ${data.total_tables} tablas</span>
@@ -1592,7 +1587,7 @@
                             html += `<div class="schema-section">
                                 <div class="schema-section-title">Índices</div>`;
                             for (const idx of tableInfo.indexes) {
-                                html += `<div class="schema-item">📇 ${idx.name}${idx.unique ? ' [UNIQUE]' : ''}: (${idx.columns.join(', ')})</div>`;
+                                html += `<div class="schema-item">📋 ${idx.name}${idx.unique ? ' [UNIQUE]' : ''}: (${idx.columns.join(', ')})</div>`;
                             }
                             html += `</div>`;
                         }
