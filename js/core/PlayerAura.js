@@ -156,8 +156,11 @@ class AuraModule {
                 circle.classList.add('selected');
             }
             
-            circle.addEventListener('click', () => {
-                container.querySelectorAll('.aura-circle').forEach(c => {
+            circle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                container.querySelectorAll('.aura-circle:not(.aura-randomizer)').forEach(c => {
                     c.classList.remove('selected');
                 });
                 circle.classList.add('selected');
@@ -165,7 +168,8 @@ class AuraModule {
                 if (onSelect) {
                     onSelect(aura);
                 }
-            });
+            }, { passive: false });
+            
             container.appendChild(circle);
         });
         
@@ -175,7 +179,10 @@ class AuraModule {
         randomizer.innerHTML = '✨';
         randomizer.title = 'Generar nuevas auras';
         
-        randomizer.addEventListener('click', () => {
+        randomizer.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const newAuras = this.generateRandomAuras();
             const randomAura = newAuras[Math.floor(Math.random() * newAuras.length)];
             
@@ -184,7 +191,7 @@ class AuraModule {
             if (onSelect) {
                 onSelect(randomAura);
             }
-        });
+        }, { passive: false });
         
         container.appendChild(randomizer);
     }
@@ -222,7 +229,10 @@ class AuraModule {
                 circle.classList.add('selected');
             }
             
-            circle.addEventListener('click', () => {
+            circle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 container.querySelectorAll('.aura-circle:not(.aura-randomizer)').forEach(c => {
                     c.classList.remove('selected');
                 });
@@ -233,7 +243,8 @@ class AuraModule {
                 if (onSelect) {
                     onSelect(aura);
                 }
-            });
+            }, { passive: false });
+            
             container.appendChild(circle);
         });
         
@@ -243,7 +254,10 @@ class AuraModule {
         randomizer.innerHTML = '✨';
         randomizer.title = 'Generar nuevas auras';
         
-        randomizer.addEventListener('click', () => {
+        randomizer.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const newAuras = this.generateRandomAuras();
             const preservedAura = selectedAura;
             
@@ -258,7 +272,7 @@ class AuraModule {
             if (onSelect && preservedAura) {
                 onSelect(preservedAura);
             }
-        });
+        }, { passive: false });
         
         container.appendChild(randomizer);
     }
