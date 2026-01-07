@@ -322,7 +322,7 @@ class DatabaseManager {
     }
 
     public function getGamePlayers($gameId) {
-        $stmt = $this->pdo->prepare('SELECT id, game_id, name, aura, status, score, round_history
+        $stmt = $this->pdo->prepare('SELECT id, game_id, name, aura, status, score, round_history, answers
                 FROM players WHERE game_id = ? ORDER BY id');
         $stmt->execute([$gameId]);
         $players = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -330,6 +330,7 @@ class DatabaseManager {
         foreach ($players as &$player) {
             $player['score'] = (int)$player['score'];
             $player['round_history'] = $player['round_history'] ? json_decode($player['round_history'], true) : [];
+            $player['answers'] = !empty($player['answers']) ? explode(',', $player['answers']) : [];
         }
         return $players;
     }
