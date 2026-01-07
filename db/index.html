@@ -1399,18 +1399,23 @@
             
             list.innerHTML = prompts
                 .sort((a, b) => a.text.localeCompare(b.text))
-                .map(p => `
-                    <div class="cascade-item ${selectedPrompt === p.id ? 'selected' : ''}" 
-                         data-prompt-id="${p.id}" 
-                         onclick="selectPrompt(${p.id})">
-                        <div class="cascade-item-content">
-                            <span style="flex: 1;">${p.text}</span>
-                            <span class="cascade-item-badge">⭐${p.difficulty}</span>
+                .map(p => {
+                    const promptId = p.id;
+                    const promptText = p.text;
+                    const difficulty = p.difficulty;
+                    return `
+                        <div class="cascade-item ${selectedPrompt === promptId ? 'selected' : ''}" 
+                             data-prompt-id="${promptId}" 
+                             onclick="selectPrompt(${promptId})">
+                            <div class="cascade-item-content">
+                                <span style="flex: 1;">${promptText}</span>
+                                <span class="cascade-item-badge">⭐${difficulty}</span>
+                            </div>
+                            <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditPrompt(${promptId}, ${JSON.stringify(promptText)})" title="Editar">✏️</button>
+                            <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('prompt', ${promptId}, ${JSON.stringify(promptText)})" title="Eliminar">🗑️</button>
                         </div>
-                        <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditPrompt(${p.id}, '${p.text.replace(/'/g, "\\'")}'" title="Editar">✏️</button>
-                        <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('prompt', ${p.id}, '${p.text.replace(/'/g, "\\'")}'" title="Eliminar">🗑️</button>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
         }
         
         function renderWords(words) {
@@ -1423,17 +1428,21 @@
             list.innerHTML = words
                 .filter(w => w && w.word_group)
                 .sort((a, b) => (a.word_group || '').localeCompare(b.word_group || ''))
-                .map(w => `
-                    <div class="cascade-item ${selectedWord === w.id ? 'selected' : ''}" 
-                         data-word-id="${w.id}" 
-                         onclick="selectWord(${w.id})">
-                        <div class="cascade-item-content">
-                            <span style="flex: 1;">${w.word_group}</span>
+                .map(w => {
+                    const wordId = w.id;
+                    const wordGroup = w.word_group;
+                    return `
+                        <div class="cascade-item ${selectedWord === wordId ? 'selected' : ''}" 
+                             data-word-id="${wordId}" 
+                             onclick="selectWord(${wordId})">
+                            <div class="cascade-item-content">
+                                <span style="flex: 1;">${wordGroup}</span>
+                            </div>
+                            <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditWord(${wordId}, ${JSON.stringify(wordGroup)})" title="Editar">✏️</button>
+                            <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('word', ${wordId}, ${JSON.stringify(wordGroup)})" title="Eliminar">🗑️</button>
                         </div>
-                        <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditWord(${w.id}, '${w.word_group.replace(/'/g, "\\'")}'" title="Editar">✏️</button>
-                        <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('word', ${w.id}, '${w.word_group.replace(/'/g, "\\'")}'" title="Eliminar">🗑️</button>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
         }
         
         function selectCategory(catId) {
