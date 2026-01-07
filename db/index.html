@@ -265,6 +265,18 @@
             background: #3b82f6;
         }
         
+        .cascade-item-actions {
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .cascade-item:hover .cascade-item-actions {
+            opacity: 1;
+        }
+        
         .cascade-item-btn-edit {
             background: #3b82f6;
             border: none;
@@ -277,20 +289,14 @@
             align-items: center;
             justify-content: center;
             font-size: 12px;
-            opacity: 0;
-            transition: all 0.2s;
             padding: 0;
             flex-shrink: 0;
             min-width: 24px;
-            margin-right: 6px;
+            transition: all 0.2s;
         }
         
         .cascade-item-btn-edit:hover {
             background: #2563eb;
-        }
-        
-        .cascade-item.selected .cascade-item-btn-edit {
-            opacity: 1;
         }
         
         .cascade-item-btn-delete {
@@ -305,15 +311,10 @@
             align-items: center;
             justify-content: center;
             font-size: 12px;
-            opacity: 0;
-            transition: all 0.2s;
             padding: 0;
             flex-shrink: 0;
             min-width: 24px;
-        }
-        
-        .cascade-item:hover .cascade-item-btn-delete {
-            opacity: 1;
+            transition: all 0.2s;
         }
         
         .cascade-item-btn-delete:hover {
@@ -361,7 +362,7 @@
             padding: 0;
             flex-shrink: 0;
             min-width: 24px;
-            margin-right: 6px;
+            transition: all 0.2s;
         }
         
         .cascade-item-btn-save:hover {
@@ -383,6 +384,7 @@
             padding: 0;
             flex-shrink: 0;
             min-width: 24px;
+            transition: all 0.2s;
         }
         
         .cascade-item-btn-cancel:hover {
@@ -1382,7 +1384,9 @@
                                 <span>${cat.name}</span>
                                 <span class="cascade-item-badge">${promptCount}</span>
                             </div>
-                            <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('category', ${cat.id}, '${cat.name}')" title="Eliminar">🗑️</button>
+                            <div class="cascade-item-actions">
+                                <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('category', ${cat.id}, '${cat.name}')" title="Eliminar">🗑️</button>
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -1400,38 +1404,21 @@
             list.innerHTML = prompts
                 .sort((a, b) => a.text.localeCompare(b.text))
                 .map(p => {
-                    const isSelected = selectedPrompt === p.id;
                     return `
-                        <div class="cascade-item ${isSelected ? 'selected' : ''}" 
+                        <div class="cascade-item ${selectedPrompt === p.id ? 'selected' : ''}" 
                              data-prompt-id="${p.id}" 
                              onclick="selectPrompt(${p.id})">
                             <div class="cascade-item-content">
                                 <span style="flex: 1;">${p.text}</span>
                                 <span class="cascade-item-badge">⭐${p.difficulty}</span>
                             </div>
-                            <button class="cascade-item-btn-edit" data-id="${p.id}" title="Editar">✏️</button>
-                            <button class="cascade-item-btn-delete" data-id="${p.id}" title="Eliminar">🗑️</button>
+                            <div class="cascade-item-actions">
+                                <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditPrompt(${p.id}, '${p.text.replace(/'/g, "\\'")}')" title="Editar">✏️</button>
+                                <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('prompt', ${p.id}, '${p.text.replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>
+                            </div>
                         </div>
                     `;
                 }).join('');
-            
-            document.querySelectorAll('#promptsList .cascade-item-btn-edit').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const promptId = parseInt(btn.getAttribute('data-id'));
-                    const prompt = allPrompts.find(p => p.id === promptId);
-                    if (prompt) startEditPrompt(promptId, prompt.text);
-                });
-            });
-            
-            document.querySelectorAll('#promptsList .cascade-item-btn-delete').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const promptId = parseInt(btn.getAttribute('data-id'));
-                    const prompt = allPrompts.find(p => p.id === promptId);
-                    if (prompt) confirmDelete('prompt', promptId, prompt.text);
-                });
-            });
         }
         
         function renderWords(words) {
@@ -1445,37 +1432,20 @@
                 .filter(w => w && w.word_group)
                 .sort((a, b) => (a.word_group || '').localeCompare(b.word_group || ''))
                 .map(w => {
-                    const isSelected = selectedWord === w.id;
                     return `
-                        <div class="cascade-item ${isSelected ? 'selected' : ''}" 
+                        <div class="cascade-item ${selectedWord === w.id ? 'selected' : ''}" 
                              data-word-id="${w.id}" 
                              onclick="selectWord(${w.id})">
                             <div class="cascade-item-content">
                                 <span style="flex: 1;">${w.word_group}</span>
                             </div>
-                            <button class="cascade-item-btn-edit" data-id="${w.id}" title="Editar">✏️</button>
-                            <button class="cascade-item-btn-delete" data-id="${w.id}" title="Eliminar">🗑️</button>
+                            <div class="cascade-item-actions">
+                                <button class="cascade-item-btn-edit" onclick="event.stopPropagation(); startEditWord(${w.id}, '${w.word_group.replace(/'/g, "\\'")}')" title="Editar">✏️</button>
+                                <button class="cascade-item-btn-delete" onclick="event.stopPropagation(); confirmDelete('word', ${w.id}, '${w.word_group.replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>
+                            </div>
                         </div>
                     `;
                 }).join('');
-            
-            document.querySelectorAll('#wordsList .cascade-item-btn-edit').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const wordId = parseInt(btn.getAttribute('data-id'));
-                    const word = allWords.find(w => w.id === wordId);
-                    if (word) startEditWord(wordId, word.word_group);
-                });
-            });
-            
-            document.querySelectorAll('#wordsList .cascade-item-btn-delete').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const wordId = parseInt(btn.getAttribute('data-id'));
-                    const word = allWords.find(w => w.id === wordId);
-                    if (word) confirmDelete('word', wordId, word.word_group);
-                });
-            });
         }
         
         function selectCategory(catId) {
@@ -1508,13 +1478,16 @@
             item.classList.add('editing');
             
             const contentDiv = item.querySelector('.cascade-item-content');
-            contentDiv.innerHTML = '';
+            const actionsDiv = item.querySelector('.cascade-item-actions');
             
+            contentDiv.innerHTML = '';
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'cascade-item-edit-input';
             input.value = currentText;
             contentDiv.appendChild(input);
+            
+            actionsDiv.innerHTML = '';
             
             const saveBtn = document.createElement('button');
             saveBtn.className = 'cascade-item-btn-save';
@@ -1526,8 +1499,9 @@
             cancelBtn.textContent = '✕';
             cancelBtn.onclick = cancelEditMode;
             
-            item.appendChild(saveBtn);
-            item.appendChild(cancelBtn);
+            actionsDiv.appendChild(saveBtn);
+            actionsDiv.appendChild(cancelBtn);
+            
             input.focus();
             input.select();
         }
@@ -1541,13 +1515,16 @@
             item.classList.add('editing');
             
             const contentDiv = item.querySelector('.cascade-item-content');
-            contentDiv.innerHTML = '';
+            const actionsDiv = item.querySelector('.cascade-item-actions');
             
+            contentDiv.innerHTML = '';
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'cascade-item-edit-input';
             input.value = currentText;
             contentDiv.appendChild(input);
+            
+            actionsDiv.innerHTML = '';
             
             const saveBtn = document.createElement('button');
             saveBtn.className = 'cascade-item-btn-save';
@@ -1559,8 +1536,9 @@
             cancelBtn.textContent = '✕';
             cancelBtn.onclick = cancelEditMode;
             
-            item.appendChild(saveBtn);
-            item.appendChild(cancelBtn);
+            actionsDiv.appendChild(saveBtn);
+            actionsDiv.appendChild(cancelBtn);
+            
             input.focus();
             input.select();
         }
