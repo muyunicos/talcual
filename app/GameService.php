@@ -193,7 +193,6 @@ class GameService {
             'status' => 'connected',
             'disconnected' => false,
             'answers' => [],
-            'current_answers' => [],
             'round_history' => []
         ];
 
@@ -302,7 +301,6 @@ class GameService {
             }
             $state['players'][$pId]['status'] = 'playing';
             $state['players'][$pId]['answers'] = [];
-            $state['players'][$pId]['current_answers'] = [];
         }
 
         $this->repository->save($gameId, $state);
@@ -367,7 +365,6 @@ class GameService {
         }
 
         $state['players'][$playerId]['answers'] = $validAnswers;
-        $state['players'][$playerId]['current_answers'] = $validAnswers;
 
         if ($forcedPass) {
             $state['players'][$playerId]['status'] = 'ready';
@@ -402,7 +399,7 @@ class GameService {
         foreach ($state['players'] as $pId => $player) {
             $roundEntry = [
                 'round' => $state['round'],
-                'answers' => $player['current_answers'] ?? [],
+                'answers' => $player['answers'] ?? [],
                 'score' => 0
             ];
 
@@ -415,7 +412,6 @@ class GameService {
 
             $state['players'][$pId]['round_history'][] = $roundEntry;
             $state['players'][$pId]['answers'] = [];
-            $state['players'][$pId]['current_answers'] = [];
             $state['players'][$pId]['status'] = 'connected';
         }
 
@@ -475,7 +471,6 @@ class GameService {
             $state['players'][$pId]['status'] = 'connected';
             $state['players'][$pId]['disconnected'] = false;
             $state['players'][$pId]['answers'] = [];
-            $state['players'][$pId]['current_answers'] = [];
             $state['players'][$pId]['round_history'] = [];
         }
 
