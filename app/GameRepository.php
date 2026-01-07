@@ -4,18 +4,9 @@ require_once __DIR__ . '/Database.php';
 
 class GameRepository {
     private $db = null;
-    private $dictionaryRepo = null;
 
     public function __construct() {
         $this->db = Database::getInstance();
-    }
-
-    private function getDictionaryRepository() {
-        if ($this->dictionaryRepo === null) {
-            require_once __DIR__ . '/DictionaryRepository.php';
-            $this->dictionaryRepo = new DictionaryRepository();
-        }
-        return $this->dictionaryRepo;
     }
 
     public function load($gameId) {
@@ -23,59 +14,25 @@ class GameRepository {
             throw new Exception('gameId excede MAX_CODE_LENGTH');
         }
 
-        try {
-            $pdo = $this->db->getConnection();
+        $pdo = $this->db->getConnection();
 
-            $stmt = $pdo->prepare('SELECT * FROM games WHERE id = ?');
-            $stmt->execute([$gameId]);
-            $gameRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare('SELECT * FROM games WHERE id = ?');
+        $stmt->execute([$gameId]);
+        $gameRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$gameRow) {
-                return null;
-            }
-
-            $stmt = $pdo->prepare('SELECT id, game_id, name, aura, status, last_heartbeat, score, round_history FROM players WHERE game_id = ?');
-            $stmt->execute([$gameId]);
-            $playerRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $state = $this->reconstructState($gameRow, $playerRows);
-
-            return $state;
-
-        } catch (PDOException $e) {
-            logMessage('Error loading game ' . $gameId . ': ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Database load error: ' . $e->getMessage());
+        if (!$gameRow) {
+            return null;
         }
+
+        $stmt = $pdo->prepare('SELECT id, game_id, name, aura, status, last_heartbeat, score, round_history FROM players WHERE game_id = ?');
+        $stmt->execute([$gameId]);
+        $playerRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $this->reconstructState($gameRow, $playerRows);
     }
 
     private function reconstructState($gameRow, $playerRows) {
         $metadata = json_decode($gameRow['metadata'] ?? '{}', true) ?? [];
-        $dict = $this->getDictionaryRepository();
-
-        $currentPromptText = null;
-        $currentCategoryText = null;
-        $selectedCategoryText = null;
-
-        if ($gameRow['current_prompt_id']) {
-            $promptData = $dict->getPromptById((int)$gameRow['current_prompt_id']);
-            if ($promptData) {
-                $currentPromptText = $promptData['text'];
-            }
-        }
-
-        if ($gameRow['current_category_id']) {
-            $categoryData = $dict->getCategoryById((int)$gameRow['current_category_id']);
-            if ($categoryData) {
-                $currentCategoryText = $categoryData['name'];
-            }
-        }
-
-        if ($gameRow['selected_category_id']) {
-            $categoryData = $dict->getCategoryById((int)$gameRow['selected_category_id']);
-            if ($categoryData) {
-                $selectedCategoryText = $categoryData['name'];
-            }
-        }
 
         $state = [
             'game_id' => $gameRow['id'],
@@ -85,9 +42,6 @@ class GameRepository {
             'current_prompt_id' => $gameRow['current_prompt_id'] !== null ? (int)$gameRow['current_prompt_id'] : null,
             'current_category_id' => $gameRow['current_category_id'] !== null ? (int)$gameRow['current_category_id'] : null,
             'selected_category_id' => $gameRow['selected_category_id'] !== null ? (int)$gameRow['selected_category_id'] : null,
-            'current_prompt' => $currentPromptText,
-            'current_category' => $currentCategoryText,
-            'selected_category' => $selectedCategoryText,
             'round_started_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_starts_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_ends_at' => $gameRow['round_ends_at'] !== null ? (int)$gameRow['round_ends_at'] : null,
@@ -146,99 +100,89 @@ class GameRepository {
             throw new Exception('gameId excede MAX_CODE_LENGTH');
         }
 
-        try {
-            $this->db->beginTransaction();
+        $this->db->beginTransaction();
 
-            $pdo = $this->db->getConnection();
+        $pdo = $this->db->getConnection();
 
-            $now = time();
-            $state['_updated_at'] = $now;
-            $state['_version'] = 1;
+        $now = time();
+        $state['_updated_at'] = $now;
+        $state['_version'] = 1;
 
-            $metadata = [
-                'used_prompts' => $state['used_prompts'] ?? [],
-                'round_details' => $state['round_details'] ?? [],
-                'round_top_words' => $state['round_top_words'] ?? [],
-                'game_history' => $state['game_history'] ?? [],
-                'roundData' => $state['roundData'] ?? null
-            ];
+        $metadata = [
+            'used_prompts' => $state['used_prompts'] ?? [],
+            'round_details' => $state['round_details'] ?? [],
+            'round_top_words' => $state['round_top_words'] ?? [],
+            'game_history' => $state['game_history'] ?? [],
+            'roundData' => $state['roundData'] ?? null
+        ];
 
-            $metadataJson = json_encode($metadata, JSON_UNESCAPED_UNICODE);
+        $metadataJson = json_encode($metadata, JSON_UNESCAPED_UNICODE);
 
-            $stmt = $pdo->prepare('INSERT OR REPLACE INTO games (
-                id, status, round, total_rounds, current_prompt_id, current_category_id,
-                selected_category_id, round_starts_at, round_ends_at,
-                countdown_duration, created_at, updated_at,
-                min_players, max_players, round_duration,
-                hurry_up_threshold, max_words_per_player, max_word_length,
-                version, locked_until, metadata
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt = $pdo->prepare('INSERT OR REPLACE INTO games (
+            id, status, round, total_rounds, current_prompt_id, current_category_id,
+            selected_category_id, round_starts_at, round_ends_at,
+            countdown_duration, created_at, updated_at,
+            min_players, max_players, round_duration,
+            hurry_up_threshold, max_words_per_player, max_word_length,
+            version, locked_until, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
-            $createdAt = $state['created_at'] ?? $now;
+        $createdAt = $state['created_at'] ?? $now;
 
-            $stmt->execute([
-                $gameId,
-                $state['status'] ?? 'waiting',
-                (int)($state['round'] ?? 0),
-                (int)($state['total_rounds'] ?? 0),
-                $state['current_prompt_id'] ?? null,
-                $state['current_category_id'] ?? null,
-                $state['selected_category_id'] ?? null,
-                $state['round_starts_at'] ?? null,
-                $state['round_ends_at'] ?? null,
-                $state['countdown_duration'] ?? null,
-                $createdAt,
-                $now,
-                (int)($state['min_players'] ?? 2),
-                (int)($state['max_players'] ?? 8),
-                (int)($state['round_duration'] ?? 60),
-                (int)($state['hurry_up_threshold'] ?? 10),
-                (int)($state['max_words_per_player'] ?? 6),
-                (int)($state['max_word_length'] ?? 30),
-                (int)($state['version'] ?? 0),
-                $state['locked_until'] ?? null,
-                $metadataJson
-            ]);
+        $stmt->execute([
+            $gameId,
+            $state['status'] ?? 'waiting',
+            (int)($state['round'] ?? 0),
+            (int)($state['total_rounds'] ?? 0),
+            $state['current_prompt_id'] ?? null,
+            $state['current_category_id'] ?? null,
+            $state['selected_category_id'] ?? null,
+            $state['round_starts_at'] ?? null,
+            $state['round_ends_at'] ?? null,
+            $state['countdown_duration'] ?? null,
+            $createdAt,
+            $now,
+            (int)($state['min_players'] ?? 2),
+            (int)($state['max_players'] ?? 8),
+            (int)($state['round_duration'] ?? 60),
+            (int)($state['hurry_up_threshold'] ?? 10),
+            (int)($state['max_words_per_player'] ?? 6),
+            (int)($state['max_word_length'] ?? 30),
+            (int)($state['version'] ?? 0),
+            $state['locked_until'] ?? null,
+            $metadataJson
+        ]);
 
-            $stmt = $pdo->prepare('DELETE FROM players WHERE game_id = ?');
-            $stmt->execute([$gameId]);
+        $stmt = $pdo->prepare('DELETE FROM players WHERE game_id = ?');
+        $stmt->execute([$gameId]);
 
-            if (isset($state['players']) && is_array($state['players'])) {
-                $insertStmt = $pdo->prepare('INSERT INTO players (
-                    id, game_id, name, aura, status, score, round_history
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        if (isset($state['players']) && is_array($state['players'])) {
+            $insertStmt = $pdo->prepare('INSERT INTO players (
+                id, game_id, name, aura, status, score, round_history
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)');
 
-                foreach ($state['players'] as $playerId => $player) {
-                    $roundHistory = $player['round_history'] ?? [];
-                    $roundHistoryJson = json_encode($roundHistory, JSON_UNESCAPED_UNICODE);
+            foreach ($state['players'] as $playerId => $player) {
+                $roundHistory = $player['round_history'] ?? [];
+                $roundHistoryJson = json_encode($roundHistory, JSON_UNESCAPED_UNICODE);
 
-                    $aura = $player['aura'] ?? $player['color'] ?? null;
+                $aura = $player['aura'] ?? $player['color'] ?? null;
 
-                    $insertStmt->execute([
-                        $playerId,
-                        $gameId,
-                        $player['name'] ?? 'Jugador',
-                        $aura,
-                        $player['status'] ?? 'connected',
-                        (int)($player['score'] ?? 0),
-                        $roundHistoryJson
-                    ]);
-                }
+                $insertStmt->execute([
+                    $playerId,
+                    $gameId,
+                    $player['name'] ?? 'Jugador',
+                    $aura,
+                    $player['status'] ?? 'connected',
+                    (int)($player['score'] ?? 0),
+                    $roundHistoryJson
+                ]);
             }
-
-            $this->db->commit();
-            logMessage('Game saved: ' . $gameId, 'DEBUG');
-
-            return true;
-
-        } catch (PDOException $e) {
-            $this->db->rollback();
-            logMessage('Error saving game ' . $gameId . ': ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Database save error: ' . $e->getMessage());
-        } catch (Exception $e) {
-            $this->db->rollback();
-            throw $e;
         }
+
+        $this->db->commit();
+        logMessage('Game saved: ' . $gameId, 'DEBUG');
+
+        return true;
     }
 
     public function exists($gameId) {
@@ -246,18 +190,12 @@ class GameRepository {
             return false;
         }
 
-        try {
-            $pdo = $this->db->getConnection();
-            $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM games WHERE id = ?');
-            $stmt->execute([$gameId]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $pdo = $this->db->getConnection();
+        $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM games WHERE id = ?');
+        $stmt->execute([$gameId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            return (int)($result['count'] ?? 0) > 0;
-
-        } catch (PDOException $e) {
-            logMessage('Error checking game existence: ' . $e->getMessage(), 'ERROR');
-            return false;
-        }
+        return (int)($result['count'] ?? 0) > 0;
     }
 
     public function delete($gameId) {
@@ -265,18 +203,12 @@ class GameRepository {
             throw new Exception('gameId excede MAX_CODE_LENGTH');
         }
 
-        try {
-            $pdo = $this->db->getConnection();
-            $stmt = $pdo->prepare('DELETE FROM games WHERE id = ?');
-            $stmt->execute([$gameId]);
+        $pdo = $this->db->getConnection();
+        $stmt = $pdo->prepare('DELETE FROM games WHERE id = ?');
+        $stmt->execute([$gameId]);
 
-            logMessage('Game deleted: ' . $gameId, 'DEBUG');
-            return true;
-
-        } catch (PDOException $e) {
-            logMessage('Error deleting game ' . $gameId . ': ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Database delete error: ' . $e->getMessage());
-        }
+        logMessage('Game deleted: ' . $gameId, 'DEBUG');
+        return true;
     }
 
     public function cleanup($maxAge = null) {
@@ -284,36 +216,24 @@ class GameRepository {
             $maxAge = defined('MAX_GAME_AGE') ? MAX_GAME_AGE : 86400;
         }
 
-        try {
-            $pdo = $this->db->getConnection();
-            $cutoffTime = time() - $maxAge;
+        $pdo = $this->db->getConnection();
+        $cutoffTime = time() - $maxAge;
 
-            $stmt = $pdo->prepare('DELETE FROM games WHERE updated_at < ?');
-            $stmt->execute([$cutoffTime]);
+        $stmt = $pdo->prepare('DELETE FROM games WHERE updated_at < ?');
+        $stmt->execute([$cutoffTime]);
 
-            $deletedCount = $stmt->rowCount();
-            logMessage('Cleanup: ' . $deletedCount . ' old games deleted', 'DEBUG');
+        $deletedCount = $stmt->rowCount();
+        logMessage('Cleanup: ' . $deletedCount . ' old games deleted', 'DEBUG');
 
-            return $deletedCount;
-
-        } catch (PDOException $e) {
-            logMessage('Error during cleanup: ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Database cleanup error: ' . $e->getMessage());
-        }
+        return $deletedCount;
     }
 
     public function getAllGameIds() {
-        try {
-            $pdo = $this->db->getConnection();
-            $stmt = $pdo->query('SELECT id FROM games ORDER BY updated_at DESC');
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $pdo = $this->db->getConnection();
+        $stmt = $pdo->query('SELECT id FROM games ORDER BY updated_at DESC');
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            return array_column($results, 'id');
-
-        } catch (PDOException $e) {
-            logMessage('Error fetching game IDs: ' . $e->getMessage(), 'ERROR');
-            throw new Exception('Database query error: ' . $e->getMessage());
-        }
+        return array_column($results, 'id');
     }
 }
 ?>
