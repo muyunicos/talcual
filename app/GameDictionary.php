@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/WordNormalizer.php';
+
 class GameDictionary {
     use WordNormalizer;
     
@@ -12,7 +15,7 @@ class GameDictionary {
 
     public function getCategories() {
         try {
-            $stmt = $this->pdo->query('SELECT name FROM categories ORDER BY name ASC');
+            $stmt = $this->pdo->query('SELECT name FROM categories WHERE is_active = 1 ORDER BY orden, name ASC');
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             return array_map(function($row) { return $row['name']; }, $rows);
@@ -24,7 +27,7 @@ class GameDictionary {
 
     public function getTopicCard($category) {
         try {
-            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ?');
+            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ? AND is_active = 1');
             $categoryStmt->execute([$category]);
             $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
             
@@ -40,7 +43,7 @@ class GameDictionary {
             $promptStmt = $this->pdo->prepare(
                 'SELECT p.id, p.text FROM prompts p '
                 . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
-                . 'WHERE pc.category_id = ? '
+                . 'WHERE pc.category_id = ? AND p.is_active = 1 '
                 . 'ORDER BY RANDOM() LIMIT 1'
             );
             $promptStmt->execute([$categoryId]);
@@ -57,12 +60,12 @@ class GameDictionary {
             $question = trim($promptRow['text']);
             
             $wordStmt = $this->pdo->prepare(
-                'SELECT word_entry FROM valid_words WHERE prompt_id = ? ORDER BY word_entry ASC'
+                'SELECT word_group FROM valid_words WHERE prompt_id = ? ORDER BY word_group ASC'
             );
             $wordStmt->execute([$promptId]);
             $wordRows = $wordStmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $answers = array_map(function($row) { return $row['word_entry']; }, $wordRows);
+            $answers = array_map(function($row) { return $row['word_group']; }, $wordRows);
             
             return [
                 'question' => $question,
@@ -83,7 +86,7 @@ class GameDictionary {
         }
         
         try {
-            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ?');
+            $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ? AND is_active = 1');
             $categoryStmt->execute([$category]);
             $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
             
@@ -96,11 +99,11 @@ class GameDictionary {
             $maxAttempts = 30;
             
             while ($attempts < $maxAttempts) {
-                $sql = 'SELECT vw.word_entry '
+                $sql = 'SELECT vw.word_group '
                      . 'FROM valid_words vw '
                      . 'JOIN prompts p ON vw.prompt_id = p.id '
                      . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
-                     . 'WHERE pc.category_id = ? '
+                     . 'WHERE pc.category_id = ? AND p.is_active = 1 '
                      . 'ORDER BY RANDOM() '
                      . 'LIMIT 1';
                 
@@ -112,7 +115,7 @@ class GameDictionary {
                     return null;
                 }
                 
-                $rawWord = $row['word_entry'];
+                $rawWord = $row['word_group'];
                 $cleaned = self::cleanWordPrompt($rawWord);
                 
                 if (!empty($cleaned) && mb_strlen($cleaned) <= $maxLength) {
