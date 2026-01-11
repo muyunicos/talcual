@@ -15,6 +15,7 @@ class HostManager extends BaseController {
     this.categoryWordsMap = {};
     this.roundResults = null;
     this.roundTopWords = [];
+    this.gameChain = [];
 
     this.view = new HostView();
 
@@ -56,7 +57,7 @@ class HostManager extends BaseController {
 
   async loadConfigAndInit() {
     try {
-      debug('❳ Cargando configuración...', null, 'info');
+      debug('❫ Cargando configuración...', null, 'info');
       
       const configResult = await configService.load();
 
@@ -195,6 +196,7 @@ class HostManager extends BaseController {
 
       if (result.success && result.state) {
         debug('✅ Sesión recuperada', null, 'success');
+        await this.loadGameChain(gameCode);
         this.loadGameScreen(result.state);
         return;
       }
@@ -206,6 +208,66 @@ class HostManager extends BaseController {
       debug('Error recuperando sesión:', error, 'error');
       this.clearSession();
       this.showStartScreen();
+    }
+  }
+
+  async loadGameChain(gameCodeOrId) {
+    try {
+      const result = await fetch('/app/actions.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_game_chain', game_id: gameCodeOrId })
+      });
+      const data = await result.json();
+
+      if (data.success && Array.isArray(data.chain)) {
+        this.gameChain = data.chain;
+        debug('🔗 Cadena de partidas cargada', { count: data.chain_count }, 'success');
+      } else {
+        this.gameChain = [];
+      }
+    } catch (error) {
+      debug('⚠️ Error cargando cadena de partidas:', error, 'warn');
+      this.gameChain = [];
+    }
+  }
+
+  async createLinkedGame() {
+    if (!this.client || !this.gameState) return;
+
+    debug('🔗 Creando nueva partida encadenada...', null, 'info');
+
+    try {
+      const currentGameId = this.gameState.game_id;
+      const originalId = this.gameState.original_id || currentGameId;
+      
+      const result = await this.client.sendAction('create_game', {
+        game_id: currentGameId,
+        category: this.currentCategory || null,
+        total_rounds: this.gameState.total_rounds || COMM_CONFIG.TOTAL_ROUNDS,
+        round_duration: this.gameState.round_duration || COMM_CONFIG.ROUND_DURATION,
+        min_players: this.gameState.min_players || COMM_CONFIG.MIN_PLAYERS
+      });
+
+      if (result.success && result.game_id) {
+        debug('🌟 Nueva partida creada:', { new_game_id: result.game_id, original_id: result.original_id }, 'success');
+        
+        this.gameCode = result.game_id;
+        this.clearSession();
+        this.saveSession(result.game_id, this.currentCategory);
+        
+        await this.loadGameChain(result.game_id);
+        
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      } else {
+        showNotification('❌ Error creando nueva partida', 'error');
+        debug('❌ Respuesta inválida al crear partida encadenada', result, 'error');
+      }
+    } catch (error) {
+      debug('❌ Error creando partida encadenada:', error, 'error');
+      showNotification('❌ Error de conexión', 'error');
     }
   }
 
