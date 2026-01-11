@@ -104,23 +104,28 @@ class GameService {
         $originalGameId = null;
         $previousGameState = null;
 
-        if ($gameId) {
-            $previousGameState = $this->repository->load($gameId);
-            
-            if ($previousGameState) {
-                $originalGameId = $previousGameState['original_id'] ?? $gameId;
-            } else {
-                $originalGameId = $gameId;
-            }
-
-            if ($requestedCategory) {
-                $categoryData = $this->dictionary->getCategoryByName($requestedCategory);
-                if (!$categoryData) {
-                    throw new Exception('Invalid category');
-                }
-            }
-        } else {
+        if (!$gameId) {
             throw new Exception('Game code is required');
+        }
+
+        $gameId = trim((string)$gameId);
+
+        $previousGameState = $this->repository->load($gameId);
+        
+        if ($previousGameState) {
+            $originalGameId = $previousGameState['original_id'] ?? $gameId;
+        } else {
+            if ($this->repository->exists($gameId)) {
+                throw new Exception('Room already exists');
+            }
+            $originalGameId = $gameId;
+        }
+
+        if ($requestedCategory) {
+            $categoryData = $this->dictionary->getCategoryByName($requestedCategory);
+            if (!$categoryData) {
+                throw new Exception('Invalid category');
+            }
         }
 
         if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = TOTAL_ROUNDS;
