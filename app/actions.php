@@ -21,7 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 function notifyGameChanged($gameId, $data = null, $isHostOnly = false) {
     if (!extension_loaded('apcu') || !apcu_enabled()) {
-        logMessage('APCu not available, notification skipped', 'WARNING');
         return;
     }
 
@@ -61,7 +60,7 @@ try {
 
     $action = isset($input['action']) ? trim((string)$input['action']) : null;
 
-    logMessage("API Action: {$action} | game_id: " . ($input['game_id'] ?? 'N/A') . " | player_id: " . ($input['player_id'] ?? 'N/A'), 'DEBUG');
+    logMessage("API: {$action}", 'INFO');
 
     $repository = new GameRepository();
     $dictionaryRepository = new DictionaryRepository();
@@ -340,7 +339,6 @@ try {
 
         case 'update_config':
             $configData = $input['config'] ?? [];
-            logMessage('update_config received: ' . json_encode($configData), 'INFO');
             $response = [
                 'success' => true,
                 'message' => 'Configuración actualizada',
@@ -434,7 +432,7 @@ try {
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
-    logMessage('Error fatal: ' . $e->getMessage(), 'ERROR');
+    logMessage('Error: ' . $e->getMessage(), 'ERROR');
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error del servidor: ' . $e->getMessage()]);
 }
