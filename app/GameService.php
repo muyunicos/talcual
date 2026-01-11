@@ -97,7 +97,6 @@ class GameService {
         $newGameId = $gameId;
         $serverNow = intval(microtime(true) * 1000);
         $now = time();
-        $countdownDuration = START_COUNTDOWN * 1000;
 
         $selectedCategoryId = null;
         if ($requestedCategory) {
@@ -107,7 +106,7 @@ class GameService {
             }
         }
 
-        $initialState = $this->createInitialGameState($newGameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $countdownDuration, $now);
+        $initialState = $this->createInitialGameState($newGameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $now);
 
         $this->repository->save($newGameId, $initialState);
 
@@ -133,7 +132,7 @@ class GameService {
         if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
     }
 
-    private function createInitialGameState($gameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $countdownDuration, $now) {
+    private function createInitialGameState($gameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $now) {
         return [
             'game_id' => $gameId,
             'original_id' => $originalGameId,
@@ -150,10 +149,9 @@ class GameService {
             'countdown_starts_at' => null,
             'round_starts_at' => null,
             'round_ends_at' => null,
-            'countdown_duration' => $countdownDuration,
+            'countdown_duration' => START_COUNTDOWN,
             'created_at' => $now,
             'updated_at' => $now,
-            'start_countdown' => START_COUNTDOWN,
             'hurry_up_threshold' => 10,
             'max_words_per_player' => MAX_WORDS_PER_PLAYER,
             'max_word_length' => MAX_WORD_LENGTH,
@@ -294,9 +292,9 @@ class GameService {
         }
 
         $serverNow = intval(microtime(true) * 1000);
-        $countdownDuration = START_COUNTDOWN * 1000;
+        $countdownDuration = $state['countdown_duration'] ?? START_COUNTDOWN;
         $countdownStartsAt = $serverNow;
-        $roundStartsAt = $countdownStartsAt + $countdownDuration;
+        $roundStartsAt = $countdownStartsAt + ($countdownDuration * 1000);
         $roundEndsAt = $roundStartsAt + $duration;
 
         $state['round']++;
@@ -305,7 +303,6 @@ class GameService {
         $state['current_category_id'] = $categoryIdToUse;
         $state['round_duration'] = $duration;
         $state['total_rounds'] = $totalRounds;
-        $state['start_countdown'] = START_COUNTDOWN;
         $state['countdown_duration'] = $countdownDuration;
         $state['countdown_starts_at'] = $countdownStartsAt;
         $state['round_starts_at'] = $roundStartsAt;
@@ -405,7 +402,7 @@ class GameService {
         $state['total_rounds'] = intval($configData['total_rounds'] ?? $state['total_rounds']);
         $state['min_players'] = intval($configData['min_players'] ?? $state['min_players']);
         $state['max_players'] = intval($configData['max_players'] ?? $state['max_players']);
-        $state['start_countdown'] = intval($configData['start_countdown'] ?? $state['start_countdown']);
+        $state['countdown_duration'] = intval($configData['countdown_duration'] ?? $state['countdown_duration']);
         $state['hurry_up_threshold'] = intval($configData['hurry_up_threshold'] ?? $state['hurry_up_threshold']);
         $state['max_words_per_player'] = intval($configData['max_words_per_player'] ?? $state['max_words_per_player']);
         $state['max_word_length'] = intval($configData['max_word_length'] ?? $state['max_word_length']);
