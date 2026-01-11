@@ -7,27 +7,19 @@ class SettingsModal {
     }
 
     getDefaults() {
-        return {
-            min_players: 3,
-            max_players: 8,
-            round_duration: 120,
-            total_rounds: 3,
-            start_countdown: 5,
-            hurry_up_threshold: 10,
-            max_words_per_player: 6,
-            max_word_length: 30
-        };
+        return configManager.getAllDefaults();
     }
 
     buildFormHTML() {
         const s = this.settings;
-        const minPlayers = s.min_players !== undefined ? s.min_players : 3;
-        const maxPlayers = s.max_players !== undefined ? s.max_players : 8;
-        const roundDuration = s.round_duration !== undefined ? s.round_duration : 120;
-        const totalRounds = s.total_rounds !== undefined ? s.total_rounds : 3;
-        const startCountdown = s.start_countdown !== undefined ? s.start_countdown : 5;
-        const hurryUpThreshold = s.hurry_up_threshold !== undefined ? s.hurry_up_threshold : 10;
-        const maxWordsPerPlayer = s.max_words_per_player !== undefined ? s.max_words_per_player : 6;
+        const defaults = this.getDefaults();
+        const minPlayers = s.min_players !== undefined ? s.min_players : defaults.min_players;
+        const maxPlayers = s.max_players !== undefined ? s.max_players : defaults.max_players;
+        const roundDuration = s.round_duration !== undefined ? s.round_duration : defaults.round_duration;
+        const totalRounds = s.total_rounds !== undefined ? s.total_rounds : defaults.total_rounds;
+        const startCountdown = s.start_countdown !== undefined ? s.start_countdown : defaults.start_countdown;
+        const hurryUpThreshold = s.hurry_up_threshold !== undefined ? s.hurry_up_threshold : defaults.hurry_up_threshold;
+        const maxWordsPerPlayer = s.max_words_per_player !== undefined ? s.max_words_per_player : defaults.max_words_per_player;
 
         return `
             <div class="settings-form">
@@ -147,12 +139,8 @@ class SettingsModal {
 
         if (config && typeof config === 'object') {
             this.settings = config;
-        } else if (gameId && window.configService && window.configService.isConfigReady(gameId)) {
-            this.settings = window.configService.getForGame(gameId);
-        } else if (window.configService && window.configService.getForGame()) {
-            this.settings = window.configService.getForGame();
         } else {
-            this.settings = this.getDefaults();
+            this.settings = configManager.getAll();
         }
 
         const formHTML = this.buildFormHTML();
@@ -254,7 +242,7 @@ class SettingsModal {
     }
 
     resetFieldToDefault(field) {
-        const defaults = this.getDefaults();
+        const defaults = configManager.getAllDefaults();
         const fieldMap = {
             'players': ['min-players', 'max-players'],
             'max-words': ['max-words-per-player'],
@@ -371,15 +359,8 @@ class SettingsModal {
                 throw new Error(result.message || 'Error saving configuration');
             }
 
+            configManager.syncFromObject(values);
             this.settings = values;
-            if (this.gameId && window.configService) {
-                window.configService.invalidate(this.gameId);
-                if (result.state) {
-                    window.configService.loadFromState(result.state);
-                }
-            } else if (window.configService) {
-                window.configService.invalidate();
-            }
             showNotification('✅ Configuración guardada', 'success');
             ModalSystem_Instance.close(2);
         } catch (error) {
@@ -418,10 +399,8 @@ class SettingsModal {
                 throw new Error(result.message || 'Error saving configuration');
             }
 
+            configManager.syncFromObject(values);
             this.settings = values;
-            if (window.configService) {
-                window.configService.invalidate();
-            }
             showNotification('✅ Configuración guardada', 'success');
             ModalSystem_Instance.close(2);
 
