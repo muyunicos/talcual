@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/GameRepository.php';
+require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/DictionaryRepository.php';
 
 class GameService {
@@ -487,6 +487,16 @@ class GameService {
                     $roundPoints = (int)$playerResult['scoreDelta'];
                 }
                 $roundResultsToStore[$pId] = $playerResult;
+            } else {
+                $roundResultsToStore[$pId] = [
+                    'answers' => [],
+                    'scoreDelta' => 0,
+                    'answersByType' => [
+                        'EXACTA' => [],
+                        'SINONIMO' => [],
+                        'SIMILAR' => []
+                    ]
+                ];
             }
 
             $roundEntry = [
@@ -505,7 +515,7 @@ class GameService {
             $state['players'][$pId]['status'] = 'connected';
         }
 
-        $state['round_results'] = !empty($roundResultsToStore) ? $roundResultsToStore : null;
+        $state['round_results'] = $roundResultsToStore;
 
         $isGameFinished = (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS));
 
