@@ -116,6 +116,14 @@ class HostManager extends BaseController {
     this.view.bindRemovePlayer((playerId) => this.handleRemovePlayer(playerId));
   }
 
+  openSettings() {
+    if (window.settingsModal) {
+      window.settingsModal.openModal('normal', this.gameCode);
+    } else {
+      debug('⚠️ SettingsModal no está disponible', null, 'warn');
+    }
+  }
+
   showStartScreen() {
     window.createGameModal.openModal();
   }
@@ -176,8 +184,6 @@ class HostManager extends BaseController {
       debug('⚡ Jugador terminó detectado:', data, 'info');
       this.client.forceRefresh();
     });
-
-    this.handleStateUpdate(state);
   }
 
   async resumeGame(gameCode) {
@@ -500,7 +506,7 @@ class HostManager extends BaseController {
   async endRound() {
     if (!this.client) return;
 
-    debug('🎯 Finalizando ronda...', null, 'info');
+    debug('🎣 Finalizando ronda...', null, 'info');
 
     this.view.setEndRoundButtonLoading();
 
