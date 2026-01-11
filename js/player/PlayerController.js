@@ -330,7 +330,7 @@ class PlayerManager extends BaseController {
     if (!word) return;
 
     if (this.myWords.length >= this.maxWords) {
-      showNotification(`📓 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
+      showNotification(`📚 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
       return;
     }
 
@@ -359,7 +359,7 @@ class PlayerManager extends BaseController {
     this.view.focusInput();
 
     if (this.myWords.length === this.maxWords) {
-      debug(`📓 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
+      debug(`📚 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
       this.updateInputAndButtons();
     }
   }
@@ -484,7 +484,10 @@ class PlayerManager extends BaseController {
 
   showResults(state) {
     const me = state.players?.[this.playerId];
-    if (!me) return;
+    if (!me) {
+      debug('❌ No se encontró data del jugador en estado', 'error');
+      return;
+    }
 
     this.ensureWordEngineInitialized(state);
 
@@ -493,9 +496,16 @@ class PlayerManager extends BaseController {
         state.roundData
     );
 
-    const myResultData = globalResults[this.playerId];
+    let myResultData = globalResults[this.playerId];
 
-    if (myResultData && myResultData.answers.length > 0) {
+    if (!myResultData) {
+      debug(`⚠️ myResultData no encontrado para ${this.playerId} en globalResults`, 'warn');
+      debug('Claves en globalResults:', Object.keys(globalResults), 'debug');
+      this.view.showRoundResults(null);
+      return;
+    }
+
+    if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
       const formattedMatches = myResultData.answers.map(ans => ({
         word: ans.word,
         matched: ans.matches.length > 0,
@@ -521,9 +531,15 @@ class PlayerManager extends BaseController {
         state.roundData
     );
 
-    const myResultData = globalResults[this.playerId];
+    let myResultData = globalResults[this.playerId];
 
-    if (myResultData && myResultData.answers.length > 0) {
+    if (!myResultData) {
+      this.view.showRoundResults(null);
+      this.view.showFinalResults();
+      return;
+    }
+
+    if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
       const formattedMatches = myResultData.answers.map(ans => ({
         word: ans.word,
         matched: ans.matches.length > 0,
