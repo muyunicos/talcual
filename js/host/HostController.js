@@ -316,7 +316,8 @@ class HostManager extends BaseController {
               wordFrequency[key] = {
                 word: ans.word,
                 count: 1,
-                matches: ans.matches
+                type: ans.type,
+                points: ans.points
               };
             } else {
               wordFrequency[key].count++;
@@ -329,22 +330,6 @@ class HostManager extends BaseController {
     return Object.values(wordFrequency)
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }
-
-  calculateHostViewStats(state) {
-    if (!state.players) {
-      return { topWords: [] };
-    }
-
-    const globalResults = wordEngine.calculateGlobalMatches(
-        state.players,
-        state.roundData
-    );
-
-    const topWords = this.calculateTopWords(globalResults);
-
-    debug('✅ calculateHostViewStats completed', { topWordsCount: topWords.length }, 'success');
-    return { topWords };
   }
 
   handleStateUpdate(state) {
@@ -552,6 +537,7 @@ class HostManager extends BaseController {
 
       if (!this.gameState.roundData) {
         debug('⚠️ No hay roundData disponible para calcular resultados', null, 'warn');
+        this.roundResults = {};
       } else {
         this.roundResults = wordEngine.calculateGlobalMatches(
           this.gameState.players,
