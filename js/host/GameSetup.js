@@ -5,6 +5,7 @@ class CreateGameModal {
         this.gameConfig = {};
         this.readyPromise = null;
         this.isReady = false;
+        this.currentRoomCode = null;
     }
 
     async fetchCandidates() {
@@ -121,6 +122,7 @@ class CreateGameModal {
             const categories = this.getCategories();
             const selectedCategory = this.selectedCandidate?.category || categories[0];
             const selectedCode = this.selectedCandidate?.code || '';
+            this.currentRoomCode = selectedCode;
 
             const categoryOptions = categories.map(cat => 
                 `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
@@ -138,7 +140,7 @@ class CreateGameModal {
                     <div id="code-display-modal" class="input-field code-display" style="background: var(--color-secondary); padding: 12px; border-radius: 6px; font-weight: bold; letter-spacing: 2px; text-align: center; font-size: 18px;">
                         ${selectedCode}
                     </div>
-                    <p class="custom-code-info">Código generado automáticamente por el servidor</p>
+                    <p class="custom-code-info">Código de sala permanente</p>
                 </div>
             `;
 
@@ -165,6 +167,7 @@ class CreateGameModal {
                     this.updateCandidateFromCategory(e.target.value);
                     if (codeDisplay && this.selectedCandidate) {
                         codeDisplay.textContent = this.selectedCandidate.code;
+                        this.currentRoomCode = this.selectedCandidate.code;
                     }
                 });
             }
