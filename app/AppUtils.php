@@ -4,9 +4,9 @@ class AppUtils {
     public static function sanitizeGameId($gameId) {
         if (empty($gameId)) return null;
         
-        $clean = preg_replace('/[^A-Z0-9]/', '', strtoupper($gameId));
+        $clean = preg_replace('/[^a-zA-Z0-9]/', '', $gameId);
         
-        if (strlen($clean) < 3 || strlen($clean) > MAX_CODE_LENGTH) {
+        if (strlen($clean) < 3 || strlen($clean) > 50) {
             return null;
         }
         
