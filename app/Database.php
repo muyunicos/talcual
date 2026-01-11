@@ -2,9 +2,9 @@
 
 class Database {
     private static $instance = null;
+    private static $initialized = false;
     private $pdo = null;
     private $dbPath = null;
-    private static $tablesInitialized = false;
 
     private function __construct() {
         $this->dbPath = __DIR__ . '/../data/talcual.db';
@@ -39,8 +39,6 @@ class Database {
             $this->pdo->exec('PRAGMA synchronous = NORMAL');
             $this->pdo->exec('PRAGMA wal_autocheckpoint = 1000');
 
-            logMessage('SQLite connected: ' . $this->dbPath, 'DEBUG');
-
         } catch (PDOException $e) {
             logMessage('SQLite connection failed: ' . $e->getMessage(), 'ERROR');
             throw new Exception('Database connection error: ' . $e->getMessage());
@@ -50,11 +48,13 @@ class Database {
     public static function getInstance() {
         if (self::$instance === null) {
             self::$instance = new self();
-            if (!self::$tablesInitialized) {
-                self::$instance->initializeTables();
-                self::$tablesInitialized = true;
-            }
         }
+        
+        if (!self::$initialized) {
+            self::$instance->initializeTables();
+            self::$initialized = true;
+        }
+        
         return self::$instance;
     }
 
@@ -149,7 +149,7 @@ class Database {
             $this->createIndexes();
             $this->migrateSchema();
             
-            logMessage('Database tables initialized successfully', 'DEBUG');
+            logMessage('Database initialized', 'INFO');
 
         } catch (PDOException $e) {
             logMessage('Error initializing tables: ' . $e->getMessage(), 'ERROR');
@@ -244,7 +244,6 @@ class Database {
             }
             if (!in_array('answers', $tableInfo)) {
                 $this->pdo->exec('ALTER TABLE players ADD COLUMN answers TEXT DEFAULT ""');
-                logMessage('Migration: added answers column to players', 'INFO');
             }
             
             logMessage('Schema migration completed', 'INFO');
@@ -267,9 +266,8 @@ class Database {
     public function checkpoint() {
         try {
             $this->getConnection()->exec('PRAGMA wal_checkpoint(RESTART)');
-            logMessage('WAL checkpoint completed', 'DEBUG');
         } catch (PDOException $e) {
-            logMessage('WAL checkpoint failed: ' . $e->getMessage(), 'ERROR');
+            logMessage('WAL checkpoint failed: ' . $e->getMessage(), 'WARN');
         }
     }
 
