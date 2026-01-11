@@ -21,19 +21,28 @@ class CreateGameModal {
             });
 
             if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
+                debug(`⚠️ get_game_candidates returned ${response.status}`, null, 'warn');
+                return false;
             }
 
-            const result = await response.json();
+            const text = await response.text();
+            if (!text) {
+                debug('⚠️ Empty response from get_game_candidates', null, 'warn');
+                return false;
+            }
+
+            const result = JSON.parse(text);
 
             if (!result.success || !Array.isArray(result.candidates)) {
-                throw new Error(result.message || 'Invalid response: missing candidates');
+                debug('⚠️ Invalid candidates response', result, 'warn');
+                return false;
             }
 
             this.gameCandidates = result.candidates;
+            debug('🌟 Candidatos cargados exitosamente', { count: this.gameCandidates.length }, 'success');
             return true;
         } catch (error) {
-            debug('Error fetching game candidates', error, 'error');
+            debug('⚠️ get_game_candidates no disponible - continuando sin candidatos', null, 'warn');
             this.gameCandidates = [];
             return false;
         }
@@ -85,10 +94,6 @@ class CreateGameModal {
         try {
             await this.fetchConfig();
             await this.fetchCandidates();
-
-            if (this.gameCandidates.length === 0) {
-                debug('⚠️ No hay candidatos disponibles, continuando con modal vacío', null, 'warn');
-            }
 
             this.isFirstGame = !StorageManager.get(StorageKeys.HOST_GAME_CODE);
 
@@ -142,6 +147,15 @@ class CreateGameModal {
         return code.substring(0, this.maxCodeLength);
     }
 
+    generateRandomCode() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let code = '';
+        for (let i = 0; i < this.maxCodeLength; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+    }
+
     async openModal() {
         try {
             await this.ensureReady();
@@ -160,15 +174,19 @@ class CreateGameModal {
     openFirstGameModal() {
         this.selectRandomCandidate();
         const categories = this.getCategories();
-        const selectedCategory = this.selectedCandidate?.category || (categories[0] || 'Géneral');
-        const selectedCode = this.selectedCandidate?.code || '';
+        const selectedCategory = this.selectedCandidate?.category || (categories[0] || 'General');
+        let selectedCode = this.selectedCandidate?.code || '';
+        
+        if (!selectedCode) {
+            selectedCode = this.generateRandomCode();
+        }
         this.currentRoomCode = this.truncateCode(selectedCode);
 
         const categoryOptions = categories.length > 0
             ? categories.map(cat => 
                 `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
               ).join('')
-            : `<option value="Géneral" selected>Géneral</option>`;
+            : `<option value="General" selected>General</option>`;
 
         const formHTML = `
             <div class="input-group">
@@ -188,7 +206,7 @@ class CreateGameModal {
                     value="${this.currentRoomCode}"
                     autocomplete="off"
                 />
-                <p class="custom-code-info">Máx. ${this.maxCodeLength} caracteres. Solo letras.</p>
+                <p class="custom-code-info">Máx. ${this.maxCodeLength} caracteres. Solo letras y números.</p>
             </div>
         `;
 
@@ -287,7 +305,7 @@ class CreateGameModal {
             }
 
             const gameId = this.currentRoomCode.trim();
-            const category = this.selectedCandidate?.category || null;
+            const category = this.selectedCandidate?.category || 'General';
 
             const payload = {
                 action: 'create_game',
@@ -328,7 +346,7 @@ class CreateGameModal {
             }
 
             StorageManager.set(StorageKeys.HOST_GAME_CODE, result.game_id);
-            StorageManager.set(StorageKeys.HOST_CATEGORY, category || 'Sin categoría');
+            StorageManager.set(StorageKeys.HOST_CATEGORY, category || 'General');
 
             showNotification('✅ Partida creada', 'success');
 
