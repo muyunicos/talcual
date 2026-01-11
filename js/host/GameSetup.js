@@ -327,28 +327,15 @@ class CreateGameModal {
 
 let createGameModal = null;
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', async () => {
-        createGameModal = new CreateGameModal();
-        window.createGameModal = createGameModal;
-        
-        try {
-            await createGameModal.init();
-        } catch (error) {
-            debug('❌ Error inicializando CreateGameModal durante boot', error, 'error');
-        }
-    });
-} else {
-    (async () => {
-        createGameModal = new CreateGameModal();
-        window.createGameModal = createGameModal;
-        
-        try {
-            await createGameModal.init();
-        } catch (error) {
-            debug('❌ Error inicializando CreateGameModal durante boot', error, 'error');
-        }
-    })();
-}
+document.addEventListener('DOMContentLoaded', async () => {
+    createGameModal = new CreateGameModal();
+    window.createGameModal = createGameModal;
+    
+    try {
+        await createGameModal.init();
+    } catch (error) {
+        debug('❌ Error inicializando CreateGameModal durante boot', error, 'error');
+    }
+}, { once: true });
 
 console.log('%c✅ GameSetup.js', 'color: #0066FF; font-weight: bold; font-size: 12px');
