@@ -33,7 +33,7 @@ class SettingsModal {
                         <div class="settings-control">
                             <div class="settings-control-header">
                                 <label class="settings-label">Número de Jugadores</label>
-                                <button class="settings-reset-individual" data-field="players" type="button" title="Restablecer a valores por defecto">
+                                <button class="settings-reset-individual" data-field="players" type="button" title="Restablecer">
                                     🔄
                                 </button>
                             </div>
@@ -41,44 +41,44 @@ class SettingsModal {
                                 <input type="range" id="min-players" class="settings-range-min" 
                                        min="1" max="20" value="${minPlayers}">
                                 <input type="range" id="max-players" class="settings-range-max" 
-                                       min="1" max="100" value="${maxPlayers}">
+                                       min="1" max="20" value="${maxPlayers}">
                                 <div class="settings-range-display">
                                     <span class="settings-value-mini" id="min-players-display">${minPlayers}</span>
                                     <span class="settings-range-divider">-</span>
                                     <span class="settings-value-mini" id="max-players-display">${maxPlayers}</span>
                                 </div>
                             </div>
-                            <small class="settings-hint">Mínimo 1-20, Máximo 1-100</small>
+                            <small class="settings-hint">Mínimo 1-20 Máximo</small>
                         </div>
 
                         <div class="settings-control">
                             <div class="settings-control-header">
                                 <label class="settings-label">Máx. Palabras por Jugador</label>
-                                <button class="settings-reset-individual" data-field="max-words" type="button" title="Restablecer a valor por defecto">
+                                <button class="settings-reset-individual" data-field="max-words" type="button" title="Restablecer">
                                     🔄
                                 </button>
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="max-words-per-player" class="settings-slider" 
-                                       min="1" max="20" value="${maxWordsPerPlayer}">
+                                       min="1" max="8" value="${maxWordsPerPlayer}">
                                 <span class="settings-value-display" id="max-words-per-player-display">${maxWordsPerPlayer}</span>
                             </div>
-                            <small class="settings-hint">Límite de palabras (1-20)</small>
+                            <small class="settings-hint">Límite de palabras (1-8)</small>
                         </div>
 
                         <div class="settings-control">
                             <div class="settings-control-header">
                                 <label class="settings-label">Total de Rondas</label>
-                                <button class="settings-reset-individual" data-field="total-rounds" type="button" title="Restablecer a valor por defecto">
+                                <button class="settings-reset-individual" data-field="total-rounds" type="button" title="Restablecer">
                                     🔄
                                 </button>
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="total-rounds" class="settings-slider" 
-                                       min="1" max="10" value="${totalRounds}">
+                                       min="1" max="8" value="${totalRounds}">
                                 <span class="settings-value-display" id="total-rounds-display">${totalRounds}</span>
                             </div>
-                            <small class="settings-hint">Rondas en partida (1-10)</small>
+                            <small class="settings-hint">Rondas en partida (1-8)</small>
                         </div>
                     </div>
 
@@ -86,46 +86,46 @@ class SettingsModal {
                         <div class="settings-control">
                             <div class="settings-control-header">
                                 <label class="settings-label">Duración por Ronda</label>
-                                <button class="settings-reset-individual" data-field="round-duration" type="button" title="Restablecer a valor por defecto">
+                                <button class="settings-reset-individual" data-field="round-duration" type="button" title="Restablecer">
                                     🔄
                                 </button>
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="round-duration" class="settings-slider" 
-                                       min="30" max="300" step="5" value="${roundDuration}">
+                                       min="30" max="120" step="10" value="${roundDuration}">
                                 <span class="settings-value-display" id="round-duration-display">${roundDuration}s</span>
                             </div>
-                            <small class="settings-hint">30s a 5 minutos</small>
+                            <small class="settings-hint">30s a 2 minutos</small>
                         </div>
 
                         <div class="settings-control">
                             <div class="settings-control-header">
                                 <label class="settings-label">Cuenta Atrás Inicial</label>
-                                <button class="settings-reset-individual" data-field="start-countdown" type="button" title="Restablecer a valor por defecto">
+                                <button class="settings-reset-individual" data-field="start-countdown" type="button" title="Restablecer">
                                     🔄
                                 </button>
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="start-countdown" class="settings-slider" 
-                                       min="1" max="10" value="${startCountdown}">
+                                       min="1" max="6" value="${startCountdown}">
                                 <span class="settings-value-display" id="start-countdown-display">${startCountdown}s</span>
                             </div>
-                            <small class="settings-hint">1-10 segundos</small>
+                            <small class="settings-hint">1-6 segundos</small>
                         </div>
 
                         <div class="settings-control">
                             <div class="settings-control-header">
                                 <label class="settings-label">Remate - Tiempo Restante</label>
-                                <button class="settings-reset-individual" data-field="hurry-up" type="button" title="Restablecer a valor por defecto">
+                                <button class="settings-reset-individual" data-field="hurry-up" type="button" title="Restablecer">
                                     🔄
                                 </button>
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="hurry-up-threshold" class="settings-slider" 
-                                       min="5" max="60" step="5" value="${hurryUpThreshold}">
+                                       min="5" max="20" value="${hurryUpThreshold}">
                                 <span class="settings-value-display" id="hurry-up-threshold-display">${hurryUpThreshold}s</span>
                             </div>
-                            <small class="settings-hint">5-60 segundos</small>
+                            <small class="settings-hint">5-20 segundos</small>
                         </div>
                     </div>
                 </div>
