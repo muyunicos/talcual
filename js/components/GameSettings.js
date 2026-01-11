@@ -3,19 +3,27 @@ class SettingsModal {
         this.settings = {};
         this.openedFrom = null;
         this.settingsLoaded = false;
+        this.gameId = null;
     }
 
-    async loadSettings() {
-        if (this.settingsLoaded) {
+    async loadSettings(gameId = null) {
+        if (this.settingsLoaded && !gameId) {
             return true;
         }
 
+        this.gameId = gameId;
+
         try {
             const url = new URL('./app/actions.php', window.location.href);
+            const payload = { action: 'get_config' };
+            if (gameId) {
+                payload.game_id = gameId;
+            }
+
             const response = await fetch(url.toString(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_config' })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -127,7 +135,7 @@ class SettingsModal {
                 </div>
 
                 <div class="settings-group">
-                    <h4>📏 Palabras</h4>
+                    <h4>📋 Palabras</h4>
                     
                     <div class="input-group">
                         <label class="input-label" for="max-words-per-player">Máx. Palabras por Jugador</label>
@@ -151,9 +159,9 @@ class SettingsModal {
         `;
     }
 
-    async openModal(context = 'normal') {
+    async openModal(context = 'normal', gameId = null) {
         this.openedFrom = context;
-        await this.loadSettings();
+        await this.loadSettings(gameId);
         const formHTML = this.buildFormHTML();
         const isCreationContext = context === 'creation';
 
@@ -239,13 +247,18 @@ class SettingsModal {
             }
 
             const url = new URL('./app/actions.php', window.location.href);
+            const payload = {
+                action: 'update_config',
+                config: values
+            };
+            if (this.gameId) {
+                payload.game_id = this.gameId;
+            }
+
             const response = await fetch(url.toString(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'update_config',
-                    config: values
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
