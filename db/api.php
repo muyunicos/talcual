@@ -769,7 +769,7 @@ try {
     }
 
 } catch (Exception $e) {
-    logMessage('Fatal error: ' . $e->getMessage(), 'FATAL');
+    logMessage('Fatal error: ' . $e->getMessage(), 'ERROR');
     http_response_code(400);
     respondError('Server Error: ' . $e->getMessage());
 }
