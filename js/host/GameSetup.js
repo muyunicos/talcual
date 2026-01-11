@@ -8,6 +8,7 @@ class CreateGameModal {
         this.currentRoomCode = null;
         this.isFirstGame = true;
         this.maxCodeLength = 4;
+        this.isCached = false;
     }
 
     async fetchCandidates() {
@@ -38,6 +39,10 @@ class CreateGameModal {
     }
 
     async fetchConfig() {
+        if (this.isCached && Object.keys(this.gameConfig).length > 0) {
+            return true;
+        }
+
         try {
             const url = new URL('./app/actions.php', window.location.href);
             const response = await fetch(url.toString(), {
@@ -58,6 +63,7 @@ class CreateGameModal {
 
             this.gameConfig = result.config;
             this.maxCodeLength = result.config.max_code_length || 4;
+            this.isCached = true;
             return true;
         } catch (error) {
             debug('Error fetching game config', error, 'error');
@@ -124,30 +130,6 @@ class CreateGameModal {
 
     truncateCode(code) {
         return code.substring(0, this.maxCodeLength).toUpperCase();
-    }
-
-    async checkRoomAvailability(roomCode) {
-        try {
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'check_room_availability',
-                    room_code: roomCode
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-
-            const result = await response.json();
-            return result.success && result.available;
-        } catch (error) {
-            debug('Error checking room availability', error, 'error');
-            return false;
-        }
     }
 
     async openModal() {
@@ -283,16 +265,6 @@ class CreateGameModal {
             }
 
             const gameId = this.currentRoomCode.toUpperCase().trim();
-
-            if (this.isFirstGame) {
-                const isAvailable = await this.checkRoomAvailability(gameId);
-                
-                if (!isAvailable) {
-                    showNotification('🚫 Sala en uso - Intenta con otro código', 'error');
-                    return;
-                }
-            }
-
             const category = this.selectedCandidate?.category || null;
 
             const payload = {
