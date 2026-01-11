@@ -94,7 +94,7 @@ try {
             $roundDuration = intval($config['round_duration'] ?? ($input['round_duration'] ?? ROUND_DURATION));
             $minPlayers = intval($config['min_players'] ?? ($input['min_players'] ?? MIN_PLAYERS));
 
-            $result = $service->createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers);
+            $result = $service->createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers, $config);
             $response = [
                 'success' => true,
                 'game_id' => $result['game_id'],
