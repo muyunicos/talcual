@@ -200,31 +200,49 @@ class GameTimer {
 
 const configService = {
     config: {},
+    _loading: false,
+    _loadPromise: null,
 
     load: async function() {
         try {
-            const response = await fetch('/app/actions.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_config' })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const text = await response.text();
-            if (!text) {
-                throw new Error('Empty response from server');
-            }
-
-            const data = JSON.parse(text);
-            if (data.success && data.config) {
-                this.config = data.config;
+            if (Object.keys(this.config).length > 0) {
                 return true;
             }
-            return false;
+
+            if (this._loading && this._loadPromise) {
+                return this._loadPromise;
+            }
+
+            this._loading = true;
+            this._loadPromise = (async () => {
+                const response = await fetch('/app/actions.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_config' })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const text = await response.text();
+                if (!text) {
+                    throw new Error('Empty response from server');
+                }
+
+                const data = JSON.parse(text);
+                if (data.success && data.config) {
+                    this.config = data.config;
+                    return true;
+                }
+                return false;
+            })();
+
+            const result = await this._loadPromise;
+            this._loading = false;
+            return result;
         } catch (e) {
+            this._loading = false;
             console.error('configService.load error:', e);
             return false;
         }
