@@ -217,6 +217,16 @@ class WordEquivalenceEngine {
         const stem1 = this.getStem(n1);
         const stem2 = this.getStem(n2);
 
+        let id1 = this.dictionaryMap[n1];
+        let id2 = this.dictionaryMap[n2];
+        
+        if (!id1) id1 = this.dictionaryMap[stem1];
+        if (!id2) id2 = this.dictionaryMap[stem2];
+
+        if (id1 && id2 && id1 === id2) {
+            return 'SINONIMO';
+        }
+
         if (stem1 !== stem2) return null;
 
         const isPluralLike = (word) => {
@@ -237,18 +247,6 @@ class WordEquivalenceEngine {
         
         if (isGenderVowel(last1) && isGenderVowel(last2) && last1 !== last2) {
             return 'SIMILAR';
-        }
-
-        if (this.isLoaded) {
-            let id1 = this.dictionaryMap[n1];
-            let id2 = this.dictionaryMap[n2];
-            
-            if (!id1) id1 = this.dictionaryMap[stem1];
-            if (!id2) id2 = this.dictionaryMap[stem2];
-            
-            if (id1 && id2 && id1 === id2) {
-                return 'SINONIMO';
-            }
         }
 
         return null;
