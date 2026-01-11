@@ -82,10 +82,6 @@ class PlayerManager extends BaseController {
     }
   }
 
-  getCanonicalForCompare(word) {
-    return wordEngine.getCanonical(word);
-  }
-
   attachEventListeners() {
     this.view.bindAddWord(() => this.addWord());
     this.view.bindKeyPressInInput(() => this.addWord());
@@ -343,15 +339,11 @@ class PlayerManager extends BaseController {
       return;
     }
 
-    const newCanonical = this.getCanonicalForCompare(word);
-    if (newCanonical) {
-      for (let i = 0; i < this.myWords.length; i++) {
-        const existing = this.myWords[i];
-        const existingCanonical = this.getCanonicalForCompare(existing);
-        if (existingCanonical && existingCanonical === newCanonical) {
-          showNotification('¡Intenta con otra! Ya escribiste una equivalente', 'warning');
-          return;
-        }
+    for (let i = 0; i < this.myWords.length; i++) {
+      const existing = this.myWords[i];
+      if (wordEngine.areEquivalent(word, existing)) {
+        showNotification('¡Intenta con otra! Ya escribiste una equivalente', 'warning');
+        return;
       }
     }
 
