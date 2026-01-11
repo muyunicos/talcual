@@ -483,15 +483,24 @@ class PlayerManager extends BaseController {
       const myResultData = roundResults[this.playerId];
       
       if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
-        const formattedMatches = myResultData.answers.map(ans => ({
-          word: ans.word,
-          matched: ans.matches.length > 0,
-          matchedPlayers: ans.matches.map(m => m.name),
-          count: ans.matches.length,
-          matchType: ans.matches[0]?.type
-        }));
+        const formattedResults = [];
+        
+        myResultData.answers.forEach(ans => {
+          if (ans.matches && ans.matches.length > 0) {
+            formattedResults.push({
+              word: ans.word,
+              type: ans.type,
+              points: ans.points,
+              matchCount: ans.matches.length
+            });
+          }
+        });
 
-        this.view.showRoundResults(formattedMatches);
+        if (formattedResults.length > 0) {
+          this.view.showRoundResults(formattedResults);
+        } else {
+          this.view.showRoundResults(null);
+        }
       } else {
         this.view.showRoundResults(null);
       }
@@ -510,15 +519,24 @@ class PlayerManager extends BaseController {
       const myResultData = roundResults[this.playerId];
       
       if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
-        const formattedMatches = myResultData.answers.map(ans => ({
-          word: ans.word,
-          matched: ans.matches.length > 0,
-          matchedPlayers: ans.matches.map(m => m.name),
-          count: ans.matches.length,
-          matchType: ans.matches[0]?.type
-        }));
+        const formattedResults = [];
+        
+        myResultData.answers.forEach(ans => {
+          if (ans.matches && ans.matches.length > 0) {
+            formattedResults.push({
+              word: ans.word,
+              type: ans.type,
+              points: ans.points,
+              matchCount: ans.matches.length
+            });
+          }
+        });
 
-        this.view.showRoundResults(formattedMatches);
+        if (formattedResults.length > 0) {
+          this.view.showRoundResults(formattedResults);
+        } else {
+          this.view.showRoundResults(null);
+        }
       } else {
         this.view.showRoundResults(null);
       }
