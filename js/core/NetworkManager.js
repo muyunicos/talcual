@@ -460,15 +460,63 @@ class GameClient {
     this.reconnectAttempts = 0;
   }
 
+  async _resolveGameId(gameId) {
+    const validStatuses = ['waiting', 'playing', 'round_ended', 'finished', 'closed'];
+    let currentId = gameId;
+    let maxDepth = 5;
+    let depth = 0;
+
+    while (depth < maxDepth) {
+      try {
+        const payload = {
+          action: 'get_state',
+          game_id: currentId
+        };
+        const result = await this._makeRequest(payload);
+
+        if (!result.success || !result.state) {
+          return currentId;
+        }
+
+        const state = result.state;
+        if (validStatuses.includes(state.status)) {
+          return currentId;
+        }
+
+        const nextId = state.status;
+        if (!nextId || typeof nextId !== 'string' || nextId === currentId) {
+          return currentId;
+        }
+
+        currentId = nextId;
+        depth++;
+      } catch (error) {
+        console.warn('[WARN] Error resolving game ID chain:', error);
+        return currentId;
+      }
+    }
+
+    return currentId;
+  }
+
   async sendAction(action, data = {}) {
     const criticalActions = [
       'join_game', 'leave_game', 'start_round', 'end_round', 'submit_answers'
     ];
     
     try {
+      let resolvedGameId = this.gameId;
+      if (['join_game', 'get_state'].includes(action)) {
+        resolvedGameId = await this._resolveGameId(this.gameId);
+        if (resolvedGameId !== this.gameId) {
+          console.log(`🔗 Game ID resolved: ${this.gameId} -> ${resolvedGameId}`);
+          this.gameId = resolvedGameId;
+        }
+      }
+
       const payload = {
         action: action,
-        game_id: this.gameId,
+        game_id: resolvedGameId,
         ...data
       };
       
