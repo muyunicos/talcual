@@ -20,7 +20,7 @@ class HostManager extends BaseController {
 
     this.view = new HostView();
 
-    this.loadConfigAndInit();
+    this.initializeHost();
   }
 
   getStorageKeys() {
@@ -56,29 +56,35 @@ class HostManager extends BaseController {
     }
   }
 
-  async loadConfigAndInit() {
+  async initializeHost() {
     try {
-      debug('❫ Cargando configuración...', null, 'info');
+      debug('❫ Inicializando Host...', null, 'info');
       
-      const configResult = await configService.load();
+      this.attachEventListeners();
+      this.determineUIState();
 
-      debug('✅ ConfigService listo', null, 'success');
-
-      if (!configService.isConfigReady()) {
-        throw new Error('ConfigService no está en estado ready');
+      const sessionData = this.recoverSession();
+      if (sessionData) {
+        debug('🔄 Recuperando sesión de host', null, 'info');
+        await this.resumeGame(sessionData.gameCode);
+      } else {
+        debug('💡 Mostrando pantalla inicial', null, 'info');
+        await this.loadCategoriesForSetup();
+        this.showStartScreen();
       }
 
-      debug('✅ Verificación exitosa: ConfigService listo', null, 'success');
+      debug('✅ HostManager inicializado completamente', null, 'success');
+    } catch (error) {
+      debug('❌ Error fatal en initializeHost: ' + error.message, null, 'error');
+      UI.showFatalError(`Error de inicialización: ${error.message}`);
+      throw error;
+    }
+  }
 
-      syncCommConfigWithServer(configService.config);
-      debug('🔗 COMM_CONFIG sincronizado con servidor', null, 'success');
-
-      this.minPlayers = configService.get('min_players', 1);
-      this.totalRounds = configService.get('total_rounds', 3);
-      this.configCached = true;
-
-      this.attachEventListeners();
-
+  async loadCategoriesForSetup() {
+    try {
+      debug('📚 Cargando categorías para setup...', null, 'info');
+      
       if (window.createGameModal && window.createGameModal.gameCandidates) {
         const categories = new Set();
         window.createGameModal.gameCandidates.forEach(c => {
@@ -89,23 +95,9 @@ class HostManager extends BaseController {
       } else {
         this.categories = [];
       }
-
-      this.determineUIState();
-
-      const sessionData = this.recoverSession();
-      if (sessionData) {
-        debug('🔄 Recuperando sesión de host', null, 'info');
-        this.resumeGame(sessionData.gameCode);
-      } else {
-        debug('💡 Mostrando pantalla inicial', null, 'info');
-        this.showStartScreen();
-      }
-
-      debug('✅ HostManager inicializado completamente', null, 'success');
     } catch (error) {
-      debug('❌ Error fatal en loadConfigAndInit: ' + error.message, null, 'error');
-      UI.showFatalError(`Error de inicialización: ${error.message}`);
-      throw error;
+      debug('⚠️ Error cargando categorías:', error, 'warn');
+      this.categories = [];
     }
   }
 
@@ -116,7 +108,7 @@ class HostManager extends BaseController {
     this.view.bindRemovePlayer((playerId) => this.handleRemovePlayer(playerId));
   }
 
-  openSettings() {
+  async openSettings() {
     if (!window.settingsModal) {
       debug('⚠️ SettingsModal no está disponible', null, 'warn');
       return;
@@ -135,8 +127,12 @@ class HostManager extends BaseController {
         max_words_per_player: this.gameState.max_words_per_player,
         max_word_length: this.gameState.max_word_length
       };
-    } else if (configService && configService.config) {
-      config = configService.config;
+    } else if (this.gameCode) {
+      const ready = await configService.load(this.gameCode);
+      config = ready ? configService.getForGame(this.gameCode) : {};
+    } else {
+      const ready = await configService.load();
+      config = ready ? configService.getForGame() : {};
     }
 
     window.settingsModal.openModal('normal', this.gameCode, config);
@@ -212,6 +208,11 @@ class HostManager extends BaseController {
 
       if (result.success && result.state) {
         debug('✅ Sesión recuperada', null, 'success');
+        
+        configService.loadFromState(result.state);
+        this.minPlayers = result.state.min_players || 1;
+        this.totalRounds = result.state.total_rounds || 3;
+        
         await this.loadGameChain(gameCode);
         this.loadGameScreen(result.state);
         return;
@@ -219,10 +220,12 @@ class HostManager extends BaseController {
 
       debug('⚠️ No se pudo recuperar sesión', null, 'warn');
       this.clearSession();
+      await this.loadCategoriesForSetup();
       this.showStartScreen();
     } catch (error) {
       debug('Error recuperando sesión:', error, 'error');
       this.clearSession();
+      await this.loadCategoriesForSetup();
       this.showStartScreen();
     }
   }
@@ -525,7 +528,7 @@ class HostManager extends BaseController {
   async endRound() {
     if (!this.client) return;
 
-    debug('🎣 Finalizando ronda...', null, 'info');
+    debug('🌣 Finalizando ronda...', null, 'info');
 
     this.view.setEndRoundButtonLoading();
 
