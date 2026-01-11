@@ -174,7 +174,9 @@ try {
                 throw new Exception('game_id requerido');
             }
 
-            $result = $service->endRound($gameId);
+            $roundResults = isset($input['results']) ? $input['results'] : null;
+
+            $result = $service->endRound($gameId, $roundResults);
             $response = [
                 'success' => true,
                 'message' => $result['message'],
