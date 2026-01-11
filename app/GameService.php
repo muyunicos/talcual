@@ -64,7 +64,7 @@ class GameService {
         return $code;
     }
 
-    public function createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers) {
+    public function createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers, $config = null) {
         $originalGameId = null;
         $previousGameState = null;
 
@@ -106,7 +106,7 @@ class GameService {
             }
         }
 
-        $initialState = $this->createInitialGameState($newGameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $now);
+        $initialState = $this->createInitialGameState($newGameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $now, $config);
 
         $this->repository->save($newGameId, $initialState);
 
@@ -132,7 +132,21 @@ class GameService {
         if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
     }
 
-    private function createInitialGameState($gameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $now) {
+    private function createInitialGameState($gameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $now, $config = null) {
+        $startCountdown = START_COUNTDOWN;
+        $hurryUpThreshold = 10;
+        $maxWordsPerPlayer = MAX_WORDS_PER_PLAYER;
+        $maxWordLength = MAX_WORD_LENGTH;
+        $maxPlayers = MAX_PLAYERS;
+
+        if (is_array($config)) {
+            $startCountdown = intval($config['start_countdown'] ?? START_COUNTDOWN);
+            $hurryUpThreshold = intval($config['hurry_up_threshold'] ?? 10);
+            $maxWordsPerPlayer = intval($config['max_words_per_player'] ?? MAX_WORDS_PER_PLAYER);
+            $maxWordLength = intval($config['max_word_length'] ?? MAX_WORD_LENGTH);
+            $maxPlayers = intval($config['max_players'] ?? MAX_PLAYERS);
+        }
+
         return [
             'game_id' => $gameId,
             'original_id' => $originalGameId,
@@ -149,14 +163,14 @@ class GameService {
             'countdown_starts_at' => null,
             'round_starts_at' => null,
             'round_ends_at' => null,
-            'countdown_duration' => START_COUNTDOWN,
+            'countdown_duration' => $startCountdown,
             'created_at' => $now,
             'updated_at' => $now,
-            'hurry_up_threshold' => 10,
-            'max_words_per_player' => MAX_WORDS_PER_PLAYER,
-            'max_word_length' => MAX_WORD_LENGTH,
+            'hurry_up_threshold' => $hurryUpThreshold,
+            'max_words_per_player' => $maxWordsPerPlayer,
+            'max_word_length' => $maxWordLength,
             'min_players' => $minPlayers,
-            'max_players' => MAX_PLAYERS,
+            'max_players' => $maxPlayers,
             'round_details' => [],
             'round_top_words' => [],
             'game_history' => [],
@@ -432,6 +446,8 @@ class GameService {
             throw new Exception('No active round');
         }
 
+        $maxWordsPerPlayer = $state['max_words_per_player'] ?? MAX_WORDS_PER_PLAYER;
+
         $validAnswers = [];
         foreach ($answers as $word) {
             if (is_string($word)) {
@@ -439,8 +455,8 @@ class GameService {
             }
         }
 
-        if (count($validAnswers) > MAX_WORDS_PER_PLAYER) {
-            $validAnswers = array_slice($validAnswers, 0, MAX_WORDS_PER_PLAYER);
+        if (count($validAnswers) > $maxWordsPerPlayer) {
+            $validAnswers = array_slice($validAnswers, 0, $maxWordsPerPlayer);
         }
 
         $state['players'][$playerId]['answers'] = $validAnswers;
