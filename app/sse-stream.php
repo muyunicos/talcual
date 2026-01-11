@@ -38,8 +38,6 @@ if (!$gameId) {
     exit;
 }
 
-logMessage("SSE iniciado para game: {$gameId}, player: {$playerId}", 'DEBUG');
-
 try {
     $db = Database::getInstance();
     $repo = new GameRepository();
@@ -155,23 +153,22 @@ sendSSE('connected', [
     'game_id' => $gameId,
     'player_id' => $playerId,
     'timestamp' => time(),
-    'method' => 'SSE with APCu-based event notifications',
-    'max_duration_seconds' => $maxDuration
+    'method' => 'SSE with APCu-based event notifications'
 ]);
+
+logMessage("SSE conectado: {$gameId} (player: {$playerId})", 'INFO');
 
 $lastHeartbeatTime = microtime(true);
 
-logMessage("SSE conectado para {$gameId} (player: {$playerId}), usando APCu, max duration: {$maxDuration}s, heartbeat: {$heartbeatInterval}s", 'DEBUG');
-
 while ((microtime(true) - $startTime) < $maxDuration) {
     if (connection_aborted()) {
-        logMessage("SSE desconectado por cliente: {$gameId}", 'DEBUG');
+        logMessage("SSE cliente desconectado: {$gameId}", 'INFO');
         break;
     }
     
     if (!$repo->exists($gameId)) {
         sendSSE('game_ended', ['message' => 'El juego ha finalizado']);
-        logMessage("SSE juego desaparecido: {$gameId}", 'INFO');
+        logMessage("SSE juego eliminado: {$gameId}", 'INFO');
         break;
     }
     
@@ -184,7 +181,6 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         if ($timeSinceHeartbeat >= $heartbeatInterval) {
             sendHeartbeat();
             $lastHeartbeatTime = $now;
-            logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
         }
         
         sleep($pollingInterval);
@@ -200,7 +196,6 @@ while ((microtime(true) - $startTime) < $maxDuration) {
         if ($timeSinceHeartbeat >= $heartbeatInterval) {
             sendHeartbeat();
             $lastHeartbeatTime = $now;
-            logMessage("SSE heartbeat para {$gameId}", 'DEBUG');
         }
         
         sleep($pollingInterval);
@@ -214,29 +209,23 @@ while ((microtime(true) - $startTime) < $maxDuration) {
     
     if (isLightweightEvent($eventType)) {
         sendSSE($eventType, $eventData);
-        logMessage("SSE lightweight event '{$eventType}' enviado para {$gameId}", 'DEBUG');
     } elseif ($eventType === 'sync' || $eventType === 'refresh') {
         try {
             $state = $repo->load($gameId);
             if ($state) {
                 $sanitizedState = sanitizeStateForPlayer($state, $playerId);
                 sendSSE('update', $sanitizedState);
-                $activePlayers = count(array_filter($state['players'], function($p) {
-                    return !$p['disconnected'];
-                }));
-                logMessage("SSE full state 'update' enviado para {$gameId} ({$activePlayers} activos, status={$state['status']})", 'DEBUG');
             }
         } catch (Exception $e) {
-            logMessage("[ERROR] Error cargando estado en SSE: " . $e->getMessage(), 'ERROR');
+            logMessage("SSE error cargando estado: " . $e->getMessage(), 'ERROR');
         }
     } else {
         sendSSE($eventType, $eventData);
-        logMessage("SSE custom event '{$eventType}' enviado para {$gameId}", 'DEBUG');
     }
     
     $lastHeartbeatTime = microtime(true);
     usleep(100000);
 }
 
-logMessage("SSE terminado para {$gameId}", 'DEBUG');
+logMessage("SSE terminado: {$gameId}", 'INFO');
 ?>
