@@ -422,7 +422,7 @@ class HostManager extends BaseController {
   async handleRemovePlayer(playerId) {
     if (!this.client || !playerId) return;
 
-    const confirmed = window.confirm('\u00bfExpulsar a este jugador de la sala?');
+    const confirmed = window.confirm('¿Expulsar a este jugador de la sala?');
     if (!confirmed) return;
 
     try {
@@ -561,10 +561,12 @@ class HostManager extends BaseController {
         debug('✅ Resultados calculados localmente', { topWords: this.roundTopWords.length }, 'success');
       }
 
-      const result = await this.client.sendAction('end_round', {});
+      const result = await this.client.sendAction('end_round', {
+        results: this.roundResults
+      });
 
       if (result.success) {
-        debug('✅ Ronda finalizada (payload minimal enviado al servidor)', null, 'success');
+        debug('✅ Ronda finalizada (resultados enviados al servidor)', null, 'success');
         this.handleStateUpdate(result.state || this.gameState);
       } else {
         showNotification('❌ Error finalizando ronda', 'error');
@@ -596,7 +598,7 @@ class HostManager extends BaseController {
   async endGame() {
     if (!this.client) return;
 
-    const confirm = window.confirm('\u00bfTerminar juego?');
+    const confirm = window.confirm('¿Terminar juego?');
     if (!confirm) return;
 
     try {
