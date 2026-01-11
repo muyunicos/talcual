@@ -349,6 +349,22 @@ try {
             ];
             break;
 
+        case 'get_game_chain':
+            $gameId = AppUtils::sanitizeGameId($input['game_id'] ?? null);
+
+            if (!$gameId) {
+                throw new Exception('game_id requerido');
+            }
+
+            $chain = $service->getGameChain($gameId);
+            $response = [
+                'success' => true,
+                'server_now' => intval(microtime(true) * 1000),
+                'chain' => $chain,
+                'chain_count' => count($chain)
+            ];
+            break;
+
         case 'get_config':
             $response = [
                 'success' => true,
