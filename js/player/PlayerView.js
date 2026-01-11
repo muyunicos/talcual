@@ -297,12 +297,10 @@ class PlayerView {
       this.elements.wordsListContainer.classList.remove('hidden');
       safeShowElement(this.elements.wordsListContainer);
 
-      this.elements.wordsList.innerHTML = words.map((word, idx) => `
-        <div class="word-item" onclick="playerManager.removeWord(${idx})">
-          <span class="word-text">${sanitizeText(word)}</span>
-          <span class="word-delete">✍️</span>
-        </div>
-      `).join('');
+      this.elements.wordsList.innerHTML = words.map((word, idx) => {
+        const wordText = sanitizeText(word);
+        return `<div class="word-item" onclick="playerManager.removeWord(${idx})"><span class="word-text">${wordText}</span><span class="word-delete">✍️</span></div>`;
+      }).join('');
     } else {
       safeHideElement(this.elements.wordsListContainer);
     }
@@ -350,15 +348,15 @@ class PlayerView {
       return;
     }
 
-    let html = '<div class="results-title">📈 Tus Resultados</div>';
+    let html = '<div class="results-title">📨 Tus Resultados</div>';
     let roundScore = 0;
 
     if (Array.isArray(resultData)) {
       for (const match of resultData) {
         const icon = match.matched ? '✅' : '❌';
         const word = sanitizeText(match.word);
-        let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match')}">`;
-        resultHtml += `<div class="result-word">${icon} ${word}</div>`;
+        let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match'}`;
+        resultHtml += `"><div class="result-word">${icon} ${word}</div>`;
 
         if (match.matched && match.matchedPlayers && match.matchedPlayers.length > 0) {
           const playerNames = match.matchedPlayers.map(name => sanitizeText(name)).join(', ');
@@ -375,13 +373,11 @@ class PlayerView {
         const hasMatch = result.count > 1;
         const icon = hasMatch ? '✅' : '❌';
         const points = result.points || 0;
-        html += `
-          <div class="result-item ${hasMatch ? 'match' : 'no-match'}">
-            <div class="result-word">${icon} ${sanitizeText(word)}</div>
-            <div class="result-points">+${points} puntos</div>
-            ${hasMatch ? `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>` : ''}
-          </div>
-        `;
+        html += `<div class="result-item ${hasMatch ? 'match' : 'no-match'}"><div class="result-word">${icon} ${sanitizeText(word)}</div><div class="result-points">+${points} puntos</div>`;
+        if (hasMatch) {
+          html += `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>`;
+        }
+        html += '</div>';
         roundScore += points;
       });
       html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
