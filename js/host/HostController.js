@@ -130,7 +130,7 @@ class HostManager extends BaseController {
         max_players: this.gameState.max_players,
         round_duration: this.gameState.round_duration,
         total_rounds: this.gameState.total_rounds,
-        start_countdown: this.gameState.start_countdown,
+        countdown_duration: this.gameState.countdown_duration,
         hurry_up_threshold: this.gameState.hurry_up_threshold,
         max_words_per_player: this.gameState.max_words_per_player,
         max_word_length: this.gameState.max_word_length
@@ -442,10 +442,11 @@ class HostManager extends BaseController {
     if (state.round_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
-      const countdownDuration = state.countdown_duration || 4000;
+      const countdownDurationSeconds = state.countdown_duration || 4;
+      const countdownDurationMs = countdownDurationSeconds * 1000;
       const elapsed = nowServer - state.round_starts_at;
 
-      if (elapsed < countdownDuration) {
+      if (elapsed < countdownDurationMs) {
         debug('⏳ Detectado countdown activo desde update', null, 'info');
         await this.showCountdown(state);
       }
