@@ -57,9 +57,7 @@ class ActionMenuManager {
                     window.hostManager.createLinkedGame();
                     break;
                 case 'hamburger-settings':
-                    if (window.settingsModal) {
-                        window.settingsModal.openModal('normal');
-                    }
+                    window.hostManager.openSettings();
                     break;
                 case 'hamburger-terminate':
                     window.hostManager.endGame();
