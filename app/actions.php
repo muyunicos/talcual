@@ -1,9 +1,16 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
-ini_set('log_errors', '0');
-
 require_once __DIR__ . '/config.php';
+
+if (DEV_MODE) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+    ini_set('log_errors', '1');
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
+}
+
 require_once __DIR__ . '/GameRepository.php';
 require_once __DIR__ . '/DictionaryRepository.php';
 require_once __DIR__ . '/GameService.php';
@@ -287,7 +294,7 @@ try {
             break;
 
         case 'update_player_color':
-            $gameId = $input['game_id']
+            $gameId = $input['game_id'];
             $playerId = $input['player_id'];
 
             if (!$gameId || !$playerId) {
@@ -323,10 +330,9 @@ try {
             break;
 
         case 'get_config':
-            $gameId = isset($input['game_id']) ? $input['game_id']) : null;
+            $gameId = isset($input['game_id']) ? $input['game_id'] : null;
 
             if ($gameId) {
-                // Context-aware: return config from specific game
                 try {
                     $result = $service->getState($gameId);
                     $state = $result['state'];
@@ -345,7 +351,6 @@ try {
                         ]
                     ];
                 } catch (Exception $e) {
-                    // Game not found, return defaults
                     $response = [
                         'success' => true,
                         'server_now' => intval(microtime(true) * 1000),
@@ -362,7 +367,6 @@ try {
                     ];
                 }
             } else {
-                // Default: return global config from .env
                 $response = [
                     'success' => true,
                     'server_now' => intval(microtime(true) * 1000),
@@ -381,11 +385,10 @@ try {
             break;
 
         case 'update_config':
-            $gameId = isset($input['game_id']) ? $input['game_id']) : null;
+            $gameId = isset($input['game_id']) ? $input['game_id'] : null;
             $configData = $input['config'] ?? [];
 
             if ($gameId) {
-                // Context-aware: update specific game config
                 try {
                     $result = $service->updateGameConfig($gameId, $configData);
                     $response = [
@@ -399,8 +402,6 @@ try {
                     throw $e;
                 }
             } else {
-                // No game_id: store in session (future enhancement)
-                // For now, just acknowledge
                 $response = [
                     'success' => true,
                     'message' => 'Config settings stored',
@@ -464,6 +465,8 @@ try {
 } catch (Throwable $e) {
     logMessage('Error: ' . $e->getMessage(), 'ERROR');
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Error del servidor: ' . $e->getMessage()]);
+    
+    $message = DEV_MODE ? $e->getMessage() : 'Error del servidor';
+    echo json_encode(['success' => false, 'message' => $message]);
 }
 ?>
