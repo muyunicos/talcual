@@ -302,7 +302,7 @@ class DatabaseManager {
     }
 
     public function getGames($limit = 100, $offset = 0) {
-        $sql = 'SELECT g.id, g.status, g.round, g.current_category_id, g.selected_category_id,
+        $sql = 'SELECT g.id, g.original_id, g.status, g.round, g.current_category_id, g.selected_category_id,
                 g.updated_at, g.created_at, g.total_rounds, g.round_duration,
                 COUNT(DISTINCT p.id) as player_count
                 FROM games g
@@ -312,6 +312,21 @@ class DatabaseManager {
                 LIMIT ? OFFSET ?';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$limit, $offset]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function getGamesByOriginalId($originalId, $limit = 100, $offset = 0) {
+        $sql = 'SELECT g.id, g.original_id, g.status, g.round, g.current_category_id, g.selected_category_id,
+                g.updated_at, g.created_at, g.total_rounds, g.round_duration,
+                COUNT(DISTINCT p.id) as player_count
+                FROM games g
+                LEFT JOIN players p ON g.id = p.game_id
+                WHERE g.original_id = ?
+                GROUP BY g.id
+                ORDER BY g.updated_at DESC
+                LIMIT ? OFFSET ?';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$originalId, $limit, $offset]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
@@ -333,6 +348,32 @@ class DatabaseManager {
             $player['answers'] = !empty($player['answers']) ? explode(',', $player['answers']) : [];
         }
         return $players;
+    }
+
+    public function deleteGame($gameId) {
+        $this->pdo->prepare('DELETE FROM players WHERE game_id = ?')->execute([$gameId]);
+        $stmt = $this->pdo->prepare('DELETE FROM games WHERE id = ?');
+        return $stmt->execute([$gameId]) && $stmt->rowCount() > 0;
+    }
+
+    public function deletePlayer($gameId, $playerId) {
+        $stmt = $this->pdo->prepare('DELETE FROM players WHERE game_id = ? AND id = ?');
+        return $stmt->execute([$gameId, $playerId]) && $stmt->rowCount() > 0;
+    }
+
+    public function deleteAllChainedGames($originalId) {
+        $stmt = $this->pdo->prepare('SELECT id FROM games WHERE original_id = ?');
+        $stmt->execute([$originalId]);
+        $games = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($games as $gameId) {
+            $this->deleteGame($gameId);
+        }
+        
+        $stmt = $this->pdo->prepare('DELETE FROM games WHERE id = ?');
+        $stmt->execute([$originalId]);
+        
+        return count($games) + 1;
     }
 
     public function optimizeDatabase() {
@@ -451,6 +492,9 @@ function handlePost($db, $action) {
             'delete-word' => handleDeleteWord($db),
             'replace-prompt-words' => handleReplacePromptWords($db),
             'reorder-categories' => handleReorderCategories($db),
+            'delete-game' => handleDeleteGame($db),
+            'delete-player' => handleDeletePlayer($db),
+            'delete-chained-games' => handleDeleteChainedGames($db),
             'import' => handleImport($db),
             'optimize' => handleOptimize($db),
             'repair' => handleRepair($db),
@@ -469,6 +513,7 @@ function handleGet($db, $action) {
             'get-words' => respondSuccess('Words loaded', $db->getWords($_GET['prompt_id'] ?? null)),
             'get-stats' => respondSuccess('Stats loaded', $db->getDictionaryStats()),
             'get-games' => respondSuccess('Games loaded', $db->getGames()),
+            'get-games-by-original' => respondSuccess('Chained games loaded', $db->getGamesByOriginalId($_GET['original_id'] ?? '')),
             'get-game' => respondSuccess('Game loaded', $db->getGameById($_GET['id'] ?? '')),
             'get-game-players' => respondSuccess('Players loaded', $db->getGamePlayers($_GET['game_id'] ?? '')),
             'inspect' => respondSuccess('Inspection completed', $db->getInspectionData()),
@@ -585,6 +630,32 @@ function handleReorderCategories($db) {
     
     $db->reorderCategories($data['order']);
     respondSuccess('Categories reordered');
+}
+
+function handleDeleteGame($db) {
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data || !isset($data['game_id'])) throw new Exception('Missing game_id');
+    
+    $db->deleteGame($data['game_id']);
+    respondSuccess('Game deleted');
+}
+
+function handleDeletePlayer($db) {
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data || !isset($data['game_id']) || !isset($data['player_id'])) {
+        throw new Exception('Missing game_id or player_id');
+    }
+    
+    $db->deletePlayer($data['game_id'], $data['player_id']);
+    respondSuccess('Player deleted');
+}
+
+function handleDeleteChainedGames($db) {
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data || !isset($data['original_id'])) throw new Exception('Missing original_id');
+    
+    $count = $db->deleteAllChainedGames($data['original_id']);
+    respondSuccess('Chained games deleted', ['count' => $count]);
 }
 
 function handleOptimize($db) {
