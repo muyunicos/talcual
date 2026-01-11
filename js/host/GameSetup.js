@@ -44,25 +44,13 @@ class CreateGameModal {
         }
 
         try {
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_config' })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
+            const ready = await configService.load();
+            if (!ready) {
+                throw new Error('Failed to load config from configService');
             }
 
-            const result = await response.json();
-
-            if (!result.success || !result.config) {
-                throw new Error(result.message || 'Invalid response: missing config');
-            }
-
-            this.gameConfig = result.config;
-            this.maxCodeLength = result.config.max_code_length || 4;
+            this.gameConfig = configService.getForGame();
+            this.maxCodeLength = this.gameConfig.max_code_length || 4;
             this.isCached = true;
             return true;
         } catch (error) {
@@ -256,8 +244,8 @@ class CreateGameModal {
         }
 
         let config = null;
-        if (window.configService && window.configService.config) {
-            config = window.configService.config;
+        if (window.configService && window.configService.getForGame()) {
+            config = window.configService.getForGame();
         } else if (Object.keys(this.gameConfig).length > 0) {
             config = this.gameConfig;
         }
