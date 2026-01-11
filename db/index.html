@@ -1836,7 +1836,6 @@
         function selectCategory(catId) {
             cancelEditMode();
             selectedCategory = catId;
-            console.log("lalala");
             selectedPrompt = null;
             selectedWord = null;
             loadDictionary();
@@ -1848,11 +1847,13 @@
             const response = await fetch(`${API}?action=get-words&prompt_id=${promptId}`);
             const json = await response.json();
             renderWords(json.data || []);
+            renderPrompts(allPrompts.filter(p => p.category_ids.includes(selectedCategory)));
         }
         
         function selectWord(wordId) {
             cancelEditMode();
             selectedWord = wordId;
+            renderWords(allWords.filter(w => w.prompt_id === selectedPrompt));
         }
         
         function startEditCategory(categoryId, currentText) {
