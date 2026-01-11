@@ -385,16 +385,14 @@ try {
                 'server_now' => intval(microtime(true) * 1000),
                 'config' => [
                     'round_duration' => ROUND_DURATION,
-                    'TOTAL_ROUNDS' => TOTAL_ROUNDS,
+                    'total_rounds' => TOTAL_ROUNDS,
                     'max_words_per_player' => MAX_WORDS_PER_PLAYER,
                     'max_code_length' => MAX_CODE_LENGTH,
                     'min_players' => MIN_PLAYERS,
                     'max_players' => MAX_PLAYERS,
                     'start_countdown' => START_COUNTDOWN,
                     'max_word_length' => MAX_WORD_LENGTH,
-                    'min_player_name_length' => 2,
-                    'max_player_name_length' => 20,
-                    'hurry_up_threshold' => 10
+                    'hurry_up_threshold' => HURRY_UP_THRESHOLD
                 ]
             ];
             break;

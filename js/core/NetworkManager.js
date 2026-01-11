@@ -39,8 +39,6 @@ const COMM_CONFIG_DEFAULTS = {
   WORDS_UPDATE_THROTTLE: 2000,
   STATE_UPDATE_THROTTLE: 500,
   MAX_WORD_LENGTH: 30,
-  MAX_PLAYER_NAME_LENGTH: 20,
-  MIN_PLAYER_NAME_LENGTH: 2,
   MAX_WORDS_PER_PLAYER: 6,
   GAME_CODE_LENGTH_MIN: 3,
   GAME_CODE_LENGTH_MAX: 5,
@@ -69,8 +67,6 @@ function syncCommConfigWithServer(serverConfig) {
 
   const mappings = {
     'max_word_length': 'MAX_WORD_LENGTH',
-    'max_player_name_length': 'MAX_PLAYER_NAME_LENGTH',
-    'min_player_name_length': 'MIN_PLAYER_NAME_LENGTH',
     'max_words_per_player': 'MAX_WORDS_PER_PLAYER',
     'max_code_length': 'GAME_CODE_LENGTH_MAX',
     'min_players': 'MIN_PLAYERS',
