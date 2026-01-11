@@ -117,11 +117,29 @@ class HostManager extends BaseController {
   }
 
   openSettings() {
-    if (window.settingsModal) {
-      window.settingsModal.openModal('normal', this.gameCode);
-    } else {
+    if (!window.settingsModal) {
       debug('⚠️ SettingsModal no está disponible', null, 'warn');
+      return;
     }
+
+    let config = null;
+
+    if (this.gameState) {
+      config = {
+        min_players: this.gameState.min_players,
+        max_players: this.gameState.max_players,
+        round_duration: this.gameState.round_duration,
+        total_rounds: this.gameState.total_rounds,
+        start_countdown: this.gameState.start_countdown,
+        hurry_up_threshold: this.gameState.hurry_up_threshold,
+        max_words_per_player: this.gameState.max_words_per_player,
+        max_word_length: this.gameState.max_word_length
+      };
+    } else if (configService && configService.config) {
+      config = configService.config;
+    }
+
+    window.settingsModal.openModal('normal', this.gameCode, config);
   }
 
   showStartScreen() {
