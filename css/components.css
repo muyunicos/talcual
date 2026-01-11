@@ -297,7 +297,7 @@
     height: 32px;
     padding-top: 8px;
     position: relative;
-    z-index: 5;
+    z-index: 2;
 }
 
 .settings-value-mini {
