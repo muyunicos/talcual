@@ -2,48 +2,7 @@ class SettingsModal {
     constructor() {
         this.settings = {};
         this.openedFrom = null;
-        this.settingsLoaded = false;
         this.gameId = null;
-    }
-
-    async loadSettings(gameId = null) {
-        if (this.settingsLoaded && !gameId) {
-            return true;
-        }
-
-        this.gameId = gameId;
-
-        try {
-            const url = new URL('./app/actions.php', window.location.href);
-            const payload = { action: 'get_config' };
-            if (gameId) {
-                payload.game_id = gameId;
-            }
-
-            const response = await fetch(url.toString(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-
-            const result = await response.json();
-            if (!result.success || !result.config) {
-                throw new Error(result.message || 'Invalid response: missing config');
-            }
-
-            this.settings = result.config;
-            this.settingsLoaded = true;
-            return true;
-        } catch (error) {
-            debug('Error cargando configuración', error, 'error');
-            this.settings = this.getDefaults();
-            this.settingsLoaded = true;
-            return false;
-        }
     }
 
     getDefaults() {
@@ -159,9 +118,18 @@ class SettingsModal {
         `;
     }
 
-    async openModal(context = 'normal', gameId = null) {
+    openModal(context = 'normal', gameId = null, config = null) {
         this.openedFrom = context;
-        await this.loadSettings(gameId);
+        this.gameId = gameId;
+
+        if (config && typeof config === 'object') {
+            this.settings = config;
+        } else if (window.configService && window.configService.config) {
+            this.settings = window.configService.config;
+        } else {
+            this.settings = this.getDefaults();
+        }
+
         const formHTML = this.buildFormHTML();
         const isCreationContext = context === 'creation';
 
