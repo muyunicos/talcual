@@ -88,9 +88,11 @@ try {
             $gameId = $input['game_id'];
             $requestedCategory = isset($input['category']) ? trim((string)$input['category']) : null;
             if ($requestedCategory === '') $requestedCategory = null;
-            $totalRounds = intval($input['total_rounds'] ?? TOTAL_ROUNDS);
-            $roundDuration = intval($input['round_duration'] ?? ROUND_DURATION);
-            $minPlayers = intval($input['min_players'] ?? MIN_PLAYERS);
+            
+            $config = isset($input['config']) && is_array($input['config']) ? $input['config'] : [];
+            $totalRounds = intval($config['total_rounds'] ?? ($input['total_rounds'] ?? TOTAL_ROUNDS));
+            $roundDuration = intval($config['round_duration'] ?? ($input['round_duration'] ?? ROUND_DURATION));
+            $minPlayers = intval($config['min_players'] ?? ($input['min_players'] ?? MIN_PLAYERS));
 
             $result = $service->createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers);
             $response = [
