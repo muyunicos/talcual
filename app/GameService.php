@@ -160,6 +160,7 @@ class GameService {
             'round_details' => [],
             'round_top_words' => [],
             'game_history' => [],
+            'round_results' => null,
             'roundData' => null,
             'last_update' => $now
         ];
@@ -307,6 +308,7 @@ class GameService {
         $state['countdown_starts_at'] = $countdownStartsAt;
         $state['round_starts_at'] = $roundStartsAt;
         $state['round_ends_at'] = $roundEndsAt;
+        $state['round_results'] = null;
 
         $state['roundData'] = [
             'roundQuestion' => $roundQuestion,
@@ -462,7 +464,7 @@ class GameService {
         ];
     }
 
-    public function endRound($gameId) {
+    public function endRound($gameId, $roundResults = null) {
         $state = $this->repository->load($gameId);
 
         if (!$state) {
@@ -487,6 +489,10 @@ class GameService {
             $state['players'][$pId]['round_history'][] = $roundEntry;
             $state['players'][$pId]['answers'] = [];
             $state['players'][$pId]['status'] = 'connected';
+        }
+
+        if ($roundResults !== null && is_array($roundResults)) {
+            $state['round_results'] = $roundResults;
         }
 
         $isGameFinished = (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS));
@@ -553,6 +559,7 @@ class GameService {
         $state['round_ends_at'] = null;
         $state['countdown_duration'] = null;
         $state['round_top_words'] = [];
+        $state['round_results'] = null;
         $state['roundData'] = null;
         $state['last_update'] = time();
         $state['updated_at'] = time();
@@ -579,6 +586,7 @@ class GameService {
         $state['round_ends_at'] = null;
         $state['countdown_duration'] = null;
         $state['roundData'] = null;
+        $state['round_results'] = null;
         $state['last_update'] = time();
         $state['updated_at'] = time();
 
