@@ -54,7 +54,7 @@
     background: rgb(46 0 78);
     border-radius: var(--radius-xl);
     padding: var(--space-3xl) var(--space-2xl);
-    max-width: 450px;
+    max-width: 500px;
     width: 90%;
     box-shadow: 0 0 40px rgb(0 240 255 / 37%), var(--sombra-dura);
     border: 3px solid var(--cian);
@@ -80,6 +80,168 @@
     text-align: center;
 }
 
+/* ========== SETTINGS FORM - NUEVA ESTRUCTURA ========== */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.settings-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid rgba(139, 92, 246, 0.2);
+    padding-bottom: 0;
+}
+
+.settings-tab-btn {
+    flex: 1;
+    padding: 12px 16px;
+    background: rgba(139, 92, 246, 0.1);
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: rgba(199, 210, 254, 0.7);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 0;
+}
+
+.settings-tab-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    color: rgba(199, 210, 254, 0.9);
+}
+
+.settings-tab-btn.active {
+    background: rgba(139, 92, 246, 0.3);
+    border-bottom-color: var(--color-accent-cyan);
+    color: var(--color-accent-cyan);
+}
+
+.settings-tabs-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 280px;
+}
+
+.settings-tab-pane {
+    display: none;
+    flex-direction: column;
+    gap: 18px;
+    animation: fadeIn 0.25s ease;
+}
+
+.settings-tab-pane.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.settings-control {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.settings-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.settings-slider {
+    flex: 1;
+    height: 5px;
+    border-radius: 4px;
+    background: linear-gradient(to right, rgba(139, 92, 246, 0.3) 0%, rgba(6, 182, 212, 0.3) 100%);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.settings-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--color-accent-cyan);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+    transition: all 0.2s ease;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.settings-slider::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.8);
+    transform: scale(1.15);
+}
+
+.settings-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--color-accent-cyan);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+}
+
+.settings-slider::-moz-range-thumb:hover {
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.8);
+    transform: scale(1.15);
+}
+
+.settings-slider:focus {
+    background: linear-gradient(to right, rgba(139, 92, 246, 0.5) 0%, rgba(6, 182, 212, 0.5) 100%);
+}
+
+.settings-value-display {
+    font-weight: 700;
+    color: var(--color-accent-amber);
+    font-size: 14px;
+    min-width: 40px;
+    text-align: right;
+    font-family: var(--font-mono);
+}
+
+.settings-hint {
+    font-size: 12px;
+    color: rgba(199, 210, 254, 0.5);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+/* LEGACY INPUT GROUPS (Kept for backward compatibility) */
 .input-group {
     display: flex;
     flex-direction: column;
@@ -218,7 +380,6 @@
     background: var(--aura-gradient, linear-gradient(135deg, #FF0055 0%, #00F0FF 100%));
 }
 
-/* Pre-defined aura gradients (for common cases) */
 .aura-gradient--neon-pink-cyan {
     background: linear-gradient(135deg, #FF0055 0%, #00F0FF 100%);
 }
@@ -679,6 +840,29 @@
         font-size: 18px;
     }
 
+    .settings-slider {
+        height: 4px;
+    }
+
+    .settings-slider::-webkit-slider-thumb {
+        width: 16px;
+        height: 16px;
+    }
+
+    .settings-slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+    }
+
+    .settings-tabs {
+        gap: 6px;
+    }
+
+    .settings-tab-btn {
+        padding: 10px 14px;
+        font-size: 12px;
+    }
+
     .input-field {
         font-size: 16px;
     }
@@ -751,6 +935,47 @@
 
     .modal-title {
         font-size: 16px;
+    }
+
+    .settings-input-wrapper {
+        padding: 8px 10px;
+        gap: 10px;
+    }
+
+    .settings-slider {
+        height: 4px;
+    }
+
+    .settings-slider::-webkit-slider-thumb {
+        width: 14px;
+        height: 14px;
+    }
+
+    .settings-slider::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+    }
+
+    .settings-label {
+        font-size: 12px;
+    }
+
+    .settings-value-display {
+        font-size: 13px;
+        min-width: 35px;
+    }
+
+    .settings-hint {
+        font-size: 11px;
+    }
+
+    .settings-tabs {
+        gap: 4px;
+    }
+
+    .settings-tab-btn {
+        padding: 8px 10px;
+        font-size: 11px;
     }
 
     .input-label {
