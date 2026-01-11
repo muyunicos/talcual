@@ -42,7 +42,6 @@ class GameRepository {
             'current_prompt_id' => $gameRow['current_prompt_id'] !== null ? (int)$gameRow['current_prompt_id'] : null,
             'current_category_id' => $gameRow['current_category_id'] !== null ? (int)$gameRow['current_category_id'] : null,
             'selected_category_id' => $gameRow['selected_category_id'] !== null ? (int)$gameRow['selected_category_id'] : null,
-            'round_started_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_starts_at' => $gameRow['round_starts_at'] !== null ? (int)$gameRow['round_starts_at'] : null,
             'round_ends_at' => $gameRow['round_ends_at'] !== null ? (int)$gameRow['round_ends_at'] : null,
             'countdown_duration' => $gameRow['countdown_duration'] !== null ? (int)$gameRow['countdown_duration'] : null,
@@ -55,11 +54,7 @@ class GameRepository {
             'hurry_up_threshold' => (int)($gameRow['hurry_up_threshold'] ?? 10),
             'max_words_per_player' => (int)($gameRow['max_words_per_player'] ?? 6),
             'max_word_length' => (int)($gameRow['max_word_length'] ?? 30),
-            'version' => (int)($gameRow['version'] ?? 0),
-            'locked_until' => $gameRow['locked_until'] !== null ? (int)$gameRow['locked_until'] : null,
-            'last_update' => (int)($gameRow['updated_at'] ?? time()),
-            '_updated_at' => (int)($gameRow['updated_at'] ?? time()),
-            '_version' => 1
+            'last_update' => (int)($gameRow['updated_at'] ?? time())
         ];
 
         $state = array_merge($state, $metadata);
@@ -105,8 +100,6 @@ class GameRepository {
         $pdo = $this->db->getConnection();
 
         $now = time();
-        $state['_updated_at'] = $now;
-        $state['_version'] = 1;
 
         $metadata = [
             'used_prompts' => $state['used_prompts'] ?? [],
@@ -124,8 +117,8 @@ class GameRepository {
             countdown_duration, created_at, updated_at,
             min_players, max_players, round_duration,
             hurry_up_threshold, max_words_per_player, max_word_length,
-            version, locked_until, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
         $createdAt = $state['created_at'] ?? $now;
 
@@ -148,8 +141,6 @@ class GameRepository {
             (int)($state['hurry_up_threshold'] ?? 10),
             (int)($state['max_words_per_player'] ?? 6),
             (int)($state['max_word_length'] ?? 30),
-            (int)($state['version'] ?? 0),
-            $state['locked_until'] ?? null,
             $metadataJson
         ]);
 
