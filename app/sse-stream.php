@@ -4,7 +4,6 @@ set_time_limit(0);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/GameRepository.php';
-require_once __DIR__ . '/AppUtils.php';
 
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');

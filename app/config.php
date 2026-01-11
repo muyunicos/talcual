@@ -1,5 +1,7 @@
 <?php
+
 require_once __DIR__ . '/Database.php';
+
 $dotenv = __DIR__ . '/../.env';
 $config = [];
 
