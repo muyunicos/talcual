@@ -39,85 +39,104 @@ class SettingsModal {
                 <div class="settings-tabs-content">
                     <div class="settings-tab-pane active" data-tab="general">
                         <div class="settings-control">
-                            <label class="settings-label">Número de Jugadores</label>
-                            <div class="settings-dual-sliders">
-                                <div class="settings-slider-item">
-                                    <input type="range" id="min-players" class="settings-slider" 
-                                           min="1" max="20" value="${minPlayers}">
-                                    <div class="settings-slider-info">
-                                        <span class="settings-slider-label">Mínimo</span>
-                                        <span class="settings-value-display" id="min-players-display">${minPlayers}</span>
-                                    </div>
-                                </div>
-                                <div class="settings-slider-item">
-                                    <input type="range" id="max-players" class="settings-slider" 
-                                           min="1" max="100" value="${maxPlayers}">
-                                    <div class="settings-slider-info">
-                                        <span class="settings-slider-label">Máximo</span>
-                                        <span class="settings-value-display" id="max-players-display">${maxPlayers}</span>
-                                    </div>
+                            <div class="settings-control-header">
+                                <label class="settings-label">Número de Jugadores</label>
+                                <button class="settings-reset-individual" data-field="players" type="button" title="Restablecer a valores por defecto">
+                                    🔄
+                                </button>
+                            </div>
+                            <div class="settings-dual-range">
+                                <input type="range" id="min-players" class="settings-range-min" 
+                                       min="1" max="20" value="${minPlayers}">
+                                <input type="range" id="max-players" class="settings-range-max" 
+                                       min="1" max="100" value="${maxPlayers}">
+                                <div class="settings-range-display">
+                                    <span class="settings-value-mini" id="min-players-display">${minPlayers}</span>
+                                    <span class="settings-range-divider">-</span>
+                                    <span class="settings-value-mini" id="max-players-display">${maxPlayers}</span>
                                 </div>
                             </div>
-                            <small class="settings-hint">Rango: 1-20 mínimo, 1-100 máximo</small>
+                            <small class="settings-hint">Mínimo 1-20, Máximo 1-100</small>
                         </div>
 
                         <div class="settings-control">
-                            <label class="settings-label">Máx. Palabras por Jugador</label>
+                            <div class="settings-control-header">
+                                <label class="settings-label">Máx. Palabras por Jugador</label>
+                                <button class="settings-reset-individual" data-field="max-words" type="button" title="Restablecer a valor por defecto">
+                                    🔄
+                                </button>
+                            </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="max-words-per-player" class="settings-slider" 
                                        min="1" max="20" value="${maxWordsPerPlayer}">
                                 <span class="settings-value-display" id="max-words-per-player-display">${maxWordsPerPlayer}</span>
                             </div>
-                            <small class="settings-hint">Límite de palabras por jugador (1-20)</small>
+                            <small class="settings-hint">Límite de palabras (1-20)</small>
                         </div>
 
                         <div class="settings-control">
-                            <label class="settings-label">Total de Rondas</label>
+                            <div class="settings-control-header">
+                                <label class="settings-label">Total de Rondas</label>
+                                <button class="settings-reset-individual" data-field="total-rounds" type="button" title="Restablecer a valor por defecto">
+                                    🔄
+                                </button>
+                            </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="total-rounds" class="settings-slider" 
                                        min="1" max="10" value="${totalRounds}">
                                 <span class="settings-value-display" id="total-rounds-display">${totalRounds}</span>
                             </div>
-                            <small class="settings-hint">Rondas en partida completa (1-10)</small>
+                            <small class="settings-hint">Rondas en partida (1-10)</small>
                         </div>
                     </div>
 
                     <div class="settings-tab-pane" data-tab="duration">
                         <div class="settings-control">
-                            <label class="settings-label">Duración por Ronda</label>
+                            <div class="settings-control-header">
+                                <label class="settings-label">Duración por Ronda</label>
+                                <button class="settings-reset-individual" data-field="round-duration" type="button" title="Restablecer a valor por defecto">
+                                    🔄
+                                </button>
+                            </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="round-duration" class="settings-slider" 
                                        min="30" max="300" step="5" value="${roundDuration}">
                                 <span class="settings-value-display" id="round-duration-display">${roundDuration}s</span>
                             </div>
-                            <small class="settings-hint">Tiempo límite: 30s a 5 minutos</small>
+                            <small class="settings-hint">30s a 5 minutos</small>
                         </div>
 
                         <div class="settings-control">
-                            <label class="settings-label">Cuenta Atrás Inicial</label>
+                            <div class="settings-control-header">
+                                <label class="settings-label">Cuenta Atrás Inicial</label>
+                                <button class="settings-reset-individual" data-field="start-countdown" type="button" title="Restablecer a valor por defecto">
+                                    🔄
+                                </button>
+                            </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="start-countdown" class="settings-slider" 
                                        min="1" max="10" value="${startCountdown}">
                                 <span class="settings-value-display" id="start-countdown-display">${startCountdown}s</span>
                             </div>
-                            <small class="settings-hint">Preparación antes de empezar (1-10s)</small>
+                            <small class="settings-hint">1-10 segundos</small>
                         </div>
 
                         <div class="settings-control">
-                            <label class="settings-label">Remate - Tiempo Restante</label>
+                            <div class="settings-control-header">
+                                <label class="settings-label">Remate - Tiempo Restante</label>
+                                <button class="settings-reset-individual" data-field="hurry-up" type="button" title="Restablecer a valor por defecto">
+                                    🔄
+                                </button>
+                            </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="hurry-up-threshold" class="settings-slider" 
                                        min="5" max="60" step="5" value="${hurryUpThreshold}">
                                 <span class="settings-value-display" id="hurry-up-threshold-display">${hurryUpThreshold}s</span>
                             </div>
-                            <small class="settings-hint">Tiempo para activar remate (5-60s)</small>
+                            <small class="settings-hint">5-60 segundos</small>
                         </div>
                     </div>
                 </div>
-
-                <button id="settings-reset-btn" class="settings-reset-btn" type="button">
-                    🔄 Restablecer
-                </button>
             </div>
         `;
     }
@@ -170,7 +189,8 @@ class SettingsModal {
     attachEventListeners() {
         const tabButtons = document.querySelectorAll('.settings-tab-btn');
         const sliders = document.querySelectorAll('.settings-slider');
-        const resetBtn = document.getElementById('settings-reset-btn');
+        const dualRanges = document.querySelectorAll('.settings-range-min, .settings-range-max');
+        const resetBtns = document.querySelectorAll('.settings-reset-individual');
 
         tabButtons.forEach(btn => {
             btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
@@ -180,14 +200,16 @@ class SettingsModal {
             slider.addEventListener('input', (e) => this.updateSliderDisplay(e.target));
         });
 
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => this.resetToDefaults());
-        }
+        dualRanges.forEach(range => {
+            range.addEventListener('input', (e) => this.updateDualRangeDisplay(e.target));
+        });
+
+        resetBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => this.resetFieldToDefault(e.target.dataset.field));
+        });
     }
 
     switchTab(tabName) {
-        this.activeTab = tabName;
-        
         document.querySelectorAll('.settings-tab-btn').forEach(btn => {
             btn.classList.remove('active');
         });
@@ -208,25 +230,68 @@ class SettingsModal {
         }
     }
 
-    resetToDefaults() {
+    updateDualRangeDisplay(range) {
+        const minInput = document.getElementById('min-players');
+        const maxInput = document.getElementById('max-players');
+        const minDisplay = document.getElementById('min-players-display');
+        const maxDisplay = document.getElementById('max-players-display');
+
+        let min = parseInt(minInput.value);
+        let max = parseInt(maxInput.value);
+
+        if (min > max) {
+            if (range.id === 'min-players') {
+                max = min;
+                maxInput.value = min;
+            } else {
+                min = max;
+                minInput.value = max;
+            }
+        }
+
+        minDisplay.textContent = min;
+        maxDisplay.textContent = max;
+    }
+
+    resetFieldToDefault(field) {
         const defaults = this.getDefaults();
-        document.getElementById('min-players').value = defaults.min_players;
-        document.getElementById('max-players').value = defaults.max_players;
-        document.getElementById('round-duration').value = defaults.round_duration;
-        document.getElementById('total-rounds').value = defaults.total_rounds;
-        document.getElementById('start-countdown').value = defaults.start_countdown;
-        document.getElementById('hurry-up-threshold').value = defaults.hurry_up_threshold;
-        document.getElementById('max-words-per-player').value = defaults.max_words_per_player;
+        const fieldMap = {
+            'players': ['min-players', 'max-players'],
+            'max-words': ['max-words-per-player'],
+            'total-rounds': ['total-rounds'],
+            'round-duration': ['round-duration'],
+            'start-countdown': ['start-countdown'],
+            'hurry-up': ['hurry-up-threshold']
+        };
 
-        this.updateSliderDisplay(document.getElementById('min-players'));
-        this.updateSliderDisplay(document.getElementById('max-players'));
-        this.updateSliderDisplay(document.getElementById('round-duration'));
-        this.updateSliderDisplay(document.getElementById('total-rounds'));
-        this.updateSliderDisplay(document.getElementById('start-countdown'));
-        this.updateSliderDisplay(document.getElementById('hurry-up-threshold'));
-        this.updateSliderDisplay(document.getElementById('max-words-per-player'));
+        const fieldIds = fieldMap[field];
+        if (!fieldIds) return;
 
-        showNotification('⟲ Valores restablecidos', 'info');
+        fieldIds.forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if (input) {
+                const defaultValue = defaults[this.fieldIdToKey(fieldId)];
+                input.value = defaultValue;
+                this.updateSliderDisplay(input);
+            }
+        });
+
+        if (field === 'players') {
+            this.updateDualRangeDisplay(document.getElementById('min-players'));
+        }
+    }
+
+    fieldIdToKey(fieldId) {
+        const map = {
+            'min-players': 'min_players',
+            'max-players': 'max_players',
+            'round-duration': 'round_duration',
+            'total-rounds': 'total_rounds',
+            'start-countdown': 'start_countdown',
+            'hurry-up-threshold': 'hurry_up_threshold',
+            'max-words-per-player': 'max_words_per_player'
+        };
+        return map[fieldId];
     }
 
     getFormValues() {
