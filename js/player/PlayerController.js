@@ -180,8 +180,8 @@ class PlayerManager extends BaseController {
   }
 
   async joinGame(code, name) {
-    const gameCode = (code || '').trim().toUpperCase();
-    const playerName = (name || '').trim();
+    const gameCode = sanitizeInputValue(code);
+    const playerName = sanitizeInputValue(name);
     const playerColor = this.view.getSelectedAuraColor();
 
     if (!playerColor) {
@@ -320,7 +320,7 @@ class PlayerManager extends BaseController {
   }
 
   async addWord() {
-    const word = this.view.getInputValue();
+    const word = sanitizeInputValue(this.view.getInputValue());
     if (!word) return;
 
     if (this.myWords.length >= this.maxWords) {
@@ -333,8 +333,7 @@ class PlayerManager extends BaseController {
       return;
     }
 
-    const normalized = word.toUpperCase();
-    if (this.myWords.includes(normalized)) {
+    if (this.myWords.includes(word)) {
       showNotification('Ya agregaste esa palabra', 'warning');
       return;
     }
@@ -347,7 +346,7 @@ class PlayerManager extends BaseController {
       }
     }
 
-    this.myWords.push(normalized);
+    this.myWords.push(word);
     this.view.clearInput();
     this.view.updateWordChips(this.myWords);
     this.scheduleWordsUpdate();
@@ -583,7 +582,7 @@ class PlayerManager extends BaseController {
   }
 
   async saveNewName(newName) {
-    const trimmedName = (newName || '').trim();
+    const trimmedName = sanitizeInputValue(newName);
 
     if (!isValidPlayerName(trimmedName)) {
       showNotification('Nombre inválido (2-20 caracteres)', 'warning');
