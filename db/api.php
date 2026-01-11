@@ -1,7 +1,5 @@
 <?php
 
-require_once __DIR__ . '/../app/Database.php';
-
 define('LOG_LEVEL_ERROR', 1);
 define('LOG_LEVEL_WARN', 2);
 define('LOG_LEVEL_INFO', 3);
@@ -36,12 +34,80 @@ set_error_handler(function($severity, $message, $file, $line) {
     exit;
 });
 
+class DatabaseConnection {
+    private static $instance = null;
+    private $pdo = null;
+    private $dbPath = null;
+    private $inTransaction = false;
+
+    private function __construct() {
+        $this->dbPath = __DIR__ . '/../data/talcual.db';
+        $this->connect();
+    }
+
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function connect() {
+        try {
+            $this->pdo = new PDO('sqlite:' . $this->dbPath, null, null, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
+
+            $this->pdo->exec('PRAGMA journal_mode = WAL');
+            $this->pdo->exec('PRAGMA foreign_keys = ON');
+            $this->pdo->exec('PRAGMA synchronous = NORMAL');
+            $this->pdo->exec('PRAGMA wal_autocheckpoint = 1000');
+        } catch (PDOException $e) {
+            throw new Exception('Database connection error: ' . $e->getMessage());
+        }
+    }
+
+    public function getConnection() {
+        return $this->pdo;
+    }
+
+    public function getDatabasePath() {
+        return $this->dbPath;
+    }
+
+    public function beginTransaction() {
+        if (!$this->inTransaction) {
+            $this->pdo->beginTransaction();
+            $this->inTransaction = true;
+        }
+    }
+
+    public function commit() {
+        if ($this->inTransaction) {
+            $this->pdo->commit();
+            $this->inTransaction = false;
+        }
+    }
+
+    public function rollback() {
+        if ($this->inTransaction) {
+            $this->pdo->rollBack();
+            $this->inTransaction = false;
+        }
+    }
+
+    public function isInTransaction() {
+        return $this->inTransaction;
+    }
+}
+
 class DatabaseManager {
     private $db = null;
     private $pdo = null;
 
     public function __construct() {
-        $this->db = Database::getInstance();
+        $this->db = DatabaseConnection::getInstance();
         $this->pdo = $this->db->getConnection();
         $this->ensureSchemaInitialized();
     }
