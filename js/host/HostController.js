@@ -6,7 +6,7 @@ class HostManager extends BaseController {
     this.totalRounds = 3;
     this.remainingTime = 0;
     this.activeTab = 'ranking';
-    this.minPlayers = 2;
+    this.minPlayers = 1;
     this.currentPlayers = [];
     this.currentCategory = 'Sin categoría';
     this.roundEnded = false;
@@ -71,6 +71,9 @@ class HostManager extends BaseController {
 
       syncCommConfigWithServer(configService.config);
       debug('🔗 COMM_CONFIG sincronizado con servidor', null, 'success');
+
+      this.minPlayers = configService.get('min_players', 1);
+      this.totalRounds = configService.get('total_rounds', 3);
 
       this.attachEventListeners();
 
@@ -246,11 +249,11 @@ class HostManager extends BaseController {
         category: this.currentCategory || null,
         total_rounds: this.gameState.total_rounds || COMM_CONFIG.TOTAL_ROUNDS,
         round_duration: this.gameState.round_duration || COMM_CONFIG.ROUND_DURATION,
-        min_players: this.gameState.min_players || COMM_CONFIG.MIN_PLAYERS
+        min_players: this.gameState.min_players || this.minPlayers
       });
 
       if (result.success && result.game_id) {
-        debug('🌟 Nueva partida creada:', { new_game_id: result.game_id, original_id: result.original_id }, 'success');
+        debug('🌟 Nova partida creada:', { new_game_id: result.game_id, original_id: result.original_id }, 'success');
         
         this.gameCode = result.game_id;
         this.clearSession();
@@ -414,7 +417,7 @@ class HostManager extends BaseController {
   }
 
   showWaitingState() {
-    this.view.showWaitingState(this.currentPlayers.length);
+    this.view.showWaitingState(this.currentPlayers.length, this.minPlayers);
     this.stopTimer();
     this.view.clearTimer();
   }
