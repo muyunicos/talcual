@@ -277,25 +277,6 @@ class CreateGameModal {
         window.settingsModal.openModal('creation', null, config);
     }
 
-    getCompleteConfig() {
-        const defaults = {
-            min_players: 1,
-            max_players: 20,
-            round_duration: 90,
-            total_rounds: 5,
-            start_countdown: 5,
-            hurry_up_threshold: 10,
-            max_words_per_player: 6,
-            max_word_length: 30
-        };
-
-        const currentConfig = configManager.getAll();
-        const completeConfig = { ...defaults, ...currentConfig };
-
-        debug('📦 Complete config for game creation:', completeConfig, 'debug');
-        return completeConfig;
-    }
-
     async handleCreateClick() {
         try {
             if (!this.currentRoomCode || this.currentRoomCode.trim() === '') {
@@ -305,13 +286,13 @@ class CreateGameModal {
 
             const gameId = this.currentRoomCode.trim();
             const category = this.selectedCandidate?.category || 'General';
-            const completeConfig = this.getCompleteConfig();
+            const config = configManager.getAll();
 
             const payload = {
                 action: 'create_game',
                 game_id: gameId,
                 category,
-                config: completeConfig
+                config
             };
 
             debug('🎮 Payload for create_game:', payload, 'debug');
