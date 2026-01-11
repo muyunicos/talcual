@@ -16,6 +16,7 @@ class HostManager extends BaseController {
     this.roundResults = null;
     this.roundTopWords = [];
     this.gameChain = [];
+    this.configCached = false;
 
     this.view = new HostView();
 
@@ -74,6 +75,7 @@ class HostManager extends BaseController {
 
       this.minPlayers = configService.get('min_players', 1);
       this.totalRounds = configService.get('total_rounds', 3);
+      this.configCached = true;
 
       this.attachEventListeners();
 
