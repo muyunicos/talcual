@@ -402,7 +402,7 @@ class GameService {
         $state['total_rounds'] = intval($configData['total_rounds'] ?? $state['total_rounds']);
         $state['min_players'] = intval($configData['min_players'] ?? $state['min_players']);
         $state['max_players'] = intval($configData['max_players'] ?? $state['max_players']);
-        $state['countdown_duration'] = intval($configData['countdown_duration'] ?? $state['countdown_duration']);
+        $state['countdown_duration'] = intval($configData['start_countdown'] ?? ($configData['countdown_duration'] ?? $state['countdown_duration']));
         $state['hurry_up_threshold'] = intval($configData['hurry_up_threshold'] ?? $state['hurry_up_threshold']);
         $state['max_words_per_player'] = intval($configData['max_words_per_player'] ?? $state['max_words_per_player']);
         $state['max_word_length'] = intval($configData['max_word_length'] ?? $state['max_word_length']);
