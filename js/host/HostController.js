@@ -56,7 +56,7 @@ class HostManager extends BaseController {
 
   async loadConfigAndInit() {
     try {
-      debug('ⳳ Cargando configuración...', null, 'info');
+      debug('❳ Cargando configuración...', null, 'info');
       
       const configResult = await configService.load();
 
@@ -114,14 +114,6 @@ class HostManager extends BaseController {
       debug('⚠️ Error cargando categorías: ' + error.message, null, 'warn');
       this.categories = [];
     }
-  }
-
-  getCanonicalForCompare(word) {
-    return wordEngine.getCanonical(word);
-  }
-
-  getMatchType(word1, word2) {
-    return wordEngine.getMatchType(word1, word2);
   }
 
   attachEventListeners() {
