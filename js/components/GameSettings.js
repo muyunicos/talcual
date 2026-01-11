@@ -126,8 +126,8 @@ class SettingsModal {
             this.settings = config;
         } else if (gameId && window.configService && window.configService.isConfigReady(gameId)) {
             this.settings = window.configService.getForGame(gameId);
-        } else if (window.configService && window.configService.config && Object.keys(window.configService.config).length > 0) {
-            this.settings = window.configService.config;
+        } else if (window.configService && window.configService.getForGame()) {
+            this.settings = window.configService.getForGame();
         } else {
             this.settings = this.getDefaults();
         }
