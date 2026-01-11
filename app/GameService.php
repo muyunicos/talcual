@@ -245,8 +245,7 @@ class GameService {
     }
 
     public function joinGame($gameId, $playerId, $playerName, $playerColor) {
-        $actualGameId = $this->resolveGameId($gameId);
-        $state = $this->repository->load($actualGameId);
+        $state = $this->repository->load($gameId);
 
         if (!$state) {
             throw new Exception('Game not found');
@@ -258,7 +257,6 @@ class GameService {
         }
 
         if (isset($state['players'][$playerId])) {
-            logMessage('Player reconnection: ' . $playerId . ' in game ' . $actualGameId, 'DEBUG');
             return [
                 'message' => 'Reconnected to game',
                 'server_now' => intval(microtime(true) * 1000),
@@ -285,7 +283,7 @@ class GameService {
         $state['last_update'] = time();
         $state['updated_at'] = time();
 
-        $this->repository->save($actualGameId, $state);
+        $this->repository->save($gameId, $state);
 
         return [
             'message' => 'Joined game',
@@ -293,30 +291,6 @@ class GameService {
             'state' => $state,
             'reconnected' => false
         ];
-    }
-
-    private function resolveGameId($gameId) {
-        $state = $this->repository->load($gameId);
-        
-        if (!$state) {
-            return $gameId;
-        }
-
-        if ($this->isValidGameStatus($state['status'])) {
-            return $gameId;
-        }
-
-        $candidateId = $state['status'];
-        if ($this->repository->exists($candidateId)) {
-            return $candidateId;
-        }
-
-        return $gameId;
-    }
-
-    private function isValidGameStatus($status) {
-        $validStatuses = ['waiting', 'playing', 'round_ended', 'finished', 'closed', 'ended'];
-        return in_array($status, $validStatuses);
     }
 
     public function startRound($gameId, $categoryFromRequest, $duration, $totalRounds) {
@@ -741,8 +715,7 @@ class GameService {
     }
 
     public function getState($gameId) {
-        $actualGameId = $this->resolveGameId($gameId);
-        $state = $this->repository->load($actualGameId);
+        $state = $this->repository->load($gameId);
 
         if ($state) {
             return [
