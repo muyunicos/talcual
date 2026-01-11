@@ -250,11 +250,19 @@ class CreateGameModal {
     }
 
     openSettingsModal() {
-        if (window.settingsModal) {
-            window.settingsModal.openModal('creation');
-        } else {
+        if (!window.settingsModal) {
             debug('⚠️ SettingsModal no está disponible', null, 'warn');
+            return;
         }
+
+        let config = null;
+        if (window.configService && window.configService.config) {
+            config = window.configService.config;
+        } else if (Object.keys(this.gameConfig).length > 0) {
+            config = this.gameConfig;
+        }
+
+        window.settingsModal.openModal('creation', null, config);
     }
 
     async handleCreateClick() {
