@@ -2,9 +2,14 @@ class SettingsModal {
     constructor() {
         this.settings = {};
         this.openedFrom = null;
+        this.settingsLoaded = false;
     }
 
     async loadSettings() {
+        if (this.settingsLoaded) {
+            return true;
+        }
+
         try {
             const url = new URL('./app/actions.php', window.location.href);
             const response = await fetch(url.toString(), {
@@ -23,10 +28,12 @@ class SettingsModal {
             }
 
             this.settings = result.config;
+            this.settingsLoaded = true;
             return true;
         } catch (error) {
             debug('Error cargando configuración', error, 'error');
             this.settings = this.getDefaults();
+            this.settingsLoaded = true;
             return false;
         }
     }
@@ -144,8 +151,9 @@ class SettingsModal {
         `;
     }
 
-    openModal(context = 'normal') {
+    async openModal(context = 'normal') {
         this.openedFrom = context;
+        await this.loadSettings();
         const formHTML = this.buildFormHTML();
         const isCreationContext = context === 'creation';
 
@@ -307,18 +315,9 @@ class SettingsModal {
 
 let settingsModal = null;
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', async () => {
-        settingsModal = new SettingsModal();
-        await settingsModal.loadSettings();
-        window.settingsModal = settingsModal;
-    });
-} else {
-    (async () => {
-        settingsModal = new SettingsModal();
-        await settingsModal.loadSettings();
-        window.settingsModal = settingsModal;
-    })();
-}
+document.addEventListener('DOMContentLoaded', async () => {
+    settingsModal = new SettingsModal();
+    window.settingsModal = settingsModal;
+}, { once: true });
 
 console.log('%c✅ GameSettings.js', 'color: #FF6B00; font-weight: bold; font-size: 12px');
