@@ -3,14 +3,14 @@ class SettingsModal {
         this.settings = {};
         this.openedFrom = null;
         this.gameId = null;
-        this.activeTab = 'players';
+        this.activeTab = 'general';
     }
 
     getDefaults() {
         return {
-            min_players: 1,
-            max_players: 20,
-            round_duration: 90,
+            min_players: 3,
+            max_players: 8,
+            round_duration: 120,
             total_rounds: 3,
             start_countdown: 5,
             hurry_up_threshold: 10,
@@ -21,47 +21,56 @@ class SettingsModal {
 
     buildFormHTML() {
         const s = this.settings;
-        const minPlayers = s.min_players !== undefined ? s.min_players : 1;
-        const maxPlayers = s.max_players !== undefined ? s.max_players : 20;
-        const roundDuration = s.round_duration !== undefined ? s.round_duration : 90;
+        const minPlayers = s.min_players !== undefined ? s.min_players : 3;
+        const maxPlayers = s.max_players !== undefined ? s.max_players : 8;
+        const roundDuration = s.round_duration !== undefined ? s.round_duration : 120;
         const totalRounds = s.total_rounds !== undefined ? s.total_rounds : 3;
         const startCountdown = s.start_countdown !== undefined ? s.start_countdown : 5;
         const hurryUpThreshold = s.hurry_up_threshold !== undefined ? s.hurry_up_threshold : 10;
         const maxWordsPerPlayer = s.max_words_per_player !== undefined ? s.max_words_per_player : 6;
-        const maxWordLength = s.max_word_length !== undefined ? s.max_word_length : 30;
 
         return `
             <div class="settings-form">
                 <div class="settings-tabs">
-                    <button class="settings-tab-btn active" data-tab="players">👥 Jugadores</button>
-                    <button class="settings-tab-btn" data-tab="rounds">⏱️ Rondas</button>
-                    <button class="settings-tab-btn" data-tab="words">📋 Palabras</button>
+                    <button class="settings-tab-btn active" data-tab="general">⚙️ General</button>
+                    <button class="settings-tab-btn" data-tab="duration">⏱️ Duración</button>
                 </div>
 
                 <div class="settings-tabs-content">
-                    <div class="settings-tab-pane active" data-tab="players">
+                    <div class="settings-tab-pane active" data-tab="general">
                         <div class="settings-control">
-                            <label class="settings-label">Mínimo de Jugadores</label>
-                            <div class="settings-input-wrapper">
-                                <input type="range" id="min-players" class="settings-slider" 
-                                       min="1" max="20" value="${minPlayers}">
-                                <span class="settings-value-display" id="min-players-display">${minPlayers}</span>
+                            <label class="settings-label">Número de Jugadores</label>
+                            <div class="settings-dual-sliders">
+                                <div class="settings-slider-item">
+                                    <input type="range" id="min-players" class="settings-slider" 
+                                           min="1" max="20" value="${minPlayers}">
+                                    <div class="settings-slider-info">
+                                        <span class="settings-slider-label">Mínimo</span>
+                                        <span class="settings-value-display" id="min-players-display">${minPlayers}</span>
+                                    </div>
+                                </div>
+                                <div class="settings-slider-item">
+                                    <input type="range" id="max-players" class="settings-slider" 
+                                           min="1" max="100" value="${maxPlayers}">
+                                    <div class="settings-slider-info">
+                                        <span class="settings-slider-label">Máximo</span>
+                                        <span class="settings-value-display" id="max-players-display">${maxPlayers}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <small class="settings-hint">Entre 1 y 20 jugadores</small>
+                            <small class="settings-hint">Rango: 1-20 mínimo, 1-100 máximo</small>
                         </div>
 
                         <div class="settings-control">
-                            <label class="settings-label">Máximo de Jugadores</label>
+                            <label class="settings-label">Máx. Palabras por Jugador</label>
                             <div class="settings-input-wrapper">
-                                <input type="range" id="max-players" class="settings-slider" 
-                                       min="1" max="100" value="${maxPlayers}">
-                                <span class="settings-value-display" id="max-players-display">${maxPlayers}</span>
+                                <input type="range" id="max-words-per-player" class="settings-slider" 
+                                       min="1" max="20" value="${maxWordsPerPlayer}">
+                                <span class="settings-value-display" id="max-words-per-player-display">${maxWordsPerPlayer}</span>
                             </div>
-                            <small class="settings-hint">Slots máximos en partida (1-100)</small>
+                            <small class="settings-hint">Límite de palabras por jugador (1-20)</small>
                         </div>
-                    </div>
 
-                    <div class="settings-tab-pane" data-tab="rounds">
                         <div class="settings-control">
                             <label class="settings-label">Total de Rondas</label>
                             <div class="settings-input-wrapper">
@@ -71,7 +80,9 @@ class SettingsModal {
                             </div>
                             <small class="settings-hint">Rondas en partida completa (1-10)</small>
                         </div>
+                    </div>
 
+                    <div class="settings-tab-pane" data-tab="duration">
                         <div class="settings-control">
                             <label class="settings-label">Duración por Ronda</label>
                             <div class="settings-input-wrapper">
@@ -79,7 +90,7 @@ class SettingsModal {
                                        min="30" max="300" step="5" value="${roundDuration}">
                                 <span class="settings-value-display" id="round-duration-display">${roundDuration}s</span>
                             </div>
-                            <small class="settings-hint">30s a 5 minutos por ronda</small>
+                            <small class="settings-hint">Tiempo límite: 30s a 5 minutos</small>
                         </div>
 
                         <div class="settings-control">
@@ -102,29 +113,11 @@ class SettingsModal {
                             <small class="settings-hint">Tiempo para activar remate (5-60s)</small>
                         </div>
                     </div>
-
-                    <div class="settings-tab-pane" data-tab="words">
-                        <div class="settings-control">
-                            <label class="settings-label">Máx. Palabras por Jugador</label>
-                            <div class="settings-input-wrapper">
-                                <input type="range" id="max-words-per-player" class="settings-slider" 
-                                       min="1" max="20" value="${maxWordsPerPlayer}">
-                                <span class="settings-value-display" id="max-words-per-player-display">${maxWordsPerPlayer}</span>
-                            </div>
-                            <small class="settings-hint">Límite de palabras por jugador (1-20)</small>
-                        </div>
-
-                        <div class="settings-control">
-                            <label class="settings-label">Longitud Máxima de Palabra</label>
-                            <div class="settings-input-wrapper">
-                                <input type="range" id="max-word-length" class="settings-slider" 
-                                       min="10" max="100" step="5" value="${maxWordLength}">
-                                <span class="settings-value-display" id="max-word-length-display">${maxWordLength}</span>
-                            </div>
-                            <small class="settings-hint">Máximo de caracteres (10-100)</small>
-                        </div>
-                    </div>
                 </div>
+
+                <button id="settings-reset-btn" class="settings-reset-btn" type="button">
+                    🔄 Restablecer
+                </button>
             </div>
         `;
     }
@@ -177,6 +170,7 @@ class SettingsModal {
     attachEventListeners() {
         const tabButtons = document.querySelectorAll('.settings-tab-btn');
         const sliders = document.querySelectorAll('.settings-slider');
+        const resetBtn = document.getElementById('settings-reset-btn');
 
         tabButtons.forEach(btn => {
             btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
@@ -185,6 +179,10 @@ class SettingsModal {
         sliders.forEach(slider => {
             slider.addEventListener('input', (e) => this.updateSliderDisplay(e.target));
         });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.resetToDefaults());
+        }
     }
 
     switchTab(tabName) {
@@ -210,16 +208,37 @@ class SettingsModal {
         }
     }
 
+    resetToDefaults() {
+        const defaults = this.getDefaults();
+        document.getElementById('min-players').value = defaults.min_players;
+        document.getElementById('max-players').value = defaults.max_players;
+        document.getElementById('round-duration').value = defaults.round_duration;
+        document.getElementById('total-rounds').value = defaults.total_rounds;
+        document.getElementById('start-countdown').value = defaults.start_countdown;
+        document.getElementById('hurry-up-threshold').value = defaults.hurry_up_threshold;
+        document.getElementById('max-words-per-player').value = defaults.max_words_per_player;
+
+        this.updateSliderDisplay(document.getElementById('min-players'));
+        this.updateSliderDisplay(document.getElementById('max-players'));
+        this.updateSliderDisplay(document.getElementById('round-duration'));
+        this.updateSliderDisplay(document.getElementById('total-rounds'));
+        this.updateSliderDisplay(document.getElementById('start-countdown'));
+        this.updateSliderDisplay(document.getElementById('hurry-up-threshold'));
+        this.updateSliderDisplay(document.getElementById('max-words-per-player'));
+
+        showNotification('⟲ Valores restablecidos', 'info');
+    }
+
     getFormValues() {
         return {
-            min_players: parseInt(document.getElementById('min-players')?.value || 1, 10),
-            max_players: parseInt(document.getElementById('max-players')?.value || 20, 10),
-            round_duration: parseInt(document.getElementById('round-duration')?.value || 90, 10),
+            min_players: parseInt(document.getElementById('min-players')?.value || 3, 10),
+            max_players: parseInt(document.getElementById('max-players')?.value || 8, 10),
+            round_duration: parseInt(document.getElementById('round-duration')?.value || 120, 10),
             total_rounds: parseInt(document.getElementById('total-rounds')?.value || 3, 10),
             start_countdown: parseInt(document.getElementById('start-countdown')?.value || 5, 10),
             hurry_up_threshold: parseInt(document.getElementById('hurry-up-threshold')?.value || 10, 10),
             max_words_per_player: parseInt(document.getElementById('max-words-per-player')?.value || 6, 10),
-            max_word_length: parseInt(document.getElementById('max-word-length')?.value || 30, 10)
+            max_word_length: 30
         };
     }
 
@@ -246,9 +265,6 @@ class SettingsModal {
         }
         if (settings.max_words_per_player < 1 || settings.max_words_per_player > 20) {
             errors.push('Máx palabras por jugador: 1-20');
-        }
-        if (settings.max_word_length < 10 || settings.max_word_length > 100) {
-            errors.push('Longitud palabra: 10-100 caracteres');
         }
 
         return errors;
