@@ -15,6 +15,7 @@ class HostManager extends BaseController {
     this.roundTopWords = [];
     this.gameChain = [];
     this.configCached = false;
+    this._configSyncUnsubscribe = null;
 
     this.view = new HostView();
 
@@ -188,6 +189,14 @@ class HostManager extends BaseController {
     this.client.on('event:player_ready', (data) => {
       debug('⚡ Jugador terminó detectado:', data, 'info');
       this.client.forceRefresh();
+    });
+
+    this.client.on('config_field_changed', (data) => {
+      debug('🔄 Config field change recibido (HOST):', data, 'debug');
+      if (data && data.field && data.value !== undefined) {
+        configManager.set(data.field, data.value);
+        debug(`✅ [HOST] ${data.field} = ${data.value}`, null, 'debug');
+      }
     });
   }
 
@@ -529,7 +538,7 @@ class HostManager extends BaseController {
   async endRound() {
     if (!this.client) return;
 
-    debug('🇣 Finalizando ronda...', null, 'info');
+    debug('🌇 Finalizando ronda...', null, 'info');
 
     this.view.setEndRoundButtonLoading();
 
@@ -622,6 +631,15 @@ class HostManager extends BaseController {
       this.roundEnded = true;
       this.endRound();
     }
+  }
+
+  destroy() {
+    if (this._configSyncUnsubscribe) {
+      this._configSyncUnsubscribe();
+      this._configSyncUnsubscribe = null;
+    }
+
+    super.destroy();
   }
 }
 
