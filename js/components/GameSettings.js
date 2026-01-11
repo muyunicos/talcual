@@ -321,16 +321,27 @@ class SettingsModal {
     }
 
     getFormValues() {
-        return {
-            min_players: parseInt(document.getElementById('min-players')?.value || 3, 10),
-            max_players: parseInt(document.getElementById('max-players')?.value || 8, 10),
-            round_duration: parseInt(document.getElementById('round-duration')?.value || 120, 10),
-            total_rounds: parseInt(document.getElementById('total-rounds')?.value || 3, 10),
-            start_countdown: parseInt(document.getElementById('start-countdown')?.value || 5, 10),
-            hurry_up_threshold: parseInt(document.getElementById('hurry-up-threshold')?.value || 10, 10),
-            max_words_per_player: parseInt(document.getElementById('max-words-per-player')?.value || 6, 10),
+        const minPlayersInput = document.getElementById('min-players');
+        const maxPlayersInput = document.getElementById('max-players');
+        const roundDurationInput = document.getElementById('round-duration');
+        const totalRoundsInput = document.getElementById('total-rounds');
+        const startCountdownInput = document.getElementById('start-countdown');
+        const hurryUpThresholdInput = document.getElementById('hurry-up-threshold');
+        const maxWordsPerPlayerInput = document.getElementById('max-words-per-player');
+
+        const values = {
+            min_players: parseInt(minPlayersInput?.value || 1, 10),
+            max_players: parseInt(maxPlayersInput?.value || 20, 10),
+            round_duration: parseInt(roundDurationInput?.value || 120, 10),
+            total_rounds: parseInt(totalRoundsInput?.value || 3, 10),
+            start_countdown: parseInt(startCountdownInput?.value || 5, 10),
+            hurry_up_threshold: parseInt(hurryUpThresholdInput?.value || 10, 10),
+            max_words_per_player: parseInt(maxWordsPerPlayerInput?.value || 6, 10),
             max_word_length: 30
         };
+
+        debug('📋 Form values extracted:', values, 'debug');
+        return values;
     }
 
     validateSettings(settings) {
@@ -339,23 +350,23 @@ class SettingsModal {
         if (settings.min_players < 1 || settings.min_players > 20) {
             errors.push('Mínimo de jugadores: 1-20');
         }
-        if (settings.max_players < settings.min_players || settings.max_players > 100) {
-            errors.push('Máximo debe ser ≥ mínimo y ≤ 100');
+        if (settings.max_players < settings.min_players || settings.max_players > 20) {
+            errors.push('Máximo debe ser ≥ mínimo y ≤ 20');
         }
-        if (settings.total_rounds < 1 || settings.total_rounds > 10) {
-            errors.push('Rondas totales: 1-10');
+        if (settings.total_rounds < 1 || settings.total_rounds > 8) {
+            errors.push('Rondas totales: 1-8');
         }
-        if (settings.round_duration < 30 || settings.round_duration > 300) {
-            errors.push('Duración ronda: 30-300 segundos');
+        if (settings.round_duration < 30 || settings.round_duration > 120) {
+            errors.push('Duración ronda: 30-120 segundos');
         }
-        if (settings.start_countdown < 1 || settings.start_countdown > 10) {
-            errors.push('Cuenta atrás: 1-10 segundos');
+        if (settings.start_countdown < 1 || settings.start_countdown > 6) {
+            errors.push('Cuenta atrás: 1-6 segundos');
         }
-        if (settings.hurry_up_threshold < 5 || settings.hurry_up_threshold > 60) {
-            errors.push('Remate: 5-60 segundos');
+        if (settings.hurry_up_threshold < 5 || settings.hurry_up_threshold > 20) {
+            errors.push('Remate: 5-20 segundos');
         }
-        if (settings.max_words_per_player < 1 || settings.max_words_per_player > 20) {
-            errors.push('Máx palabras por jugador: 1-20');
+        if (settings.max_words_per_player < 1 || settings.max_words_per_player > 8) {
+            errors.push('Máx palabras por jugador: 1-8');
         }
 
         return errors;
@@ -381,6 +392,8 @@ class SettingsModal {
                 payload.game_id = this.gameId;
             }
 
+            debug('💾 Guardando config:', values, 'debug');
+
             const response = await fetch(url.toString(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -399,6 +412,7 @@ class SettingsModal {
 
             configManager.syncFromObject(values);
             this.settings = values;
+            debug('✅ Configuración guardada correctamente:', values, 'success');
             showNotification('✅ Configuración guardada', 'success');
             ModalSystem_Instance.close(2);
         } catch (error) {
