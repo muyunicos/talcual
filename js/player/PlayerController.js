@@ -52,29 +52,29 @@ class PlayerManager extends BaseController {
   }
 
   async initialize() {
-    debug('📋 Inicializando PlayerManager');
+    debug('📋 Inicializando PlayerManager', null, 'info');
     
     try {
       if (typeof wordEngine === 'undefined') {
         throw new Error('[PlayerManager] WordEngine not loaded');
       }
 
-      await configService.load();
-      this.maxWords = configService.get('max_words_per_player', 6);
+      await configManager.initialize();
+      this.maxWords = configManager.get('max_words_per_player', 6);
       
       this.view = new PlayerView(this.maxWords);
       this.attachEventListeners();
 
       const sessionData = this.recoverSession();
       if (sessionData) {
-        debug('🔄 Recuperando sesión', 'info');
+        debug('🔄 Recuperando sesión', null, 'info');
         this.recoverGameSession(sessionData.gameId, sessionData.playerId, sessionData.playerName, sessionData.playerColor);
       } else {
-        debug('💡 Mostrando modal de unión', 'info');
+        debug('💡 Mostrando modal de unión', null, 'info');
         this.showJoinModal();
       }
 
-      debug('✅ PlayerManager inicializado');
+      debug('✅ PlayerManager inicializado', null, 'success');
     } catch (error) {
       debug('❌ Error inicializando PlayerManager: ' + error.message, null, 'error');
       UI.showFatalError('Error de inicialización. Por favor recarga la página.');
@@ -133,15 +133,15 @@ class PlayerManager extends BaseController {
         const state = result.state;
 
         if (state.players && state.players[playerId]) {
-          debug('✅ Sesión recuperada');
-          configService.loadFromState(state);
-          this.maxWords = state.max_words_per_player || 6;
+          debug('✅ Sesión recuperada', null, 'success');
+          configManager.syncFromGameState(state);
+          this.maxWords = configManager.get('max_words_per_player', 6);
           this.loadGameScreen(state);
           return;
         }
       }
 
-      debug('⚠️ No se pudo recuperar sesión');
+      debug('⚠️ No se pudo recuperar sesión', null, 'warn');
       this.clearSession();
       this.showJoinModal();
 
@@ -217,10 +217,10 @@ class PlayerManager extends BaseController {
       });
 
       if (result.success) {
-        debug(`✅ Conectado a juego: ${this.gameId}`);
+        debug(`✅ Conectado a juego: ${this.gameId}`, null, 'success');
         if (result.state) {
-          configService.loadFromState(result.state);
-          this.maxWords = result.state.max_words_per_player || 6;
+          configManager.syncFromGameState(result.state);
+          this.maxWords = configManager.get('max_words_per_player', 6);
         }
         this.loadGameScreen(result.state || {});
       } else {
@@ -234,8 +234,9 @@ class PlayerManager extends BaseController {
 
   handleStateUpdate(state) {
     this.gameState = state;
-    debug('📨 Estado actualizado:', state.status);
+    debug('📨 Estado actualizado:', { status: state.status }, 'debug');
 
+    configManager.syncFromGameState(state);
     this.calibrateTimeSync(state);
 
     const me = state.players?.[this.playerId];
@@ -244,7 +245,7 @@ class PlayerManager extends BaseController {
     }
 
     const round = state.round || 0;
-    const total = state.total_rounds || 3;
+    const total = configManager.get('total_rounds', 5);
     this.view.setRoundInfo(round, total);
 
     switch (state.status) {
@@ -274,30 +275,30 @@ class PlayerManager extends BaseController {
   }
 
   async showPlayingState(state) {
-    debug('🎮 Estado PLAYING detectado', 'debug');
+    debug('🎮 Estado PLAYING detectado', null, 'debug');
 
     const wordPrompt = state.roundData?.roundQuestion;
 
     if (!wordPrompt) {
-      debug('❌ No prompt encontrado en el estado', 'error');
+      debug('❌ No prompt encontrado en el estado', null, 'error');
       return;
     }
 
     if (state.roundData && state.roundData.commonAnswers) {
       initializeWordEngineFromRound(state.roundData);
-      debug('📚 Mini-diccionario cargado desde roundData', 'info');
+      debug('📚 Mini-diccionario cargado desde roundData', null, 'info');
     } else {
-      debug('⚠️ No hay roundData.commonAnswers en estado', 'warning');
+      debug('⚠️ No hay roundData.commonAnswers en estado', null, 'warning');
     }
 
     if (state.round_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
-      const countdownDuration = state.countdown_duration || 4000;
+      const countdownDuration = state.countdown_duration || configManager.get('start_countdown', 5) * 1000;
       const elapsedSinceStart = nowServer - state.round_starts_at;
       
       if (elapsedSinceStart < countdownDuration) {
-        debug(`⏱️ Countdown aún en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, 'debug');
+        debug(`⏱️ Countdown aún en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, null, 'debug');
         await this.showCountdown(state);
       }
     }
@@ -306,7 +307,7 @@ class PlayerManager extends BaseController {
     const isReady = me?.status === 'ready';
     const hasAnswers = (me?.answers || []).length;
 
-    debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, 'debug');
+    debug(`Verificando si estoy ready: isReady=${isReady}, myStatus=${me?.status}`, null, 'debug');
 
     this.view.showPlayingState(wordPrompt, state.current_category, hasAnswers, isReady);
 
@@ -329,13 +330,15 @@ class PlayerManager extends BaseController {
     const word = sanitizeInputValue(this.view.getInputValue());
     if (!word) return;
 
-    if (this.myWords.length >= this.maxWords) {
-      showNotification(`📚 Alcanzaste el máximo de ${this.maxWords} palabras. Edita o termina.`, 'warning');
+    const maxWordsPerPlayer = configManager.get('max_words_per_player', 6);
+    if (this.myWords.length >= maxWordsPerPlayer) {
+      showNotification(`📚 Alcanzaste el máximo de ${maxWordsPerPlayer} palabras. Edita o termina.`, 'warning');
       return;
     }
 
-    if (word.length > COMM_CONFIG.MAX_WORD_LENGTH) {
-      showNotification(`Palabra demasiado larga (máximo ${COMM_CONFIG.MAX_WORD_LENGTH})`, 'warning');
+    const maxWordLength = configManager.get('max_word_length', 50);
+    if (word.length > maxWordLength) {
+      showNotification(`Palabra demasiado larga (máximo ${maxWordLength})`, 'warning');
       return;
     }
 
@@ -358,8 +361,8 @@ class PlayerManager extends BaseController {
     this.scheduleWordsUpdate();
     this.view.focusInput();
 
-    if (this.myWords.length === this.maxWords) {
-      debug(`📚 Máximo de palabras alcanzado (${this.maxWords})`, 'info');
+    if (this.myWords.length === maxWordsPerPlayer) {
+      debug(`📚 Máximo de palabras alcanzado (${maxWordsPerPlayer})`, null, 'info');
       this.updateInputAndButtons();
     }
   }
@@ -375,18 +378,19 @@ class PlayerManager extends BaseController {
 
     this.updateInputAndButtons();
 
-    if (this.isReady && this.myWords.length < this.maxWords) {
-      debug('🔜 Revertiendo a estado editable (palabras removidas)', 'debug');
+    if (this.isReady && this.myWords.length < configManager.get('max_words_per_player', 6)) {
+      debug('🔜 Revertiendo a estado editable (palabras removidas)', null, 'debug');
       this.markNotReady();
     }
   }
 
   updateInputAndButtons() {
     if (!this.isReady) {
-      const isAtMax = this.myWords.length >= this.maxWords;
+      const maxWordsPerPlayer = configManager.get('max_words_per_player', 6);
+      const isAtMax = this.myWords.length >= maxWordsPerPlayer;
       
       if (isAtMax) {
-        this.view.updateFinishButtonText(this.maxWords);
+        this.view.updateFinishButtonText(maxWordsPerPlayer);
       } else {
         this.view.updateFinishButtonText(this.myWords.length);
       }
@@ -396,13 +400,14 @@ class PlayerManager extends BaseController {
   scheduleWordsUpdate() {
     const now = Date.now();
     const timeSinceLastUpdate = now - this.lastWordsUpdateTime;
+    const throttleMs = 500;
 
-    if (timeSinceLastUpdate >= COMM_CONFIG.WORDS_UPDATE_THROTTLE) {
+    if (timeSinceLastUpdate >= throttleMs) {
       this.sendWordsUpdate();
     } else {
       if (!this.wordsUpdatePending) {
         this.wordsUpdatePending = true;
-        const delay = COMM_CONFIG.WORDS_UPDATE_THROTTLE - timeSinceLastUpdate;
+        const delay = throttleMs - timeSinceLastUpdate;
 
         setTimeout(() => {
           this.sendWordsUpdate();
@@ -438,7 +443,7 @@ class PlayerManager extends BaseController {
   async markReady() {
     if (!this.client) return;
 
-    debug('👍 Marcando como READY (confirmó terminar)', 'info');
+    debug('👍 Marcando como READY (confirmó terminar)', null, 'info');
     this.isReady = true;
 
     this.view.setReadOnlyMode();
@@ -456,7 +461,7 @@ class PlayerManager extends BaseController {
   async markNotReady() {
     if (!this.client) return;
 
-    debug('🔜 Revertiendo a NO READY', 'info');
+    debug('🔜 Revertiendo a NO READY', null, 'info');
     this.isReady = false;
 
     this.view.setEditableMode(this.myWords.length);
