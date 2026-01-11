@@ -3,10 +3,8 @@ class HostManager extends BaseController {
     super();
     this.gameCode = gameCode;
     this.currentRound = 0;
-    this.totalRounds = 3;
     this.remainingTime = 0;
     this.activeTab = 'ranking';
-    this.minPlayers = 1;
     this.currentPlayers = [];
     this.currentCategory = 'Sin categoría';
     this.roundEnded = false;
@@ -58,7 +56,7 @@ class HostManager extends BaseController {
 
   async initializeHost() {
     try {
-      debug('❫ Inicializando Host...', null, 'info');
+      debug('« Inicializando Host...', null, 'info');
       
       this.attachEventListeners();
       this.determineUIState();
@@ -122,27 +120,7 @@ class HostManager extends BaseController {
       return;
     }
 
-    let config = null;
-
-    if (this.gameState) {
-      config = {
-        min_players: this.gameState.min_players,
-        max_players: this.gameState.max_players,
-        round_duration: this.gameState.round_duration,
-        total_rounds: this.gameState.total_rounds,
-        countdown_duration: this.gameState.countdown_duration,
-        hurry_up_threshold: this.gameState.hurry_up_threshold,
-        max_words_per_player: this.gameState.max_words_per_player,
-        max_word_length: this.gameState.max_word_length
-      };
-    } else if (this.gameCode) {
-      const ready = await configService.load(this.gameCode);
-      config = ready ? configService.getForGame(this.gameCode) : {};
-    } else {
-      const ready = await configService.load();
-      config = ready ? configService.getForGame() : {};
-    }
-
+    const config = configManager.getAll();
     window.settingsModal.openModal('normal', this.gameCode, config);
   }
 
@@ -153,7 +131,7 @@ class HostManager extends BaseController {
   async setCategory(category) {
     const cat = (category || '').trim();
 
-    if (!cat || cat.length > COMM_CONFIG.MAX_CATEGORY_LENGTH) {
+    if (!cat || cat.length > configManager.get('max_category_length', 50)) {
       showNotification('⚠️ Categoría inválida', 'warning');
       return;
     }
@@ -222,9 +200,7 @@ class HostManager extends BaseController {
       if (result.success && result.state) {
         debug('✅ Sesión recuperada', null, 'success');
         
-        configService.loadFromState(result.state);
-        this.minPlayers = result.state.min_players || 1;
-        this.totalRounds = result.state.total_rounds || 3;
+        configManager.syncFromGameState(result.state);
         
         await this.loadGameChain(gameCode);
         this.loadGameScreen(result.state);
@@ -278,9 +254,9 @@ class HostManager extends BaseController {
       const result = await this.client.sendAction('create_game', {
         game_id: currentGameId,
         category: this.currentCategory || null,
-        total_rounds: this.gameState.total_rounds || COMM_CONFIG.TOTAL_ROUNDS,
-        round_duration: this.gameState.round_duration || COMM_CONFIG.ROUND_DURATION,
-        min_players: this.gameState.min_players || this.minPlayers
+        total_rounds: configManager.get('total_rounds'),
+        round_duration: configManager.get('round_duration'),
+        min_players: configManager.get('min_players')
       });
 
       if (result.success && result.game_id) {
@@ -341,10 +317,11 @@ class HostManager extends BaseController {
     this.gameState = state;
     debug('📨 Estado actualizado:', null, 'debug');
 
+    configManager.syncFromGameState(state);
     this.calibrateTimeSync(state);
 
     const round = state.round || 0;
-    const total = state.total_rounds || 3;
+    const total = configManager.get('total_rounds', 5);
     this.view.setRoundInfo(round, total);
 
     this.updatePlayersList(state);
@@ -400,7 +377,7 @@ class HostManager extends BaseController {
         state.round_duration
       );
 
-      const threshold = (configService.get('hurry_up_threshold', 10) + 2) * 1000;
+      const threshold = (configManager.get('hurry_up_threshold', 10) + 2) * 1000;
 
       if (remaining > threshold) {
         debug('🔫 Solo 1 jugador falta - Auto-Remate', null, 'info');
@@ -433,7 +410,7 @@ class HostManager extends BaseController {
   }
 
   showWaitingState() {
-    this.view.showWaitingState(this.currentPlayers.length, this.minPlayers);
+    this.view.showWaitingState(this.currentPlayers.length, configManager.get('min_players', 1));
     this.stopTimer();
     this.view.clearTimer();
   }
@@ -445,7 +422,7 @@ class HostManager extends BaseController {
     if (state.round_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
-      const countdownDurationSeconds = state.countdown_duration || 4;
+      const countdownDurationSeconds = state.countdown_duration || configManager.get('start_countdown', 5);
       const countdownDurationMs = countdownDurationSeconds * 1000;
       const elapsed = nowServer - state.round_starts_at;
 
@@ -498,7 +475,7 @@ class HostManager extends BaseController {
     this.view.setHurryUpButtonLoading();
 
     try {
-      const hurryUpThreshold = configService.get('hurry_up_threshold', 10) * 1000;
+      const hurryUpThreshold = configManager.get('hurry_up_threshold', 10) * 1000;
       const result = await this.client.sendAction('update_round_timer', {
         new_end_time: timeSync.getServerTime() + hurryUpThreshold
       });
@@ -528,7 +505,7 @@ class HostManager extends BaseController {
   async endRound() {
     if (!this.client) return;
 
-    debug('🌣 Finalizando ronda...', null, 'info');
+    debug('🇣 Finalizando ronda...', null, 'info');
 
     this.view.setEndRoundButtonLoading();
 
