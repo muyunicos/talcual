@@ -7,7 +7,7 @@ class CreateGameModal {
         this.isReady = false;
         this.currentRoomCode = null;
         this.isFirstGame = true;
-        this.maxCodeLength = 4;
+        this.maxCodeLength = 6;
         this.isCached = false;
     }
 
@@ -49,45 +49,33 @@ class CreateGameModal {
     }
 
     async fetchConfig() {
-        if (this.isCached && Object.keys(this.gameConfig).length > 0) {
+        if (this.isCached && configManager.isInitialized()) {
+            this.gameConfig = configManager.getAll();
+            this.maxCodeLength = this.gameConfig.max_code_length || 6;
             return true;
         }
 
         try {
-            const ready = await configService.load();
+            const ready = await configManager.initialize();
             if (!ready) {
-                debug('⚠️ configService.load() returned false, using fallback config', null, 'warn');
-                this.gameConfig = this.getDefaultConfig();
-                this.maxCodeLength = 4;
+                debug('⚠️ configManager.initialize() returned false, using defaults', null, 'warn');
+                this.gameConfig = configManager.getAll();
+                this.maxCodeLength = configManager.get('max_code_length', 6);
                 this.isCached = true;
                 return true;
             }
 
-            this.gameConfig = configService.getForGame();
-            this.maxCodeLength = this.gameConfig.max_code_length || 4;
+            this.gameConfig = configManager.getAll();
+            this.maxCodeLength = this.gameConfig.max_code_length || 6;
             this.isCached = true;
             return true;
         } catch (error) {
-            debug('⚠️ Error fetching config from configService, using defaults', error, 'warn');
-            this.gameConfig = this.getDefaultConfig();
-            this.maxCodeLength = 4;
+            debug('⚠️ Error fetching config from configManager, using fallback', error, 'warn');
+            this.gameConfig = configManager.getAll();
+            this.maxCodeLength = this.gameConfig.max_code_length || 6;
             this.isCached = true;
             return true;
         }
-    }
-
-    getDefaultConfig() {
-        return {
-            round_duration: 90,
-            total_rounds: 3,
-            min_players: 1,
-            max_players: 20,
-            countdown_duration: 5,
-            hurry_up_threshold: 10,
-            max_words_per_player: 6,
-            max_word_length: 30,
-            max_code_length: 4
-        };
     }
 
     async init() {
@@ -285,15 +273,7 @@ class CreateGameModal {
             return;
         }
 
-        let config = null;
-        if (window.configService && window.configService.getForGame()) {
-            config = window.configService.getForGame();
-        } else if (Object.keys(this.gameConfig).length > 0) {
-            config = this.gameConfig;
-        } else {
-            config = this.getDefaultConfig();
-        }
-
+        const config = configManager.getAll();
         window.settingsModal.openModal('creation', null, config);
     }
 
