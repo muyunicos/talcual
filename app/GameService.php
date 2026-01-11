@@ -426,6 +426,38 @@ class GameService {
         ];
     }
 
+    public function updateGameConfig($gameId, $configData) {
+        $state = $this->repository->load($gameId);
+
+        if (!$state) {
+            throw new Exception('Game not found');
+        }
+
+        if ($state['status'] !== 'waiting') {
+            throw new Exception('Cannot change config during a round');
+        }
+
+        $state['round_duration'] = intval($configData['round_duration'] ?? $state['round_duration']);
+        $state['total_rounds'] = intval($configData['total_rounds'] ?? $state['total_rounds']);
+        $state['min_players'] = intval($configData['min_players'] ?? $state['min_players']);
+        $state['max_players'] = intval($configData['max_players'] ?? $state['max_players']);
+        $state['start_countdown'] = intval($configData['start_countdown'] ?? $state['start_countdown']);
+        $state['hurry_up_threshold'] = intval($configData['hurry_up_threshold'] ?? $state['hurry_up_threshold']);
+        $state['max_words_per_player'] = intval($configData['max_words_per_player'] ?? $state['max_words_per_player']);
+        $state['max_word_length'] = intval($configData['max_word_length'] ?? $state['max_word_length']);
+
+        $state['last_update'] = time();
+        $state['updated_at'] = time();
+
+        $this->repository->save($gameId, $state);
+
+        return [
+            'message' => 'Config updated',
+            'server_now' => intval(microtime(true) * 1000),
+            'state' => $state
+        ];
+    }
+
     public function submitAnswers($gameId, $playerId, $answers, $forcedPass = false) {
         $state = $this->repository->load($gameId);
 
