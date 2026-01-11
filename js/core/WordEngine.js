@@ -1,7 +1,3 @@
-/**
- * Word Comparison Engine
- */
-
 class WordEquivalenceEngine {
     constructor() {
         this.dictionaryMap = {};
@@ -232,7 +228,7 @@ class WordEquivalenceEngine {
         };
         
         if (isPluralLike(n1) || isPluralLike(n2)) {
-            return 'PLURAL';
+            return 'SIMILAR';
         }
 
         const last1 = n1.slice(-1);
@@ -240,7 +236,7 @@ class WordEquivalenceEngine {
         const isGenderVowel = (v) => ['A', 'E', 'O'].includes(v);
         
         if (isGenderVowel(last1) && isGenderVowel(last2) && last1 !== last2) {
-            return 'GENERO';
+            return 'SIMILAR';
         }
 
         if (this.isLoaded) {
@@ -255,7 +251,7 @@ class WordEquivalenceEngine {
             }
         }
 
-        return 'SIMILAR';
+        return null;
     }
 
     areEquivalentLocally(word1, word2) {
@@ -383,14 +379,15 @@ class WordEquivalenceEngine {
         return false;
     }
 
-    /**
-     * NUEVO: Calcula las coincidencias de todos los jugadores localmente.
-     * Devuelve una estructura optimizada para renderizar resultados.
-     * 
-     * @param {Object} players - Objeto con {playerId: {name, answers: [strings], ...}}
-     * @param {Object} roundContext - Contexto de la ronda (pregunta, respuestas válidas)
-     * @returns {Object} Estructura {playerId: {answers: [{word, canonical, matches: [], isValid}], scoreDelta}}
-     */
+    getPointsForType(matchType) {
+        const scoreMap = {
+            'EXACTA': 10,
+            'SINONIMO': 5,
+            'SIMILAR': 8
+        };
+        return scoreMap[matchType] || 0;
+    }
+
     calculateGlobalMatches(players, roundContext) {
         if (!players || typeof players !== 'object') {
             debug('⚠️ calculateGlobalMatches: invalid players object', null, 'warn');
@@ -413,7 +410,12 @@ class WordEquivalenceEngine {
             const player = players[pid];
             results[pid] = {
                 answers: [],
-                scoreDelta: 0
+                scoreDelta: 0,
+                answersByType: {
+                    EXACTA: [],
+                    SINONIMO: [],
+                    SIMILAR: []
+                }
             };
             
             if (Array.isArray(player.answers)) {
@@ -422,7 +424,8 @@ class WordEquivalenceEngine {
                         word: word,
                         canonical: this.getCanonical(word),
                         matches: [],
-                        isValid: true
+                        type: null,
+                        points: 0
                     });
                 });
             }
@@ -440,19 +443,23 @@ class WordEquivalenceEngine {
                     for (const itemB of wordsB) {
                         const matchResult = this.areEquivalentWithType(itemA.word, itemB.word);
                         
-                        if (matchResult.match) {
+                        if (matchResult.match && matchResult.type) {
+                            const points = this.getPointsForType(matchResult.type);
+
                             itemA.matches.push({
                                 playerId: pidB,
                                 name: players[pidB].name || pidB,
                                 type: matchResult.type,
-                                matchedWord: itemB.word
+                                matchedWord: itemB.word,
+                                points: points
                             });
 
                             itemB.matches.push({
                                 playerId: pidA,
                                 name: players[pidA].name || pidA,
                                 type: matchResult.type,
-                                matchedWord: itemA.word
+                                matchedWord: itemA.word,
+                                points: points
                             });
                         }
                     }
@@ -460,14 +467,23 @@ class WordEquivalenceEngine {
             }
         }
 
-        for (const playerResult of Object.values(results)) {
-            let points = 0;
+        for (const playerId of activePlayerIds) {
+            const playerResult = results[playerId];
+            let totalPoints = 0;
+            let hasMatches = false;
+
             playerResult.answers.forEach(ans => {
                 if (ans.matches.length > 0) {
-                    points += 1;
+                    hasMatches = true;
+                    const match = ans.matches[0];
+                    ans.type = match.type;
+                    ans.points = match.points;
+                    totalPoints += match.points;
+                    playerResult.answersByType[match.type].push(ans);
                 }
             });
-            playerResult.scoreDelta = points;
+
+            playerResult.scoreDelta = totalPoints;
         }
 
         if (this.debugMode) {
