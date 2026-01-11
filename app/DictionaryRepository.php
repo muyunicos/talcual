@@ -1,17 +1,36 @@
 <?php
 
 require_once __DIR__ . '/Database.php';
-require_once __DIR__ . '/WordNormalizer.php';
 
 class DictionaryRepository {
-    use WordNormalizer;
-    
     private $db = null;
     private $pdo = null;
 
     public function __construct() {
         $this->db = Database::getInstance();
         $this->pdo = $this->db->getConnection();
+    }
+
+    private static function normalizeWord($rawWord) {
+        if (empty($rawWord)) return '';
+        $word = trim($rawWord);
+        $word = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $word);
+        $word = strtoupper($word);
+        $word = preg_replace('/[^A-Z0-9]/', '', $word);
+        return $word;
+    }
+
+    private static function cleanWordPrompt($rawWord) {
+        if (empty($rawWord)) return '';
+        $word = trim($rawWord);
+        if (strpos($word, '|') !== false) {
+            $parts = explode('|', $word);
+            $word = trim($parts[0]);
+        }
+        if (substr($word, -1) === '.') {
+            $word = substr($word, 0, -1);
+        }
+        return self::normalizeWord($word);
     }
 
     public function getCategories() {
@@ -227,212 +246,6 @@ class DictionaryRepository {
                 'palabras_codigo' => 0,
                 'categorias_detalle' => []
             ];
-        }
-    }
-
-    public function getPromptsWithStats($categoryId) {
-        try {
-            $sql = 'SELECT 
-                p.id, p.text, p.difficulty,
-                (SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids,
-                COUNT(DISTINCT vw.id) as word_count
-            FROM prompts p
-            JOIN prompt_categories pc ON p.id = pc.prompt_id
-            LEFT JOIN valid_words vw ON p.id = vw.prompt_id
-            WHERE pc.category_id = ? AND p.is_active = 1
-            GROUP BY p.id, p.text
-            ORDER BY p.text';
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$categoryId]);
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($results as &$row) {
-                $row['category_ids'] = array_map('intval', array_filter(explode(',', $row['category_ids'] ?? '')));
-                $row['word_count'] = (int)$row['word_count'];
-            }
-            
-            return $results;
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching prompts: ' . $e->getMessage());
-        }
-    }
-
-    public function getPrompts($categoryId = null) {
-        try {
-            if ($categoryId) {
-                $sql = 'SELECT p.id, p.text, p.difficulty, '
-                    . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
-                    . 'FROM prompts p '
-                    . 'JOIN prompt_categories pc ON p.id = pc.prompt_id '
-                    . 'WHERE pc.category_id = ? AND p.is_active = 1 '
-                    . 'GROUP BY p.id, p.text '
-                    . 'ORDER BY p.text';
-                $stmt = $this->pdo->prepare($sql);
-                $stmt->execute([$categoryId]);
-            } else {
-                $sql = 'SELECT p.id, p.text, p.difficulty, '
-                    . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
-                    . 'FROM prompts p '
-                    . 'WHERE p.is_active = 1 '
-                    . 'GROUP BY p.id, p.text '
-                    . 'ORDER BY p.text';
-                $stmt = $this->pdo->query($sql);
-            }
-            
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($results as &$row) {
-                $row['category_ids'] = array_map('intval', array_filter(explode(',', $row['category_ids'] ?? '')));
-            }
-            
-            return $results;
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching prompts: ' . $e->getMessage());
-        }
-    }
-
-    public function getPromptById($promptId) {
-        try {
-            $sql = 'SELECT p.id, p.text, p.difficulty, '
-                . '(SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids '
-                . 'FROM prompts p '
-                . 'WHERE p.id = ? AND p.is_active = 1';
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$promptId]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($result) {
-                $result['category_ids'] = array_map('intval', array_filter(explode(',', $result['category_ids'] ?? '')));
-            }
-            
-            return $result;
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching prompt: ' . $e->getMessage());
-        }
-    }
-
-    public function getPromptCategories($promptId) {
-        try {
-            $stmt = $this->pdo->prepare('SELECT category_id FROM prompt_categories WHERE prompt_id = ? ORDER BY category_id');
-            $stmt->execute([$promptId]);
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            return array_map(function($row) { return (int)$row['category_id']; }, $rows);
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching prompt categories: ' . $e->getMessage());
-        }
-    }
-
-    public function getValidWords($promptId = null) {
-        try {
-            if ($promptId) {
-                $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group FROM valid_words WHERE prompt_id = ? ORDER BY word_group');
-                $stmt->execute([$promptId]);
-            } else {
-                $stmt = $this->pdo->query('SELECT id, prompt_id, word_group FROM valid_words ORDER BY prompt_id, word_group');
-            }
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching valid words: ' . $e->getMessage());
-        }
-    }
-
-    public function getValidWordById($wordId) {
-        try {
-            $stmt = $this->pdo->prepare('SELECT id, prompt_id, word_group FROM valid_words WHERE id = ?');
-            $stmt->execute([$wordId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching valid word: ' . $e->getMessage());
-        }
-    }
-
-    public function getStats() {
-        try {
-            $categories = $this->pdo->query('SELECT COUNT(*) as count FROM categories WHERE is_active = 1')->fetch()['count'];
-            $prompts = $this->pdo->query('SELECT COUNT(*) as count FROM prompts WHERE is_active = 1')->fetch()['count'];
-            $words = $this->pdo->query('SELECT COUNT(*) as count FROM valid_words')->fetch()['count'];
-
-            return [
-                'categories' => (int)$categories,
-                'prompts' => (int)$prompts,
-                'words' => (int)$words
-            ];
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching stats: ' . $e->getMessage());
-        }
-    }
-
-    public function getGames() {
-        try {
-            $sql = 'SELECT 
-                g.id,
-                g.id as code,
-                g.status,
-                g.round as current_round,
-                g.updated_at,
-                COUNT(DISTINCT p.id) as player_count
-            FROM games g
-            LEFT JOIN players p ON g.id = p.game_id
-            GROUP BY g.id
-            ORDER BY g.updated_at DESC
-            LIMIT 100';
-            
-            $stmt = $this->pdo->query($sql);
-            $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($games as &$game) {
-                $game['host_name'] = 'TalCual';
-                $game['player_count'] = (int)$game['player_count'];
-                $game['current_round'] = (int)$game['current_round'];
-                $game['created_at'] = date('Y-m-d H:i:s', $game['updated_at']);
-            }
-            
-            return $games;
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching games: ' . $e->getMessage());
-        }
-    }
-
-    public function getGameByCode($code) {
-        try {
-            $stmt = $this->pdo->prepare('SELECT 
-                id, status, round as current_round, updated_at, 
-                (SELECT COUNT(*) FROM players WHERE game_id = games.id) as player_count
-            FROM games WHERE id = ? LIMIT 1');
-            $stmt->execute([$code]);
-            $game = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($game) {
-                $game['code'] = $game['id'];
-                $game['host_name'] = 'TalCual';
-                $game['created_at'] = date('Y-m-d H:i:s', $game['updated_at']);
-            }
-            
-            return $game;
-        } catch (PDOException $e) {
-            throw new Exception('Error fetching game: ' . $e->getMessage());
-        }
-    }
-
-    public function getDatabaseInspection() {
-        try {
-            $inspection = [
-                'categories' => $this->pdo->query('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
-                'prompts' => $this->pdo->query('SELECT p.id, p.text, (SELECT GROUP_CONCAT(category_id, ",") FROM prompt_categories WHERE prompt_id = p.id) as category_ids FROM prompts p WHERE p.is_active = 1 GROUP BY p.id ORDER BY p.id')->fetchAll(PDO::FETCH_ASSOC),
-                'words' => $this->pdo->query('SELECT id, prompt_id, word_group FROM valid_words ORDER BY prompt_id, id')->fetchAll(PDO::FETCH_ASSOC),
-                'games' => $this->pdo->query('SELECT id, status, round, updated_at FROM games ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
-                'players' => $this->pdo->query('SELECT id, game_id, name, score FROM players ORDER BY game_id, id')->fetchAll(PDO::FETCH_ASSOC),
-                'stats' => [
-                    'categories_count' => $this->pdo->query('SELECT COUNT(*) as count FROM categories WHERE is_active = 1')->fetch()['count'],
-                    'prompts_count' => $this->pdo->query('SELECT COUNT(*) as count FROM prompts WHERE is_active = 1')->fetch()['count'],
-                    'words_count' => $this->pdo->query('SELECT COUNT(*) as count FROM valid_words')->fetch()['count'],
-                    'games_count' => $this->pdo->query('SELECT COUNT(*) as count FROM games')->fetch()['count'],
-                    'players_count' => $this->pdo->query('SELECT COUNT(*) as count FROM players')->fetch()['count']
-                ]
-            ];
-            return $inspection;
-        } catch (PDOException $e) {
-            throw new Exception('Error inspecting database: ' . $e->getMessage());
         }
     }
 }
