@@ -110,9 +110,6 @@ class GameService {
             if ($previousGameState) {
                 $originalGameId = $previousGameState['original_id'] ?? $gameId;
             } else {
-                if ($this->repository->exists($gameId)) {
-                    throw new Exception('Game code already in use');
-                }
                 $originalGameId = $gameId;
             }
 
