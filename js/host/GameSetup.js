@@ -348,7 +348,7 @@ class CreateGameModal {
         try {
             debug('🔄 Transicionando a pantalla de juego sin reload...', null, 'info');
 
-            ModalSystem_Instance.close();
+            ModalSystem_Instance.close(1);
 
             if (!window.hostManager) {
                 window.hostManager = new HostManager();
