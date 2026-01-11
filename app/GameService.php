@@ -181,7 +181,7 @@ class GameService {
             $previousGameState['updated_at'] = $now;
             $previousGameState['last_update'] = $now;
             $this->repository->save($gameId, $previousGameState);
-            logMessage('Game continuity: ' . $gameId . ' -> ' . $newGameId, 'INFO');
+            logMessage('Game continuity: ' . $gameId . ' -> ' . $newGameId . ' (original: ' . $originalGameId . ')', 'INFO');
         }
 
         return [
@@ -256,14 +256,14 @@ class GameService {
 
         $candidateId = $state['status'];
         if ($this->repository->exists($candidateId)) {
-            return $this->resolveGameId($candidateId);
+            return $candidateId;
         }
 
         return $gameId;
     }
 
     private function isValidGameStatus($status) {
-        $validStatuses = ['waiting', 'playing', 'round_ended', 'finished', 'closed'];
+        $validStatuses = ['waiting', 'playing', 'round_ended', 'finished', 'closed', 'ended'];
         return in_array($status, $validStatuses);
     }
 
