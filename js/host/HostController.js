@@ -161,6 +161,7 @@ class HostManager extends BaseController {
   loadGameScreen(state) {
     this.view.showGameScreen();
     this.view.renderRoomCode(this.gameCode);
+    this.determineUIState();
 
     this.client.onStateUpdate = (s) => this.handleStateUpdate(s);
     this.client.onConnectionLost = () => this.handleConnectionLost();
