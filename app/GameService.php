@@ -132,7 +132,7 @@ class GameService {
         if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = ROUND_DURATION;
         if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
 
-        $newGameId = $this->generateUniqueGameId();
+        $newGameId = $gameId;
         $serverNow = intval(microtime(true) * 1000);
         $now = time();
         $countdownDuration = START_COUNTDOWN * 1000;
