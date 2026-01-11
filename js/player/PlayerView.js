@@ -57,7 +57,10 @@ class PlayerView {
   }
 
   bindInputEvent(handler) {
-    this.elements.currentWordInput.addEventListener('input', () => handler());
+    this.elements.currentWordInput.addEventListener('input', (e) => {
+      e.target.value = sanitizeInputValue(e.target.value);
+      handler();
+    });
   }
 
   bindSubmit(handler) {
@@ -87,8 +90,8 @@ class PlayerView {
     );
 
     setTimeout(() => {
-      this.initializeAuraSelector();
       this.attachJoinScreenListeners();
+      this.initializeAuraSelector();
     }, 50);
   }
 
@@ -138,12 +141,20 @@ class PlayerView {
     const nameInput = document.querySelector('#modal-join-name');
 
     if (codeInput) {
+      codeInput.addEventListener('input', (e) => {
+        e.target.value = sanitizeInputValue(e.target.value);
+      });
+
       codeInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') nameInput.focus();
       });
     }
 
     if (nameInput) {
+      nameInput.addEventListener('input', (e) => {
+        e.target.value = sanitizeInputValue(e.target.value);
+      });
+
       nameInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && this._joinCallback) {
           const codeInputValue = document.querySelector('#modal-join-code');
@@ -298,11 +309,11 @@ class PlayerView {
   }
 
   getInputValue() {
-    return this.elements.currentWordInput.value.trim();
+    return this.elements.currentWordInput.value;
   }
 
   setInputValue(value) {
-    this.elements.currentWordInput.value = value;
+    this.elements.currentWordInput.value = sanitizeInputValue(value);
   }
 
   clearInput() {
@@ -346,7 +357,7 @@ class PlayerView {
       for (const match of resultData) {
         const icon = match.matched ? '✅' : '❌';
         const word = sanitizeText(match.word);
-        let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match'}">`;
+        let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match')}">`;
         resultHtml += `<div class="result-word">${icon} ${word}</div>`;
 
         if (match.matched && match.matchedPlayers && match.matchedPlayers.length > 0) {
@@ -430,6 +441,7 @@ class PlayerView {
     );
 
     setTimeout(() => {
+      this.attachEditNameListeners();
       this.initializeEditAuraSelector(currentColor);
     }, 50);
   }
@@ -448,6 +460,15 @@ class PlayerView {
     `;
 
     return container;
+  }
+
+  attachEditNameListeners() {
+    const nameInput = document.querySelector('#modal-edit-name');
+    if (nameInput) {
+      nameInput.addEventListener('input', (e) => {
+        e.target.value = sanitizeInputValue(e.target.value);
+      });
+    }
   }
 
   initializeEditAuraSelector(currentColor) {
