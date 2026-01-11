@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/settings.php';
 require_once __DIR__ . '/Database.php';
-require_once __DIR__ . '/WordNormalizer.php';
+// require_once __DIR__ . '/WordNormalizer.php';
 
 define('LOG_LEVEL_ERROR', 1);
 define('LOG_LEVEL_WARN', 2);
