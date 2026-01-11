@@ -344,7 +344,7 @@ try {
                             'total_rounds' => $state['total_rounds'] ?? TOTAL_ROUNDS,
                             'min_players' => $state['min_players'] ?? MIN_PLAYERS,
                             'max_players' => $state['max_players'] ?? MAX_PLAYERS,
-                            'start_countdown' => $state['start_countdown'] ?? START_COUNTDOWN,
+                            'start_countdown' => $state['countdown_duration'] ?? START_COUNTDOWN,
                             'hurry_up_threshold' => $state['hurry_up_threshold'] ?? HURRY_UP_THRESHOLD,
                             'max_words_per_player' => $state['max_words_per_player'] ?? MAX_WORDS_PER_PLAYER,
                             'max_word_length' => $state['max_word_length'] ?? MAX_WORD_LENGTH,
