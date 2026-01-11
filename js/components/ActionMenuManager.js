@@ -54,7 +54,7 @@ class ActionMenuManager {
                     window.hostManager.startRound();
                     break;
                 case 'hamburger-new-game':
-                    window.hostManager.showStartScreen();
+                    window.hostManager.createLinkedGame();
                     break;
                 case 'hamburger-settings':
                     if (window.settingsModal) {
@@ -108,6 +108,13 @@ class ActionMenuManager {
                               gameState.status === 'waiting';
             restartBtn.disabled = !canRestart;
             restartBtn.style.opacity = canRestart ? "1" : "0.5";
+        }
+
+        const newGameBtn = this.menu.querySelector('#hamburger-new-game');
+        if (newGameBtn) {
+            const canCreateNewGame = gameState.status === 'finished' || gameState.status === 'round_ended';
+            newGameBtn.disabled = !canCreateNewGame;
+            newGameBtn.style.opacity = canCreateNewGame ? "1" : "0.5";
         }
 
         const terminateBtn = this.menu.querySelector('#hamburger-terminate');
