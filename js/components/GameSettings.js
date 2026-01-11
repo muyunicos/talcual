@@ -124,7 +124,9 @@ class SettingsModal {
 
         if (config && typeof config === 'object') {
             this.settings = config;
-        } else if (window.configService && window.configService.config) {
+        } else if (gameId && window.configService && window.configService.isConfigReady(gameId)) {
+            this.settings = window.configService.getForGame(gameId);
+        } else if (window.configService && window.configService.config && Object.keys(window.configService.config).length > 0) {
             this.settings = window.configService.config;
         } else {
             this.settings = this.getDefaults();
@@ -219,6 +221,7 @@ class SettingsModal {
                 action: 'update_config',
                 config: values
             };
+
             if (this.gameId) {
                 payload.game_id = this.gameId;
             }
@@ -240,6 +243,14 @@ class SettingsModal {
             }
 
             this.settings = values;
+            if (this.gameId && window.configService) {
+                window.configService.invalidate(this.gameId);
+                if (result.state) {
+                    window.configService.loadFromState(result.state);
+                }
+            } else if (window.configService) {
+                window.configService.invalidate();
+            }
             showNotification('✅ Configuración guardada', 'success');
             ModalSystem_Instance.close(2);
         } catch (error) {
@@ -279,6 +290,9 @@ class SettingsModal {
             }
 
             this.settings = values;
+            if (window.configService) {
+                window.configService.invalidate();
+            }
             showNotification('✅ Configuración guardada', 'success');
             ModalSystem_Instance.close(2);
 
