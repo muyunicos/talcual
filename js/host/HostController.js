@@ -121,7 +121,17 @@ class HostManager extends BaseController {
       return;
     }
 
-    const config = configManager.getAll();
+    const config = this.gameState ? {
+      round_duration: this.gameState.round_duration || 90,
+      total_rounds: this.gameState.total_rounds || 5,
+      min_players: this.gameState.min_players || 3,
+      max_players: this.gameState.max_players || 20,
+      start_countdown: this.gameState.countdown_duration || 5,
+      hurry_up_threshold: this.gameState.hurry_up_threshold || 10,
+      max_words_per_player: this.gameState.max_words_per_player || 6,
+      max_word_length: this.gameState.max_word_length || 30
+    } : configManager.getAll();
+
     window.settingsModal.openModal('normal', this.gameCode, config);
   }
 
