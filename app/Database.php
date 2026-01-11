@@ -12,15 +12,6 @@ class Database {
 
     private function connect() {
         $dataDir = dirname($this->dbPath);
-        
-        if (!is_dir($dataDir)) {
-            throw new Exception('Data directory does not exist: ' . $dataDir);
-        }
-        
-        if (!is_writable($dataDir)) {
-            throw new Exception('Data directory is not writable: ' . $dataDir);
-        }
-
         try {
             $this->pdo = new PDO(
                 'sqlite:' . $this->dbPath,
@@ -48,7 +39,6 @@ class Database {
         if (self::$instance === null) {
             self::$instance = new self();
         }
-        
         return self::$instance;
     }
 
