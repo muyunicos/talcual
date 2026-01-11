@@ -3,6 +3,7 @@ class ConfigManager {
         this.defaultConfig = {};
         this.config = {};
         this.listeners = [];
+        this.fieldListeners = new Map();
         this._initialized = false;
         this._initPromise = null;
     }
@@ -96,26 +97,48 @@ class ConfigManager {
             'max_word_length': 'max_word_length'
         };
 
+        const updates = {};
+        let hasChanges = false;
+
         for (const [stateKey, configKey] of Object.entries(mapping)) {
-            if (gameState[stateKey] !== undefined) {
-                this.config[configKey] = gameState[stateKey];
+            if (gameState[stateKey] !== undefined && this.config[configKey] !== gameState[stateKey]) {
+                updates[configKey] = gameState[stateKey];
+                hasChanges = true;
             }
         }
 
-        debug('[CONFIG] Synced from game state', null, 'debug');
-        this.notifyListeners();
+        if (hasChanges) {
+            this._applyUpdates(updates);
+            debug('[CONFIG] Synced from game state', { fields: Object.keys(updates) }, 'debug');
+        }
     }
 
     syncFromObject(obj) {
         if (!obj || typeof obj !== 'object') return;
 
+        const updates = {};
+        let hasChanges = false;
+
         Object.keys(obj).forEach(key => {
-            if (this.config.hasOwnProperty(key)) {
-                this.config[key] = obj[key];
+            if (this.config.hasOwnProperty(key) && this.config[key] !== obj[key]) {
+                updates[key] = obj[key];
+                hasChanges = true;
             }
         });
 
-        debug('[CONFIG] Synced from object', null, 'debug');
+        if (hasChanges) {
+            this._applyUpdates(updates);
+            debug('[CONFIG] Synced from object', { fields: Object.keys(updates) }, 'debug');
+        }
+    }
+
+    _applyUpdates(updates) {
+        Object.assign(this.config, updates);
+
+        Object.keys(updates).forEach(key => {
+            this._notifyFieldListeners(key, updates[key]);
+        });
+
         this.notifyListeners();
     }
 
@@ -134,16 +157,21 @@ class ConfigManager {
     }
 
     set(key, value) {
-        if (this.config.hasOwnProperty(key)) {
+        if (this.config.hasOwnProperty(key) && this.config[key] !== value) {
             this.config[key] = value;
+            this._notifyFieldListeners(key, value);
             this.notifyListeners();
         }
     }
 
     resetToDefault(key) {
         if (this.defaultConfig.hasOwnProperty(key)) {
-            this.config[key] = this.defaultConfig[key];
-            this.notifyListeners();
+            const newValue = this.defaultConfig[key];
+            if (this.config[key] !== newValue) {
+                this.config[key] = newValue;
+                this._notifyFieldListeners(key, newValue);
+                this.notifyListeners();
+            }
         }
     }
 
@@ -155,7 +183,37 @@ class ConfigManager {
     subscribe(callback) {
         if (typeof callback === 'function') {
             this.listeners.push(callback);
+            return () => this.unsubscribe(callback);
         }
+        return () => {};
+    }
+
+    subscribeToField(field, callback) {
+        if (typeof callback !== 'function') return () => {};
+
+        if (!this.fieldListeners.has(field)) {
+            this.fieldListeners.set(field, new Set());
+        }
+        this.fieldListeners.get(field).add(callback);
+
+        return () => {
+            const listeners = this.fieldListeners.get(field);
+            if (listeners) {
+                listeners.delete(callback);
+            }
+        };
+    }
+
+    _notifyFieldListeners(field, value) {
+        if (!this.fieldListeners.has(field)) return;
+
+        this.fieldListeners.get(field).forEach(callback => {
+            try {
+                callback(value, field);
+            } catch (error) {
+                console.error(`[ConfigManager] Error in field listener for "${field}":`, error);
+            }
+        });
     }
 
     unsubscribe(callback) {
