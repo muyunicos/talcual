@@ -187,6 +187,11 @@ class HostManager extends BaseController {
     this.client.onConnectionLost = () => this.handleConnectionLost();
     this.client.connect();
 
+    setTimeout(async () => {
+      debug('🔄 Host forceRefresh después de conectar SSE', null, 'info');
+      await this.client.forceRefresh();
+    }, 100);
+
     this.client.on('event:player_joined', (data) => {
       debug('⚡ Jugador unido detectado:', data, 'info');
       this.client.forceRefresh();
