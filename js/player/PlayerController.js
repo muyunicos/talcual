@@ -17,6 +17,7 @@ class PlayerManager extends BaseController {
     this.typingThrottleMs = 2000;
 
     this._autoSubmitInterval = null;
+    this._configSyncUnsubscribe = null;
     this.view = null;
   }
 
@@ -176,6 +177,14 @@ class PlayerManager extends BaseController {
     this.client.on('event:game_started', (data) => {
       debug('⚡ Juego iniciado detectado:', data, 'info');
       this.client.forceRefresh();
+    });
+
+    this.client.on('config_field_changed', (data) => {
+      debug('🔄 Config field change recibido:', data, 'debug');
+      if (data && data.field && data.value !== undefined) {
+        configManager.set(data.field, data.value);
+        debug(`✅ ${data.field} = ${data.value}`, null, 'debug');
+      }
     });
 
     this.handleStateUpdate(state);
@@ -655,6 +664,12 @@ class PlayerManager extends BaseController {
       clearInterval(this._autoSubmitInterval);
       this._autoSubmitInterval = null;
     }
+
+    if (this._configSyncUnsubscribe) {
+      this._configSyncUnsubscribe();
+      this._configSyncUnsubscribe = null;
+    }
+
     super.destroy();
   }
 }
