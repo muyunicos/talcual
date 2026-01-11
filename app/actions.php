@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', '0');
-ini_set('log_errors', '1');
+ini_set('display_errors', '1');
+ini_set('log_errors', '0');
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/GameRepository.php';
@@ -420,21 +420,6 @@ try {
                 'success' => true,
                 'server_now' => intval(microtime(true) * 1000),
                 'categories' => $categories
-            ];
-            break;
-
-        case 'get_stats':
-            if (!DEV_MODE) {
-                throw new Exception('No disponible');
-            }
-
-            $response = [
-                'success' => true,
-                'server_now' => intval(microtime(true) * 1000),
-                'stats' => [
-                    'dictionary' => $dictionaryRepository->getDictionaryStats(),
-                    'dev_mode' => DEV_MODE
-                ]
             ];
             break;
 

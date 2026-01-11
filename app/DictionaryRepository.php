@@ -205,48 +205,5 @@ class DictionaryRepository {
             return null;
         }
     }
-
-    public function getDictionaryStats() {
-        try {
-            $categoryCount = $this->pdo->query('SELECT COUNT(*) as count FROM categories WHERE is_active = 1')->fetch()['count'];
-            $categories = $this->getCategories();
-            
-            $stats = [
-                'categorias' => (int)$categoryCount,
-                'total_palabras' => 0,
-                'palabras_codigo' => 0,
-                'categorias_detalle' => []
-            ];
-            
-            foreach ($categories as $categoria) {
-                $responses = $this->getAllResponsesByCategory($categoria);
-                $cleanedWords = array_map([self::class, 'cleanWordPrompt'], $responses);
-                $cleanedWords = array_filter($cleanedWords, function($w) { 
-                    return !empty($w); 
-                });
-                $uniqueWords = array_unique($cleanedWords);
-                
-                $count = count($uniqueWords);
-                $stats['total_palabras'] += $count;
-                $stats['categorias_detalle'][$categoria] = $count;
-                
-                foreach ($uniqueWords as $palabra) {
-                    if (mb_strlen($palabra) <= MAX_CODE_LENGTH) {
-                        $stats['palabras_codigo']++;
-                    }
-                }
-            }
-            
-            return $stats;
-        } catch (Exception $e) {
-            logMessage('Error fetching dictionary stats: ' . $e->getMessage(), 'ERROR');
-            return [
-                'categorias' => 0,
-                'total_palabras' => 0,
-                'palabras_codigo' => 0,
-                'categorias_detalle' => []
-            ];
-        }
-    }
 }
 ?>
