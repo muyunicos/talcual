@@ -331,6 +331,28 @@ try {
             notifyGameChanged($gameId, ['event' => 'typing', 'player_id' => $playerId], true);
             break;
 
+        case 'broadcast_config_change':
+            $gameId = $input['game_id'] ?? null;
+            $field = $input['field'] ?? null;
+            $value = $input['value'] ?? null;
+
+            if (!$gameId || !$field || $value === null) {
+                throw new Exception('game_id, field, y value requeridos');
+            }
+
+            notifyGameChanged($gameId, [
+                'event' => 'config_field_changed',
+                'field' => $field,
+                'value' => $value
+            ], false);
+
+            $response = [
+                'success' => true,
+                'message' => 'Config change broadcasted',
+                'server_now' => intval(microtime(true) * 1000)
+            ];
+            break;
+
         case 'get_config':
             $gameId = isset($input['game_id']) ? $input['game_id'] : null;
 
