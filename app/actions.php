@@ -69,20 +69,6 @@ try {
     $response = ['success' => false, 'message' => 'Acción no válida'];
 
     switch ($action) {
-        case 'check_room_availability':
-            $roomCode = AppUtils::sanitizeGameId($input['room_code'] ?? null);
-            if (!$roomCode) {
-                throw new Exception('room_code requerido');
-            }
-            $isAvailable = !$repository->exists($roomCode);
-            $response = [
-                'success' => true,
-                'available' => $isAvailable,
-                'room_code' => $roomCode,
-                'server_now' => intval(microtime(true) * 1000)
-            ];
-            break;
-
         case 'get_game_candidates':
             $candidates = $service->getGameCandidates();
             $response = [
