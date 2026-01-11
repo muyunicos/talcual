@@ -3,6 +3,7 @@ class SettingsModal {
         this.settings = {};
         this.openedFrom = null;
         this.gameId = null;
+        this.activeTab = 'players';
     }
 
     getDefaults() {
@@ -31,87 +32,97 @@ class SettingsModal {
 
         return `
             <div class="settings-form">
-                <div class="settings-group">
-                    <h4>👥 Jugadores</h4>
-                    
-                    <div class="input-group">
-                        <label class="input-label" for="min-players">Mínimo de Jugadores</label>
-                        <input type="number" id="min-players" class="input-field"
-                               min="1" max="20" value="${minPlayers}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Mínimo: 1, Máximo: 20
-                        </small>
-                    </div>
-
-                    <div class="input-group">
-                        <label class="input-label" for="max-players">Máximo de Jugadores</label>
-                        <input type="number" id="max-players" class="input-field"
-                               min="1" max="100" value="${maxPlayers}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Máximo de slots en una partida
-                        </small>
-                    </div>
+                <div class="settings-tabs">
+                    <button class="settings-tab-btn active" data-tab="players">👥 Jugadores</button>
+                    <button class="settings-tab-btn" data-tab="rounds">⏱️ Rondas</button>
+                    <button class="settings-tab-btn" data-tab="words">📋 Palabras</button>
                 </div>
 
-                <div class="settings-group">
-                    <h4>⏱️ Rondas y Tiempo</h4>
-                    
-                    <div class="input-group">
-                        <label class="input-label" for="total-rounds">Total de Rondas</label>
-                        <input type="number" id="total-rounds" class="input-field"
-                               min="1" max="10" value="${totalRounds}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Número de rondas en una partida completa (1-10)
-                        </small>
+                <div class="settings-tabs-content">
+                    <div class="settings-tab-pane active" data-tab="players">
+                        <div class="settings-control">
+                            <label class="settings-label">Mínimo de Jugadores</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="min-players" class="settings-slider" 
+                                       min="1" max="20" value="${minPlayers}">
+                                <span class="settings-value-display" id="min-players-display">${minPlayers}</span>
+                            </div>
+                            <small class="settings-hint">Entre 1 y 20 jugadores</small>
+                        </div>
+
+                        <div class="settings-control">
+                            <label class="settings-label">Máximo de Jugadores</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="max-players" class="settings-slider" 
+                                       min="1" max="100" value="${maxPlayers}">
+                                <span class="settings-value-display" id="max-players-display">${maxPlayers}</span>
+                            </div>
+                            <small class="settings-hint">Slots máximos en partida (1-100)</small>
+                        </div>
                     </div>
 
-                    <div class="input-group">
-                        <label class="input-label" for="round-duration">Duración por Ronda (segundos)</label>
-                        <input type="number" id="round-duration" class="input-field"
-                               min="30" max="300" value="${roundDuration}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Tiempo límite por ronda: 30s a 5 minutos
-                        </small>
+                    <div class="settings-tab-pane" data-tab="rounds">
+                        <div class="settings-control">
+                            <label class="settings-label">Total de Rondas</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="total-rounds" class="settings-slider" 
+                                       min="1" max="10" value="${totalRounds}">
+                                <span class="settings-value-display" id="total-rounds-display">${totalRounds}</span>
+                            </div>
+                            <small class="settings-hint">Rondas en partida completa (1-10)</small>
+                        </div>
+
+                        <div class="settings-control">
+                            <label class="settings-label">Duración por Ronda</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="round-duration" class="settings-slider" 
+                                       min="30" max="300" step="5" value="${roundDuration}">
+                                <span class="settings-value-display" id="round-duration-display">${roundDuration}s</span>
+                            </div>
+                            <small class="settings-hint">30s a 5 minutos por ronda</small>
+                        </div>
+
+                        <div class="settings-control">
+                            <label class="settings-label">Cuenta Atrás Inicial</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="start-countdown" class="settings-slider" 
+                                       min="1" max="10" value="${startCountdown}">
+                                <span class="settings-value-display" id="start-countdown-display">${startCountdown}s</span>
+                            </div>
+                            <small class="settings-hint">Preparación antes de empezar (1-10s)</small>
+                        </div>
+
+                        <div class="settings-control">
+                            <label class="settings-label">Remate - Tiempo Restante</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="hurry-up-threshold" class="settings-slider" 
+                                       min="5" max="60" step="5" value="${hurryUpThreshold}">
+                                <span class="settings-value-display" id="hurry-up-threshold-display">${hurryUpThreshold}s</span>
+                            </div>
+                            <small class="settings-hint">Tiempo para activar remate (5-60s)</small>
+                        </div>
                     </div>
 
-                    <div class="input-group">
-                        <label class="input-label" for="start-countdown">Cuenta Atrás Inicial (segundos)</label>
-                        <input type="number" id="start-countdown" class="input-field"
-                               min="1" max="10" value="${startCountdown}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Tiempo de preparación antes de empezar (1-10s)
-                        </small>
-                    </div>
+                    <div class="settings-tab-pane" data-tab="words">
+                        <div class="settings-control">
+                            <label class="settings-label">Máx. Palabras por Jugador</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="max-words-per-player" class="settings-slider" 
+                                       min="1" max="20" value="${maxWordsPerPlayer}">
+                                <span class="settings-value-display" id="max-words-per-player-display">${maxWordsPerPlayer}</span>
+                            </div>
+                            <small class="settings-hint">Límite de palabras por jugador (1-20)</small>
+                        </div>
 
-                    <div class="input-group">
-                        <label class="input-label" for="hurry-up-threshold">Remate - Tiempo Restante (segundos)</label>
-                        <input type="number" id="hurry-up-threshold" class="input-field"
-                               min="5" max="60" value="${hurryUpThreshold}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Tiempo que queda cuando se activa el remate (5-60s)
-                        </small>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <h4>📋 Palabras</h4>
-                    
-                    <div class="input-group">
-                        <label class="input-label" for="max-words-per-player">Máx. Palabras por Jugador</label>
-                        <input type="number" id="max-words-per-player" class="input-field"
-                               min="1" max="20" value="${maxWordsPerPlayer}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Límite de palabras que puede enviar cada jugador (1-20)
-                        </small>
-                    </div>
-
-                    <div class="input-group">
-                        <label class="input-label" for="max-word-length">Longitud Máxima de Palabra</label>
-                        <input type="number" id="max-word-length" class="input-field"
-                               min="10" max="100" value="${maxWordLength}">
-                        <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
-                            Máximo de caracteres por palabra (10-100)
-                        </small>
+                        <div class="settings-control">
+                            <label class="settings-label">Longitud Máxima de Palabra</label>
+                            <div class="settings-input-wrapper">
+                                <input type="range" id="max-word-length" class="settings-slider" 
+                                       min="10" max="100" step="5" value="${maxWordLength}">
+                                <span class="settings-value-display" id="max-word-length-display">${maxWordLength}</span>
+                            </div>
+                            <small class="settings-hint">Máximo de caracteres (10-100)</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -160,6 +171,43 @@ class SettingsModal {
         ];
 
         ModalSystem_Instance.show(2, formHTML, buttons);
+        this.attachEventListeners();
+    }
+
+    attachEventListeners() {
+        const tabButtons = document.querySelectorAll('.settings-tab-btn');
+        const sliders = document.querySelectorAll('.settings-slider');
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+        });
+
+        sliders.forEach(slider => {
+            slider.addEventListener('input', (e) => this.updateSliderDisplay(e.target));
+        });
+    }
+
+    switchTab(tabName) {
+        this.activeTab = tabName;
+        
+        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-tab="${tabName}"].settings-tab-btn`).classList.add('active');
+
+        document.querySelectorAll('.settings-tab-pane').forEach(pane => {
+            pane.classList.remove('active');
+        });
+        document.querySelector(`[data-tab="${tabName}"].settings-tab-pane`).classList.add('active');
+    }
+
+    updateSliderDisplay(slider) {
+        const displayId = slider.id + '-display';
+        const displayEl = document.getElementById(displayId);
+        if (displayEl) {
+            const suffix = ['round-duration', 'start-countdown', 'hurry-up-threshold'].includes(slider.id) ? 's' : '';
+            displayEl.textContent = slider.value + suffix;
+        }
     }
 
     getFormValues() {
