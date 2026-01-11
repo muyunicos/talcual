@@ -50,7 +50,6 @@ class GameRepository {
             'min_players' => (int)($gameRow['min_players'] ?? 2),
             'max_players' => (int)($gameRow['max_players'] ?? 8),
             'round_duration' => (int)($gameRow['round_duration'] ?? 60),
-            'start_countdown' => (int)(START_COUNTDOWN),
             'hurry_up_threshold' => (int)($gameRow['hurry_up_threshold'] ?? 10),
             'max_words_per_player' => (int)($gameRow['max_words_per_player'] ?? 6),
             'max_word_length' => (int)($gameRow['max_word_length'] ?? 30),
