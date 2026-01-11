@@ -34,7 +34,8 @@ class CreateGameModal {
             return true;
         } catch (error) {
             debug('Error fetching game candidates', error, 'error');
-            throw error;
+            this.gameCandidates = [];
+            return false;
         }
     }
 
@@ -46,7 +47,11 @@ class CreateGameModal {
         try {
             const ready = await configService.load();
             if (!ready) {
-                throw new Error('Failed to load config from configService');
+                debug('⚠️ configService.load() returned false, using fallback config', null, 'warn');
+                this.gameConfig = this.getDefaultConfig();
+                this.maxCodeLength = 4;
+                this.isCached = true;
+                return true;
             }
 
             this.gameConfig = configService.getForGame();
@@ -54,9 +59,26 @@ class CreateGameModal {
             this.isCached = true;
             return true;
         } catch (error) {
-            debug('Error fetching game config', error, 'error');
-            throw error;
+            debug('⚠️ Error fetching config from configService, using defaults', error, 'warn');
+            this.gameConfig = this.getDefaultConfig();
+            this.maxCodeLength = 4;
+            this.isCached = true;
+            return true;
         }
+    }
+
+    getDefaultConfig() {
+        return {
+            round_duration: 90,
+            total_rounds: 3,
+            min_players: 1,
+            max_players: 20,
+            countdown_duration: 5,
+            hurry_up_threshold: 10,
+            max_words_per_player: 6,
+            max_word_length: 30,
+            max_code_length: 4
+        };
     }
 
     async init() {
@@ -65,7 +87,7 @@ class CreateGameModal {
             await this.fetchCandidates();
 
             if (this.gameCandidates.length === 0) {
-                throw new Error('No hay candidatos disponibles');
+                debug('⚠️ No hay candidatos disponibles, continuando con modal vacío', null, 'warn');
             }
 
             this.isFirstGame = !StorageManager.get(StorageKeys.HOST_GAME_CODE);
@@ -138,13 +160,15 @@ class CreateGameModal {
     openFirstGameModal() {
         this.selectRandomCandidate();
         const categories = this.getCategories();
-        const selectedCategory = this.selectedCandidate?.category || categories[0];
+        const selectedCategory = this.selectedCandidate?.category || (categories[0] || 'Géneral');
         const selectedCode = this.selectedCandidate?.code || '';
         this.currentRoomCode = this.truncateCode(selectedCode);
 
-        const categoryOptions = categories.map(cat => 
-            `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
-        ).join('');
+        const categoryOptions = categories.length > 0
+            ? categories.map(cat => 
+                `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
+              ).join('')
+            : `<option value="Géneral" selected>Géneral</option>`;
 
         const formHTML = `
             <div class="input-group">
@@ -248,6 +272,8 @@ class CreateGameModal {
             config = window.configService.getForGame();
         } else if (Object.keys(this.gameConfig).length > 0) {
             config = this.gameConfig;
+        } else {
+            config = this.getDefaultConfig();
         }
 
         window.settingsModal.openModal('creation', null, config);
