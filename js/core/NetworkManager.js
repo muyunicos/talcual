@@ -22,10 +22,14 @@ const EVENT_TYPES = {
 const SSE_EVENT_NAMES = [
   'heartbeat', 'connected', 'game_ended', 'sync', 'update',
   'player_joined', 'player_ready', 'player_left', 'player_updated',
-  'timer_updated', 'typing', 'connection', 'error'
+  'timer_updated', 'typing', 'connection', 'error', 'config_field_changed'
 ];
 
-const KNOWN_EVENTS = ['player_joined', 'player_ready', 'player_left', 'player_updated', 'timer_updated', 'typing', 'connection', 'connected'];
+const KNOWN_EVENTS = [
+  'player_joined', 'player_ready', 'player_left', 'player_updated',
+  'timer_updated', 'typing', 'connection', 'connected',
+  'config_field_changed'
+];
 
 const COMM_CONFIG_DEFAULTS = {
   HEARTBEAT_INTERVAL: 15000,
