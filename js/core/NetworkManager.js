@@ -461,42 +461,34 @@ class GameClient {
   }
 
   async _resolveGameId(gameId) {
-    const validStatuses = ['waiting', 'playing', 'round_ended', 'finished', 'closed'];
-    let currentId = gameId;
-    let maxDepth = 5;
-    let depth = 0;
-
-    while (depth < maxDepth) {
-      try {
-        const payload = {
-          action: 'get_state',
-          game_id: currentId
-        };
-        const result = await this._makeRequest(payload);
-
-        if (!result.success || !result.state) {
-          return currentId;
-        }
-
-        const state = result.state;
-        if (validStatuses.includes(state.status)) {
-          return currentId;
-        }
-
-        const nextId = state.status;
-        if (!nextId || typeof nextId !== 'string' || nextId === currentId) {
-          return currentId;
-        }
-
-        currentId = nextId;
-        depth++;
-      } catch (error) {
-        console.warn('[WARN] Error resolving game ID chain:', error);
-        return currentId;
+    const validStatuses = ['waiting', 'playing', 'round_ended', 'finished', 'closed', 'ended'];
+    
+    try {
+      const result = await this._makeRequest({ action: 'get_state', game_id: gameId });
+      
+      if (!result.success || !result.state) {
+        return gameId;
       }
-    }
 
-    return currentId;
+      const state = result.state;
+      
+      if (validStatuses.includes(state.status)) {
+        return gameId;
+      }
+
+      const nextId = state.status;
+      if (nextId && typeof nextId === 'string' && nextId !== gameId) {
+        const nextResult = await this._makeRequest({ action: 'get_state', game_id: nextId });
+        if (nextResult.success && nextResult.state) {
+          return nextId;
+        }
+      }
+
+      return gameId;
+    } catch (error) {
+      console.warn('[WARN] Error resolving game ID:', error);
+      return gameId;
+    }
   }
 
   async sendAction(action, data = {}) {
