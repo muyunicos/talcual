@@ -48,6 +48,18 @@ class GameService {
         return $code;
     }
 
+    private function generateUniqueGameId() {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        do {
+            $id = '';
+            for ($i = 0; $i < 8; $i++) {
+                $id .= $chars[rand(0, strlen($chars) - 1)];
+            }
+        } while ($this->repository->exists($id));
+        
+        return $id;
+    }
+
     public function getGameCandidates() {
         $categories = $this->dictionary->getCategoriesFull();
 
@@ -89,9 +101,19 @@ class GameService {
     }
 
     public function createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers) {
+        $originalGameId = null;
+        $previousGameState = null;
+
         if ($gameId) {
-            if ($this->repository->exists($gameId)) {
-                throw new Exception('Game code already in use');
+            $previousGameState = $this->repository->load($gameId);
+            
+            if ($previousGameState) {
+                $originalGameId = $previousGameState['original_id'] ?? $gameId;
+            } else {
+                if ($this->repository->exists($gameId)) {
+                    throw new Exception('Game code already in use');
+                }
+                $originalGameId = $gameId;
             }
 
             if ($requestedCategory) {
@@ -101,13 +123,14 @@ class GameService {
                 }
             }
         } else {
-            $gameId = $this->generateGameCode();
+            throw new Exception('Game code is required');
         }
 
         if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = TOTAL_ROUNDS;
         if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = ROUND_DURATION;
         if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
 
+        $newGameId = $this->generateUniqueGameId();
         $serverNow = intval(microtime(true) * 1000);
         $now = time();
         $countdownDuration = START_COUNTDOWN * 1000;
@@ -121,7 +144,8 @@ class GameService {
         }
 
         $initialState = [
-            'game_id' => $gameId,
+            'game_id' => $newGameId,
+            'original_id' => $originalGameId,
             'players' => [],
             'round' => 0,
             'total_rounds' => $totalRounds,
@@ -150,17 +174,27 @@ class GameService {
             'last_update' => time()
         ];
 
-        $this->repository->save($gameId, $initialState);
+        $this->repository->save($newGameId, $initialState);
+
+        if ($previousGameState) {
+            $previousGameState['status'] = $newGameId;
+            $previousGameState['updated_at'] = $now;
+            $previousGameState['last_update'] = $now;
+            $this->repository->save($gameId, $previousGameState);
+            logMessage('Game continuity: ' . $gameId . ' -> ' . $newGameId, 'INFO');
+        }
 
         return [
-            'game_id' => $gameId,
+            'game_id' => $newGameId,
+            'original_id' => $originalGameId,
             'server_now' => $serverNow,
             'state' => $initialState
         ];
     }
 
     public function joinGame($gameId, $playerId, $playerName, $playerColor) {
-        $state = $this->repository->load($gameId);
+        $actualGameId = $this->resolveGameId($gameId);
+        $state = $this->repository->load($actualGameId);
 
         if (!$state) {
             throw new Exception('Game not found');
@@ -172,7 +206,7 @@ class GameService {
         }
 
         if (isset($state['players'][$playerId])) {
-            logMessage('Player reconnection: ' . $playerId . ' in game ' . $gameId, 'DEBUG');
+            logMessage('Player reconnection: ' . $playerId . ' in game ' . $actualGameId, 'DEBUG');
             return [
                 'message' => 'Reconnected to game',
                 'server_now' => intval(microtime(true) * 1000),
@@ -199,7 +233,7 @@ class GameService {
         $state['last_update'] = time();
         $state['updated_at'] = time();
 
-        $this->repository->save($gameId, $state);
+        $this->repository->save($actualGameId, $state);
 
         return [
             'message' => 'Joined game',
@@ -207,6 +241,30 @@ class GameService {
             'state' => $state,
             'reconnected' => false
         ];
+    }
+
+    private function resolveGameId($gameId) {
+        $state = $this->repository->load($gameId);
+        
+        if (!$state) {
+            return $gameId;
+        }
+
+        if ($this->isValidGameStatus($state['status'])) {
+            return $gameId;
+        }
+
+        $candidateId = $state['status'];
+        if ($this->repository->exists($candidateId)) {
+            return $this->resolveGameId($candidateId);
+        }
+
+        return $gameId;
+    }
+
+    private function isValidGameStatus($status) {
+        $validStatuses = ['waiting', 'playing', 'round_ended', 'finished', 'closed'];
+        return in_array($status, $validStatuses);
     }
 
     public function startRound($gameId, $categoryFromRequest, $duration, $totalRounds) {
@@ -631,7 +689,8 @@ class GameService {
     }
 
     public function getState($gameId) {
-        $state = $this->repository->load($gameId);
+        $actualGameId = $this->resolveGameId($gameId);
+        $state = $this->repository->load($actualGameId);
 
         if ($state) {
             return [
