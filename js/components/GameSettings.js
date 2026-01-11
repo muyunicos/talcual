@@ -190,11 +190,26 @@ class SettingsModal {
 
         dualRanges.forEach(range => {
             range.addEventListener('input', (e) => this.updateDualRangeDisplay(e.target));
+            range.addEventListener('mousedown', (e) => this.setDualRangeZIndex(e.target));
+            range.addEventListener('touchstart', (e) => this.setDualRangeZIndex(e.target));
         });
 
         resetBtns.forEach(btn => {
             btn.addEventListener('click', (e) => this.resetFieldToDefault(e.target.dataset.field));
         });
+    }
+
+    setDualRangeZIndex(range) {
+        const minInput = document.getElementById('min-players');
+        const maxInput = document.getElementById('max-players');
+
+        if (range === minInput) {
+            minInput.style.zIndex = '10';
+            maxInput.style.zIndex = '9';
+        } else if (range === maxInput) {
+            maxInput.style.zIndex = '10';
+            minInput.style.zIndex = '9';
+        }
     }
 
     switchTab(tabName) {
