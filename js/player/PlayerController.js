@@ -471,50 +471,30 @@ class PlayerManager extends BaseController {
     }
   }
 
-  ensureWordEngineInitialized(state) {
-    if (!state.roundData || !state.roundData.commonAnswers) {
-      debug('⚠️ No roundData disponible para inicializar WordEngine', 'warn');
-      return false;
-    }
-
-    initializeWordEngineFromRound(state.roundData);
-    debug('📚 WordEngine inicializado en showResults', 'info');
-    return true;
-  }
-
   showResults(state) {
     const me = state.players?.[this.playerId];
     if (!me) {
-      debug('❌ No se encontró data del jugador en estado', 'error');
       return;
     }
 
-    this.ensureWordEngineInitialized(state);
+    const roundResults = state.round_results;
 
-    const globalResults = wordEngine.calculateGlobalMatches(
-        state.players,
-        state.roundData
-    );
+    if (roundResults && roundResults[this.playerId]) {
+      const myResultData = roundResults[this.playerId];
+      
+      if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
+        const formattedMatches = myResultData.answers.map(ans => ({
+          word: ans.word,
+          matched: ans.matches.length > 0,
+          matchedPlayers: ans.matches.map(m => m.name),
+          count: ans.matches.length,
+          matchType: ans.matches[0]?.type
+        }));
 
-    let myResultData = globalResults[this.playerId];
-
-    if (!myResultData) {
-      debug(`⚠️ myResultData no encontrado para ${this.playerId} en globalResults`, 'warn');
-      debug('Claves en globalResults:', Object.keys(globalResults), 'debug');
-      this.view.showRoundResults(null);
-      return;
-    }
-
-    if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
-      const formattedMatches = myResultData.answers.map(ans => ({
-        word: ans.word,
-        matched: ans.matches.length > 0,
-        matchedPlayers: ans.matches.map(m => m.name),
-        count: ans.matches.length,
-        matchType: ans.matches[0]?.type
-      }));
-
-      this.view.showRoundResults(formattedMatches);
+        this.view.showRoundResults(formattedMatches);
+      } else {
+        this.view.showRoundResults(null);
+      }
     } else {
       this.view.showRoundResults(null);
     }
@@ -524,31 +504,24 @@ class PlayerManager extends BaseController {
     const me = state.players?.[this.playerId];
     if (!me) return;
 
-    this.ensureWordEngineInitialized(state);
+    const roundResults = state.round_results;
 
-    const globalResults = wordEngine.calculateGlobalMatches(
-        state.players,
-        state.roundData
-    );
+    if (roundResults && roundResults[this.playerId]) {
+      const myResultData = roundResults[this.playerId];
+      
+      if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
+        const formattedMatches = myResultData.answers.map(ans => ({
+          word: ans.word,
+          matched: ans.matches.length > 0,
+          matchedPlayers: ans.matches.map(m => m.name),
+          count: ans.matches.length,
+          matchType: ans.matches[0]?.type
+        }));
 
-    let myResultData = globalResults[this.playerId];
-
-    if (!myResultData) {
-      this.view.showRoundResults(null);
-      this.view.showFinalResults();
-      return;
-    }
-
-    if (myResultData && myResultData.answers && myResultData.answers.length > 0) {
-      const formattedMatches = myResultData.answers.map(ans => ({
-        word: ans.word,
-        matched: ans.matches.length > 0,
-        matchedPlayers: ans.matches.map(m => m.name),
-        count: ans.matches.length,
-        matchType: ans.matches[0]?.type
-      }));
-
-      this.view.showRoundResults(formattedMatches);
+        this.view.showRoundResults(formattedMatches);
+      } else {
+        this.view.showRoundResults(null);
+      }
     } else {
       this.view.showRoundResults(null);
     }
