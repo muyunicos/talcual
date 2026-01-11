@@ -208,21 +208,84 @@ class GameTimer {
 
 const configService = {
     config: {},
+    configByGameId: new Map(),
     _loading: false,
     _loadPromise: null,
+    _gameIdLoading: new Map(),
+    _gameIdPromises: new Map(),
 
-    load: async function() {
+    load: async function(gameId = null) {
         try {
-            if (Object.keys(this.config).length > 0) {
-                return true;
+            if (gameId) {
+                return await this.loadForGame(gameId);
+            } else {
+                return await this.loadDefaults();
             }
+        } catch (e) {
+            console.error('configService.load error:', e);
+            return false;
+        }
+    },
 
-            if (this._loading && this._loadPromise) {
-                return this._loadPromise;
+    loadForGame: async function(gameId) {
+        if (!gameId) return false;
+
+        if (this.configByGameId.has(gameId)) {
+            debug(`[CONFIG] Cache hit for gameId: ${gameId}`, null, 'debug');
+            return true;
+        }
+
+        if (this._gameIdLoading.has(gameId) && this._gameIdPromises.has(gameId)) {
+            debug(`[CONFIG] Already loading gameId: ${gameId}, waiting...`, null, 'debug');
+            return this._gameIdPromises.get(gameId);
+        }
+
+        this._gameIdLoading.set(gameId, true);
+        this._gameIdPromises.set(gameId, (async () => {
+            try {
+                const response = await fetch('/app/actions.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_config', game_id: gameId })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const text = await response.text();
+                if (!text) {
+                    throw new Error('Empty response from server');
+                }
+
+                const data = JSON.parse(text);
+                if (data.success && data.config) {
+                    this.configByGameId.set(gameId, data.config);
+                    debug(`[CONFIG] Loaded config for gameId: ${gameId}`, null, 'debug');
+                    return true;
+                }
+                return false;
+            } finally {
+                this._gameIdLoading.delete(gameId);
+                this._gameIdPromises.delete(gameId);
             }
+        })());
 
-            this._loading = true;
-            this._loadPromise = (async () => {
+        return await this._gameIdPromises.get(gameId);
+    },
+
+    loadDefaults: async function() {
+        if (Object.keys(this.config).length > 0) {
+            return true;
+        }
+
+        if (this._loading && this._loadPromise) {
+            return this._loadPromise;
+        }
+
+        this._loading = true;
+        this._loadPromise = (async () => {
+            try {
                 const response = await fetch('/app/actions.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -241,27 +304,71 @@ const configService = {
                 const data = JSON.parse(text);
                 if (data.success && data.config) {
                     this.config = data.config;
+                    debug('[CONFIG] Loaded defaults from .env', null, 'debug');
                     return true;
                 }
                 return false;
-            })();
+            } finally {
+                this._loading = false;
+            }
+        })();
 
-            const result = await this._loadPromise;
-            this._loading = false;
-            return result;
-        } catch (e) {
-            this._loading = false;
-            console.error('configService.load error:', e);
-            return false;
-        }
+        return await this._loadPromise;
     },
 
-    isConfigReady: function() {
+    loadFromState: function(state) {
+        if (!state || typeof state !== 'object') return;
+
+        const gameId = state.game_id;
+        if (!gameId) return;
+
+        const configFromState = {
+            round_duration: state.round_duration,
+            total_rounds: state.total_rounds,
+            min_players: state.min_players,
+            max_players: state.max_players,
+            start_countdown: state.countdown_duration,
+            hurry_up_threshold: state.hurry_up_threshold,
+            max_words_per_player: state.max_words_per_player,
+            max_word_length: state.max_word_length
+        };
+
+        this.configByGameId.set(gameId, configFromState);
+        debug(`[CONFIG] Loaded config from state for gameId: ${gameId}`, null, 'debug');
+    },
+
+    isConfigReady: function(gameId = null) {
+        if (gameId) {
+            return this.configByGameId.has(gameId);
+        }
         return Object.keys(this.config).length > 0;
     },
 
-    get: (key, defaultValue = null) => {
-        return configService.config[key] !== undefined ? configService.config[key] : defaultValue;
+    get: function(key, defaultValue = null, gameId = null) {
+        const source = gameId ? this.configByGameId.get(gameId) : this.config;
+        if (!source) return defaultValue;
+        return source[key] !== undefined ? source[key] : defaultValue;
+    },
+
+    invalidate: function(gameId = null) {
+        if (gameId) {
+            this.configByGameId.delete(gameId);
+            this._gameIdLoading.delete(gameId);
+            this._gameIdPromises.delete(gameId);
+            debug(`[CONFIG] Invalidated cache for gameId: ${gameId}`, null, 'debug');
+        } else {
+            this.config = {};
+            this._loading = false;
+            this._loadPromise = null;
+            debug('[CONFIG] Invalidated defaults cache', null, 'debug');
+        }
+    },
+
+    getForGame: function(gameId = null) {
+        if (gameId) {
+            return this.configByGameId.get(gameId) || {};
+        }
+        return this.config;
     }
 };
 
