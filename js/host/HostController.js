@@ -249,28 +249,22 @@ class HostManager extends BaseController {
 
     try {
       const currentGameId = this.gameState.game_id;
-      const originalId = this.gameState.original_id || currentGameId;
+      const currentConfig = configManager.getAll();
       
       const result = await this.client.sendAction('create_game', {
         game_id: currentGameId,
         category: this.currentCategory || null,
-        total_rounds: configManager.get('total_rounds'),
-        round_duration: configManager.get('round_duration'),
-        min_players: configManager.get('min_players')
+        total_rounds: currentConfig.total_rounds,
+        round_duration: currentConfig.round_duration,
+        min_players: currentConfig.min_players,
+        config: currentConfig
       });
 
       if (result.success && result.game_id) {
-        debug('🌟 Nova partida creada:', { new_game_id: result.game_id, original_id: result.original_id }, 'success');
+        debug('🌟 Nova partida creada:', { new_game_id: result.game_id }, 'success');
         
-        this.gameCode = result.game_id;
-        this.clearSession();
-        this.saveSession(result.game_id, this.currentCategory);
-        
-        await this.loadGameChain(result.game_id);
-        
-        setTimeout(() => {
-          location.reload();
-        }, 500);
+        showNotification('🔗 Nueva partida encadenada creada', 'success');
+        await this.transitionToLinkedGame(result);
       } else {
         showNotification('❌ Error creando nueva partida', 'error');
         debug('❌ Respuesta inválida al crear partida encadenada', result, 'error');
@@ -278,6 +272,36 @@ class HostManager extends BaseController {
     } catch (error) {
       debug('❌ Error creando partida encadenada:', error, 'error');
       showNotification('❌ Error de conexión', 'error');
+    }
+  }
+
+  async transitionToLinkedGame(createResult) {
+    try {
+      debug('🔄 Transicionando a partida encadenada sin reload...', null, 'info');
+
+      const newGameCode = createResult.game_id;
+      const newGameState = createResult.state || {};
+
+      this.gameCode = newGameCode;
+      this.currentCategory = newGameState.current_category || this.currentCategory;
+      this.currentRound = 0;
+      this.roundEnded = false;
+      this.hurryUpActive = false;
+
+      if (this.client) {
+        this.client.disconnect();
+      }
+
+      this.client = new GameClient(newGameCode, newGameCode, 'host');
+      this.saveSession(newGameCode, this.currentCategory);
+
+      await this.loadGameChain(newGameCode);
+      this.loadGameScreen(newGameState);
+
+      debug('✅ Transición a partida encadenada completada sin reload', { newGameCode }, 'success');
+    } catch (error) {
+      debug('❌ Error en transitionToLinkedGame, reloadando...', error, 'error');
+      window.location.reload();
     }
   }
 
