@@ -27,8 +27,8 @@ ini_set('output_buffering', 'off');
 ini_set('zlib.output_compression', 'off');
 ini_set('implicit_flush', 'on');
 
-$gameId = AppUtils::sanitizeGameId($_GET['game_id'] ?? null);
-$playerId = AppUtils::sanitizePlayerId($_GET['player_id'] ?? null);
+$gameId = isset($_GET['game_id']) ? trim((string)$_GET['game_id']) : null;
+$playerId = isset($_GET['player_id']) ? trim((string)$_GET['player_id']) : null;
 
 if (!$gameId) {
     echo "event: error\n";
