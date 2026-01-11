@@ -69,6 +69,7 @@ class HostManager extends BaseController {
         await this.resumeGame(sessionData.gameCode);
       } else {
         debug('💡 Mostrando pantalla inicial', null, 'info');
+        await this.initializeCreateGameModal();
         await this.loadCategoriesForSetup();
         this.showStartScreen();
       }
@@ -78,6 +79,13 @@ class HostManager extends BaseController {
       debug('❌ Error fatal en initializeHost: ' + error.message, null, 'error');
       UI.showFatalError(`Error de inicialización: ${error.message}`);
       throw error;
+    }
+  }
+
+  async initializeCreateGameModal() {
+    if (!createGameModal) {
+      createGameModal = new CreateGameModal();
+      window.createGameModal = createGameModal;
     }
   }
 
@@ -220,11 +228,13 @@ class HostManager extends BaseController {
 
       debug('⚠️ No se pudo recuperar sesión', null, 'warn');
       this.clearSession();
+      await this.initializeCreateGameModal();
       await this.loadCategoriesForSetup();
       this.showStartScreen();
     } catch (error) {
       debug('Error recuperando sesión:', error, 'error');
       this.clearSession();
+      await this.initializeCreateGameModal();
       await this.loadCategoriesForSetup();
       this.showStartScreen();
     }
@@ -412,7 +422,7 @@ class HostManager extends BaseController {
   async handleRemovePlayer(playerId) {
     if (!this.client || !playerId) return;
 
-    const confirmed = window.confirm('¿Expulsar a este jugador de la sala?');
+    const confirmed = window.confirm('\u00bfExpulsar a este jugador de la sala?');
     if (!confirmed) return;
 
     try {
@@ -574,7 +584,7 @@ class HostManager extends BaseController {
     
     if (this.roundResults) {
       this.view.showRoundResultsComponent(this.roundResults, state.players, this.roundTopWords);
-      debug('🏆 Resultados mostrados al host', null, 'success');
+      debug('🎆 Resultados mostrados al host', null, 'success');
     }
   }
 
@@ -586,7 +596,7 @@ class HostManager extends BaseController {
   async endGame() {
     if (!this.client) return;
 
-    const confirm = window.confirm('¿Terminar juego?');
+    const confirm = window.confirm('\u00bfTerminar juego?');
     if (!confirm) return;
 
     try {
