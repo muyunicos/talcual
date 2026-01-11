@@ -28,6 +28,14 @@ function sanitizeText(text) {
     return div.innerHTML;
 }
 
+function sanitizeInputValue(text) {
+    if (typeof text !== 'string') return '';
+    return text
+        .toUpperCase()
+        .replace(/[^A-ZÁÉÍÓÚÑ\s]/g, '')
+        .trim();
+}
+
 function isValidGameCode(code) {
     if (!code || typeof code !== 'string') return false;
     const clean = code.trim().toUpperCase();
