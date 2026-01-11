@@ -12,54 +12,6 @@ class GameService {
         $this->dictionary = $dictionary ?? new DictionaryRepository();
     }
 
-    private function generateGameCode() {
-        $categories = $this->dictionary->getCategoriesFull();
-        
-        if (empty($categories)) {
-            return $this->generateRandomCode();
-        }
-        
-        $roomCodeCandidates = [];
-        
-        foreach ($categories as $categoryData) {
-            $word = $this->dictionary->getRandomWordByCategoryFiltered($categoryData['name'], MAX_CODE_LENGTH);
-            
-            if ($word && !$this->repository->exists($word)) {
-                $roomCodeCandidates[] = $word;
-            }
-        }
-        
-        if (!empty($roomCodeCandidates)) {
-            return $roomCodeCandidates[array_rand($roomCodeCandidates)];
-        }
-        
-        return $this->generateRandomCode();
-    }
-
-    private function generateRandomCode() {
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        do {
-            $code = '';
-            for ($i = 0; $i < MAX_CODE_LENGTH; $i++) {
-                $code .= $chars[rand(0, strlen($chars) - 1)];
-            }
-        } while ($this->repository->exists($code));
-        
-        return $code;
-    }
-
-    private function generateUniqueGameId() {
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        do {
-            $id = '';
-            for ($i = 0; $i < 8; $i++) {
-                $id .= $chars[rand(0, strlen($chars) - 1)];
-            }
-        } while ($this->repository->exists($id));
-        
-        return $id;
-    }
-
     public function getGameCandidates() {
         $categories = $this->dictionary->getCategoriesFull();
 
@@ -87,7 +39,7 @@ class GameService {
             }
 
             if (!$code) {
-                $code = $this->generateRandomCode();
+                $code = $this->generateRandomCodeFallback();
             }
 
             $candidates[] = [
@@ -98,6 +50,18 @@ class GameService {
         }
 
         return $candidates;
+    }
+
+    private function generateRandomCodeFallback() {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        do {
+            $code = '';
+            for ($i = 0; $i < MAX_CODE_LENGTH; $i++) {
+                $code .= $chars[rand(0, strlen($chars) - 1)];
+            }
+        } while ($this->repository->exists($code));
+
+        return $code;
     }
 
     public function createGame($gameId, $requestedCategory, $totalRounds, $roundDuration, $minPlayers) {
@@ -128,9 +92,7 @@ class GameService {
             }
         }
 
-        if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = TOTAL_ROUNDS;
-        if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = ROUND_DURATION;
-        if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
+        $this->validateGameConfig($totalRounds, $roundDuration, $minPlayers);
 
         $newGameId = $gameId;
         $serverNow = intval(microtime(true) * 1000);
@@ -145,9 +107,37 @@ class GameService {
             }
         }
 
-        $initialState = [
+        $initialState = $this->createInitialGameState($newGameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $countdownDuration, $now);
+
+        $this->repository->save($newGameId, $initialState);
+
+        if ($previousGameState) {
+            $previousGameState['next_game_id'] = $newGameId;
+            $previousGameState['updated_at'] = $now;
+            $previousGameState['last_update'] = $now;
+            $this->repository->save($gameId, $previousGameState);
+            logMessage('Game continuity: ' . $gameId . ' -> ' . $newGameId . ' (original: ' . $originalGameId . ')', 'INFO');
+        }
+
+        return [
             'game_id' => $newGameId,
             'original_id' => $originalGameId,
+            'server_now' => $serverNow,
+            'state' => $initialState
+        ];
+    }
+
+    private function validateGameConfig(&$totalRounds, &$roundDuration, &$minPlayers) {
+        if ($totalRounds < 1 || $totalRounds > 10) $totalRounds = TOTAL_ROUNDS;
+        if ($roundDuration < 30 || $roundDuration > 300) $roundDuration = ROUND_DURATION;
+        if ($minPlayers < MIN_PLAYERS || $minPlayers > MAX_PLAYERS) $minPlayers = MIN_PLAYERS;
+    }
+
+    private function createInitialGameState($gameId, $originalGameId, $selectedCategoryId, $totalRounds, $roundDuration, $minPlayers, $countdownDuration, $now) {
+        return [
+            'game_id' => $gameId,
+            'original_id' => $originalGameId,
+            'next_game_id' => null,
             'players' => [],
             'round' => 0,
             'total_rounds' => $totalRounds,
@@ -157,7 +147,7 @@ class GameService {
             'selected_category_id' => $selectedCategoryId,
             'used_prompts' => [],
             'round_duration' => $roundDuration,
-            'round_started_at' => null,
+            'countdown_starts_at' => null,
             'round_starts_at' => null,
             'round_ends_at' => null,
             'countdown_duration' => $countdownDuration,
@@ -173,24 +163,7 @@ class GameService {
             'round_top_words' => [],
             'game_history' => [],
             'roundData' => null,
-            'last_update' => time()
-        ];
-
-        $this->repository->save($newGameId, $initialState);
-
-        if ($previousGameState) {
-            $previousGameState['status'] = $newGameId;
-            $previousGameState['updated_at'] = $now;
-            $previousGameState['last_update'] = $now;
-            $this->repository->save($gameId, $previousGameState);
-            logMessage('Game continuity: ' . $gameId . ' -> ' . $newGameId . ' (original: ' . $originalGameId . ')', 'INFO');
-        }
-
-        return [
-            'game_id' => $newGameId,
-            'original_id' => $originalGameId,
-            'server_now' => $serverNow,
-            'state' => $initialState
+            'last_update' => $now
         ];
     }
 
@@ -222,26 +195,11 @@ class GameService {
 
             $chain[] = $chainEntry;
 
-            if ($state['status'] && is_string($state['status']) && strlen($state['status']) > 4 && !in_array($state['status'], ['waiting', 'playing', 'round_ended', 'finished', 'closed', 'ended'])) {
-                $currentId = $state['status'];
-            } else {
-                break;
-            }
-
+            $currentId = $state['next_game_id'] ?? null;
             $iterations++;
         }
 
         return $chain;
-    }
-
-    public function getOriginalGameId($gameId) {
-        $state = $this->repository->load($gameId);
-        
-        if ($state && isset($state['original_id'])) {
-            return $state['original_id'];
-        }
-        
-        return $gameId;
     }
 
     public function joinGame($gameId, $playerId, $playerName, $playerColor) {
@@ -310,40 +268,22 @@ class GameService {
             throw new Exception('Minimum ' . $minPlayers . ' players required');
         }
 
-        $categoryIdToUse = null;
-        $categoryNameToUse = null;
+        $categoryNameToUse = $this->resolveCategoryForRound($state, $categoryFromRequest);
 
-        if ($categoryFromRequest) {
-            $categoryData = $this->dictionary->getCategoryByName($categoryFromRequest);
-            if ($categoryData) {
-                $categoryIdToUse = (int)$categoryData['id'];
-                $categoryNameToUse = $categoryData['name'];
-            }
-        } elseif ($state['selected_category_id']) {
-            $categoryData = $this->dictionary->getCategoryById($state['selected_category_id']);
-            if ($categoryData) {
-                $categoryIdToUse = (int)$categoryData['id'];
-                $categoryNameToUse = $categoryData['name'];
-            }
-        }
-
-        if (!$categoryIdToUse) {
-            $categories = $this->dictionary->getCategoriesFull();
-            if (!empty($categories)) {
-                $randomCategory = $categories[array_rand($categories)];
-                $categoryIdToUse = (int)$randomCategory['id'];
-                $categoryNameToUse = $randomCategory['name'];
-            }
-        }
-
-        if (!$categoryIdToUse || !$categoryNameToUse) {
+        if (!$categoryNameToUse) {
             throw new Exception('Cannot determine category for round');
         }
 
         $card = $this->dictionary->getTopicCard($categoryNameToUse);
+        if (empty($card['id'])) {
+            throw new Exception('No topic available for category');
+        }
+
         $promptId = $card['id'];
         $roundQuestion = $card['question'];
         $commonAnswers = $card['answers'];
+        $categoryData = $this->dictionary->getCategoryByName($categoryNameToUse);
+        $categoryIdToUse = $categoryData ? (int)$categoryData['id'] : null;
 
         if ($duration < 10000 || $duration > 300000) {
             $duration = defined('ROUND_DURATION') ? ROUND_DURATION * 1000 : 90000;
@@ -355,9 +295,9 @@ class GameService {
 
         $serverNow = intval(microtime(true) * 1000);
         $countdownDuration = START_COUNTDOWN * 1000;
-        $roundStartsAt = $serverNow;
-        $roundStartedAt = $roundStartsAt + $countdownDuration;
-        $roundEndsAt = $roundStartedAt + $duration;
+        $countdownStartsAt = $serverNow;
+        $roundStartsAt = $countdownStartsAt + $countdownDuration;
+        $roundEndsAt = $roundStartsAt + $duration;
 
         $state['round']++;
         $state['status'] = 'playing';
@@ -367,7 +307,7 @@ class GameService {
         $state['total_rounds'] = $totalRounds;
         $state['start_countdown'] = START_COUNTDOWN;
         $state['countdown_duration'] = $countdownDuration;
-        $state['round_started_at'] = $roundStartedAt;
+        $state['countdown_starts_at'] = $countdownStartsAt;
         $state['round_starts_at'] = $roundStartsAt;
         $state['round_ends_at'] = $roundEndsAt;
 
@@ -394,6 +334,30 @@ class GameService {
             'server_now' => $serverNow,
             'state' => $state
         ];
+    }
+
+    private function resolveCategoryForRound($state, $categoryFromRequest) {
+        if ($categoryFromRequest) {
+            $categoryData = $this->dictionary->getCategoryByName($categoryFromRequest);
+            if ($categoryData) {
+                return $categoryData['name'];
+            }
+        }
+
+        if ($state['selected_category_id']) {
+            $categoryData = $this->dictionary->getCategoryById($state['selected_category_id']);
+            if ($categoryData) {
+                return $categoryData['name'];
+            }
+        }
+
+        $categories = $this->dictionary->getCategoriesFull();
+        if (!empty($categories)) {
+            $randomCategory = $categories[array_rand($categories)];
+            return $randomCategory['name'];
+        }
+
+        return null;
     }
 
     public function setSelectedCategory($gameId, $newCategory) {
@@ -522,9 +486,6 @@ class GameService {
             if (!isset($state['players'][$pId]['round_history'])) {
                 $state['players'][$pId]['round_history'] = [];
             }
-            if (!is_array($state['players'][$pId]['round_history'])) {
-                $state['players'][$pId]['round_history'] = [];
-            }
 
             $state['players'][$pId]['round_history'][] = $roundEntry;
             $state['players'][$pId]['answers'] = [];
@@ -544,10 +505,6 @@ class GameService {
                 $state['game_history'] = [];
             }
             
-            if (!is_array($state['game_history'])) {
-                $state['game_history'] = [];
-            }
-            
             $state['game_history'][] = $roundSnapshot;
         }
 
@@ -561,7 +518,7 @@ class GameService {
             $state['status'] = 'round_ended';
         }
 
-        $state['round_started_at'] = null;
+        $state['countdown_starts_at'] = null;
         $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
         $state['countdown_duration'] = null;
@@ -594,7 +551,7 @@ class GameService {
         $state['status'] = 'waiting';
         $state['current_prompt_id'] = null;
         $state['current_category_id'] = null;
-        $state['round_started_at'] = null;
+        $state['countdown_starts_at'] = null;
         $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
         $state['countdown_duration'] = null;
@@ -620,7 +577,7 @@ class GameService {
         }
 
         $state['status'] = 'closed';
-        $state['round_started_at'] = null;
+        $state['countdown_starts_at'] = null;
         $state['round_starts_at'] = null;
         $state['round_ends_at'] = null;
         $state['countdown_duration'] = null;
@@ -659,7 +616,7 @@ class GameService {
         }
 
         $state['round_ends_at'] = $newEndTime;
-        $newDuration = $newEndTime - ($state['round_started_at'] ?? 0);
+        $newDuration = $newEndTime - ($state['round_starts_at'] ?? 0);
         if ($newDuration > 0) {
             $state['round_duration'] = $newDuration;
         }
