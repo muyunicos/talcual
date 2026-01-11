@@ -329,13 +329,17 @@ class PlayerView {
     safeHideElement(this.elements.countdownOverlay);
     this.clearTimer();
 
-    if (!resultData || (Array.isArray(resultData) && resultData.length === 0) || (typeof resultData === 'object' && Object.keys(resultData).length === 0)) {
+    const hasResults = resultData && 
+      ((Array.isArray(resultData) && resultData.length > 0) || 
+       (typeof resultData === 'object' && !Array.isArray(resultData) && Object.keys(resultData).length > 0));
+
+    if (!hasResults) {
       this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
       safeShowElement(this.elements.resultsSection);
       return;
     }
 
-    let html = '<div class="results-title">📊 Tus Resultados</div>';
+    let html = '<div class="results-title">📈 Tus Resultados</div>';
     let roundScore = 0;
 
     if (Array.isArray(resultData)) {
