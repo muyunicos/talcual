@@ -149,8 +149,8 @@ class SettingsModal {
 
         const buttons = isCreationContext ? [
             [
-                () => this.saveAndCreateGame(),
-                'Guardar y Crear',
+                () => this.saveSettings(),
+                'Guardar',
                 'btn-modal-primary'
             ],
             [
@@ -401,52 +401,6 @@ class SettingsModal {
             this.settings = values;
             showNotification('✅ Configuración guardada', 'success');
             ModalSystem_Instance.close(2);
-        } catch (error) {
-            debug('Error guardando configuración', error, 'error');
-            showNotification('❌ Error guardando configuración', 'error');
-        }
-    }
-
-    async saveAndCreateGame() {
-        try {
-            const values = this.getFormValues();
-            const errors = this.validateSettings(values);
-
-            if (errors.length > 0) {
-                showNotification('❌ ' + errors.join(', '), 'error');
-                return;
-            }
-
-            const url = new URL('./app/actions.php', window.location.href);
-            const response = await fetch(url.toString(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'update_config',
-                    config: values
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (!result.success) {
-                throw new Error(result.message || 'Error saving configuration');
-            }
-
-            configManager.syncFromObject(values);
-            this.settings = values;
-            showNotification('✅ Configuración guardada', 'success');
-            ModalSystem_Instance.close(2);
-
-            await new Promise((r) => setTimeout(r, 300));
-
-            if (window.createGameModal) {
-                window.createGameModal.openModal();
-            }
         } catch (error) {
             debug('Error guardando configuración', error, 'error');
             showNotification('❌ Error guardando configuración', 'error');
