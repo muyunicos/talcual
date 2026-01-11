@@ -762,6 +762,107 @@
             margin-bottom: 5px;
             color: #e0f2fe;
         }
+        
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .game-pane {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .game-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .game-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .game-item:hover {
+            background: #334155;
+        }
+        
+        .game-item.selected {
+            background: #1e40af;
+            color: #fff;
+            border-left: 3px solid #3b82f6;
+            padding-left: 12px;
+        }
+        
+        .game-status {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #334155;
+        }
+        
+        .game-item.selected .game-status {
+            background: #3b82f6;
+        }
+        
+        .game-detail {
+            padding: 15px;
+            border-bottom: 1px solid #334155;
+            background: #0f172a;
+            font-size: 12px;
+        }
+        
+        .game-detail-field {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .game-detail-label {
+            color: #64748b;
+            font-weight: 600;
+        }
+        
+        .game-detail-value {
+            color: #e2e8f0;
+        }
+        
+        .player-table {
+            width: 100%;
+            font-size: 12px;
+            border-collapse: collapse;
+        }
+        
+        .player-table th {
+            padding: 8px;
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+            text-align: left;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+        }
+        
+        .player-table td {
+            padding: 8px;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .player-table tbody tr:hover {
+            background: #334155;
+        }
     </style>
 </head>
 <body>
@@ -776,6 +877,10 @@
                 <div class="nav-section-title">Diccionario</div>
                 <div class="nav-item active" data-panel="dictionary" title="Gestor Cascada">📚 Gestor Cascada</div>
                 <div class="nav-item" data-panel="batch-words" title="Lote de Palabras">📋 Lote de Palabras</div>
+                
+                <div class="nav-section-title">Partidas</div>
+                <div class="nav-item" data-panel="game-manager" title="Gestor de Partidas">🎮 Partidas en Vivo</div>
+                <div class="nav-item" data-panel="game-chains" title="Partidas Encadenadas">🔗 Partidas Encadenadas</div>
                 
                 <div class="nav-section-title">Herramientas</div>
                 <div class="nav-item" data-panel="tools" title="Optimización">⚙️ Optimización</div>
@@ -874,6 +979,50 @@
                         <button class="btn-primary" onclick="loadBatchWords()" style="flex: 1;">📥 Cargar Palabras</button>
                         <button class="btn-success" onclick="replaceBatchWords()" style="flex: 1;" id="updateBtnBatch">✓ Actualizar Consigna</button>
                     </div>
+                </div>
+                
+                <!-- GAME MANAGER PANEL -->
+                <div id="game-manager" class="panel">
+                    <h3 style="margin-bottom: 20px;">🎮 Gestor de Partidas en Vivo</h3>
+                    <div class="alert alert-info">
+                        ℹ️ Visualiza y gestiona partidas activas. Puedes eliminar jugadores o partidas completas.
+                    </div>
+                    
+                    <div class="game-grid">
+                        <!-- Games List -->
+                        <div class="game-pane">
+                            <div class="cascade-header">📊 Partidas Activas</div>
+                            <div class="game-list" id="gamesList"></div>
+                            <div style="padding: 12px; border-top: 1px solid #334155;">
+                                <button class="btn-secondary" style="width: 100%; font-size: 12px;" onclick="loadGamesManager()">🔄 Refrescar</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Game Details -->
+                        <div class="game-pane">
+                            <div class="cascade-header">📋 Detalles & Jugadores</div>
+                            <div id="gameDetailsContainer" style="flex: 1; overflow-y: auto;">
+                                <div style="padding: 20px; text-align: center; color: #64748b;">
+                                    -- Selecciona una partida --
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- GAME CHAINS PANEL -->
+                <div id="game-chains" class="panel">
+                    <h3 style="margin-bottom: 20px;">🔗 Partidas Encadenadas</h3>
+                    <div class="alert alert-info">
+                        ℹ️ Visualiza todas las partidas encadenadas desde una sala original. Elimina cadenas completas.
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Buscar por ID de Sala Original:</label>
+                        <input type="text" id="originalIdSearch" placeholder="Ej: aBc123" onkeyup="searchChainedGames()">
+                    </div>
+                    
+                    <div id="chainedGamesResult"></div>
                 </div>
                 
                 <!-- TOOLS PANEL -->
@@ -1017,8 +1166,10 @@
         let selectedWord = null;
         let selectedBatchCategory = null;
         let selectedBatchPrompt = null;
+        let selectedGame = null;
         let allPrompts = [];
         let allWords = [];
+        let allGames = [];
         let lastImportPreview = null;
         let draggedElement = null;
         let draggedData = null;
@@ -1053,6 +1204,8 @@
                     const titles = {
                         'dictionary': '📚 Gestor Cascada',
                         'batch-words': '📋 Lote de Palabras',
+                        'game-manager': '🎮 Partidas en Vivo',
+                        'game-chains': '🔗 Partidas Encadenadas',
                         'tools': '⚙️ Herramientas',
                         'import-export': '📤 Import/Export',
                         'inspect': '🔍 Inspector'
@@ -1061,6 +1214,7 @@
                     document.getElementById('pageTitle').textContent = titles[panelId] || panelId;
                     
                     if (panelId === 'batch-words') loadBatchPanel();
+                    if (panelId === 'game-manager') loadGamesManager();
                 });
             });
         }
@@ -1253,6 +1407,18 @@
             }
         }
         
+        async function loadGamesManager() {
+            try {
+                const response = await fetch(`${API}?action=get-games`);
+                const json = await response.json();
+                const games = json.data || [];
+                allGames = games;
+                renderGamesList(games);
+            } catch (error) {
+                showMessage('Error cargando partidas: ' + error.message, 'error');
+            }
+        }
+        
         function countPromptsForCategory(categoryId) {
             return allPrompts.filter(p => p.category_ids.includes(categoryId)).length;
         }
@@ -1303,6 +1469,222 @@
             selectedBatchPrompt = promptId;
             const prompt = allPrompts.find(p => p.id === promptId);
             document.getElementById('batchPromptInfo').textContent = prompt ? prompt.text : '-- Selecciona --';
+        }
+        
+        function renderGamesList(games) {
+            const list = document.getElementById('gamesList');
+            if (!games || games.length === 0) {
+                list.innerHTML = '<div class="cascade-empty">Sin partidas activas</div>';
+                return;
+            }
+            
+            list.innerHTML = games
+                .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                .map(game => `
+                    <div class="game-item ${selectedGame === game.id ? 'selected' : ''}" onclick="selectGame(${game.id})">
+                        <div>
+                            <strong>${game.id}</strong><br>
+                            <small style="color: #64748b;">Ronda: ${game.round}/${game.total_rounds}</small>
+                        </div>
+                        <div class="game-status">${game.status}</div>
+                    </div>
+                `).join('');
+        }
+        
+        async function selectGame(gameId) {
+            selectedGame = gameId;
+            renderGamesList(allGames);
+            
+            try {
+                const [gameRes, playersRes] = await Promise.all([
+                    fetch(`${API}?action=get-game&id=${gameId}`),
+                    fetch(`${API}?action=get-game-players&game_id=${gameId}`)
+                ]);
+                
+                const gameJson = await gameRes.json();
+                const playersJson = await playersRes.json();
+                
+                const game = gameJson.data;
+                const players = playersJson.data || [];
+                
+                let html = `
+                    <div class="game-detail">
+                        <div class="game-detail-field">
+                            <span class="game-detail-label">ID:</span>
+                            <span class="game-detail-value">${game.id}</span>
+                        </div>
+                        <div class="game-detail-field">
+                            <span class="game-detail-label">Original:</span>
+                            <span class="game-detail-value">${game.original_id}</span>
+                        </div>
+                        <div class="game-detail-field">
+                            <span class="game-detail-label">Estado:</span>
+                            <span class="game-detail-value" style="color: #3b82f6;">${game.status}</span>
+                        </div>
+                        <div class="game-detail-field">
+                            <span class="game-detail-label">Ronda:</span>
+                            <span class="game-detail-value">${game.round}/${game.total_rounds}</span>
+                        </div>
+                        <div class="game-detail-field">
+                            <span class="game-detail-label">Jugadores:</span>
+                            <span class="game-detail-value">${players.length}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="flex: 1; overflow-y: auto;">
+                        ${players.length > 0 ? `
+                            <table class="player-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Jugador</th>
+                                        <th style="width: 20%;">Puntos</th>
+                                        <th style="width: 20%;">Estado</th>
+                                        <th style="width: 20%; text-align: center;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${players.map(p => `
+                                        <tr>
+                                            <td>${p.name}</td>
+                                            <td><strong>${p.score}</strong></td>
+                                            <td>${p.status}</td>
+                                            <td style="text-align: center;">
+                                                <button class="cascade-item-btn-delete" style="width: 30px; height: 20px;" onclick="confirmDeletePlayer(${gameId}, '${p.id}')">×</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<div style="padding: 20px; text-align: center; color: #64748b;">Sin jugadores</div>'}
+                    </div>
+                    
+                    <div style="padding: 12px; border-top: 1px solid #334155;">
+                        <button class="btn-danger" style="width: 100%; font-size: 12px;" onclick="confirmDeleteGame(${gameId})">🗑️ Eliminar Partida</button>
+                    </div>
+                `;
+                
+                document.getElementById('gameDetailsContainer').innerHTML = html;
+            } catch (error) {
+                showMessage('Error cargando detalles: ' + error.message, 'error');
+            }
+        }
+        
+        function confirmDeleteGame(gameId) {
+            if (!confirm('¿Eliminar esta partida y todos sus jugadores?')) return;
+            
+            fetch(`${API}?action=delete-game`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game_id: gameId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('✓ Partida eliminada', 'success');
+                    selectedGame = null;
+                    loadGamesManager();
+                } else {
+                    showMessage('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(err => showMessage('Error: ' + err.message, 'error'));
+        }
+        
+        function confirmDeletePlayer(gameId, playerId) {
+            if (!confirm('¿Eliminar este jugador?')) return;
+            
+            fetch(`${API}?action=delete-player`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game_id: gameId, player_id: playerId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('✓ Jugador eliminado', 'success');
+                    selectGame(selectedGame);
+                } else {
+                    showMessage('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(err => showMessage('Error: ' + err.message, 'error'));
+        }
+        
+        async function searchChainedGames() {
+            const originalId = document.getElementById('originalIdSearch').value.trim();
+            if (!originalId) {
+                document.getElementById('chainedGamesResult').innerHTML = '';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API}?action=get-games-by-original&original_id=${originalId}`);
+                const json = await response.json();
+                const games = json.data || [];
+                
+                if (games.length === 0) {
+                    document.getElementById('chainedGamesResult').innerHTML = '<div style="padding: 20px; text-align: center; color: #64748b;">No se encontraron partidas encadenadas</div>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-container" style="margin-top: 20px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID Partida</th>
+                                    <th>Original</th>
+                                    <th>Estado</th>
+                                    <th>Ronda</th>
+                                    <th>Jugadores</th>
+                                    <th>Actualizado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${games.map(g => `
+                                    <tr>
+                                        <td><strong>${g.id}</strong></td>
+                                        <td>${g.original_id}</td>
+                                        <td style="color: #3b82f6;">${g.status}</td>
+                                        <td>${g.round}/${g.total_rounds}</td>
+                                        <td>${g.player_count}</td>
+                                        <td>${new Date(g.updated_at * 1000).toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button class="btn-danger" onclick="confirmDeleteChainedGames('${originalId}')">🗑️ Eliminar Cadena Completa (${games.length} partidas)</button>
+                    </div>
+                `;
+                
+                document.getElementById('chainedGamesResult').innerHTML = html;
+            } catch (error) {
+                showMessage('Error buscando: ' + error.message, 'error');
+            }
+        }
+        
+        function confirmDeleteChainedGames(originalId) {
+            if (!confirm('¿Eliminar la cadena completa de partidas? Esta acción no se puede deshacer.')) return;
+            
+            fetch(`${API}?action=delete-chained-games`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ original_id: originalId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(`✓ Cadena eliminada (${data.data.count} partidas)`, 'success');
+                    document.getElementById('originalIdSearch').value = '';
+                    document.getElementById('chainedGamesResult').innerHTML = '';
+                } else {
+                    showMessage('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(err => showMessage('Error: ' + err.message, 'error'));
         }
         
         async function loadBatchWords() {
