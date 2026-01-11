@@ -4,6 +4,7 @@ class SettingsModal {
         this.openedFrom = null;
         this.gameId = null;
         this.activeTab = 'general';
+        this._unsubscribeConfig = null;
     }
 
     getDefaults() {
@@ -138,7 +139,7 @@ class SettingsModal {
         this.gameId = gameId;
 
         if (config && typeof config === 'object') {
-            this.settings = config;
+            this.settings = { ...config };
         } else {
             this.settings = configManager.getAll();
         }
@@ -185,15 +186,51 @@ class SettingsModal {
         });
 
         sliders.forEach(slider => {
-            slider.addEventListener('input', (e) => this.updateSliderDisplay(e.target));
+            slider.addEventListener('input', (e) => {
+                this.updateSliderDisplay(e.target);
+                this.broadcastChange(e.target);
+            });
         });
 
         dualRanges.forEach(range => {
-            range.addEventListener('input', (e) => this.updateDualRangeDisplay(e.target));
+            range.addEventListener('input', (e) => {
+                this.updateDualRangeDisplay(e.target);
+                this.broadcastChange(e.target);
+            });
         });
 
         resetBtns.forEach(btn => {
             btn.addEventListener('click', (e) => this.resetFieldToDefault(e.target.dataset.field));
+        });
+    }
+
+    broadcastChange(inputElement) {
+        if (!this.gameId) return;
+
+        const fieldId = inputElement.id;
+        const value = parseInt(inputElement.value, 10);
+        const key = this.fieldIdToKey(fieldId);
+
+        if (!key) return;
+
+        debug(`📱 Cambio detectado: ${key} = ${value}`, null, 'debug');
+
+        this.settings[key] = value;
+        configManager.set(key, value);
+
+        const payload = {
+            action: 'broadcast_config_change',
+            game_id: this.gameId,
+            field: key,
+            value: value
+        };
+
+        fetch('./app/actions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).catch(error => {
+            debug('Error broadcasting change:', error, 'warn');
         });
     }
 
@@ -261,6 +298,7 @@ class SettingsModal {
                 const defaultValue = defaults[this.fieldIdToKey(fieldId)];
                 input.value = defaultValue;
                 this.updateSliderDisplay(input);
+                this.broadcastChange(input);
             }
         });
 
