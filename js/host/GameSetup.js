@@ -6,6 +6,8 @@ class CreateGameModal {
         this.readyPromise = null;
         this.isReady = false;
         this.currentRoomCode = null;
+        this.isFirstGame = true;
+        this.maxCodeLength = 4;
     }
 
     async fetchCandidates() {
@@ -55,6 +57,7 @@ class CreateGameModal {
             }
 
             this.gameConfig = result.config;
+            this.maxCodeLength = result.config.max_code_length || 4;
             return true;
         } catch (error) {
             debug('Error fetching game config', error, 'error');
@@ -71,8 +74,13 @@ class CreateGameModal {
                 throw new Error('No hay candidatos disponibles');
             }
 
+            this.isFirstGame = !StorageManager.get(StorageKeys.HOST_GAME_CODE);
+
             this.isReady = true;
-            debug('✅ CreateGameModal inicializado', { candidatos: this.gameCandidates.length }, 'success');
+            debug('✅ CreateGameModal inicializado', { 
+                candidatos: this.gameCandidates.length,
+                isFirstGame: this.isFirstGame
+            }, 'success');
         } catch (error) {
             this.isReady = false;
             debug('❌ Error inicializando CreateGameModal', error, 'error');
@@ -114,67 +122,149 @@ class CreateGameModal {
         }
     }
 
+    truncateCode(code) {
+        return code.substring(0, this.maxCodeLength).toUpperCase();
+    }
+
+    async checkRoomAvailability(roomCode) {
+        try {
+            const url = new URL('./app/actions.php', window.location.href);
+            const response = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'check_room_availability',
+                    room_code: roomCode
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const result = await response.json();
+            return result.success && result.available;
+        } catch (error) {
+            debug('Error checking room availability', error, 'error');
+            return false;
+        }
+    }
+
     async openModal() {
         try {
             await this.ensureReady();
 
-            this.selectRandomCandidate();
-            const categories = this.getCategories();
-            const selectedCategory = this.selectedCandidate?.category || categories[0];
-            const selectedCode = this.selectedCandidate?.code || '';
-            this.currentRoomCode = selectedCode;
-
-            const categoryOptions = categories.map(cat => 
-                `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
-            ).join('');
-
-            const formHTML = `
-                <div class="input-group">
-                    <label class="input-label" for="category-select-modal">Categoría</label>
-                    <select id="category-select-modal" class="input-field">
-                        ${categoryOptions}
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label class="input-label" for="code-display-modal">Código de Sala</label>
-                    <div id="code-display-modal" class="input-field code-display" style="background: var(--color-secondary); padding: 12px; border-radius: 6px; font-weight: bold; letter-spacing: 2px; text-align: center; font-size: 18px;">
-                        ${selectedCode}
-                    </div>
-                    <p class="custom-code-info">Código de sala permanente</p>
-                </div>
-            `;
-
-            const buttons = [
-                [
-                    () => this.openSettingsModal(),
-                    'Más Opciones',
-                    'btn'
-                ],
-                [
-                    () => this.handleCreateClick(),
-                    'Crear',
-                    'btn-modal-primary'
-                ]
-            ];
-
-            ModalSystem_Instance.show(1, formHTML, buttons);
-
-            const categorySelect = document.getElementById('category-select-modal');
-            const codeDisplay = document.getElementById('code-display-modal');
-
-            if (categorySelect) {
-                categorySelect.addEventListener('change', (e) => {
-                    this.updateCandidateFromCategory(e.target.value);
-                    if (codeDisplay && this.selectedCandidate) {
-                        codeDisplay.textContent = this.selectedCandidate.code;
-                        this.currentRoomCode = this.selectedCandidate.code;
-                    }
-                });
+            if (this.isFirstGame) {
+                this.openFirstGameModal();
+            } else {
+                this.openNewGameModal();
             }
         } catch (error) {
             debug('Error abriendo modal de creación', error, 'error');
             showNotification('❌ Error cargando datos de partida', 'error');
         }
+    }
+
+    openFirstGameModal() {
+        this.selectRandomCandidate();
+        const categories = this.getCategories();
+        const selectedCategory = this.selectedCandidate?.category || categories[0];
+        const selectedCode = this.selectedCandidate?.code || '';
+        this.currentRoomCode = this.truncateCode(selectedCode);
+
+        const categoryOptions = categories.map(cat => 
+            `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
+        ).join('');
+
+        const formHTML = `
+            <div class="input-group">
+                <label class="input-label" for="category-select-modal">Categoría</label>
+                <select id="category-select-modal" class="input-field">
+                    ${categoryOptions}
+                </select>
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="code-input-modal">Código de Sala</label>
+                <input 
+                    id="code-input-modal" 
+                    type="text" 
+                    class="input-field" 
+                    placeholder="Ej: SALA"
+                    maxlength="${this.maxCodeLength}"
+                    value="${this.currentRoomCode}"
+                    autocomplete="off"
+                />
+                <p class="custom-code-info">Máx. ${this.maxCodeLength} caracteres. Será convertido a mayúsculas.</p>
+            </div>
+        `;
+
+        const buttons = [
+            [
+                () => this.openSettingsModal(),
+                'Más Opciones',
+                'btn'
+            ],
+            [
+                () => this.handleCreateClick(),
+                'Crear',
+                'btn-modal-primary'
+            ]
+        ];
+
+        ModalSystem_Instance.show(1, formHTML, buttons);
+
+        const categorySelect = document.getElementById('category-select-modal');
+        const codeInput = document.getElementById('code-input-modal');
+
+        if (categorySelect) {
+            categorySelect.addEventListener('change', (e) => {
+                this.updateCandidateFromCategory(e.target.value);
+                if (codeInput && this.selectedCandidate) {
+                    const newCode = this.truncateCode(this.selectedCandidate.code);
+                    codeInput.value = newCode;
+                    this.currentRoomCode = newCode;
+                }
+            });
+        }
+
+        if (codeInput) {
+            codeInput.addEventListener('input', (e) => {
+                const rawValue = e.target.value.toUpperCase();
+                const truncated = this.truncateCode(rawValue);
+                e.target.value = truncated;
+                this.currentRoomCode = truncated;
+            });
+        }
+    }
+
+    openNewGameModal() {
+        const currentCode = StorageManager.get(StorageKeys.HOST_GAME_CODE) || '';
+        this.currentRoomCode = currentCode;
+
+        const formHTML = `
+            <div class="input-group">
+                <label class="input-label" for="code-display-modal">Código de Sala</label>
+                <div id="code-display-modal" class="input-field code-display" style="background: var(--color-secondary); padding: 12px; border-radius: 6px; font-weight: bold; letter-spacing: 2px; text-align: center; font-size: 18px;">
+                    ${currentCode}
+                </div>
+                <p class="custom-code-info">Código de sala permanente. Los jugadores mantienen la conexión.</p>
+            </div>
+        `;
+
+        const buttons = [
+            [
+                () => this.openSettingsModal(),
+                'Más Opciones',
+                'btn'
+            ],
+            [
+                () => this.handleCreateClick(),
+                'Nueva Partida',
+                'btn-modal-primary'
+            ]
+        ];
+
+        ModalSystem_Instance.show(1, formHTML, buttons);
     }
 
     openSettingsModal() {
@@ -187,12 +277,23 @@ class CreateGameModal {
 
     async handleCreateClick() {
         try {
-            if (!this.selectedCandidate || !this.selectedCandidate.code) {
-                throw new Error('No hay código seleccionado');
+            if (!this.currentRoomCode || this.currentRoomCode.trim() === '') {
+                showNotification('⚠️ Ingresa un código de sala válido', 'warning');
+                return;
             }
 
-            const gameId = this.selectedCandidate.code;
-            const category = this.selectedCandidate.category;
+            const gameId = this.currentRoomCode.toUpperCase().trim();
+
+            if (this.isFirstGame) {
+                const isAvailable = await this.checkRoomAvailability(gameId);
+                
+                if (!isAvailable) {
+                    showNotification('🚫 Sala en uso - Intenta con otro código', 'error');
+                    return;
+                }
+            }
+
+            const category = this.selectedCandidate?.category || null;
 
             const payload = {
                 action: 'create_game',
@@ -219,12 +320,21 @@ class CreateGameModal {
             
             const result = await response.json();
             
-            if (!result.success || !result.game_id) {
-                throw new Error(result.message || 'Invalid response: missing game_id');
+            if (!result.success) {
+                if (result.message && result.message.includes('exists')) {
+                    showNotification('🚫 Sala en uso - Intenta con otro código', 'error');
+                } else {
+                    showNotification('❌ ' + (result.message || 'Error creando partida'), 'error');
+                }
+                return;
+            }
+
+            if (!result.game_id) {
+                throw new Error('Invalid response: missing game_id');
             }
 
             StorageManager.set(StorageKeys.HOST_GAME_CODE, result.game_id);
-            StorageManager.set(StorageKeys.HOST_CATEGORY, category);
+            StorageManager.set(StorageKeys.HOST_CATEGORY, category || 'Sin categoría');
 
             showNotification('✅ Partida creada', 'success');
 
