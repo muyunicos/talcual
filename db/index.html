@@ -1481,7 +1481,7 @@
             list.innerHTML = games
                 .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
                 .map(game => `
-                    <div class="game-item ${selectedGame === game.id ? 'selected' : ''}" onclick="selectGame(${game.id})">
+                    <div class="game-item ${selectedGame === game.id ? 'selected' : ''}" onclick="selectGame('${game.id}')">
                         <div>
                             <strong>${game.id}</strong><br>
                             <small style="color: #64748b;">Ronda: ${game.round}/${game.total_rounds}</small>
