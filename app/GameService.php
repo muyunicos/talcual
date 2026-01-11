@@ -138,6 +138,7 @@ class GameService {
         $maxWordsPerPlayer = MAX_WORDS_PER_PLAYER;
         $maxWordLength = MAX_WORD_LENGTH;
         $maxPlayers = MAX_PLAYERS;
+        $finalMinPlayers = $minPlayers;
 
         if (is_array($config)) {
             $startCountdown = intval($config['start_countdown'] ?? START_COUNTDOWN);
@@ -145,6 +146,7 @@ class GameService {
             $maxWordsPerPlayer = intval($config['max_words_per_player'] ?? MAX_WORDS_PER_PLAYER);
             $maxWordLength = intval($config['max_word_length'] ?? MAX_WORD_LENGTH);
             $maxPlayers = intval($config['max_players'] ?? MAX_PLAYERS);
+            $finalMinPlayers = intval($config['min_players'] ?? $minPlayers);
         }
 
         return [
@@ -169,7 +171,7 @@ class GameService {
             'hurry_up_threshold' => $hurryUpThreshold,
             'max_words_per_player' => $maxWordsPerPlayer,
             'max_word_length' => $maxWordLength,
-            'min_players' => $minPlayers,
+            'min_players' => $finalMinPlayers,
             'max_players' => $maxPlayers,
             'round_details' => [],
             'round_top_words' => [],
