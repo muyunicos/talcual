@@ -10,8 +10,8 @@ class GameRepository {
     }
 
     public function load($gameId) {
-        if (strlen($gameId) > MAX_CODE_LENGTH) {
-            throw new Exception('gameId excede MAX_CODE_LENGTH');
+        if (empty($gameId)) {
+            return null;
         }
 
         $pdo = $this->db->getConnection();
@@ -96,8 +96,8 @@ class GameRepository {
     }
 
     public function save($gameId, $state) {
-        if (strlen($gameId) > MAX_CODE_LENGTH) {
-            throw new Exception('gameId excede MAX_CODE_LENGTH');
+        if (empty($gameId)) {
+            throw new Exception('gameId is required');
         }
 
         $this->db->beginTransaction();
@@ -190,7 +190,7 @@ class GameRepository {
     }
 
     public function exists($gameId) {
-        if (strlen($gameId) > MAX_CODE_LENGTH) {
+        if (empty($gameId)) {
             return false;
         }
 
@@ -203,8 +203,8 @@ class GameRepository {
     }
 
     public function delete($gameId) {
-        if (strlen($gameId) > MAX_CODE_LENGTH) {
-            throw new Exception('gameId excede MAX_CODE_LENGTH');
+        if (empty($gameId)) {
+            throw new Exception('gameId is required');
         }
 
         $pdo = $this->db->getConnection();
