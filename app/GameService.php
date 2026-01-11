@@ -189,6 +189,56 @@ class GameService {
         ];
     }
 
+    public function getGameChain($gameIdOrOriginalId) {
+        $chain = [];
+        $currentId = $gameIdOrOriginalId;
+        $visited = [];
+        $maxIterations = 50;
+        $iterations = 0;
+
+        while ($currentId && !isset($visited[$currentId]) && $iterations < $maxIterations) {
+            $visited[$currentId] = true;
+            $state = $this->repository->load($currentId);
+
+            if (!$state) {
+                break;
+            }
+
+            $chainEntry = [
+                'game_id' => $state['game_id'],
+                'original_id' => $state['original_id'] ?? $state['game_id'],
+                'created_at' => $state['created_at'] ?? 0,
+                'updated_at' => $state['updated_at'] ?? 0,
+                'status' => $state['status'] ?? 'unknown',
+                'players_count' => count($state['players'] ?? []),
+                'round' => $state['round'] ?? 0,
+                'total_rounds' => $state['total_rounds'] ?? 0
+            ];
+
+            $chain[] = $chainEntry;
+
+            if ($state['status'] && is_string($state['status']) && strlen($state['status']) > 4 && !in_array($state['status'], ['waiting', 'playing', 'round_ended', 'finished', 'closed', 'ended'])) {
+                $currentId = $state['status'];
+            } else {
+                break;
+            }
+
+            $iterations++;
+        }
+
+        return $chain;
+    }
+
+    public function getOriginalGameId($gameId) {
+        $state = $this->repository->load($gameId);
+        
+        if ($state && isset($state['original_id'])) {
+            return $state['original_id'];
+        }
+        
+        return $gameId;
+    }
+
     public function joinGame($gameId, $playerId, $playerName, $playerColor) {
         $actualGameId = $this->resolveGameId($gameId);
         $state = $this->repository->load($actualGameId);
