@@ -227,7 +227,7 @@ class PlayerView {
     safeHideElement(this.elements.currentWord);
     safeHideElement(this.elements.categoryLabel);
     safeShowElement(this.elements.waitingMessage);
-    this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
+    this.elements.waitingMessage.textContent = 'El anfitríon iniciará la ronda pronto';
     safeHideElement(this.elements.wordsInputSection);
     safeHideElement(this.elements.resultsSection);
     safeHideElement(this.elements.countdownOverlay);
@@ -324,10 +324,19 @@ class PlayerView {
 
   updateFinishButtonText(wordCount) {
     if (wordCount === this.maxWords) {
-      this.elements.btnSubmit.textContent = '✍️ ENVÍAR';
+      this.elements.btnSubmit.textContent = '✍️ ENVíAR';
     } else {
       this.elements.btnSubmit.textContent = '✍️ PASO';
     }
+  }
+
+  getMatchTypeLabel(type) {
+    const labels = {
+      'EXACTA': '🌟 Match!',
+      'SINONIMO': '🥄 Ponele!',
+      'SIMILAR': '📈 Casi!'
+    };
+    return labels[type] || type;
   }
 
   showRoundResults(resultData) {
@@ -338,9 +347,7 @@ class PlayerView {
     safeHideElement(this.elements.countdownOverlay);
     this.clearTimer();
 
-    const hasResults = resultData && 
-      ((Array.isArray(resultData) && resultData.length > 0) || 
-       (typeof resultData === 'object' && !Array.isArray(resultData) && Object.keys(resultData).length > 0));
+    const hasResults = resultData && Array.isArray(resultData) && resultData.length > 0;
 
     if (!hasResults) {
       this.elements.resultsSection.innerHTML = '<div class="waiting-message">❌ No enviaste palabras esta ronda</div>';
@@ -351,37 +358,22 @@ class PlayerView {
     let html = '<div class="results-title">📨 Tus Resultados</div>';
     let roundScore = 0;
 
-    if (Array.isArray(resultData)) {
-      for (const match of resultData) {
-        const icon = match.matched ? '✅' : '❌';
-        const word = sanitizeText(match.word);
-        let resultHtml = `<div class="result-item ${match.matched ? 'match' : 'no-match'}`;
-        resultHtml += `"><div class="result-word">${icon} ${word}</div>`;
+    for (const match of resultData) {
+      const word = sanitizeText(match.word);
+      const type = match.type || 'SIMILAR';
+      const points = match.points || 0;
+      const typeLabel = this.getMatchTypeLabel(type);
 
-        if (match.matched && match.matchedPlayers && match.matchedPlayers.length > 0) {
-          const playerNames = match.matchedPlayers.map(name => sanitizeText(name)).join(', ');
-          resultHtml += `<div class="result-players">Coincidió con: ${playerNames}</div>`;
-        } else if (!match.matched) {
-          resultHtml += `<div class="result-players">Sin coincidencias</div>`;
-        }
+      html += `<div class="result-item match">`;
+      html += `<div class="result-word">${typeLabel}</div>`;
+      html += `<div class="result-word-value">${word}</div>`;
+      html += `<div class="result-points">+${points} pts</div>`;
+      html += `</div>`;
 
-        resultHtml += '</div>';
-        html += resultHtml;
-      }
-    } else {
-      Object.entries(resultData).forEach(([word, result]) => {
-        const hasMatch = result.count > 1;
-        const icon = hasMatch ? '✅' : '❌';
-        const points = result.points || 0;
-        html += `<div class="result-item ${hasMatch ? 'match' : 'no-match'}"><div class="result-word">${icon} ${sanitizeText(word)}</div><div class="result-points">+${points} puntos</div>`;
-        if (hasMatch) {
-          html += `<div class="result-players">Coincidió con: ${(result.matched_with || []).join(', ')}</div>`;
-        }
-        html += '</div>';
-        roundScore += points;
-      });
-      html += `<div class="total-score">Total ronda: ${roundScore} pts</div>`;
+      roundScore += points;
     }
+
+    html += `<div class="total-score">🌎 Total ronda: ${roundScore} pts</div>`;
 
     this.elements.resultsSection.innerHTML = html;
     safeShowElement(this.elements.resultsSection);
