@@ -134,6 +134,8 @@ class PlayerManager extends BaseController {
 
         if (state.players && state.players[playerId]) {
           debug('✅ Sesión recuperada');
+          configService.loadFromState(state);
+          this.maxWords = state.max_words_per_player || 6;
           this.loadGameScreen(state);
           return;
         }
@@ -216,6 +218,10 @@ class PlayerManager extends BaseController {
 
       if (result.success) {
         debug(`✅ Conectado a juego: ${this.gameId}`);
+        if (result.state) {
+          configService.loadFromState(result.state);
+          this.maxWords = result.state.max_words_per_player || 6;
+        }
         this.loadGameScreen(result.state || {});
       } else {
         showNotification('❌ ' + (result.message || 'Error'), 'error');
