@@ -79,7 +79,16 @@ class HostManager extends BaseController {
 
       this.attachEventListeners();
 
-      await this.populateCategories();
+      if (window.createGameModal && window.createGameModal.gameCandidates) {
+        const categories = new Set();
+        window.createGameModal.gameCandidates.forEach(c => {
+          if (c.category) categories.add(c.category);
+        });
+        this.categories = Array.from(categories).sort();
+        debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
+      } else {
+        this.categories = [];
+      }
 
       this.determineUIState();
 
@@ -97,28 +106,6 @@ class HostManager extends BaseController {
       debug('❌ Error fatal en loadConfigAndInit: ' + error.message, null, 'error');
       UI.showFatalError(`Error de inicialización: ${error.message}`);
       throw error;
-    }
-  }
-
-  async populateCategories() {
-    try {
-      const result = await fetch('/app/actions.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_categories' })
-      });
-      const data = await result.json();
-
-      if (data.success && Array.isArray(data.categories)) {
-        this.categories = data.categories;
-        debug('📚 Categorías cargadas', { total: this.categories.length }, 'success');
-      } else {
-        debug('⚠️ Error cargando categorías', null, 'warn');
-        this.categories = [];
-      }
-    } catch (error) {
-      debug('⚠️ Error cargando categorías: ' + error.message, null, 'warn');
-      this.categories = [];
     }
   }
 
