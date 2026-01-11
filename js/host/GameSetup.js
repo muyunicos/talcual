@@ -286,11 +286,13 @@ class CreateGameModal {
 
             const gameId = this.currentRoomCode.trim();
             const category = this.selectedCandidate?.category || 'General';
+            const currentConfig = configManager.getAll();
 
             const payload = {
                 action: 'create_game',
                 game_id: gameId,
-                category
+                category,
+                config: currentConfig
             };
 
             const controller = new AbortController();
@@ -330,9 +332,7 @@ class CreateGameModal {
 
             showNotification('✅ Partida creada', 'success');
 
-            await new Promise((r) => setTimeout(r, 500));
-
-            window.location.reload();
+            await this.transitionToGameScreen(result);
         } catch (error) {
             debug('Error creando partida', error, 'error');
             
@@ -341,6 +341,40 @@ class CreateGameModal {
             } else {
                 showNotification('❌ ' + (error.message || 'Error creando partida'), 'error');
             }
+        }
+    }
+
+    async transitionToGameScreen(createResult) {
+        try {
+            debug('🔄 Transicionando a pantalla de juego sin reload...', null, 'info');
+
+            ModalSystem_Instance.close();
+
+            if (!window.hostManager) {
+                window.hostManager = new HostManager();
+            }
+
+            const gameCode = createResult.game_id;
+            const gameState = createResult.state || {};
+
+            window.hostManager.gameCode = gameCode;
+            window.hostManager.currentCategory = gameState.current_category || 'Sin categoría';
+            window.hostManager.currentRound = gameState.round || 0;
+
+            if (!window.hostManager.client) {
+                window.hostManager.client = new GameClient(gameCode, gameCode, 'host');
+            } else {
+                window.hostManager.client.disconnect();
+                window.hostManager.client = new GameClient(gameCode, gameCode, 'host');
+            }
+
+            window.hostManager.saveSession(gameCode, gameState.current_category || 'General');
+            window.hostManager.loadGameScreen(gameState);
+
+            debug('✅ Transición completada sin reload', { gameCode }, 'success');
+        } catch (error) {
+            debug('❌ Error en transitionToGameScreen, reloadando...', error, 'error');
+            window.location.reload();
         }
     }
 }
