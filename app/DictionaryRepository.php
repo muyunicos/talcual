@@ -55,36 +55,6 @@ class DictionaryRepository {
         }
     }
 
-    public function addCategory($categoryName) {
-        try {
-            $stmt = $this->pdo->prepare('INSERT OR IGNORE INTO categories (name, is_active, date) VALUES (?, 1, ?)');
-            $stmt->execute([$categoryName, time()]);
-            return $this->getCategoryByName($categoryName);
-        } catch (PDOException $e) {
-            throw new Exception('Error adding category: ' . $e->getMessage());
-        }
-    }
-
-    public function updateCategory($categoryId, $newName) {
-        try {
-            $stmt = $this->pdo->prepare('UPDATE categories SET name = ? WHERE id = ?');
-            $stmt->execute([$newName, $categoryId]);
-            return $stmt->rowCount() > 0;
-        } catch (PDOException $e) {
-            throw new Exception('Error updating category: ' . $e->getMessage());
-        }
-    }
-
-    public function deleteCategory($categoryId) {
-        try {
-            $stmt = $this->pdo->prepare('DELETE FROM categories WHERE id = ?');
-            $stmt->execute([$categoryId]);
-            return $stmt->rowCount() > 0;
-        } catch (PDOException $e) {
-            throw new Exception('Error deleting category: ' . $e->getMessage());
-        }
-    }
-
     public function getTopicCard($category) {
         try {
             $categoryStmt = $this->pdo->prepare('SELECT id FROM categories WHERE name = ? AND is_active = 1');
@@ -341,81 +311,6 @@ class DictionaryRepository {
         }
     }
 
-    public function addPrompt($categoryIds, $promptText) {
-        try {
-            if (is_string($categoryIds)) {
-                $categoryIds = [$categoryIds];
-            } elseif (!is_array($categoryIds)) {
-                throw new Exception('Invalid categoryIds format');
-            }
-            
-            if (empty($categoryIds)) {
-                throw new Exception('At least one category is required');
-            }
-            
-            $this->db->beginTransaction();
-            
-            $stmt = $this->pdo->prepare('INSERT INTO prompts (text, is_active, date) VALUES (?, 1, ?)');
-            $stmt->execute([$promptText, time()]);
-            $promptId = $this->pdo->lastInsertId();
-            
-            $relStmt = $this->pdo->prepare('INSERT INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
-            foreach ($categoryIds as $catId) {
-                $relStmt->execute([$promptId, $catId]);
-            }
-            
-            $this->db->commit();
-            
-            return $promptId;
-        } catch (Exception $e) {
-            $this->db->rollback();
-            throw new Exception('Error adding prompt: ' . $e->getMessage());
-        }
-    }
-
-    public function updatePrompt($promptId, $newText, $categoryIds = null) {
-        try {
-            $this->db->beginTransaction();
-            
-            $stmt = $this->pdo->prepare('UPDATE prompts SET text = ? WHERE id = ?');
-            $stmt->execute([$newText, $promptId]);
-            
-            if ($categoryIds !== null) {
-                if (is_string($categoryIds)) {
-                    $categoryIds = [$categoryIds];
-                } elseif (!is_array($categoryIds)) {
-                    throw new Exception('Invalid categoryIds format');
-                }
-                
-                $this->pdo->prepare('DELETE FROM prompt_categories WHERE prompt_id = ?')->execute([$promptId]);
-                
-                if (!empty($categoryIds)) {
-                    $relStmt = $this->pdo->prepare('INSERT INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)');
-                    foreach ($categoryIds as $catId) {
-                        $relStmt->execute([$promptId, $catId]);
-                    }
-                }
-            }
-            
-            $this->db->commit();
-            return true;
-        } catch (Exception $e) {
-            $this->db->rollback();
-            throw new Exception('Error updating prompt: ' . $e->getMessage());
-        }
-    }
-
-    public function deletePrompt($promptId) {
-        try {
-            $this->pdo->prepare('DELETE FROM prompt_categories WHERE prompt_id = ?')->execute([$promptId]);
-            $stmt = $this->pdo->prepare('DELETE FROM prompts WHERE id = ?');
-            $stmt->execute([$promptId]);
-            return $stmt->rowCount() > 0;
-        } catch (PDOException $e) {
-            throw new Exception('Error deleting prompt: ' . $e->getMessage());
-        }
-    }
-
     public function getPromptCategories($promptId) {
         try {
             $stmt = $this->pdo->prepare('SELECT category_id FROM prompt_categories WHERE prompt_id = ? ORDER BY category_id');
@@ -448,46 +343,6 @@ class DictionaryRepository {
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             throw new Exception('Error fetching valid word: ' . $e->getMessage());
-        }
-    }
-
-    public function addValidWord($promptId, $wordEntry) {
-        try {
-            $stmt = $this->pdo->prepare('INSERT INTO valid_words (prompt_id, word_group) VALUES (?, ?)');
-            $stmt->execute([$promptId, $wordEntry]);
-            return $this->pdo->lastInsertId();
-        } catch (PDOException $e) {
-            throw new Exception('Error adding valid word: ' . $e->getMessage());
-        }
-    }
-
-    public function updateValidWord($wordId, $newWordEntry) {
-        try {
-            $stmt = $this->pdo->prepare('UPDATE valid_words SET word_group = ? WHERE id = ?');
-            $stmt->execute([$newWordEntry, $wordId]);
-            return $stmt->rowCount() > 0;
-        } catch (PDOException $e) {
-            throw new Exception('Error updating valid word: ' . $e->getMessage());
-        }
-    }
-
-    public function deleteValidWord($wordId) {
-        try {
-            $stmt = $this->pdo->prepare('DELETE FROM valid_words WHERE id = ?');
-            $stmt->execute([$wordId]);
-            return $stmt->rowCount() > 0;
-        } catch (PDOException $e) {
-            throw new Exception('Error deleting valid word: ' . $e->getMessage());
-        }
-    }
-
-    public function deleteValidWordsByPrompt($promptId) {
-        try {
-            $stmt = $this->pdo->prepare('DELETE FROM valid_words WHERE prompt_id = ?');
-            $stmt->execute([$promptId]);
-            return $stmt->rowCount();
-        } catch (PDOException $e) {
-            throw new Exception('Error deleting valid words: ' . $e->getMessage());
         }
     }
 
@@ -559,16 +414,6 @@ class DictionaryRepository {
         }
     }
 
-    public function deleteGame($code) {
-        try {
-            $this->pdo->prepare('DELETE FROM players WHERE game_id = ?')->execute([$code]);
-            $this->pdo->prepare('DELETE FROM games WHERE id = ?')->execute([$code]);
-            return true;
-        } catch (PDOException $e) {
-            throw new Exception('Error deleting game: ' . $e->getMessage());
-        }
-    }
-
     public function getDatabaseInspection() {
         try {
             $inspection = [
@@ -588,16 +433,6 @@ class DictionaryRepository {
             return $inspection;
         } catch (PDOException $e) {
             throw new Exception('Error inspecting database: ' . $e->getMessage());
-        }
-    }
-
-    public function vacuumDatabase() {
-        try {
-            $this->pdo->exec('VACUUM');
-            $this->db->checkpoint();
-            return true;
-        } catch (PDOException $e) {
-            throw new Exception('Error vacuuming database: ' . $e->getMessage());
         }
     }
 }
