@@ -475,11 +475,24 @@ class GameService {
             throw new Exception('No active round');
         }
 
+        $roundResultsToStore = [];
+
         foreach ($state['players'] as $pId => $player) {
+            $roundPoints = 0;
+            $roundAnswers = $player['answers'] ?? [];
+
+            if ($roundResults && isset($roundResults[$pId])) {
+                $playerResult = $roundResults[$pId];
+                if (isset($playerResult['scoreDelta'])) {
+                    $roundPoints = (int)$playerResult['scoreDelta'];
+                }
+                $roundResultsToStore[$pId] = $playerResult;
+            }
+
             $roundEntry = [
                 'round' => $state['round'],
-                'answers' => $player['answers'] ?? [],
-                'score' => 0
+                'answers' => $roundAnswers,
+                'score' => $roundPoints
             ];
 
             if (!isset($state['players'][$pId]['round_history'])) {
@@ -487,13 +500,12 @@ class GameService {
             }
 
             $state['players'][$pId]['round_history'][] = $roundEntry;
+            $state['players'][$pId]['score'] = ($state['players'][$pId]['score'] ?? 0) + $roundPoints;
             $state['players'][$pId]['answers'] = [];
             $state['players'][$pId]['status'] = 'connected';
         }
 
-        if ($roundResults !== null && is_array($roundResults)) {
-            $state['round_results'] = $roundResults;
-        }
+        $state['round_results'] = !empty($roundResultsToStore) ? $roundResultsToStore : null;
 
         $isGameFinished = (($state['round'] ?? 0) >= ($state['total_rounds'] ?? TOTAL_ROUNDS));
 
