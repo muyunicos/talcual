@@ -274,7 +274,7 @@ class PlayerManager extends BaseController {
   async showPlayingState(state) {
     debug('🎮 Estado PLAYING detectado', 'debug');
 
-    const wordPrompt = state.current_prompt || state.current_word;
+    const wordPrompt = state.roundData?.roundQuestion;
 
     if (!wordPrompt) {
       debug('❌ No prompt encontrado en el estado', 'error');
