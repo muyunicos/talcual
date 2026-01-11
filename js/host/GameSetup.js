@@ -129,7 +129,7 @@ class CreateGameModal {
     }
 
     truncateCode(code) {
-        return code.substring(0, this.maxCodeLength).toUpperCase();
+        return code.substring(0, this.maxCodeLength);
     }
 
     async openModal() {
@@ -176,7 +176,7 @@ class CreateGameModal {
                     value="${this.currentRoomCode}"
                     autocomplete="off"
                 />
-                <p class="custom-code-info">Máx. ${this.maxCodeLength} caracteres. Será convertido a mayúsculas.</p>
+                <p class="custom-code-info">Máx. ${this.maxCodeLength} caracteres. Solo letras.</p>
             </div>
         `;
 
@@ -211,8 +211,8 @@ class CreateGameModal {
 
         if (codeInput) {
             codeInput.addEventListener('input', (e) => {
-                const rawValue = e.target.value.toUpperCase();
-                const truncated = this.truncateCode(rawValue);
+                const sanitized = sanitizeInputValue(e.target.value);
+                const truncated = this.truncateCode(sanitized);
                 e.target.value = truncated;
                 this.currentRoomCode = truncated;
             });
@@ -272,7 +272,7 @@ class CreateGameModal {
                 return;
             }
 
-            const gameId = this.currentRoomCode.toUpperCase().trim();
+            const gameId = this.currentRoomCode.trim();
             const category = this.selectedCandidate?.category || null;
 
             const payload = {
