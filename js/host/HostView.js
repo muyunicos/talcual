@@ -58,23 +58,31 @@ class HostView {
     });
   }
 
+  normalizeAuraString(aura) {
+    if (!aura || typeof aura !== 'string') return '';
+    return aura.toLowerCase().trim().replace(/\s+/g, '');
+  }
+
   getAuraGradientClass(aura) {
     if (!aura || typeof aura !== 'string') return 'aura-gradient--neon-pink-cyan';
 
-    const normalized = aura.toLowerCase().trim();
+    const normalized = this.normalizeAuraString(aura);
     
     const auraMap = {
       '#ff0055,#00f0ff': 'aura-gradient--neon-pink-cyan',
+      '#ff0055#00f0ff': 'aura-gradient--neon-pink-cyan',
       '#8b5cf6,#06b6d4': 'aura-gradient--purple-cyan',
+      '#8b5cf606b6d4': 'aura-gradient--purple-cyan',
       '#d946ef,#14b8a6': 'aura-gradient--magenta-teal',
+      '#d946ef14b8a6': 'aura-gradient--magenta-teal',
       '#ea580c,#ec4899': 'aura-gradient--orange-pink',
-      '#3b82f6,#10b981': 'aura-gradient--blue-green'
+      '#ea580cec4899': 'aura-gradient--orange-pink',
+      '#3b82f6,#10b981': 'aura-gradient--blue-green',
+      '#3b82f610b981': 'aura-gradient--blue-green'
     };
 
-    for (const [key, className] of Object.entries(auraMap)) {
-      if (normalized === key || normalized === key.replace(/#/g, '')) {
-        return className;
-      }
+    if (auraMap[normalized]) {
+      return auraMap[normalized];
     }
 
     return 'aura-gradient';
@@ -99,7 +107,7 @@ class HostView {
 
       const auraClass = aura ? this.getAuraGradientClass(aura) : 'aura-gradient';
       const customGradientStyle = aura
-        ? `style="--aura-gradient: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);"`
+        ? `style="--aura-gradient: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);`
         : '';
 
       return `
@@ -169,15 +177,15 @@ class HostView {
     this.renderPlayerCards(players);
   }
 
-  showWaitingState(playerCount) {
+  showWaitingState(playerCount, minPlayers = 1) {
     safeHideElement(this.elements.currentWord);
     safeHideElement(this.elements.categoryLabel);
     safeHideElement(this.elements.countdownOverlay);
     safeHideElement(this.elements.btnHurryUp);
 
-    this.elements.statusMessage.textContent = '⏳ En espera de jugadores (mín. 2)';
+    this.elements.statusMessage.textContent = `⏳ En espera de jugadores (mín. ${minPlayers})`;
 
-    const hasMinPlayers = playerCount >= 2;
+    const hasMinPlayers = playerCount >= minPlayers;
     this.setStartButtonState(hasMinPlayers ? 'ready' : 'disabled');
   }
 
