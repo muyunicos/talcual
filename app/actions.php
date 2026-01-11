@@ -323,12 +323,119 @@ try {
             notifyGameChanged($gameId, ['event' => 'typing', 'player_id' => $playerId], true);
             break;
 
+        case 'get_config':
+            $gameId = isset($input['game_id']) ? AppUtils::sanitizeGameId($input['game_id']) : null;
+
+            if ($gameId) {
+                // Context-aware: return config from specific game
+                try {
+                    $result = $service->getState($gameId);
+                    $state = $result['state'];
+                    $response = [
+                        'success' => true,
+                        'server_now' => $result['server_now'],
+                        'config' => [
+                            'round_duration' => $state['round_duration'] ?? ROUND_DURATION,
+                            'total_rounds' => $state['total_rounds'] ?? TOTAL_ROUNDS,
+                            'min_players' => $state['min_players'] ?? MIN_PLAYERS,
+                            'max_players' => $state['max_players'] ?? MAX_PLAYERS,
+                            'start_countdown' => $state['start_countdown'] ?? START_COUNTDOWN,
+                            'hurry_up_threshold' => $state['hurry_up_threshold'] ?? HURRY_UP_THRESHOLD,
+                            'max_words_per_player' => $state['max_words_per_player'] ?? MAX_WORDS_PER_PLAYER,
+                            'max_word_length' => $state['max_word_length'] ?? MAX_WORD_LENGTH,
+                        ]
+                    ];
+                } catch (Exception $e) {
+                    // Game not found, return defaults
+                    $response = [
+                        'success' => true,
+                        'server_now' => intval(microtime(true) * 1000),
+                        'config' => [
+                            'round_duration' => ROUND_DURATION,
+                            'total_rounds' => TOTAL_ROUNDS,
+                            'min_players' => MIN_PLAYERS,
+                            'max_players' => MAX_PLAYERS,
+                            'start_countdown' => START_COUNTDOWN,
+                            'hurry_up_threshold' => HURRY_UP_THRESHOLD,
+                            'max_words_per_player' => MAX_WORDS_PER_PLAYER,
+                            'max_word_length' => MAX_WORD_LENGTH,
+                        ]
+                    ];
+                }
+            } else {
+                // Default: return global config from .env
+                $response = [
+                    'success' => true,
+                    'server_now' => intval(microtime(true) * 1000),
+                    'config' => [
+                        'round_duration' => ROUND_DURATION,
+                        'total_rounds' => TOTAL_ROUNDS,
+                        'min_players' => MIN_PLAYERS,
+                        'max_players' => MAX_PLAYERS,
+                        'start_countdown' => START_COUNTDOWN,
+                        'hurry_up_threshold' => HURRY_UP_THRESHOLD,
+                        'max_words_per_player' => MAX_WORDS_PER_PLAYER,
+                        'max_word_length' => MAX_WORD_LENGTH,
+                    ]
+                ];
+            }
+            break;
+
         case 'update_config':
+            $gameId = isset($input['game_id']) ? AppUtils::sanitizeGameId($input['game_id']) : null;
             $configData = $input['config'] ?? [];
+
+            if ($gameId) {
+                // Context-aware: update specific game config
+                try {
+                    $result = $service->updateGameConfig($gameId, $configData);
+                    $response = [
+                        'success' => true,
+                        'message' => 'Game config updated',
+                        'server_now' => $result['server_now'],
+                        'state' => $result['state']
+                    ];
+                    notifyGameChanged($gameId, ['event' => 'config_updated'], true);
+                } catch (Exception $e) {
+                    throw $e;
+                }
+            } else {
+                // No game_id: store in session (future enhancement)
+                // For now, just acknowledge
+                $response = [
+                    'success' => true,
+                    'message' => 'Config settings stored',
+                    'server_now' => intval(microtime(true) * 1000)
+                ];
+            }
+            break;
+
+        case 'get_categories':
+            $categories = $dictionaryRepository->getCategories();
+
+            if (empty($categories)) {
+                throw new Exception('No hay categorías');
+            }
+
             $response = [
                 'success' => true,
-                'message' => 'Configuración actualizada',
-                'server_now' => intval(microtime(true) * 1000)
+                'server_now' => intval(microtime(true) * 1000),
+                'categories' => $categories
+            ];
+            break;
+
+        case 'get_stats':
+            if (!DEV_MODE) {
+                throw new Exception('No disponible');
+            }
+
+            $response = [
+                'success' => true,
+                'server_now' => intval(microtime(true) * 1000),
+                'stats' => [
+                    'dictionary' => $dictionaryRepository->getDictionaryStats(),
+                    'dev_mode' => DEV_MODE
+                ]
             ];
             break;
 
@@ -360,53 +467,6 @@ try {
                 'server_now' => intval(microtime(true) * 1000),
                 'chain' => $chain,
                 'chain_count' => count($chain)
-            ];
-            break;
-
-        case 'get_config':
-            $response = [
-                'success' => true,
-                'server_now' => intval(microtime(true) * 1000),
-                'config' => [
-                    'round_duration' => ROUND_DURATION,
-                    'total_rounds' => TOTAL_ROUNDS,
-                    'max_words_per_player' => MAX_WORDS_PER_PLAYER,
-                    'max_code_length' => MAX_CODE_LENGTH,
-                    'min_players' => MIN_PLAYERS,
-                    'max_players' => MAX_PLAYERS,
-                    'start_countdown' => START_COUNTDOWN,
-                    'max_word_length' => MAX_WORD_LENGTH,
-                    'hurry_up_threshold' => HURRY_UP_THRESHOLD
-                ]
-            ];
-            break;
-
-        case 'get_categories':
-            $categories = $dictionaryRepository->getCategories();
-
-            if (empty($categories)) {
-                throw new Exception('No hay categorías');
-            }
-
-            $response = [
-                'success' => true,
-                'server_now' => intval(microtime(true) * 1000),
-                'categories' => $categories
-            ];
-            break;
-
-        case 'get_stats':
-            if (!DEV_MODE) {
-                throw new Exception('No disponible');
-            }
-
-            $response = [
-                'success' => true,
-                'server_now' => intval(microtime(true) * 1000),
-                'stats' => [
-                    'dictionary' => $dictionaryRepository->getDictionaryStats(),
-                    'dev_mode' => DEV_MODE
-                ]
             ];
             break;
 
