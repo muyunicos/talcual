@@ -570,9 +570,12 @@ class HostManager extends BaseController {
     this.stopTimer();
     this.view.showRoundEnded();
     
-    if (this.roundResults) {
+    if (state.round_results) {
+      this.view.showRoundResultsComponent(state.round_results, state.players, this.roundTopWords);
+      debug('🎆 Resultados mostrados al host desde state.round_results', null, 'success');
+    } else if (this.roundResults) {
       this.view.showRoundResultsComponent(this.roundResults, state.players, this.roundTopWords);
-      debug('🎆 Resultados mostrados al host', null, 'success');
+      debug('🎆 Resultados mostrados al host desde local roundResults', null, 'success');
     }
   }
 
