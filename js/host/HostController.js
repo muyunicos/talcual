@@ -417,7 +417,7 @@ class HostManager extends BaseController {
 
     if (notReadyCount === 1 && !this.hurryUpActive) {
       const remaining = GameTimer.getRemaining(
-        state.round_started_at,
+        state.round_starts_at,
         state.round_duration
       );
 
@@ -463,12 +463,12 @@ class HostManager extends BaseController {
     const readyCount = (this.currentPlayers || []).filter(p => p.status === 'ready').length;
     this.view.showPlayingState(state, readyCount);
 
-    if (state.round_starts_at) {
+    if (state.countdown_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
       const countdownDurationSeconds = state.countdown_duration || configManager.get('start_countdown', 5);
       const countdownDurationMs = countdownDurationSeconds * 1000;
-      const elapsed = nowServer - state.round_starts_at;
+      const elapsed = nowServer - state.countdown_starts_at;
 
       if (elapsed < countdownDurationMs) {
         debug('⏳ Detectado countdown activo desde update', null, 'info');
@@ -476,7 +476,7 @@ class HostManager extends BaseController {
       }
     }
 
-    if (state.round_started_at && state.round_duration) {
+    if (state.round_ends_at && state.round_duration) {
       this.startContinuousTimer(state);
     }
   }
@@ -632,12 +632,13 @@ class HostManager extends BaseController {
       return;
     }
     
-    const remaining = GameTimer.getRemaining(
-      this.gameState.round_started_at,
-      this.gameState.round_duration
-    );
-    
-    if (remaining <= 0 && !this.roundEnded) {
+    const roundEndsAt = Number(this.gameState.round_ends_at);
+    if (!roundEndsAt) {
+      return;
+    }
+
+    const nowServer = timeSync.getServerTime();
+    if (nowServer >= roundEndsAt && !this.roundEnded) {
       debug('⏰ Tiempo agotado - Host finalizando ronda...', null, 'info');
       this.roundEnded = true;
       this.endRound();
