@@ -167,7 +167,6 @@ class HostView {
   }
 
   showPlayingState(state, readyCount) {
-    safeHideElement(this.elements.countdownOverlay);
     this.hideRoundResultsComponent();
 
     this.elements.currentWord.textContent = state.current_prompt || '???';
