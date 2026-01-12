@@ -55,7 +55,7 @@ class BaseController {
   }
 
   checkRoundTimeout() {
-    if (!this.gameState || this.gameState.status !== 'playing') {
+    if (!this.gameState || this.gameState.status !== 'playing' || this.roundEnded) {
       return;
     }
     
@@ -66,7 +66,7 @@ class BaseController {
 
     const nowServer = timeSync.getServerTime();
     
-    if (nowServer >= roundEndsAt && !this.roundEnded) {
+    if (nowServer >= roundEndsAt) {
       debug('⏰ Tiempo agotado - Finalizando ronda...', null, 'info');
       this.roundEnded = true;
       this.onRoundTimeout();
