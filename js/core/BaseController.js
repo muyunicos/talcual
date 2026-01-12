@@ -54,6 +54,24 @@ class BaseController {
   }
 
   checkRoundTimeout() {
+    if (!this.gameState || this.gameState.status !== 'playing') {
+      return;
+    }
+    
+    const roundEndsAt = Number(this.gameState.round_ends_at);
+    if (!roundEndsAt) {
+      return;
+    }
+
+    const nowServer = timeSync.getServerTime();
+    if (nowServer >= roundEndsAt && !this.roundEnded) {
+      debug('⏰ Tiempo agotado - Finalizando ronda...', null, 'info');
+      this.roundEnded = true;
+      this.onRoundTimeout();
+    }
+  }
+
+  onRoundTimeout() {
   }
 
   startContinuousTimer(state) {
