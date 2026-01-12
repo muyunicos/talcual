@@ -7,6 +7,7 @@ class BaseController {
     this.gameState = {};
     this.auraModule = new AuraModule();
     this.hurryUpActive = false;
+    this.roundEnded = false;
   }
 
   getStorageKeys() {
@@ -64,6 +65,7 @@ class BaseController {
     }
 
     const nowServer = timeSync.getServerTime();
+    
     if (nowServer >= roundEndsAt && !this.roundEnded) {
       debug('⏰ Tiempo agotado - Finalizando ronda...', null, 'info');
       this.roundEnded = true;
@@ -206,7 +208,7 @@ class BaseController {
   }
 
   destroy() {
-    debug('🧹 Destroying controller...', null, 'info');
+    debug('🧺 Destroying controller...', null, 'info');
     this.stopTimer();
 
     if (this.client) {
