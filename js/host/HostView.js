@@ -100,9 +100,9 @@ class HostView {
         : '';
 
       return `
-        <div class="player-squarcle ${status}" data-player-id="${pid}" title="${name}">
+        <div class="player-squarcle ${status}" data-player-id="${pid}" title="${name}" ${auraStyle}>
           <button class="btn-remove-player" data-player-id="${pid}" aria-label="Expulsar ${name}" type="button">&times;</button>
-          <div class="player-initial" ${auraStyle}>
+          <div class="player-initial">
             ${initial}
           </div>
           <div class="player-name-label">${name}</div>
