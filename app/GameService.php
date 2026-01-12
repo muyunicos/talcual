@@ -266,6 +266,35 @@ class GameService {
         ];
     }
 
+    public function kickPlayer($gameId, $playerId) {
+        $state = $this->repository->load($gameId);
+
+        if (!$state) {
+            throw new Exception('Game not found');
+        }
+
+        if ($state['status'] !== 'waiting') {
+            throw new Exception('Can only kick players during waiting phase');
+        }
+
+        if (!isset($state['players'][$playerId])) {
+            throw new Exception('Player not found');
+        }
+
+        unset($state['players'][$playerId]);
+
+        $state['last_update'] = time();
+        $state['updated_at'] = time();
+
+        $this->repository->save($gameId, $state);
+
+        return [
+            'message' => 'Player kicked',
+            'server_now' => intval(microtime(true) * 1000),
+            'state' => $state
+        ];
+    }
+
     public function startRound($gameId, $categoryFromRequest, $duration, $totalRounds) {
         $state = $this->repository->load($gameId);
 
