@@ -271,6 +271,34 @@ class PlayerManager extends BaseController {
   }
 
   handleStateUpdate(state) {
+    if (!state || !state.players) {
+      debug('⚠️ Estado inválido recibido', null, 'warn');
+      return;
+    }
+
+    if (!state.players[this.playerId]) {
+      debug('🚫 Jugador eliminado del servidor - auto-desconectando', {
+        playerId: this.playerId,
+        gameStatus: state.status
+      }, 'warn');
+      
+      this.stopTimer();
+      
+      const message = state.status === 'closed' 
+        ? '🏁 El juego ha finalizado'
+        : '🚫 Has sido desconectado de la sala';
+      
+      showNotification(message, 'error', 5000);
+      
+      setTimeout(() => {
+        this.destroy();
+        this.clearSession();
+        window.location.href = './index.html';
+      }, 3000);
+      
+      return;
+    }
+
     this.gameState = state;
     debug('📨 Estado actualizado:', { status: state.status }, 'debug');
 
