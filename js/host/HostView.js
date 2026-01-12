@@ -82,6 +82,8 @@ class HostView {
   renderPlayerCards(players) {
     if (!players) return;
 
+    debug('🎨 [AURA-DEBUG] renderPlayerCards() iniciado con jugadores:', Object.keys(players), 'info');
+
     const html = Object.entries(players).map(([pid, player]) => {
       const name = sanitizeText(player.name || 'Jugador');
       const initial = name.charAt(0).toUpperCase();
@@ -93,11 +95,21 @@ class HostView {
           ? 'status-ready'
           : (player.answers && player.answers.length ? 'status-answered' : 'status-waiting'));
 
-      const aura = this.isValidAuraFormat(player.aura) ? player.aura : null;
+      const aura = player.aura || null;
+      
+      debug(`🎨 [AURA] Player ${pid} (${name}): aura raw = "${aura}"`, null, 'debug');
+
+      const isValidAura = this.isValidAuraFormat(aura);
+      debug(`🎨 [AURA] Player ${pid}: isValid = ${isValidAura}`, null, 'debug');
+
       const auraGradient = this.generateAuraGradient(aura);
-      const auraStyle = aura 
+      debug(`🎨 [AURA] Player ${pid}: gradient = "${auraGradient}"`, null, 'debug');
+
+      const auraStyle = aura && isValidAura
         ? `style="--aura-gradient: ${auraGradient};"`
         : '';
+
+      debug(`🎨 [AURA] Player ${pid}: finalStyle = "${auraStyle}"`, null, 'debug');
 
       return `
         <div class="player-squarcle ${status}" data-player-id="${pid}" title="${name}" ${auraStyle}>
@@ -112,6 +124,7 @@ class HostView {
     }).join('');
 
     this.elements.playersGrid.innerHTML = html || '';
+    debug('🎨 [AURA-DEBUG] renderPlayerCards() completado - HTML inyectado al DOM', null, 'info');
   }
 
   showGameScreen() {
@@ -135,6 +148,7 @@ class HostView {
   }
 
   updatePlayerList(players) {
+    debug('📊 [LIST-DEBUG] updatePlayerList() llamado', null, 'info');
     this.leaderboard.updateList(players);
     this.renderPlayerCards(players);
   }
