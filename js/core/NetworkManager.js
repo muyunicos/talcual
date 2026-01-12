@@ -182,6 +182,8 @@ class GameClient {
     this.parseErrorCount = 0;
     this.consecutiveEmptyMessages = 0;
     this.unknownEventCount = 0;
+    this.isPageVisible = true;
+    this.visibilityHandler = null;
     this.metrics = {
       messagesReceived: 0,
       errorsCount: 0,
@@ -192,6 +194,44 @@ class GameClient {
       latencyEstimate: 0,
       latencySamples: []
     };
+    
+    this.setupVisibilityDetection();
+  }
+
+  setupVisibilityDetection() {
+    if (typeof document === 'undefined' || !document.addEventListener) return;
+    
+    this.visibilityHandler = () => {
+      const isVisible = !document.hidden;
+      
+      if (isVisible && !this.isPageVisible) {
+        console.log('👁️ Page visible - resuming connection');
+        this.isPageVisible = true;
+        if (!this.isConnected) {
+          this.connect();
+          this.forceRefresh();
+        }
+      } else if (!isVisible && this.isPageVisible) {
+        console.log('👁️ Page hidden - pausing connection');
+        this.isPageVisible = false;
+        this.pauseConnection();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  pauseConnection() {
+    if (this.heartbeatCheckInterval) {
+      clearInterval(this.heartbeatCheckInterval);
+      this.heartbeatCheckInterval = null;
+    }
+    
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+      this.isConnected = false;
+    }
   }
 
   on(eventType, callback) {
@@ -268,6 +308,11 @@ class GameClient {
   }
 
   connect() {
+    if (!this.isPageVisible) {
+      console.log('👁️ Page hidden - connection deferred');
+      return;
+    }
+    
     let sseUrl = `/app/sse-stream.php?game_id=${encodeURIComponent(this.gameId)}`;
     if (this.playerId) {
       sseUrl += `&player_id=${encodeURIComponent(this.playerId)}`;
@@ -408,6 +453,8 @@ class GameClient {
     }
     
     this.heartbeatCheckInterval = setInterval(() => {
+      if (!this.isPageVisible) return;
+      
       const timeSinceLastMessage = Date.now() - this.lastMessageTime;
       
       if (timeSinceLastMessage > getCommConfig('MESSAGE_TIMEOUT') && this.isConnected) {
@@ -418,6 +465,11 @@ class GameClient {
   }
 
   handleReconnect() {
+    if (!this.isPageVisible) {
+      console.log('👁️ Page hidden - reconnect deferred');
+      return;
+    }
+    
     if (this.reconnectAttempts >= getCommConfig('RECONNECT_MAX_ATTEMPTS')) {
       console.error(`[ERROR] Max reconnect attempts reached (${this.reconnectAttempts})`);
       this.emit('connection:failed', { attempts: this.reconnectAttempts });
@@ -450,6 +502,11 @@ class GameClient {
     }
     
     this.eventListeners.clear();
+    
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
     
     if (this.eventSource) {
       this.eventSource.close();
