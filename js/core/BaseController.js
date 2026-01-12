@@ -68,16 +68,17 @@ class BaseController {
         return;
       }
 
-      const roundStartedAt = Number(this.gameState.round_started_at);
+      const roundEndsAt = Number(this.gameState.round_ends_at);
       const roundDuration = Number(this.gameState.round_duration);
 
-      if (!roundStartedAt || !roundDuration) {
+      if (!roundEndsAt || !roundDuration) {
         this.view.updateTimer(undefined, undefined);
         this.timerRAFId = requestAnimationFrame(timerLoop);
         return;
       }
 
-      const remaining = GameTimer.getRemaining(roundStartedAt, roundDuration);
+      const nowServer = timeSync.getServerTime();
+      const remaining = Math.max(0, roundEndsAt - nowServer);
 
       this.view.updateTimer(remaining, roundDuration);
 
@@ -103,7 +104,7 @@ class BaseController {
     this.setTimerHurryUp(false);
   }
 
-  runCountdown(roundStartsAt, countdownDuration, onComplete) {
+  runCountdown(countdownStartsAt, countdownDurationMs, onComplete) {
     if (!this.view || !this.view.elements) {
       throw new Error('View not initialized before runCountdown');
     }
@@ -116,8 +117,8 @@ class BaseController {
 
     const update = () => {
       const nowServer = timeSync.getServerTime();
-      const elapsed = nowServer - roundStartsAt;
-      const remaining = Math.max(0, countdownDuration - elapsed);
+      const elapsed = nowServer - countdownStartsAt;
+      const remaining = Math.max(0, countdownDurationMs - elapsed);
       const seconds = Math.ceil(remaining / 1000);
 
       this.view.updateCountdownNumber(seconds);
@@ -136,11 +137,17 @@ class BaseController {
   }
 
   showCountdown(state) {
-    debug('⏳ Iniciando countdown', 'debug');
-    const countdownDuration = state.countdown_duration || 4000;
+    const countdownStartsAt = Number(state.countdown_starts_at);
+    const countdownDurationSeconds = Number(state.countdown_duration) || 5;
+    const countdownDurationMs = countdownDurationSeconds * 1000;
+
+    if (!countdownStartsAt || !countdownDurationMs) {
+      debug('⏳ Countdown inválido - valores faltantes', null, 'warn');
+      return Promise.resolve();
+    }
 
     return new Promise((resolve) => {
-      this.runCountdown(state.round_starts_at, countdownDuration, resolve);
+      this.runCountdown(countdownStartsAt, countdownDurationMs, resolve);
     });
   }
 
