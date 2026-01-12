@@ -413,7 +413,7 @@ class HostManager extends BaseController {
     if (!state.players) return;
 
     this.currentPlayers = Object.values(state.players);
-    this.view.updatePlayerList(state.players);
+    this.view.updatePlayerList(state.players, state.status);
   }
 
   checkAutoGameFlow(state) {
@@ -449,11 +449,6 @@ class HostManager extends BaseController {
 
   async handleRemovePlayer(playerId) {
     if (!this.client || !playerId || !this.gameState) return;
-
-    if (this.gameState.status !== 'waiting') {
-      showNotification('⚠️ Solo se puede expulsar en la fase de espera', 'warning');
-      return;
-    }
 
     const player = this.gameState.players[playerId];
     const playerName = player ? player.name : 'este jugador';
