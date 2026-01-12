@@ -547,7 +547,7 @@
     background: rgba(34, 197, 94, 0.3);
 }
 
-/* ========== AURA UTILITY CLASSES ========== */
+/* ========== AURA UTILITY CLASSES (GLOBAL, USED EVERYWHERE) ========== */
 .aura-gradient {
     background: var(--aura-gradient, linear-gradient(135deg, #FF0055 0%, #00F0FF 100%));
 }
@@ -572,118 +572,7 @@
     background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%);
 }
 
-/* ========== PLAYER SQUARCLE ========== */
-.player-squarcle {
-    position: relative;
-    width: 8em;
-    max-width: 46%;
-    aspect-ratio: 1;
-    border-radius: var(--radius-card);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px;
-    backdrop-filter: blur(8px);
-    border: 2px solid rgba(255, 255, 255, 0.16);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    cursor: default;
-    justify-self: center;
-    overflow: hidden;
-}
-
-.player-squarcle::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 55%);
-    pointer-events: none;
-}
-
-.player-squarcle:hover {
-    transform: translateY(-4px);
-    border-color: rgba(255, 255, 255, 0.24);
-}
-
-.player-initial {
-    font-size: 32px;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.92);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.player-status-icon {
-    font-size: 18px;
-}
-
-.player-name-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.85);
-    text-align: center;
-    word-break: break-word;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-}
-
-.btn-remove-player {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.8);
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: all 0.3s ease;
-    z-index: 2;
-}
-
-.player-squarcle:hover .btn-remove-player {
-    opacity: 1;
-}
-
-.btn-remove-player:hover {
-    background: rgba(239, 68, 68, 1);
-    transform: scale(1.1);
-}
-
-/* ========== SQUARCLE STATUS COLORS ========== */
-.player-squarcle.status-connected {
-    box-shadow: 0 0 16px #808080, 0 0 32px #808080;
-}
-
-.player-squarcle.status-ready {
-    box-shadow: 0 0 24px #00FF88, 0 0 48px #00FF88, inset 0 0 24px rgba(0, 255, 136, 0.2);
-    animation: selectPulse 0.8s ease-in-out infinite;
-}
-
-.player-squarcle.status-answered {
-    box-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700;
-}
-
-.player-squarcle.status-waiting {
-    box-shadow: 0 0 16px #00F0FF, 0 0 32px #00F0FF;
-}
-
-.player-squarcle.status-disconnected {
-    opacity: 0.5;
-    box-shadow: 0 0 0 0;
-    filter: grayscale(100%);
-}
-
-/* ========== AURA SELECTOR ========== */
+/* ========== AURA SELECTOR (GLOBAL, USED IN MODALS) ========== */
 .aura-selector {
     display: flex;
     justify-content: center;
@@ -730,7 +619,7 @@
     border-color: rgba(255, 255, 255, 0.9);
 }
 
-/* ========== TIMER DISPLAY - UNIFIED ========== */
+/* ========== TIMER & COUNTDOWN (GLOBAL, USED IN MULTIPLE VIEWS) ========== */
 .tc-timer {
     font-family: var(--font-mono);
     font-weight: 700;
@@ -753,7 +642,6 @@
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.50);
 }
 
-/* ========== COUNTDOWN OVERLAY - UNIFIED ========== */
 .countdown-overlay {
     position: fixed;
     top: 0;
@@ -779,7 +667,7 @@
     animation: pulse-countdown 1s infinite;
 }
 
-/* ========== WORD DISPLAY COMPONENTS ========== */
+/* ========== WORD DISPLAY (GLOBAL) ========== */
 .current-word {
     font-size: 48px;
     font-weight: 700;
@@ -1231,14 +1119,6 @@
     .modal-buttons .btn-modal-primary {
         padding: 10px 16px;
         font-size: 12px;
-    }
-
-    .player-initial {
-        font-size: 24px;
-    }
-
-    .player-name-label {
-        font-size: 11px;
     }
 
     .aura-selector {
