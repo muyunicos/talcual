@@ -1,26 +1,11 @@
 class SettingsModal {
     constructor() {
-        this.settings = {};
-        this.openedFrom = null;
         this.gameId = null;
         this.activeTab = 'general';
-        this._unsubscribeConfig = null;
-    }
-
-    getDefaults() {
-        return configManager.getAllDefaults();
     }
 
     buildFormHTML() {
-        const s = this.settings;
-        const defaults = this.getDefaults();
-        const minPlayers = s.min_players !== undefined ? s.min_players : defaults.min_players;
-        const maxPlayers = s.max_players !== undefined ? s.max_players : defaults.max_players;
-        const roundDuration = s.round_duration !== undefined ? s.round_duration : defaults.round_duration;
-        const totalRounds = s.total_rounds !== undefined ? s.total_rounds : defaults.total_rounds;
-        const startCountdown = s.start_countdown !== undefined ? s.start_countdown : defaults.start_countdown;
-        const hurryUpThreshold = s.hurry_up_threshold !== undefined ? s.hurry_up_threshold : defaults.hurry_up_threshold;
-        const maxWordsPerPlayer = s.max_words_per_player !== undefined ? s.max_words_per_player : defaults.max_words_per_player;
+        const config = configManager.getAll();
 
         return `
             <div class="settings-form">
@@ -40,13 +25,13 @@ class SettingsModal {
                             </div>
                             <div class="settings-dual-range">
                                 <input type="range" id="min-players" class="settings-range-min" 
-                                       min="1" max="20" value="${minPlayers}">
+                                       min="1" max="20" value="${config.min_players}">
                                 <input type="range" id="max-players" class="settings-range-max" 
-                                       min="1" max="20" value="${maxPlayers}">
+                                       min="1" max="20" value="${config.max_players}">
                                 <div class="settings-range-display">
-                                    <span class="settings-value-mini" id="min-players-display">${minPlayers}</span>
+                                    <span class="settings-value-mini" id="min-players-display">${config.min_players}</span>
                                     <span class="settings-range-divider">-</span>
-                                    <span class="settings-value-mini" id="max-players-display">${maxPlayers}</span>
+                                    <span class="settings-value-mini" id="max-players-display">${config.max_players}</span>
                                 </div>
                             </div>
                             <small class="settings-hint">Mínimo 1-20 Máximo</small>
@@ -61,8 +46,8 @@ class SettingsModal {
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="max-words-per-player" class="settings-slider" 
-                                       min="1" max="8" value="${maxWordsPerPlayer}">
-                                <span class="settings-value-display" id="max-words-per-player-display">${maxWordsPerPlayer}</span>
+                                       min="1" max="8" value="${config.max_words_per_player}">
+                                <span class="settings-value-display" id="max-words-per-player-display">${config.max_words_per_player}</span>
                             </div>
                             <small class="settings-hint">Límite de palabras (1-8)</small>
                         </div>
@@ -76,8 +61,8 @@ class SettingsModal {
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="total-rounds" class="settings-slider" 
-                                       min="1" max="8" value="${totalRounds}">
-                                <span class="settings-value-display" id="total-rounds-display">${totalRounds}</span>
+                                       min="1" max="8" value="${config.total_rounds}">
+                                <span class="settings-value-display" id="total-rounds-display">${config.total_rounds}</span>
                             </div>
                             <small class="settings-hint">Rondas en partida (1-8)</small>
                         </div>
@@ -93,8 +78,8 @@ class SettingsModal {
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="round-duration" class="settings-slider" 
-                                       min="30" max="120" step="10" value="${roundDuration}">
-                                <span class="settings-value-display" id="round-duration-display">${roundDuration}s</span>
+                                       min="30" max="120" step="10" value="${config.round_duration}">
+                                <span class="settings-value-display" id="round-duration-display">${config.round_duration}s</span>
                             </div>
                             <small class="settings-hint">30s a 2 minutos</small>
                         </div>
@@ -108,8 +93,8 @@ class SettingsModal {
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="start-countdown" class="settings-slider" 
-                                       min="1" max="6" value="${startCountdown}">
-                                <span class="settings-value-display" id="start-countdown-display">${startCountdown}s</span>
+                                       min="1" max="6" value="${config.start_countdown}">
+                                <span class="settings-value-display" id="start-countdown-display">${config.start_countdown}s</span>
                             </div>
                             <small class="settings-hint">1-6 segundos</small>
                         </div>
@@ -123,8 +108,8 @@ class SettingsModal {
                             </div>
                             <div class="settings-input-wrapper">
                                 <input type="range" id="hurry-up-threshold" class="settings-slider" 
-                                       min="5" max="20" value="${hurryUpThreshold}">
-                                <span class="settings-value-display" id="hurry-up-threshold-display">${hurryUpThreshold}s</span>
+                                       min="5" max="20" value="${config.hurry_up_threshold}">
+                                <span class="settings-value-display" id="hurry-up-threshold-display">${config.hurry_up_threshold}s</span>
                             </div>
                             <small class="settings-hint">5-20 segundos</small>
                         </div>
@@ -134,32 +119,11 @@ class SettingsModal {
         `;
     }
 
-    openModal(context = 'normal', gameId = null, config = null) {
-        this.openedFrom = context;
+    openModal(gameId = null) {
         this.gameId = gameId;
-
-        if (config && typeof config === 'object') {
-            this.settings = { ...config };
-        } else {
-            this.settings = configManager.getAll();
-        }
-
         const formHTML = this.buildFormHTML();
-        const isCreationContext = context === 'creation';
 
-        const buttons = isCreationContext ? [
-            [
-                () => ModalSystem_Instance.close(2),
-                'Volver',
-                'btn'
-            ],
-            [
-                () => this.saveSettings(),
-                'Guardar',
-                'btn-modal-primary'
-            ]
-            
-        ] : [
+        const buttons = [
             [
                 () => ModalSystem_Instance.close(2),
                 'Cancelar',
@@ -187,51 +151,15 @@ class SettingsModal {
         });
 
         sliders.forEach(slider => {
-            slider.addEventListener('input', (e) => {
-                this.updateSliderDisplay(e.target);
-                this.broadcastChange(e.target);
-            });
+            slider.addEventListener('input', (e) => this.updateSliderDisplay(e.target));
         });
 
         dualRanges.forEach(range => {
-            range.addEventListener('input', (e) => {
-                this.updateDualRangeDisplay(e.target);
-                this.broadcastChange(e.target);
-            });
+            range.addEventListener('input', (e) => this.updateDualRangeDisplay(e.target));
         });
 
         resetBtns.forEach(btn => {
             btn.addEventListener('click', (e) => this.resetFieldToDefault(e.target.dataset.field));
-        });
-    }
-
-    broadcastChange(inputElement) {
-        if (!this.gameId) return;
-
-        const fieldId = inputElement.id;
-        const value = parseInt(inputElement.value, 10);
-        const key = this.fieldIdToKey(fieldId);
-
-        if (!key) return;
-
-        debug(`📱 Cambio detectado: ${key} = ${value}`, null, 'debug');
-
-        this.settings[key] = value;
-        configManager.set(key, value);
-
-        const payload = {
-            action: 'broadcast_config_change',
-            game_id: this.gameId,
-            field: key,
-            value: value
-        };
-
-        fetch('./app/actions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).catch(error => {
-            debug('Error broadcasting change:', error, 'warn');
         });
     }
 
@@ -299,7 +227,6 @@ class SettingsModal {
                 const defaultValue = defaults[this.fieldIdToKey(fieldId)];
                 input.value = defaultValue;
                 this.updateSliderDisplay(input);
-                this.broadcastChange(input);
             }
         });
 
@@ -330,19 +257,16 @@ class SettingsModal {
         const hurryUpThresholdInput = document.getElementById('hurry-up-threshold');
         const maxWordsPerPlayerInput = document.getElementById('max-words-per-player');
 
-        const values = {
+        return {
             min_players: parseInt(minPlayersInput?.value || 1, 10),
             max_players: parseInt(maxPlayersInput?.value || 20, 10),
-            round_duration: parseInt(roundDurationInput?.value || 120, 10),
-            total_rounds: parseInt(totalRoundsInput?.value || 3, 10),
+            round_duration: parseInt(roundDurationInput?.value || 90, 10),
+            total_rounds: parseInt(totalRoundsInput?.value || 5, 10),
             start_countdown: parseInt(startCountdownInput?.value || 5, 10),
             hurry_up_threshold: parseInt(hurryUpThresholdInput?.value || 10, 10),
             max_words_per_player: parseInt(maxWordsPerPlayerInput?.value || 6, 10),
             max_word_length: 30
         };
-
-        debug('📋 Form values extracted:', values, 'debug');
-        return values;
     }
 
     validateSettings(settings) {
@@ -374,28 +298,27 @@ class SettingsModal {
     }
 
     async saveSettings() {
+        const values = this.getFormValues();
+        const errors = this.validateSettings(values);
+
+        if (errors.length > 0) {
+            showNotification('❌ ' + errors.join(', '), 'error');
+            return;
+        }
+
+        const payload = {
+            action: 'update_config',
+            config: values
+        };
+
+        if (this.gameId) {
+            payload.game_id = this.gameId;
+        }
+
+        debug('💾 Guardando config:', values, 'debug');
+
         try {
-            const values = this.getFormValues();
-            const errors = this.validateSettings(values);
-
-            if (errors.length > 0) {
-                showNotification('❌ ' + errors.join(', '), 'error');
-                return;
-            }
-
-            const url = new URL('./app/actions.php', window.location.href);
-            const payload = {
-                action: 'update_config',
-                config: values
-            };
-
-            if (this.gameId) {
-                payload.game_id = this.gameId;
-            }
-
-            debug('💾 Guardando config:', values, 'debug');
-
-            const response = await fetch(url.toString(), {
+            const response = await fetch('./app/actions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -412,8 +335,7 @@ class SettingsModal {
             }
 
             configManager.syncFromObject(values);
-            this.settings = values;
-            debug('✅ Configuración guardada correctamente:', values, 'success');
+            debug('✅ Configuración guardada correctamente', null, 'success');
             showNotification('✅ Configuración guardada', 'success');
             ModalSystem_Instance.close(2);
         } catch (error) {
