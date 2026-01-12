@@ -376,7 +376,7 @@ html.bg-ready body::before {
     gap: 4px;
     padding: 8px;
     
-    background: rgba(30, 41, 59, 0.6);
+    background: var(--aura-gradient, linear-gradient(135deg, #FF0055 0%, #00F0FF 100%));
     backdrop-filter: blur(8px);
     border: 2px solid rgba(255, 255, 255, 0.16);
     
@@ -420,6 +420,7 @@ html.bg-ready body::before {
 
 /* === SQUARCLE STATUS COLORS (UNIFIED) === */
 .player-squarcle.status-connected {
+    background: linear-gradient(135deg, #808080 0%, #404040 100%);
     box-shadow: 0 0 16px #808080, 0 0 32px #808080;
 }
 
@@ -428,6 +429,7 @@ html.bg-ready body::before {
 }
 
 .player-squarcle.status-ready {
+    background: linear-gradient(135deg, #00FF88 0%, #00DD66 100%);
     box-shadow: 0 0 24px #00FF88, 0 0 48px #00FF88, inset 0 0 24px rgba(0, 255, 136, 0.2);
     animation: selectPulse 0.8s ease-in-out infinite;
 }
@@ -438,6 +440,7 @@ html.bg-ready body::before {
 }
 
 .player-squarcle.status-answered {
+    background: linear-gradient(135deg, #FFD700 0%, #FFC000 100%);
     box-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700;
 }
 
@@ -446,6 +449,7 @@ html.bg-ready body::before {
 }
 
 .player-squarcle.status-waiting {
+    background: linear-gradient(135deg, #00F0FF 0%, #00DDDD 100%);
     box-shadow: 0 0 16px #00F0FF, 0 0 32px #00F0FF;
 }
 
@@ -468,15 +472,9 @@ html.bg-ready body::before {
     font-weight: 700;
     color: #ffffff;
     text-shadow: 
-        0 2px 4px rgba(0, 0, 0, 0.5),
-        0 4px 8px rgba(0, 0, 0, 0.35),
-        0 1px 2px rgba(0, 0, 0, 0.6);
-    background: var(--aura-gradient, linear-gradient(135deg, #FF0055 0%, #00F0FF 100%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4)) 
-            drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+        0 2px 4px rgba(0, 0, 0, 0.6),
+        0 4px 8px rgba(0, 0, 0, 0.4);
+    background: transparent;
 }
 
 .player-name-label {
