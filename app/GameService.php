@@ -274,7 +274,7 @@ class GameService {
         }
 
         if ($state['status'] !== 'waiting') {
-            throw new Exception('Can only kick players during waiting phase');
+            throw new Exception('Cannot kick during active round');
         }
 
         if (!isset($state['players'][$playerId])) {
