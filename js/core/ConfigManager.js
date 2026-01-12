@@ -101,9 +101,17 @@ class ConfigManager {
         let hasChanges = false;
 
         for (const [stateKey, configKey] of Object.entries(mapping)) {
-            if (gameState[stateKey] !== undefined && this.config[configKey] !== gameState[stateKey]) {
-                updates[configKey] = gameState[stateKey];
-                hasChanges = true;
+            if (gameState[stateKey] !== undefined) {
+                let value = gameState[stateKey];
+
+                if (stateKey === 'round_duration' && value > 1000) {
+                    value = Math.round(value / 1000);
+                }
+
+                if (this.config[configKey] !== value) {
+                    updates[configKey] = value;
+                    hasChanges = true;
+                }
             }
         }
 
