@@ -64,6 +64,7 @@ class BaseController {
 
     const timerLoop = () => {
       if (!this.gameState || this.gameState.status !== 'playing') {
+        this.timerRAFId = requestAnimationFrame(timerLoop);
         return;
       }
 
