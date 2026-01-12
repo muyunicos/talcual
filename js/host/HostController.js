@@ -416,14 +416,14 @@ class HostManager extends BaseController {
     const notReadyCount = activePlayers.length - readyPlayers.length;
 
     if (notReadyCount === 1 && !this.hurryUpActive) {
-      const remaining = GameTimer.getRemaining(
-        state.round_starts_at,
-        state.round_duration
-      );
+      const roundStartsAt = Number(state.round_starts_at);
+      const nowServer = timeSync.getServerTime();
+      const roundEndsAt = Number(state.round_ends_at);
+      const remaining = roundEndsAt - nowServer;
 
       const threshold = (configManager.get('hurry_up_threshold', 10) + 2) * 1000;
 
-      if (remaining > threshold) {
+      if (remaining > threshold && nowServer >= roundStartsAt) {
         debug('🔫 Solo 1 jugador falta - Auto-Remate', null, 'info');
         this.activateHurryUp();
       }
@@ -463,14 +463,14 @@ class HostManager extends BaseController {
     const readyCount = (this.currentPlayers || []).filter(p => p.status === 'ready').length;
     this.view.showPlayingState(state, readyCount);
 
-    if (state.countdown_starts_at) {
+    if (state.round_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
+      const roundStartsAt = Number(state.round_starts_at);
       const countdownDurationMs = Number(state.countdown_duration) || 5000;
-      const elapsed = nowServer - state.countdown_starts_at;
 
-      if (elapsed < countdownDurationMs) {
-        debug('⏳ Detectado countdown activo desde update', null, 'info');
+      if (nowServer < roundStartsAt) {
+        debug('⏳ Countdown aun sin terminar', null, 'info');
         await this.showCountdown(state);
       }
     }
@@ -597,10 +597,10 @@ class HostManager extends BaseController {
     
     if (state.round_results) {
       this.view.showRoundResultsComponent(state.round_results, state.players, this.roundTopWords);
-      debug('🎆 Resultados mostrados al host desde state.round_results', null, 'success');
+      debug('🌆 Resultados mostrados al host desde state.round_results', null, 'success');
     } else if (this.roundResults) {
       this.view.showRoundResultsComponent(this.roundResults, state.players, this.roundTopWords);
-      debug('🎆 Resultados mostrados al host desde local roundResults', null, 'success');
+      debug('🌆 Resultados mostrados al host desde local roundResults', null, 'success');
     }
   }
 
