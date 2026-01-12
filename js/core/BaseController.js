@@ -68,6 +68,7 @@ class BaseController {
         return;
       }
 
+      const roundStartsAt = Number(this.gameState.round_starts_at);
       const roundEndsAt = Number(this.gameState.round_ends_at);
       const roundDuration = Number(this.gameState.round_duration);
 
@@ -78,9 +79,13 @@ class BaseController {
       }
 
       const nowServer = timeSync.getServerTime();
-      const remaining = Math.max(0, roundEndsAt - nowServer);
 
-      this.view.updateTimer(remaining, roundDuration);
+      if (nowServer < roundStartsAt) {
+        this.view.updateTimer(undefined, undefined);
+      } else {
+        const remaining = Math.max(0, roundEndsAt - nowServer);
+        this.view.updateTimer(remaining, roundDuration);
+      }
 
       this.checkRoundTimeout();
 
@@ -113,11 +118,22 @@ class BaseController {
       cancelAnimationFrame(this.countdownRAFId);
     }
 
+    const nowServer = timeSync.getServerTime();
+    const timeToRoundStart = roundStartsAt - nowServer;
+
+    if (timeToRoundStart <= 0) {
+      this.view.hideCountdownOverlay();
+      if (typeof onComplete === 'function') {
+        onComplete();
+      }
+      return;
+    }
+
     this.view.showCountdownOverlay();
 
     const update = () => {
-      const nowServer = timeSync.getServerTime();
-      const remaining = Math.max(0, roundStartsAt - nowServer);
+      const now = timeSync.getServerTime();
+      const remaining = Math.max(0, roundStartsAt - now);
       const seconds = Math.ceil(remaining / 1000);
 
       this.view.updateCountdownNumber(seconds);
@@ -163,7 +179,7 @@ class BaseController {
   }
 
   destroy() {
-    debug('🧶 Destroying controller...', null, 'info');
+    debug('🧊 Destroying controller...', null, 'info');
     this.stopTimer();
 
     if (this.client) {
