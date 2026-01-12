@@ -104,8 +104,10 @@ class ConfigManager {
             if (gameState[stateKey] !== undefined) {
                 let value = gameState[stateKey];
 
-                if (stateKey === 'round_duration' && value > 1000) {
-                    value = Math.round(value / 1000);
+                if (stateKey === 'round_duration') {
+                    if (value >= 1000) {
+                        value = Math.round(value / 1000);
+                    }
                 }
 
                 if (this.config[configKey] !== value) {
