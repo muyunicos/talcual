@@ -193,35 +193,18 @@ class PlayerView {
   }
 
   updateTimer(remaining, totalDuration) {
-    if (remaining === null || remaining === undefined || totalDuration === null || totalDuration === undefined) {
-      this.elements.headerTimer.textContent = '⏳ --:--';
-      this.elements.headerTimer.style.opacity = '1';
-      return;
-    }
-
-    if (remaining < 0) {
-      remaining = 0;
-    }
-
-    this.elements.headerTimer.style.opacity = '1';
-    const totalSeconds = Math.ceil(remaining / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-    this.elements.headerTimer.textContent = `⏳ ${timeStr}`;
+    SharedUIManager.updateTimerDisplay(this.elements.headerTimer, remaining, totalDuration);
   }
 
   clearTimer() {
-    this.elements.headerTimer.textContent = '⏳ 00:00';
-    this.elements.headerTimer.style.opacity = '1';
+    SharedUIManager.clearTimerDisplay(this.elements.headerTimer);
   }
 
   showWaitingState() {
     safeHideElement(this.elements.currentWord);
     safeHideElement(this.elements.categoryLabel);
     safeShowElement(this.elements.waitingMessage);
-    this.elements.waitingMessage.textContent = 'El anfitríon iniciará la ronda pronto';
+    this.elements.waitingMessage.textContent = 'El anfitrión iniciará la ronda pronto';
     safeHideElement(this.elements.wordsInputSection);
     safeHideElement(this.elements.resultsSection);
     safeHideElement(this.elements.countdownOverlay);
@@ -318,7 +301,7 @@ class PlayerView {
 
   updateFinishButtonText(wordCount) {
     if (wordCount === this.maxWords) {
-      this.elements.btnSubmit.textContent = '✍️ ENVíAR';
+      this.elements.btnSubmit.textContent = '✍️ ENVÍAR';
     } else {
       this.elements.btnSubmit.textContent = '✍️ PASO';
     }
@@ -327,7 +310,7 @@ class PlayerView {
   getMatchTypeLabel(type) {
     const labels = {
       'EXACTA': '🌟 Match!',
-      'SINONIMO': '🥄 Ponele!',
+      'SINONIMO': '🤄 Ponele!',
       'SIMILAR': '📈 Casi!'
     };
     return labels[type] || type;
@@ -379,21 +362,15 @@ class PlayerView {
   }
 
   showCountdownOverlay() {
-    safeShowElement(this.elements.countdownOverlay);
+    SharedUIManager.showCountdownOverlay(this.elements.countdownOverlay);
   }
 
   hideCountdownOverlay() {
-    safeHideElement(this.elements.countdownOverlay);
+    SharedUIManager.hideCountdownOverlay(this.elements.countdownOverlay);
   }
 
   updateCountdownNumber(seconds) {
-    if (seconds > 3) {
-      this.elements.countdownNumber.textContent = '¿Preparado?';
-    } else if (seconds > 0) {
-      this.elements.countdownNumber.textContent = seconds.toString();
-    } else {
-      this.elements.countdownNumber.textContent = '';
-    }
+    SharedUIManager.updateCountdownNumber(this.elements.countdownNumber, seconds);
   }
 
   showEditNameModal(currentName, currentColor, onSave) {
