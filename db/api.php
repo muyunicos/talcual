@@ -678,6 +678,21 @@ class DatabaseManager {
         return $players;
     }
 
+    public function getPlayerById($gameId, $playerId) {
+        $stmt = $this->pdo->prepare('SELECT id, game_id, name, aura, status, score, round_history, answers, last_heartbeat
+                FROM players WHERE game_id = ? AND id = ? LIMIT 1');
+        $stmt->execute([$gameId, $playerId]);
+        $player = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($player) {
+            $player['score'] = (int)$player['score'];
+            $player['round_history'] = $player['round_history'] ? json_decode($player['round_history'], true) : [];
+            $player['answers'] = !empty($player['answers']) ? explode(',', $player['answers']) : [];
+        }
+        
+        return $player;
+    }
+
     public function deleteGame($gameId) {
         $this->pdo->prepare('DELETE FROM players WHERE game_id = ?')->execute([$gameId]);
         $stmt = $this->pdo->prepare('DELETE FROM games WHERE id = ?');
@@ -878,7 +893,9 @@ function handleGet($db, $action) {
             'get-games' => respondSuccess('Games loaded', $db->getGames()),
             'get-games-by-original' => respondSuccess('Chained games loaded', $db->getGamesByOriginalId($_GET['original_id'] ?? '')),
             'get-game' => respondSuccess('Game loaded', $db->getGameById($_GET['id'] ?? '')),
+            'get-game-raw' => respondSuccess('Game raw data loaded', $db->getGameById($_GET['id'] ?? '')),
             'get-game-players' => respondSuccess('Players loaded', $db->getGamePlayers($_GET['game_id'] ?? '')),
+            'get-player-raw' => respondSuccess('Player raw data loaded', $db->getPlayerById($_GET['game_id'] ?? '', $_GET['player_id'] ?? '')),
             'inspect' => respondSuccess('Inspection completed', $db->getInspectionData()),
             'deep-inspect' => respondSuccess('Deep inspection completed', $db->getDeepInspection()),
             default => respondError('Unknown GET action: ' . $action)
