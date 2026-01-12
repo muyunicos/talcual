@@ -469,7 +469,7 @@ class HostManager extends BaseController {
       const roundStartsAt = Number(state.round_starts_at);
 
       if (nowServer < roundStartsAt) {
-        debug('⏳ Iniciando countdown', null, 'info');
+        debug('⏳ Iniciando countdown en HOST', null, 'info');
         await this.showCountdown(state);
       }
     }
