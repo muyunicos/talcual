@@ -184,26 +184,4 @@ const StorageManager = {
     }
 };
 
-class GameTimer {
-    static getRemaining(roundStartedAt, roundDuration) {
-        if (!roundStartedAt || !roundDuration) return null;
-        const now = timeSync.getServerTime();
-        const elapsed = now - roundStartedAt;
-        const remaining = Math.max(0, roundDuration - elapsed);
-        return remaining;
-    }
-
-    static updateDisplay(remaining, element, icon = '⏳') {
-        if (!element) return;
-        if (remaining === null || remaining === undefined) {
-            element.textContent = `${icon} --:--`;
-            return;
-        }
-        const seconds = Math.ceil(remaining / 1000);
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        element.textContent = `${icon} ${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-}
-
 console.log('%c✅ Utils.js', 'color: #00aa00; font-weight: bold');
