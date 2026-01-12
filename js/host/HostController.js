@@ -623,7 +623,7 @@ class HostManager extends BaseController {
 
   onRoundTimeout() {
     if (!this.roundEnded) {
-      debug('⏰ Tiempo agotado - Host finalizando ronda...', null, 'info');
+      debug('⏰ Timeout ejecutado - Host finalizando ronda', null, 'info');
       this.roundEnded = true;
       this.endRound();
     }
