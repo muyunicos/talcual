@@ -485,15 +485,6 @@ class GameClient {
           this.gameState = result.state;
           this.lastMessageHash = JSON.stringify(result.state);
           this.lastMessageTime = Date.now();
-          
-          if (this.onStateUpdate) {
-            try {
-              this.onStateUpdate(result.state);
-            } catch (err) {
-              console.error('[ERROR] onStateUpdate callback:', err);
-            }
-          }
-          this.emit('state:update', result.state);
         }
       }
       
