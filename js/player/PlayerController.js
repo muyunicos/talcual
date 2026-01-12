@@ -262,11 +262,25 @@ class PlayerManager extends BaseController {
         }
         this.loadGameScreen(result.state || {});
       } else {
-        showNotification('❌ ' + (result.message || 'Error'), 'error');
+        const errorMessage = result.message || '';
+        
+        if (errorMessage.includes('HTTP 404') || errorMessage.includes('not found') || errorMessage.includes('No encontrado')) {
+          showNotification('❌ Sala no encontrada', 'error');
+        } else if (errorMessage.includes('HTTP 400') || errorMessage.includes('full') || errorMessage.includes('llena')) {
+          showNotification('❌ ' + errorMessage.replace(/Network error: HTTP \d+: ?/i, ''), 'error');
+        } else {
+          showNotification('❌ ' + (errorMessage || 'Error de conexión'), 'error');
+        }
       }
     } catch (error) {
       debug('Error uniéndose:', error, 'error');
-      showNotification('❌ Error de conexión', 'error');
+      const errorMessage = error.message || '';
+      
+      if (errorMessage.includes('HTTP 404') || errorMessage.includes('not found')) {
+        showNotification('❌ Sala no encontrada', 'error');
+      } else {
+        showNotification('❌ Error de conexión', 'error');
+      }
     }
   }
 
