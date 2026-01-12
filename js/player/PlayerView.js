@@ -193,23 +193,17 @@ class PlayerView {
   }
 
   updateTimer(remaining, totalDuration) {
-    if (remaining === null || remaining === undefined) {
+    if (remaining === null || remaining === undefined || totalDuration === null || totalDuration === undefined) {
       this.elements.headerTimer.textContent = '⏳ --:--';
       this.elements.headerTimer.style.opacity = '1';
       return;
     }
 
-    if (remaining > totalDuration) {
-      this.elements.headerTimer.style.opacity = '0';
-      return;
-    }
-
-    this.elements.headerTimer.style.opacity = '1';
-
     if (remaining < 0) {
       remaining = 0;
     }
 
+    this.elements.headerTimer.style.opacity = '1';
     const totalSeconds = Math.ceil(remaining / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
