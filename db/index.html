@@ -1028,7 +1028,7 @@
                 <div id="game-manager" class="panel">
                     <h3 style="margin-bottom: 20px;">🎮 Gestor de Partidas en Vivo</h3>
                     <div class="alert alert-info">
-                        ℹ️ Visualiza y gestiona partidas activas. Puedes eliminar jugadores o partidas completas.
+                        ℹ️ Visualiza y gestiona partidas activas. Puedes ver datos raw, eliminar jugadores o partidas completas.
                     </div>
                     
                     <div class="game-grid">
@@ -1608,7 +1608,7 @@
                                             <td>${p.status}</td>
                                             <td>
                                                 <div class="player-actions" style="justify-content: center;">
-                                                    <button class="cascade-item-btn-raw" style="width: 28px; height: 28px;" onclick="viewPlayerRaw('${gameId}', '${p.id}')" title="Ver raw">📋</button>
+                                                    <button class="cascade-item-btn-raw" style="width: 28px; height: 28px;" onclick="viewPlayerRaw('${gameId}', '${p.id}')" title="Ver raw JSON">📋</button>
                                                     <button class="cascade-item-btn-delete" style="width: 28px; height: 28px;" onclick="confirmDeletePlayer('${gameId}', '${p.id}')" title="Eliminar">🗑️</button>
                                                 </div>
                                             </td>
