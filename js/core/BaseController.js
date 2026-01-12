@@ -138,8 +138,7 @@ class BaseController {
 
   showCountdown(state) {
     const countdownStartsAt = Number(state.countdown_starts_at);
-    const countdownDurationSeconds = Number(state.countdown_duration) || 5;
-    const countdownDurationMs = countdownDurationSeconds * 1000;
+    const countdownDurationMs = Number(state.countdown_duration) || 5000;
 
     if (!countdownStartsAt || !countdownDurationMs) {
       debug('⏳ Countdown inválido - valores faltantes', null, 'warn');
