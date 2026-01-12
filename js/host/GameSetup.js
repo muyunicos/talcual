@@ -273,8 +273,7 @@ class CreateGameModal {
             return;
         }
 
-        const config = configManager.getAll();
-        window.settingsModal.openModal('creation', null, config);
+        window.settingsModal.openModal();
     }
 
     async handleCreateClick() {
