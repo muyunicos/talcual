@@ -148,11 +148,6 @@ class HostView {
       return;
     }
 
-    if (remaining > totalDuration) {
-      this.elements.headerTimer.style.opacity = '0';
-      return;
-    }
-
     this.elements.headerTimer.style.opacity = '1';
 
     if (remaining < 0) {
