@@ -180,6 +180,8 @@ class HostView {
     const total = state.players ? Object.keys(state.players).length : 0;
     this.elements.statusMessage.textContent = `🎮 Jugando... (${readyCount}/${total} listos)`;
 
+    safeHideElement(this.elements.countdownOverlay);
+
     this.setStartButtonState('playing');
     this.setHurryUpButtonState('active');
   }
