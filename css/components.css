@@ -488,14 +488,14 @@
 .btn-modal-primary {
     flex: 1;
     padding: var(--space-md) var(--space-base);
-    border: none;
+    border: 2px solid rgba(0, 240, 255, 0.5);
     border-radius: var(--radius-sm);
     font-family: var(--font-primary);
     font-weight: 700;
     cursor: pointer;
     transition: all var(--transition-normal);
-    box-shadow: var(--sombra-media);
-    background: var(--amarillo);
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.25), var(--sombra-media);
+    background: rgba(0, 240, 255, 0.85);
     color: #000;
     font-size: 16px;
     text-transform: uppercase;
@@ -503,15 +503,18 @@
 }
 
 .btn-modal-primary:hover:not(:disabled) {
-    background: rgba(34, 197, 94, 0.4);
-    border-color: rgba(34, 197, 94, 0.6);
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+    background: rgba(0, 240, 255, 0.95);
+    border-color: rgba(0, 240, 255, 0.8);
+    box-shadow: 0 0 28px rgba(0, 240, 255, 0.45);
     transform: translateY(-2px);
 }
 
 .btn-modal-primary:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
+    background: rgba(100, 116, 139, 0.3);
+    border-color: rgba(100, 116, 139, 0.4);
+    box-shadow: none;
 }
 
 .modal-buttons {
@@ -535,16 +538,6 @@
 .modal-buttons .btn:hover {
     border-color: rgba(139, 92, 246, 0.6);
     background: rgba(139, 92, 246, 0.2);
-}
-
-.modal-buttons .btn-modal-primary {
-    border-color: rgba(34, 197, 94, 0.3);
-    background: rgba(34, 197, 94, 0.2);
-}
-
-.modal-buttons .btn-modal-primary:hover {
-    border-color: rgba(34, 197, 94, 0.6);
-    background: rgba(34, 197, 94, 0.3);
 }
 
 /* ========== AURA UTILITY CLASSES (GLOBAL, USED EVERYWHERE) ========== */
