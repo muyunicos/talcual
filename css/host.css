@@ -466,13 +466,17 @@ html.bg-ready body::before {
     z-index: 2;
     font-size: clamp(24px, 5vw, 36px);
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.5),
+        0 4px 8px rgba(0, 0, 0, 0.35),
+        0 1px 2px rgba(0, 0, 0, 0.6);
     background: var(--aura-gradient, linear-gradient(135deg, #FF0055 0%, #00F0FF 100%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4)) 
+            drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
 }
 
 .player-name-label {
