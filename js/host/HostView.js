@@ -99,7 +99,7 @@ class HostView {
     return `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
   }
 
-  renderPlayerCards(players) {
+  renderPlayerCards(players, showKickButtons = true) {
     if (!players) return;
 
     debug('🎨 [AURA-DEBUG] renderPlayerCards() iniciado con jugadores:', Object.keys(players), 'info');
@@ -131,9 +131,13 @@ class HostView {
 
       debug(`🎨 [AURA] Player ${pid}: finalStyle = "${auraStyle}"`, null, 'debug');
 
+      const kickButtonHtml = showKickButtons
+        ? `<button class="btn-remove-player" data-player-id="${pid}" aria-label="Expulsar ${name}" type="button">&times;</button>`
+        : '';
+
       return `
         <div class="player-squarcle ${status}" data-player-id="${pid}" title="${name}" ${auraStyle}>
-          <button class="btn-remove-player" data-player-id="${pid}" aria-label="Expulsar ${name}" type="button">&times;</button>
+          ${kickButtonHtml}
           <div class="player-initial">
             ${initial}
           </div>
@@ -167,10 +171,11 @@ class HostView {
     SharedUIManager.clearTimerDisplay(this.elements.headerTimer);
   }
 
-  updatePlayerList(players) {
+  updatePlayerList(players, gameStatus = 'waiting') {
     debug('📊 [LIST-DEBUG] updatePlayerList() llamado', null, 'info');
     this.leaderboard.updateList(players);
-    this.renderPlayerCards(players);
+    const showKickButtons = gameStatus === 'waiting';
+    this.renderPlayerCards(players, showKickButtons);
   }
 
   showWaitingState(playerCount, minPlayers = 1) {
