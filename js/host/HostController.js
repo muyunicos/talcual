@@ -204,6 +204,11 @@ class HostManager extends BaseController {
       this.client.forceRefresh();
     });
 
+    this.client.on('event:player_kicked', (data) => {
+      debug('⚡ Jugador expulsado detectado:', data, 'info');
+      this.client.forceRefresh();
+    });
+
     this.client.on('event:player_updated', (data) => {
       debug('⚡ Jugador actualizado detectado:', data, 'info');
       this.client.forceRefresh();
@@ -443,21 +448,29 @@ class HostManager extends BaseController {
   }
 
   async handleRemovePlayer(playerId) {
-    if (!this.client || !playerId) return;
+    if (!this.client || !playerId || !this.gameState) return;
 
-    const confirmed = window.confirm('¿Expulsar a este jugador de la sala?');
+    if (this.gameState.status !== 'waiting') {
+      showNotification('⚠️ Solo se puede expulsar en la fase de espera', 'warning');
+      return;
+    }
+
+    const player = this.gameState.players[playerId];
+    const playerName = player ? player.name : 'este jugador';
+
+    const confirmed = window.confirm(`¿Expulsar a ${playerName} de la sala?`);
     if (!confirmed) return;
 
     try {
-      debug(`💪 Expulsando jugador: ${playerId}`, null, 'info');
-      const result = await this.client.sendAction('leave_game', { player_id: playerId });
+      debug(`🚫 Expulsando jugador: ${playerId}`, null, 'info');
+      const result = await this.client.sendAction('kick_player', { player_id: playerId });
 
       if (result.success) {
         debug(`✅ Jugador ${playerId} expulsado`, null, 'success');
         showNotification('👋 Jugador expulsado', 'success');
       } else {
-        debug(`❌ Error expulsando jugador: ${result.error}`, null, 'error');
-        showNotification('❌ No se pudo expulsar al jugador', 'error');
+        debug(`❌ Error expulsando jugador: ${result.message}`, null, 'error');
+        showNotification(`❌ ${result.message}`, 'error');
       }
     } catch (error) {
       debug(`Error expulsando jugador: ${error.message}`, null, 'error');
