@@ -463,7 +463,7 @@ class HostManager extends BaseController {
     const readyCount = (this.currentPlayers || []).filter(p => p.status === 'ready').length;
     this.view.showPlayingState(state, readyCount);
 
-    if (state.round_starts_at) {
+    if (state.round_starts_at && !this.countdownActive) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
       const roundStartsAt = Number(state.round_starts_at);
