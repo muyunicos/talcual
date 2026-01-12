@@ -300,14 +300,15 @@ class PlayerManager extends BaseController {
       debug('⚠️ No hay roundData.commonAnswers en estado', null, 'warning');
     }
 
-    if (state.round_starts_at) {
+    if (state.countdown_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
-      const countdownDuration = state.countdown_duration || configManager.get('start_countdown', 5) * 1000;
-      const elapsedSinceStart = nowServer - state.round_starts_at;
+      const countdownDurationSeconds = state.countdown_duration || configManager.get('start_countdown', 5);
+      const countdownDurationMs = countdownDurationSeconds * 1000;
+      const elapsedSinceCountdownStart = nowServer - state.countdown_starts_at;
       
-      if (elapsedSinceStart < countdownDuration) {
-        debug(`⏱️ Countdown aún en progreso (${countdownDuration - elapsedSinceStart}ms restantes)`, null, 'debug');
+      if (elapsedSinceCountdownStart < countdownDurationMs) {
+        debug(`⏱️ Countdown aún en progreso (${countdownDurationMs - elapsedSinceCountdownStart}ms restantes)`, null, 'debug');
         await this.showCountdown(state);
       }
     }
@@ -330,7 +331,7 @@ class PlayerManager extends BaseController {
       }
     }
 
-    if (state.round_started_at && state.round_duration) {
+    if (state.round_ends_at && state.round_duration) {
       this.startContinuousTimer(state);
     }
   }
@@ -572,12 +573,15 @@ class PlayerManager extends BaseController {
         return;
       }
 
-      const remaining = GameTimer.getRemaining(
-        this.gameState.round_started_at,
-        this.gameState.round_duration
-      );
+      const roundEndsAt = Number(this.gameState.round_ends_at);
+      if (!roundEndsAt) {
+        return;
+      }
 
-      if (remaining !== null && remaining <= 500) {
+      const nowServer = timeSync.getServerTime();
+      const remaining = Math.max(0, roundEndsAt - nowServer);
+
+      if (remaining <= 500) {
         const me = this.gameState.players?.[this.playerId];
         if (me && me.status !== 'ready') {
           debug('🔵 Auto-enviando palabras al terminar el tiempo', null, 'info');
