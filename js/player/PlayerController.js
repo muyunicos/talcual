@@ -300,15 +300,14 @@ class PlayerManager extends BaseController {
       debug('⚠️ No hay roundData.commonAnswers en estado', null, 'warning');
     }
 
-    if (state.countdown_starts_at) {
+    if (state.round_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
-      const countdownDurationSeconds = state.countdown_duration || configManager.get('start_countdown', 5);
-      const countdownDurationMs = countdownDurationSeconds * 1000;
-      const elapsedSinceCountdownStart = nowServer - state.countdown_starts_at;
-      
-      if (elapsedSinceCountdownStart < countdownDurationMs) {
-        debug(`⏱️ Countdown aún en progreso (${countdownDurationMs - elapsedSinceCountdownStart}ms restantes)`, null, 'debug');
+      const roundStartsAt = Number(state.round_starts_at);
+
+      if (nowServer < roundStartsAt) {
+        const timeUntilStart = roundStartsAt - nowServer;
+        debug(`⏳ Countdown aún sin terminar (${timeUntilStart}ms restantes)`, null, 'debug');
         await this.showCountdown(state);
       }
     }
@@ -584,7 +583,7 @@ class PlayerManager extends BaseController {
       if (remaining <= 500) {
         const me = this.gameState.players?.[this.playerId];
         if (me && me.status !== 'ready') {
-          debug('🔵 Auto-enviando palabras al terminar el tiempo', null, 'info');
+          debug('🟡 Auto-enviando palabras al terminar el tiempo', null, 'info');
           this.autoSubmitWords();
           clearInterval(this._autoSubmitInterval);
         }
