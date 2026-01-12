@@ -467,10 +467,9 @@ class HostManager extends BaseController {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
       const roundStartsAt = Number(state.round_starts_at);
-      const countdownDurationMs = Number(state.countdown_duration) || 5000;
 
       if (nowServer < roundStartsAt) {
-        debug('⏳ Countdown aun sin terminar', null, 'info');
+        debug('⏳ Iniciando countdown', null, 'info');
         await this.showCountdown(state);
       }
     }
