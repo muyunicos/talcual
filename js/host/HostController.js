@@ -60,6 +60,7 @@ class HostManager extends BaseController {
       debug('« Inicializando Host...', null, 'info');
       
       this.attachEventListeners();
+      this.subscribeToConfigChanges();
       this.determineUIState();
 
       const sessionData = this.recoverSession();
@@ -79,6 +80,28 @@ class HostManager extends BaseController {
       UI.showFatalError(`Error de inicialización: ${error.message}`);
       throw error;
     }
+  }
+
+  subscribeToConfigChanges() {
+    this._configSyncUnsubscribe = configManager.subscribe((newConfig) => {
+      debug('🔄 Config cambió - Actualizando UI del Host', newConfig, 'info');
+      this.refreshUIFromConfig();
+    });
+  }
+
+  refreshUIFromConfig() {
+    if (!this.gameState) return;
+
+    const round = this.gameState.round || 0;
+    const total = configManager.get('total_rounds', 5);
+    this.view.setRoundInfo(round, total);
+
+    if (this.gameState.status === 'waiting') {
+      const minPlayers = configManager.get('min_players', 1);
+      this.view.showWaitingState(this.currentPlayers.length, minPlayers);
+    }
+
+    debug('✅ UI actualizada con nueva configuración', null, 'success');
   }
 
   async initializeCreateGameModal() {
