@@ -63,29 +63,20 @@ class HostView {
     return aura.toLowerCase().trim().replace(/\s+/g, '');
   }
 
-  getAuraGradientClass(aura) {
-    if (!aura || typeof aura !== 'string') return 'aura-gradient--neon-pink-cyan';
+  isValidAuraFormat(aura) {
+    if (!aura || typeof aura !== 'string') return false;
+    const parts = aura.split(',');
+    return parts.length === 2 && 
+           /^#[0-9a-fA-F]{6}$/.test(parts[0].trim()) && 
+           /^#[0-9a-fA-F]{6}$/.test(parts[1].trim());
+  }
 
-    const normalized = this.normalizeAuraString(aura);
-    
-    const auraMap = {
-      '#ff0055,#00f0ff': 'aura-gradient--neon-pink-cyan',
-      '#ff0055#00f0ff': 'aura-gradient--neon-pink-cyan',
-      '#8b5cf6,#06b6d4': 'aura-gradient--purple-cyan',
-      '#8b5cf606b6d4': 'aura-gradient--purple-cyan',
-      '#d946ef,#14b8a6': 'aura-gradient--magenta-teal',
-      '#d946ef14b8a6': 'aura-gradient--magenta-teal',
-      '#ea580c,#ec4899': 'aura-gradient--orange-pink',
-      '#ea580cec4899': 'aura-gradient--orange-pink',
-      '#3b82f6,#10b981': 'aura-gradient--blue-green',
-      '#3b82f610b981': 'aura-gradient--blue-green'
-    };
-
-    if (auraMap[normalized]) {
-      return auraMap[normalized];
+  generateAuraGradient(aura) {
+    if (!this.isValidAuraFormat(aura)) {
+      return 'linear-gradient(135deg, #FF0055 0%, #00F0FF 100%)';
     }
-
-    return 'aura-gradient';
+    const [color1, color2] = aura.split(',').map(c => c.trim());
+    return `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
   }
 
   renderPlayerCards(players) {
@@ -95,33 +86,27 @@ class HostView {
       const name = sanitizeText(player.name || 'Jugador');
       const initial = name.charAt(0).toUpperCase();
       const score = player.score || 0;
+      
       const status = player.disconnected
         ? 'status-disconnected'
         : (player.status === 'ready'
           ? 'status-ready'
           : (player.answers && player.answers.length ? 'status-answered' : 'status-waiting'));
 
-      const aura = player.aura && typeof isValidAura === 'function' && isValidAura(player.aura)
-        ? player.aura
-        : null;
-
-      const auraClass = aura ? this.getAuraGradientClass(aura) : 'aura-gradient';
-      const customGradientStyle = aura
-        ? `style="--aura-gradient: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);"`
+      const aura = this.isValidAuraFormat(player.aura) ? player.aura : null;
+      const auraGradient = this.generateAuraGradient(aura);
+      const auraStyle = aura 
+        ? `style="--aura-gradient: ${auraGradient};"`
         : '';
 
       return `
-        <div class="player-squarcle ${status}" data-player-id="${pid}">
-          <button class="btn-remove-player" data-player-id="${pid}" aria-label="Expulsar jugador" type="button">&times;</button>
-          <div class="player-initial ${auraClass}" ${customGradientStyle}>
+        <div class="player-squarcle ${status}" data-player-id="${pid}" title="${name}">
+          <button class="btn-remove-player" data-player-id="${pid}" aria-label="Expulsar ${name}" type="button">&times;</button>
+          <div class="player-initial" ${auraStyle}>
             ${initial}
           </div>
-          <div class="player-name-label" title="${name}">
-            ${name}
-          </div>
-          <div class="player-score-label">
-            ${score} pts
-          </div>
+          <div class="player-name-label">${name}</div>
+          <div class="player-score-label">${score}</div>
         </div>
       `;
     }).join('');
