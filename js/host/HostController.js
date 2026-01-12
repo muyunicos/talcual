@@ -523,13 +523,7 @@ class HostManager extends BaseController {
         this.hurryUpActive = true;
         showNotification('⚡ ¡REMATE ACTIVADO!', 'info');
         this.view.setHurryUpButtonState('active_used');
-        
-        const updatedState = result.state || this.gameState;
-        this.handleStateUpdate(updatedState);
-        
-        await this.client.broadcastEvent('hurry_up_activated', {
-          new_end_time: updatedState.round_ends_at
-        });
+        this.handleStateUpdate(result.state || this.gameState);
       } else {
         showNotification('❌ Error activando remate', 'error');
         this.view.setHurryUpButtonState('active');
