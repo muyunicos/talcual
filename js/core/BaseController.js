@@ -104,7 +104,7 @@ class BaseController {
     this.setTimerHurryUp(false);
   }
 
-  runCountdown(countdownStartsAt, countdownDurationMs, onComplete) {
+  runCountdown(countdownStartsAt, roundStartsAt, onComplete) {
     if (!this.view || !this.view.elements) {
       throw new Error('View not initialized before runCountdown');
     }
@@ -117,8 +117,7 @@ class BaseController {
 
     const update = () => {
       const nowServer = timeSync.getServerTime();
-      const elapsed = nowServer - countdownStartsAt;
-      const remaining = Math.max(0, countdownDurationMs - elapsed);
+      const remaining = Math.max(0, roundStartsAt - nowServer);
       const seconds = Math.ceil(remaining / 1000);
 
       this.view.updateCountdownNumber(seconds);
@@ -138,17 +137,15 @@ class BaseController {
 
   showCountdown(state) {
     const countdownStartsAt = Number(state.countdown_starts_at);
-    let countdownDuration = Number(state.countdown_duration);
+    const roundStartsAt = Number(state.round_starts_at);
 
-    if (!countdownStartsAt || !countdownDuration) {
+    if (!countdownStartsAt || !roundStartsAt) {
       debug('⏳ Countdown inválido - valores faltantes', null, 'warn');
       return Promise.resolve();
     }
 
-    const countdownDurationMs = countdownDuration < 1000 ? countdownDuration * 1000 : countdownDuration;
-
     return new Promise((resolve) => {
-      this.runCountdown(countdownStartsAt, countdownDurationMs, resolve);
+      this.runCountdown(countdownStartsAt, roundStartsAt, resolve);
     });
   }
 
