@@ -64,6 +64,7 @@ class PlayerManager extends BaseController {
       
       this.view = new PlayerView(this.maxWords);
       this.attachEventListeners();
+      this.subscribeToConfigChanges();
 
       const sessionData = this.recoverSession();
       if (sessionData) {
@@ -80,6 +81,30 @@ class PlayerManager extends BaseController {
       UI.showFatalError('Error de inicialización. Por favor recarga la página.');
       throw error;
     }
+  }
+
+  subscribeToConfigChanges() {
+    this._configSyncUnsubscribe = configManager.subscribe((newConfig) => {
+      debug('🔄 Config cambió - Actualizando UI del Player', newConfig, 'info');
+      this.refreshUIFromConfig();
+    });
+  }
+
+  refreshUIFromConfig() {
+    if (!this.gameState) return;
+
+    const round = this.gameState.round || 0;
+    const total = configManager.get('total_rounds', 5);
+    this.view.setRoundInfo(round, total);
+
+    const newMaxWords = configManager.get('max_words_per_player', 6);
+    if (newMaxWords !== this.maxWords) {
+      this.maxWords = newMaxWords;
+      this.view.maxWords = newMaxWords;
+      this.updateInputAndButtons();
+    }
+
+    debug('✅ UI del jugador actualizada con nueva configuración', null, 'success');
   }
 
   attachEventListeners() {
