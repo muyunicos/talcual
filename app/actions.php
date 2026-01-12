@@ -508,9 +508,24 @@ try {
 
 } catch (Throwable $e) {
     logMessage('Error: ' . $e->getMessage(), 'ERROR');
-    http_response_code(500);
     
-    $message = DEV_MODE ? $e->getMessage() : 'Error del servidor';
+    $errorMessage = $e->getMessage();
+    $httpCode = 500;
+    
+    if (stripos($errorMessage, 'not found') !== false || 
+        stripos($errorMessage, 'no encontra') !== false ||
+        stripos($errorMessage, 'Invalid category') !== false) {
+        $httpCode = 404;
+    } elseif (stripos($errorMessage, 'full') !== false ||
+              stripos($errorMessage, 'llena') !== false ||
+              stripos($errorMessage, 'Minimum') !== false ||
+              stripos($errorMessage, 'Invalid') !== false) {
+        $httpCode = 400;
+    }
+    
+    http_response_code($httpCode);
+    
+    $message = DEV_MODE ? $errorMessage : ($httpCode === 404 ? 'No encontrado' : 'Error del servidor');
     echo json_encode(['success' => false, 'message' => $message]);
 }
 ?>
