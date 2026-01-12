@@ -621,18 +621,8 @@ class HostManager extends BaseController {
     }
   }
 
-  checkRoundTimeout() {
-    if (!this.gameState || this.gameState.status !== 'playing') {
-      return;
-    }
-    
-    const roundEndsAt = Number(this.gameState.round_ends_at);
-    if (!roundEndsAt) {
-      return;
-    }
-
-    const nowServer = timeSync.getServerTime();
-    if (nowServer >= roundEndsAt && !this.roundEnded) {
+  onRoundTimeout() {
+    if (!this.roundEnded) {
       debug('⏰ Tiempo agotado - Host finalizando ronda...', null, 'info');
       this.roundEnded = true;
       this.endRound();
