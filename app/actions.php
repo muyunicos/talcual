@@ -125,6 +125,24 @@ try {
             notifyGameChanged($gameId, ['event' => 'player_joined', 'player_id' => $playerId, 'player_name' => $playerName]);
             break;
 
+        case 'kick_player':
+            $gameId = $input['game_id'];
+            $playerId = $input['player_id'];
+
+            if (!$gameId || !$playerId) {
+                throw new Exception('game_id y player_id requeridos');
+            }
+
+            $result = $service->kickPlayer($gameId, $playerId);
+            $response = [
+                'success' => true,
+                'message' => $result['message'],
+                'server_now' => $result['server_now'],
+                'state' => $result['state']
+            ];
+            notifyGameChanged($gameId, ['event' => 'player_kicked', 'player_id' => $playerId]);
+            break;
+
         case 'start_round':
             $gameId = $input['game_id'];
 
