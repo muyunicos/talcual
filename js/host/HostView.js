@@ -107,7 +107,7 @@ class HostView {
 
       const auraClass = aura ? this.getAuraGradientClass(aura) : 'aura-gradient';
       const customGradientStyle = aura
-        ? `style="--aura-gradient: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);`
+        ? `style="--aura-gradient: linear-gradient(135deg, ${aura.split(',')[0]} 0%, ${aura.split(',')[1]} 100%);"`
         : '';
 
       return `
@@ -142,29 +142,11 @@ class HostView {
   }
 
   updateTimer(remaining, totalDuration) {
-    if (remaining === null || remaining === undefined) {
-      this.elements.headerTimer.textContent = '⏳ --:--';
-      this.elements.headerTimer.style.opacity = '1';
-      return;
-    }
-
-    this.elements.headerTimer.style.opacity = '1';
-
-    if (remaining < 0) {
-      remaining = 0;
-    }
-
-    const totalSeconds = Math.ceil(remaining / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-    this.elements.headerTimer.textContent = `⏳ ${timeStr}`;
+    SharedUIManager.updateTimerDisplay(this.elements.headerTimer, remaining, totalDuration);
   }
 
   clearTimer() {
-    this.elements.headerTimer.textContent = '⏳ 00:00';
-    this.elements.headerTimer.style.opacity = '1';
+    SharedUIManager.clearTimerDisplay(this.elements.headerTimer);
   }
 
   updatePlayerList(players) {
@@ -287,21 +269,15 @@ class HostView {
   }
 
   showCountdownOverlay() {
-    safeShowElement(this.elements.countdownOverlay);
+    SharedUIManager.showCountdownOverlay(this.elements.countdownOverlay);
   }
 
   hideCountdownOverlay() {
-    safeHideElement(this.elements.countdownOverlay);
+    SharedUIManager.hideCountdownOverlay(this.elements.countdownOverlay);
   }
 
   updateCountdownNumber(seconds) {
-    if (seconds > 3) {
-      this.elements.countdownNumber.textContent = '¿Preparado?';
-    } else if (seconds > 0) {
-      this.elements.countdownNumber.textContent = seconds.toString();
-    } else {
-      this.elements.countdownNumber.textContent = '';
-    }
+    SharedUIManager.updateCountdownNumber(this.elements.countdownNumber, seconds);
   }
 
   showRoundResultsComponent(results, players, topWords) {
