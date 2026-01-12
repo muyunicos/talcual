@@ -466,8 +466,7 @@ class HostManager extends BaseController {
     if (state.countdown_starts_at) {
       this.calibrateTimeSync(state);
       const nowServer = timeSync.getServerTime();
-      const countdownDurationSeconds = state.countdown_duration || configManager.get('start_countdown', 5);
-      const countdownDurationMs = countdownDurationSeconds * 1000;
+      const countdownDurationMs = Number(state.countdown_duration) || 5000;
       const elapsed = nowServer - state.countdown_starts_at;
 
       if (elapsed < countdownDurationMs) {
