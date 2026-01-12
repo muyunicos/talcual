@@ -204,7 +204,7 @@ try {
                 'server_now' => $result['server_now'],
                 'state' => $result['state']
             ];
-            notifyGameChanged($gameId, ['event' => 'timer_updated', 'new_end_time' => $newEndTime], true);
+            notifyGameChanged($gameId, ['event' => 'timer_updated', 'new_end_time' => $newEndTime]);
             break;
 
         case 'set_category':
