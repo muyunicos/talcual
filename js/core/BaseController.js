@@ -3,6 +3,7 @@ class BaseController {
     this.timerRAFId = null;
     this.countdownRAFId = null;
     this.countdownActive = false;
+    this.roundTimeoutId = null;
     this.client = null;
     this.gameState = {};
     this.auraModule = new AuraModule();
@@ -54,26 +55,36 @@ class BaseController {
     }
   }
 
-  checkRoundTimeout() {
-    if (!this.gameState || this.gameState.status !== 'playing' || this.roundEnded) {
-      return;
+  scheduleRoundTimeout(state) {
+    if (this.roundTimeoutId) {
+      clearTimeout(this.roundTimeoutId);
+      this.roundTimeoutId = null;
     }
-    
-    const roundEndsAt = Number(this.gameState.round_ends_at);
-    if (!roundEndsAt) {
+
+    const roundEndsAt = Number(state.round_ends_at);
+    if (!roundEndsAt || this.roundEnded) {
       return;
     }
 
     const nowServer = timeSync.getServerTime();
-    
-    if (nowServer >= roundEndsAt) {
-      debug('⏰ Tiempo agotado - Finalizando ronda...', null, 'info');
-      this.roundEnded = true;
+    const delay = Math.max(0, roundEndsAt - nowServer);
+
+    if (delay === 0) {
       this.onRoundTimeout();
+      return;
     }
+
+    this.roundTimeoutId = setTimeout(() => {
+      this.roundTimeoutId = null;
+      this.onRoundTimeout();
+    }, delay);
   }
 
   onRoundTimeout() {
+    if (this.roundEnded) {
+      return;
+    }
+    this.roundEnded = true;
   }
 
   startContinuousTimer(state) {
@@ -82,6 +93,8 @@ class BaseController {
     }
 
     this.stopTimer();
+
+    this.scheduleRoundTimeout(state);
 
     const timerLoop = () => {
       if (!this.gameState || this.gameState.status !== 'playing') {
@@ -108,8 +121,6 @@ class BaseController {
         this.view.updateTimer(remaining, roundDuration);
       }
 
-      this.checkRoundTimeout();
-
       this.timerRAFId = requestAnimationFrame(timerLoop);
     };
 
@@ -125,6 +136,11 @@ class BaseController {
     if (this.countdownRAFId) {
       cancelAnimationFrame(this.countdownRAFId);
       this.countdownRAFId = null;
+    }
+
+    if (this.roundTimeoutId) {
+      clearTimeout(this.roundTimeoutId);
+      this.roundTimeoutId = null;
     }
 
     this.countdownActive = false;
