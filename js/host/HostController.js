@@ -424,7 +424,7 @@ class HostManager extends BaseController {
       const threshold = (configManager.get('hurry_up_threshold', 10) + 2) * 1000;
 
       if (remaining > threshold && nowServer >= roundStartsAt) {
-        debug('🔫 Solo 1 jugador falta - Auto-Remate', null, 'info');
+        debug('🔫 Sólo 1 jugador falta - Auto-Remate', null, 'info');
         this.activateHurryUp();
       }
     }
@@ -523,7 +523,13 @@ class HostManager extends BaseController {
         this.hurryUpActive = true;
         showNotification('⚡ ¡REMATE ACTIVADO!', 'info');
         this.view.setHurryUpButtonState('active_used');
-        this.handleStateUpdate(result.state || this.gameState);
+        
+        const updatedState = result.state || this.gameState;
+        this.handleStateUpdate(updatedState);
+        
+        await this.client.broadcastEvent('hurry_up_activated', {
+          new_end_time: updatedState.round_ends_at
+        });
       } else {
         showNotification('❌ Error activando remate', 'error');
         this.view.setHurryUpButtonState('active');
