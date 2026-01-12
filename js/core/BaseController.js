@@ -154,9 +154,15 @@ class BaseController {
   showCountdown(state) {
     const countdownStartsAt = Number(state.countdown_starts_at);
     const roundStartsAt = Number(state.round_starts_at);
+    const nowServer = timeSync.getServerTime();
 
     if (!countdownStartsAt || !roundStartsAt) {
       debug('⏳ Countdown inválido - valores faltantes', null, 'warn');
+      return Promise.resolve();
+    }
+
+    if (nowServer >= roundStartsAt) {
+      debug('⏳ Countdown ya ha pasado - omitiendo', null, 'debug');
       return Promise.resolve();
     }
 
