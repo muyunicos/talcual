@@ -3,7 +3,6 @@ class BaseController {
     this.timerRAFId = null;
     this.countdownRAFId = null;
     this.countdownActive = false;
-    this.lastCountdownRound = -1;
     this.client = null;
     this.gameState = {};
     this.auraModule = new AuraModule();
@@ -189,7 +188,7 @@ class BaseController {
   }
 
   destroy() {
-    debug('🧿 Destroying controller...', null, 'info');
+    debug('🧹 Destroying controller...', null, 'info');
     this.stopTimer();
 
     if (this.client) {
