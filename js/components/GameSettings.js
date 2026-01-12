@@ -149,26 +149,27 @@ class SettingsModal {
 
         const buttons = isCreationContext ? [
             [
-                () => this.saveSettings(),
-                'Guardar',
-                'btn-modal-primary'
-            ],
-            [
                 () => ModalSystem_Instance.close(2),
                 'Volver',
                 'btn'
-            ]
-        ] : [
+            ],
             [
                 () => this.saveSettings(),
                 'Guardar',
                 'btn-modal-primary'
-            ],
+            ]
+            
+        ] : [
             [
                 () => ModalSystem_Instance.close(2),
                 'Cancelar',
                 'btn'
-            ]
+            ],
+            [
+                () => this.saveSettings(),
+                'Guardar',
+                'btn-modal-primary'
+            ]            
         ];
 
         ModalSystem_Instance.show(2, formHTML, buttons);
