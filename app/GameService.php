@@ -300,8 +300,24 @@ class GameService {
         $categoryData = $this->dictionary->getCategoryByName($categoryNameToUse);
         $categoryIdToUse = $categoryData ? (int)$categoryData['id'] : null;
 
-        if ($duration < 10000 || $duration > 300000) {
-            $duration = defined('ROUND_DURATION') ? ROUND_DURATION * 1000 : 90000;
+        $durationMs = 0;
+        if ($duration > 0) {
+            if ($duration < 1000) {
+                $durationMs = $duration * 1000;
+            } else {
+                $durationMs = $duration;
+            }
+        } else {
+            $configDuration = $state['round_duration'] ?? ROUND_DURATION;
+            if ($configDuration < 1000) {
+                $durationMs = $configDuration * 1000;
+            } else {
+                $durationMs = $configDuration;
+            }
+        }
+
+        if ($durationMs < 10000 || $durationMs > 300000) {
+            $durationMs = ROUND_DURATION * 1000;
         }
 
         if ($totalRounds < 1 || $totalRounds > 10) {
@@ -312,13 +328,13 @@ class GameService {
         $countdownDuration = $state['countdown_duration'] ?? START_COUNTDOWN;
         $countdownStartsAt = $serverNow;
         $roundStartsAt = $countdownStartsAt + ($countdownDuration * 1000);
-        $roundEndsAt = $roundStartsAt + $duration;
+        $roundEndsAt = $roundStartsAt + $durationMs;
 
         $state['round']++;
         $state['status'] = 'playing';
         $state['current_prompt_id'] = $promptId;
         $state['current_category_id'] = $categoryIdToUse;
-        $state['round_duration'] = $duration;
+        $state['round_duration'] = $durationMs;
         $state['total_rounds'] = $totalRounds;
         $state['countdown_duration'] = $countdownDuration;
         $state['countdown_starts_at'] = $countdownStartsAt;
@@ -416,7 +432,12 @@ class GameService {
             throw new Exception('Cannot change config during a round');
         }
 
-        $state['round_duration'] = intval($configData['round_duration'] ?? $state['round_duration']);
+        $roundDur = intval($configData['round_duration'] ?? $state['round_duration']);
+        if ($roundDur < 1000) {
+            $roundDur = $roundDur * 1000;
+        }
+
+        $state['round_duration'] = $roundDur;
         $state['total_rounds'] = intval($configData['total_rounds'] ?? $state['total_rounds']);
         $state['min_players'] = intval($configData['min_players'] ?? $state['min_players']);
         $state['max_players'] = intval($configData['max_players'] ?? $state['max_players']);
