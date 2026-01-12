@@ -2,6 +2,7 @@ class BaseController {
   constructor() {
     this.timerRAFId = null;
     this.countdownRAFId = null;
+    this.countdownActive = false;
     this.client = null;
     this.gameState = {};
     this.auraModule = new AuraModule();
@@ -106,6 +107,7 @@ class BaseController {
       this.countdownRAFId = null;
     }
 
+    this.countdownActive = false;
     this.setTimerHurryUp(false);
   }
 
@@ -114,15 +116,18 @@ class BaseController {
       throw new Error('View not initialized before runCountdown');
     }
 
-    if (this.countdownRAFId) {
-      cancelAnimationFrame(this.countdownRAFId);
+    if (this.countdownActive) {
+      return;
     }
+
+    this.countdownActive = true;
 
     const nowServer = timeSync.getServerTime();
     const timeToRoundStart = roundStartsAt - nowServer;
 
     if (timeToRoundStart <= 0) {
       this.view.hideCountdownOverlay();
+      this.countdownActive = false;
       if (typeof onComplete === 'function') {
         onComplete();
       }
@@ -142,6 +147,7 @@ class BaseController {
         this.countdownRAFId = requestAnimationFrame(update);
       } else {
         this.view.hideCountdownOverlay();
+        this.countdownActive = false;
         if (typeof onComplete === 'function') {
           onComplete();
         }
@@ -152,22 +158,19 @@ class BaseController {
   }
 
   showCountdown(state) {
-    const countdownStartsAt = Number(state.countdown_starts_at);
     const roundStartsAt = Number(state.round_starts_at);
     const nowServer = timeSync.getServerTime();
 
-    if (!countdownStartsAt || !roundStartsAt) {
-      debug('⏳ Countdown inválido - valores faltantes', null, 'warn');
+    if (!roundStartsAt) {
       return Promise.resolve();
     }
 
     if (nowServer >= roundStartsAt) {
-      debug('⏳ Countdown ya ha pasado - omitiendo', null, 'debug');
       return Promise.resolve();
     }
 
     return new Promise((resolve) => {
-      this.runCountdown(countdownStartsAt, roundStartsAt, resolve);
+      this.runCountdown(null, roundStartsAt, resolve);
     });
   }
 
