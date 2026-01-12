@@ -5,6 +5,7 @@ class HostView {
     this.leaderboard = new LeaderboardComponent();
     this.leaderboard.mount(this.elements.gameScreen);
     this.initializeVisibility();
+    this.bindCodeSticker();
     this.resultsContainerId = 'round-results-container';
   }
 
@@ -24,7 +25,8 @@ class HostView {
       btnHurryUp: getElement('btn-hurry-up'),
       btnEndGame: getElement('btn-end-game'),
       btnEndRound: document.querySelector('[aria-label="Botón para terminar la ronda"], .btn-end-round'),
-      centerStage: getElement('center-stage')
+      centerStage: getElement('center-stage'),
+      codeSticker: document.querySelector('.code-sticker-floating')
     };
 
     return elements;
@@ -32,6 +34,24 @@ class HostView {
 
   initializeVisibility() {
     safeHideElement(this.elements.countdownOverlay);
+  }
+
+  bindCodeSticker() {
+    if (!this.elements.codeSticker) return;
+
+    this.elements.codeSticker.addEventListener('click', () => {
+      const code = this.elements.headerCode.textContent;
+      if (!code) return;
+
+      navigator.clipboard.writeText(code).then(() => {
+        this.elements.codeSticker.classList.add('copied');
+        setTimeout(() => {
+          this.elements.codeSticker.classList.remove('copied');
+        }, 600);
+      }).catch(() => {
+        console.error('Error copying code to clipboard');
+      });
+    });
   }
 
   bindStartGame(handler) {
