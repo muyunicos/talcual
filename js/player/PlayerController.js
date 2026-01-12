@@ -178,6 +178,11 @@ class PlayerManager extends BaseController {
       this.client.forceRefresh();
     });
 
+    this.client.on('event:timer_updated', (data) => {
+      debug('⏱️ Timer actualizado (remate) detectado:', data, 'info');
+      this.client.forceRefresh();
+    });
+
     this.client.on('config_field_changed', (data) => {
       debug('🔄 Config field change recibido:', data, 'debug');
       if (data && data.field && data.value !== undefined) {
