@@ -16,7 +16,6 @@ class PlayerManager extends BaseController {
     this.lastTypingTime = 0;
     this.typingThrottleMs = 2000;
 
-    this._autoSubmitInterval = null;
     this._configSyncUnsubscribe = null;
     this.view = null;
   }
@@ -563,32 +562,14 @@ class PlayerManager extends BaseController {
 
   startContinuousTimer(state) {
     super.startContinuousTimer(state);
+  }
 
-    if (this._autoSubmitInterval) clearInterval(this._autoSubmitInterval);
-
-    this._autoSubmitInterval = setInterval(() => {
-      if (!this.gameState || this.gameState.status !== 'playing') {
-        clearInterval(this._autoSubmitInterval);
-        return;
-      }
-
-      const roundEndsAt = Number(this.gameState.round_ends_at);
-      if (!roundEndsAt) {
-        return;
-      }
-
-      const nowServer = timeSync.getServerTime();
-      const remaining = Math.max(0, roundEndsAt - nowServer);
-
-      if (remaining <= 500) {
-        const me = this.gameState.players?.[this.playerId];
-        if (me && me.status !== 'ready') {
-          debug('🟡 Auto-enviando palabras al terminar el tiempo', null, 'info');
-          this.autoSubmitWords();
-          clearInterval(this._autoSubmitInterval);
-        }
-      }
-    }, 1000);
+  onRoundTimeout() {
+    const me = this.gameState?.players?.[this.playerId];
+    if (me && me.status !== 'ready') {
+      debug('🟡 Auto-enviando palabras al terminar el tiempo', null, 'info');
+      this.autoSubmitWords();
+    }
   }
 
   async autoSubmitWords() {
@@ -663,11 +644,6 @@ class PlayerManager extends BaseController {
   }
 
   destroy() {
-    if (this._autoSubmitInterval) {
-      clearInterval(this._autoSubmitInterval);
-      this._autoSubmitInterval = null;
-    }
-
     if (this._configSyncUnsubscribe) {
       this._configSyncUnsubscribe();
       this._configSyncUnsubscribe = null;
