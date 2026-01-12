@@ -493,12 +493,8 @@ class HostManager extends BaseController {
 
       if (result.success && result.state) {
         debug('✅ Ronda iniciada', null, 'success');
-        const state = result.state;
 
-        this.calibrateTimeSync(state);
-        await this.showCountdown(state);
-
-        this.handleStateUpdate(state);
+        this.handleStateUpdate(result.state);
       } else {
         showNotification('❌ Error iniciando ronda', 'error');
         this.view.setStartButtonState('ready');
